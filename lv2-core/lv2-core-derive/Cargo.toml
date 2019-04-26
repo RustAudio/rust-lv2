@@ -1,0 +1,11 @@
+[package]
+name = "lv2-core-derive"
+version = "0.1.0"
+authors = ["Janonard <janonard@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "0.15.22"
+quote = "0.6.10"

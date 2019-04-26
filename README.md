@@ -1,6 +1,6 @@
 # rust-lv2
 
-rust-lv2 is a library for LV2-compatible audio plugins in the Rust programming language.
+A library to create LV2-compatible audio plugins in the Rust programming language.
 
 ## License
 
