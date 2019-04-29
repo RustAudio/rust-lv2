@@ -32,7 +32,7 @@ pub struct PluginInstance<T: Plugin> {
 
 // TODO: add panic protection
 impl<T: Plugin> PluginInstance<T> {
-    pub unsafe extern "C" fn instanciate(_descriptor: *const PluginDescriptor<Self>,
+    pub unsafe extern "C" fn instantiate(_descriptor: *const PluginDescriptor<Self>,
                        _sample_rate: f64,
                        _bundle_path: *const c_char,
                        features: *const *const RawFeatureDescriptor) -> *mut Self {

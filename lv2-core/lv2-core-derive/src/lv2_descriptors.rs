@@ -32,7 +32,7 @@ impl Lv2DescriptorItem {
                 };
                 const DESCRIPTOR: ::lv2_core::PluginDescriptor<::lv2_core::plugin::PluginInstance<Self>> = ::lv2_core::PluginDescriptor::<::lv2_core::plugin::PluginInstance<Self>> {
                     URI: (&Self::URI[0]) as *const u8 as *const ::std::os::raw::c_char,
-                    instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instanciate),
+                    instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instantiate),
                     connect_port: Some(::lv2_core::plugin::PluginInstance::<Self>::connect_port),
                     activate: Some(::lv2_core::plugin::PluginInstance::<Self>::activate),
                     run: Some(::lv2_core::plugin::PluginInstance::<Self>::run),
