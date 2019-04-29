@@ -1,9 +1,9 @@
 use crate::PortType;
-use std::ptr::NonNull;
 use std::ops::{Deref, DerefMut};
+use std::ptr::NonNull;
 
 pub struct InputPort<T: PortType> {
-    port: T::InputPortType
+    port: T::InputPortType,
 }
 
 impl<T: PortType> Deref for InputPort<T> {
@@ -16,7 +16,7 @@ impl<T: PortType> Deref for InputPort<T> {
 }
 
 pub struct OutputPort<T: PortType> {
-    port: T::OutputPortType
+    port: T::OutputPortType,
 }
 
 impl<T: PortType> Deref for OutputPort<T> {
@@ -42,14 +42,18 @@ pub trait PortHandle: Sized {
 impl<T: PortType> PortHandle for InputPort<T> {
     #[inline]
     unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self {
-        Self { port: T::input_from_raw(NonNull::new_unchecked(pointer), sample_count) }
+        Self {
+            port: T::input_from_raw(NonNull::new_unchecked(pointer), sample_count),
+        }
     }
 }
 
 impl<T: PortType> PortHandle for OutputPort<T> {
     #[inline]
     unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self {
-        Self { port: T::output_from_raw(NonNull::new_unchecked(pointer), sample_count) }
+        Self {
+            port: T::output_from_raw(NonNull::new_unchecked(pointer), sample_count),
+        }
     }
 }
 

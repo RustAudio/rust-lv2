@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone)]
 pub enum UriError {
-    CStrNulError(NulError)
+    CStrNulError(NulError),
 }
 
 impl Error for UriError {}
@@ -15,7 +15,7 @@ impl fmt::Display for UriError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Invalid URI String: ")?;
         match self {
-            UriError::CStrNulError(e) => fmt::Display::fmt(e, f)
+            UriError::CStrNulError(e) => fmt::Display::fmt(e, f),
         }
     }
 }
@@ -23,7 +23,7 @@ impl fmt::Display for UriError {
 // TODO: Check Eq impl ?
 #[derive(PartialEq, Eq)]
 pub struct Uri {
-    inner: CStr
+    inner: CStr,
 }
 
 impl Uri {
@@ -132,7 +132,7 @@ impl<T: AsUriRef> AsUriRef for Result<T, UriError> {
     fn as_uri(&self) -> Result<&Uri, UriError> {
         match self {
             Ok(uri) => uri.as_uri(),
-            Err(e) => Err(e.clone())
+            Err(e) => Err(e.clone()),
         }
     }
 }
@@ -151,7 +151,7 @@ impl AsUriRef for CString {
 
 #[derive(PartialEq, Eq)]
 pub struct UriBuf {
-    inner: CString
+    inner: CString,
 }
 
 impl UriBuf {

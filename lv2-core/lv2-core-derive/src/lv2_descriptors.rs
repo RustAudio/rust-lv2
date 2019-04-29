@@ -1,11 +1,11 @@
 use proc_macro::TokenStream;
-use syn::punctuated::Punctuated;
-use syn::{Token, Result, parse_macro_input, Type, LitStr};
 use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::{parse_macro_input, LitStr, Result, Token, Type};
 
 struct Lv2DescriptorItem {
     plugin_type: Type,
-    uri: LitStr
+    uri: LitStr,
 }
 
 impl Parse for Lv2DescriptorItem {
@@ -13,10 +13,7 @@ impl Parse for Lv2DescriptorItem {
         let plugin_type = input.parse()?;
         input.parse::<Token![:]>()?;
         let uri = input.parse()?;
-        Ok(Self {
-            plugin_type,
-            uri
-        })
+        Ok(Self { plugin_type, uri })
     }
 }
 
@@ -53,24 +50,31 @@ impl Lv2DescriptorItem {
 }
 
 struct Lv2DescriptorList {
-    contents: Punctuated<Lv2DescriptorItem, Token![,]>
+    contents: Punctuated<Lv2DescriptorItem, Token![,]>,
 }
 
 impl Parse for Lv2DescriptorList {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
-            contents: Punctuated::parse_terminated(input)?
+            contents: Punctuated::parse_terminated(input)?,
         })
     }
 }
 
 impl Lv2DescriptorList {
-    fn make_instance_descriptors<'a>(&'a self) -> impl Iterator<Item=impl ::quote::ToTokens> + 'a {
-        self.contents.iter().map(Lv2DescriptorItem::make_instance_descriptor)
+    fn make_instance_descriptors<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = impl ::quote::ToTokens> + 'a {
+        self.contents
+            .iter()
+            .map(Lv2DescriptorItem::make_instance_descriptor)
     }
 
     fn make_export_function(&self) -> impl ::quote::ToTokens {
-        let index_matchers = self.contents.iter().enumerate()
+        let index_matchers = self
+            .contents
+            .iter()
+            .enumerate()
             .map(|(i, desc)| desc.make_index_matcher(i as u32));
 
         quote! {
@@ -94,5 +98,6 @@ pub fn lv2_descriptors_impl(input: TokenStream) -> TokenStream {
     (quote! {
         #(#descriptors)*
         #export_function
-    }).into()
+    })
+    .into()
 }

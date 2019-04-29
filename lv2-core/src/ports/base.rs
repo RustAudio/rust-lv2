@@ -2,13 +2,16 @@ use std::ptr::NonNull;
 
 pub struct InputSampledData<T: Copy> {
     pointer: NonNull<T>,
-    sample_count: u32
+    sample_count: u32,
 }
 
 impl<T: Copy> InputSampledData<T> {
     #[inline]
     pub unsafe fn new(pointer: NonNull<()>, sample_count: u32) -> Self {
-        Self { pointer: pointer.cast(), sample_count }
+        Self {
+            pointer: pointer.cast(),
+            sample_count,
+        }
     }
 
     #[inline]
@@ -29,24 +32,31 @@ impl<T: Copy> InputSampledData<T> {
 
 pub struct OutputSampledData<T: Copy> {
     pointer: NonNull<T>,
-    sample_count: u32
+    sample_count: u32,
 }
 
 impl<T: Copy> OutputSampledData<T> {
     #[inline]
     pub unsafe fn new(pointer: NonNull<()>, sample_count: u32) -> Self {
-        Self { pointer: pointer.cast(), sample_count }
+        Self {
+            pointer: pointer.cast(),
+            sample_count,
+        }
     }
 
     #[inline]
     pub fn put(&self, value: T, index: usize) {
-        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize) };
+        let slice = unsafe {
+            ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize)
+        };
         slice[index] = value
     }
 
     #[inline]
-    pub fn collect_from<I: IntoIterator<Item=T>>(&self, iterable: I) {
-        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize) };
+    pub fn collect_from<I: IntoIterator<Item = T>>(&self, iterable: I) {
+        let slice = unsafe {
+            ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize)
+        };
 
         for (output, input) in slice.iter_mut().zip(iterable) {
             *output = input
@@ -55,9 +65,13 @@ impl<T: Copy> OutputSampledData<T> {
 
     #[inline]
     pub fn fill(&self, value: T) {
-        let slice = unsafe { ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize) };
+        let slice = unsafe {
+            ::std::slice::from_raw_parts_mut(self.pointer.as_ptr(), self.sample_count as usize)
+        };
 
-        for output in slice.iter_mut() { *output = value }
+        for output in slice.iter_mut() {
+            *output = value
+        }
     }
 
     #[inline]

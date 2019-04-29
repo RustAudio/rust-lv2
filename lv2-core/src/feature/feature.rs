@@ -1,5 +1,5 @@
-use crate::uri::UriBound;
 use crate::feature::descriptor::FeatureDescriptor;
+use crate::uri::UriBound;
 
 /// Represents extension data for a given feature.
 /// # Unsafety
@@ -20,5 +20,5 @@ unsafe impl<F: Feature> UriBound for F {
 
 #[repr(transparent)]
 pub struct RawFeatureDescriptor {
-    pub(crate) inner: ::lv2_core_sys::LV2_Feature
+    pub(crate) inner: ::lv2_core_sys::LV2_Feature,
 }

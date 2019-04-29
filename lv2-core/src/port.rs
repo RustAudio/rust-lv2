@@ -20,5 +20,5 @@ pub trait PortType: 'static + Sized {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PortDirection {
     Input,
-    Output
+    Output,
 }

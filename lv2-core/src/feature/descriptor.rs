@@ -1,17 +1,17 @@
-use std::os::raw::{c_void};
+use std::ffi::CStr;
 use std::fmt;
 use std::marker::PhantomData;
-use std::ffi::CStr;
+use std::os::raw::c_void;
 
-use crate::uri::{Uri, UriBound};
 use crate::feature::feature::Feature;
 use crate::feature::feature::RawFeatureDescriptor;
+use crate::uri::{Uri, UriBound};
 
 #[derive(Copy, Clone)]
 pub struct FeatureDescriptor<'a> {
     pub(crate) inner: ::lv2_core_sys::LV2_Feature,
     uri_len: usize,
-    _lifetime: PhantomData<&'a u8>
+    _lifetime: PhantomData<&'a u8>,
 }
 
 impl<'a> FeatureDescriptor<'a> {
@@ -24,7 +24,10 @@ impl<'a> FeatureDescriptor<'a> {
             feature as *const T as *const c_void as *mut c_void
         };
         FeatureDescriptor {
-            inner: ::lv2_core_sys::LV2_Feature { URI: uri.as_ptr(), data },
+            inner: ::lv2_core_sys::LV2_Feature {
+                URI: uri.as_ptr(),
+                data,
+            },
             uri_len: uri.to_bytes_with_nul().len(),
             _lifetime: PhantomData,
         }
@@ -36,7 +39,9 @@ impl<'a> FeatureDescriptor<'a> {
         let uri_len = CStr::from_ptr(inner.URI).to_bytes_with_nul().len();
 
         FeatureDescriptor {
-            inner, uri_len, _lifetime: PhantomData
+            inner,
+            uri_len,
+            _lifetime: PhantomData,
         }
     }
 
