@@ -2,7 +2,7 @@ use crate::port::PortType;
 use std::ptr::NonNull;
 
 pub struct Control {
-    pointer: NonNull<f32>
+    pointer: NonNull<f32>,
 }
 
 impl Control {
@@ -20,10 +20,14 @@ impl PortType for Control {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<()>, _sample_count: u32) -> Self::InputPortType {
-        Self { pointer: pointer.cast() }
+        Self {
+            pointer: pointer.cast(),
+        }
     }
 
     unsafe fn output_from_raw(pointer: NonNull<()>, _sample_count: u32) -> Self::OutputPortType {
-        Self { pointer: pointer.cast() }
+        Self {
+            pointer: pointer.cast(),
+        }
     }
 }

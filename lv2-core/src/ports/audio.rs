@@ -1,6 +1,6 @@
 use crate::port::PortType;
-use std::ptr::NonNull;
 use crate::ports::base::{InputSampledData, OutputSampledData};
+use std::ptr::NonNull;
 
 pub struct Audio;
 

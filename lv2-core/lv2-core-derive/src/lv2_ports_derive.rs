@@ -1,19 +1,19 @@
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Type, Ident, Data, DataStruct};
+use syn::export::Span;
 use syn::DeriveInput;
 use syn::Field;
-use syn::export::Span;
+use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
 
 struct Lv2PortField<'a> {
     identifier: &'a Ident,
-    port_type: &'a Type
+    port_type: &'a Type,
 }
 
 impl<'a> Lv2PortField<'a> {
     fn from_input_field(input: &'a Field) -> Self {
         Self {
             identifier: input.ident.as_ref().unwrap(),
-            port_type: &input.ty
+            port_type: &input.ty,
         }
     }
 
@@ -49,31 +49,51 @@ impl<'a> Lv2PortField<'a> {
 
 struct Lv2PortsFields<'a> {
     struct_name: &'a Ident,
-    fields: Vec<Lv2PortField<'a>>
+    fields: Vec<Lv2PortField<'a>>,
 }
 
 impl<'a> Lv2PortsFields<'a> {
     fn internal_mod_name(&self) -> Ident {
-        Ident::new(&format!("__lv2_plugin_ports_derive_{}", self.struct_name), Span::call_site())
+        Ident::new(
+            &format!("__lv2_plugin_ports_derive_{}", self.struct_name),
+            Span::call_site(),
+        )
     }
 
     fn from_derive_input(input: &'a DeriveInput) -> Self {
         let struct_name = &input.ident;
         let fields = match &input.data {
             Data::Enum(_) | Data::Union(_) => unimplemented!(),
-            Data::Struct(DataStruct { fields, .. }) => fields.iter().map(Lv2PortField::from_input_field).collect()
+            Data::Struct(DataStruct { fields, .. }) => {
+                fields.iter().map(Lv2PortField::from_input_field).collect()
+            }
         };
-        Self { struct_name, fields }
+        Self {
+            struct_name,
+            fields,
+        }
     }
 
     fn make_derived_contents(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let internal_mod_name = self.internal_mod_name();
 
-        let connections_from_raw = self.fields.iter().map(Lv2PortField::make_connection_from_raw);
-        let raw_field_declarations = self.fields.iter().map(Lv2PortField::make_raw_field_declaration);
-        let raw_field_inits = self.fields.iter().map(Lv2PortField::make_raw_field_initialization);
-        let connect_matchers = self.fields.iter().enumerate()
+        let connections_from_raw = self
+            .fields
+            .iter()
+            .map(Lv2PortField::make_connection_from_raw);
+        let raw_field_declarations = self
+            .fields
+            .iter()
+            .map(Lv2PortField::make_raw_field_declaration);
+        let raw_field_inits = self
+            .fields
+            .iter()
+            .map(Lv2PortField::make_raw_field_initialization);
+        let connect_matchers = self
+            .fields
+            .iter()
+            .enumerate()
             .map(|(i, f)| f.make_connect_matcher(i as u32));
 
         (quote! {

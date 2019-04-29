@@ -1,18 +1,27 @@
+use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
-use std::ffi::c_void;
 
-use crate::{PluginDescriptor, RawFeatureDescriptor, FeatureList};
+use crate::sys::LV2_Handle;
 use crate::plugin::features::Lv2Features;
+use crate::uri::Uri;
+use crate::{FeatureList, PluginDescriptor, RawFeatureDescriptor};
 
 pub trait Plugin: Sized {
     type Ports: Lv2Ports;
     type Features: Lv2Features;
 
-    fn new(features: Self::Features) -> Self;
+    fn new(
+        plugin_uri: &Uri,
+        sample_rate: f64,
+        bundle_path: &CStr,
+        features: Self::Features,
+    ) -> Self;
     fn run(&mut self, ports: &Self::Ports);
 
-    #[inline] fn activate(&mut self) {}
-    #[inline] fn deactivate(&mut self) {}
+    #[inline]
+    fn activate(&mut self) {}
+    #[inline]
+    fn deactivate(&mut self) {}
 }
 
 pub trait Lv2Ports: Sized {
@@ -27,30 +36,41 @@ pub trait PortsConnections: Sized + Default {
 
 pub struct PluginInstance<T: Plugin> {
     instance: T,
-    connections: <T::Ports as Lv2Ports>::Connections
+    connections: <T::Ports as Lv2Ports>::Connections,
 }
 
-// TODO: add panic protection
 impl<T: Plugin> PluginInstance<T> {
-    pub unsafe extern "C" fn instantiate(_descriptor: *const PluginDescriptor<Self>,
-                       _sample_rate: f64,
-                       _bundle_path: *const c_char,
-                       features: *const *const RawFeatureDescriptor) -> *mut Self {
-        let feature_list = FeatureList::from_raw(features);
+    pub unsafe extern "C" fn instantiate(
+        descriptor: *const PluginDescriptor<Self>,
+        sample_rate: f64,
+        bundle_path: *const c_char,
+        features: *const *const RawFeatureDescriptor,
+    ) -> LV2_Handle {
+        let descriptor = match descriptor.as_ref() {
+            Some(descriptor) => descriptor,
+            None => {
+                eprintln!("Failed to initialize plugin: Descriptor points to null");
+                return std::ptr::null_mut();
+            },
+        };
+        let plugin_uri = Uri::from_cstr_unchecked(CStr::from_ptr(descriptor.URI));
 
+        let bundle_path = CStr::from_ptr(bundle_path);
+
+        let feature_list = FeatureList::from_raw(features);
         let features = match <T::Features as Lv2Features>::from_feature_list(feature_list) {
             Ok(features) => features,
             Err(error) => {
-                eprintln!("Failed to initialize plugin: {:?}", error); // TODO: better error management
-                return ::std::ptr::null_mut()
+                eprintln!("Failed to initialize plugin: {:?}", error);
+                return std::ptr::null_mut();
             }
         };
 
-        let instance = Self {
-            instance: T::new(features),
-            connections: <<T::Ports as Lv2Ports>::Connections as Default>::default()
-        };
-        Box::into_raw(Box::new(instance))
+        let instance = Box::new(Self {
+            instance: T::new(plugin_uri, sample_rate, bundle_path, features),
+            connections: <<T::Ports as Lv2Ports>::Connections as Default>::default(),
+        });
+        Box::leak(instance) as *mut Self as LV2_Handle
     }
 
     pub unsafe extern "C" fn cleanup(instance: *mut Self) {
