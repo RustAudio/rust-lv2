@@ -1,5 +1,15 @@
+mod audio;
+mod control;
+mod cv;
+
 use crate::uri::Uri;
 use std::ptr::NonNull;
+
+pub mod base;
+
+pub use self::audio::*;
+pub use self::control::*;
+pub use self::cv::*;
 
 pub trait PortType: 'static + Sized {
     const NAME: &'static str;
