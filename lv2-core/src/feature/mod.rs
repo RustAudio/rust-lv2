@@ -29,7 +29,6 @@ pub struct RawFeatureDescriptor {
     pub(crate) inner: ::lv2_core_sys::LV2_Feature,
 }
 
-
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct HardRTCapable;

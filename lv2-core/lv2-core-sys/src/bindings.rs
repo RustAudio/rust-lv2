@@ -2,8 +2,7 @@
 
 pub const LV2_CORE_URI: &[u8; 29usize] = b"http://lv2plug.in/ns/lv2core\0";
 pub const LV2_CORE_PREFIX: &[u8; 30usize] = b"http://lv2plug.in/ns/lv2core#\0";
-pub const LV2_CORE__AllpassPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#AllpassPlugin\0";
+pub const LV2_CORE__AllpassPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#AllpassPlugin\0";
 pub const LV2_CORE__AmplifierPlugin: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#AmplifierPlugin\0";
 pub const LV2_CORE__AnalyserPlugin: &[u8; 44usize] =
@@ -12,20 +11,16 @@ pub const LV2_CORE__AudioPort: &[u8; 39usize] = b"http://lv2plug.in/ns/lv2core#A
 pub const LV2_CORE__BandpassPlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#BandpassPlugin\0";
 pub const LV2_CORE__CVPort: &[u8; 36usize] = b"http://lv2plug.in/ns/lv2core#CVPort\0";
-pub const LV2_CORE__ChorusPlugin: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#ChorusPlugin\0";
-pub const LV2_CORE__CombPlugin: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#CombPlugin\0";
+pub const LV2_CORE__ChorusPlugin: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#ChorusPlugin\0";
+pub const LV2_CORE__CombPlugin: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#CombPlugin\0";
 pub const LV2_CORE__CompressorPlugin: &[u8; 46usize] =
     b"http://lv2plug.in/ns/lv2core#CompressorPlugin\0";
 pub const LV2_CORE__ConstantPlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#ConstantPlugin\0";
-pub const LV2_CORE__ControlPort: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#ControlPort\0";
+pub const LV2_CORE__ControlPort: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#ControlPort\0";
 pub const LV2_CORE__ConverterPlugin: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#ConverterPlugin\0";
-pub const LV2_CORE__DelayPlugin: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#DelayPlugin\0";
+pub const LV2_CORE__DelayPlugin: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#DelayPlugin\0";
 pub const LV2_CORE__DistortionPlugin: &[u8; 46usize] =
     b"http://lv2plug.in/ns/lv2core#DistortionPlugin\0";
 pub const LV2_CORE__DynamicsPlugin: &[u8; 44usize] =
@@ -35,17 +30,13 @@ pub const LV2_CORE__EnvelopePlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#EnvelopePlugin\0";
 pub const LV2_CORE__ExpanderPlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#ExpanderPlugin\0";
-pub const LV2_CORE__ExtensionData: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#ExtensionData\0";
+pub const LV2_CORE__ExtensionData: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#ExtensionData\0";
 pub const LV2_CORE__Feature: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#Feature\0";
-pub const LV2_CORE__FilterPlugin: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#FilterPlugin\0";
-pub const LV2_CORE__FlangerPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#FlangerPlugin\0";
+pub const LV2_CORE__FilterPlugin: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#FilterPlugin\0";
+pub const LV2_CORE__FlangerPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#FlangerPlugin\0";
 pub const LV2_CORE__FunctionPlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#FunctionPlugin\0";
-pub const LV2_CORE__GatePlugin: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#GatePlugin\0";
+pub const LV2_CORE__GatePlugin: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#GatePlugin\0";
 pub const LV2_CORE__GeneratorPlugin: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#GeneratorPlugin\0";
 pub const LV2_CORE__HighpassPlugin: &[u8; 44usize] =
@@ -53,48 +44,33 @@ pub const LV2_CORE__HighpassPlugin: &[u8; 44usize] =
 pub const LV2_CORE__InputPort: &[u8; 39usize] = b"http://lv2plug.in/ns/lv2core#InputPort\0";
 pub const LV2_CORE__InstrumentPlugin: &[u8; 46usize] =
     b"http://lv2plug.in/ns/lv2core#InstrumentPlugin\0";
-pub const LV2_CORE__LimiterPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#LimiterPlugin\0";
-pub const LV2_CORE__LowpassPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#LowpassPlugin\0";
-pub const LV2_CORE__MixerPlugin: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#MixerPlugin\0";
+pub const LV2_CORE__LimiterPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#LimiterPlugin\0";
+pub const LV2_CORE__LowpassPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#LowpassPlugin\0";
+pub const LV2_CORE__MixerPlugin: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#MixerPlugin\0";
 pub const LV2_CORE__ModulatorPlugin: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#ModulatorPlugin\0";
-pub const LV2_CORE__MultiEQPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#MultiEQPlugin\0";
+pub const LV2_CORE__MultiEQPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#MultiEQPlugin\0";
 pub const LV2_CORE__OscillatorPlugin: &[u8; 46usize] =
     b"http://lv2plug.in/ns/lv2core#OscillatorPlugin\0";
-pub const LV2_CORE__OutputPort: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#OutputPort\0";
-pub const LV2_CORE__ParaEQPlugin: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#ParaEQPlugin\0";
-pub const LV2_CORE__PhaserPlugin: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#PhaserPlugin\0";
-pub const LV2_CORE__PitchPlugin: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#PitchPlugin\0";
+pub const LV2_CORE__OutputPort: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#OutputPort\0";
+pub const LV2_CORE__ParaEQPlugin: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#ParaEQPlugin\0";
+pub const LV2_CORE__PhaserPlugin: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#PhaserPlugin\0";
+pub const LV2_CORE__PitchPlugin: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#PitchPlugin\0";
 pub const LV2_CORE__Plugin: &[u8; 36usize] = b"http://lv2plug.in/ns/lv2core#Plugin\0";
-pub const LV2_CORE__PluginBase: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#PluginBase\0";
+pub const LV2_CORE__PluginBase: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#PluginBase\0";
 pub const LV2_CORE__Point: &[u8; 35usize] = b"http://lv2plug.in/ns/lv2core#Point\0";
 pub const LV2_CORE__Port: &[u8; 34usize] = b"http://lv2plug.in/ns/lv2core#Port\0";
-pub const LV2_CORE__PortProperty: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#PortProperty\0";
+pub const LV2_CORE__PortProperty: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#PortProperty\0";
 pub const LV2_CORE__Resource: &[u8; 38usize] = b"http://lv2plug.in/ns/lv2core#Resource\0";
-pub const LV2_CORE__ReverbPlugin: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#ReverbPlugin\0";
-pub const LV2_CORE__ScalePoint: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#ScalePoint\0";
+pub const LV2_CORE__ReverbPlugin: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#ReverbPlugin\0";
+pub const LV2_CORE__ScalePoint: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#ScalePoint\0";
 pub const LV2_CORE__SimulatorPlugin: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#SimulatorPlugin\0";
-pub const LV2_CORE__SpatialPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#SpatialPlugin\0";
-pub const LV2_CORE__Specification: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#Specification\0";
+pub const LV2_CORE__SpatialPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#SpatialPlugin\0";
+pub const LV2_CORE__Specification: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#Specification\0";
 pub const LV2_CORE__SpectralPlugin: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#SpectralPlugin\0";
-pub const LV2_CORE__UtilityPlugin: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#UtilityPlugin\0";
+pub const LV2_CORE__UtilityPlugin: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#UtilityPlugin\0";
 pub const LV2_CORE__WaveshaperPlugin: &[u8; 46usize] =
     b"http://lv2plug.in/ns/lv2core#WaveshaperPlugin\0";
 pub const LV2_CORE__appliesTo: &[u8; 39usize] = b"http://lv2plug.in/ns/lv2core#appliesTo\0";
@@ -103,46 +79,34 @@ pub const LV2_CORE__connectionOptional: &[u8; 48usize] =
     b"http://lv2plug.in/ns/lv2core#connectionOptional\0";
 pub const LV2_CORE__control: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#control\0";
 pub const LV2_CORE__default: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#default\0";
-pub const LV2_CORE__designation: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#designation\0";
-pub const LV2_CORE__documentation: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#documentation\0";
-pub const LV2_CORE__enumeration: &[u8; 41usize] =
-    b"http://lv2plug.in/ns/lv2core#enumeration\0";
-pub const LV2_CORE__extensionData: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#extensionData\0";
-pub const LV2_CORE__freeWheeling: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#freeWheeling\0";
-pub const LV2_CORE__hardRTCapable: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#hardRTCapable\0";
-pub const LV2_CORE__inPlaceBroken: &[u8; 43usize] =
-    b"http://lv2plug.in/ns/lv2core#inPlaceBroken\0";
+pub const LV2_CORE__designation: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#designation\0";
+pub const LV2_CORE__documentation: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#documentation\0";
+pub const LV2_CORE__enumeration: &[u8; 41usize] = b"http://lv2plug.in/ns/lv2core#enumeration\0";
+pub const LV2_CORE__extensionData: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#extensionData\0";
+pub const LV2_CORE__freeWheeling: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#freeWheeling\0";
+pub const LV2_CORE__hardRTCapable: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#hardRTCapable\0";
+pub const LV2_CORE__inPlaceBroken: &[u8; 43usize] = b"http://lv2plug.in/ns/lv2core#inPlaceBroken\0";
 pub const LV2_CORE__index: &[u8; 35usize] = b"http://lv2plug.in/ns/lv2core#index\0";
 pub const LV2_CORE__integer: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#integer\0";
 pub const LV2_CORE__isLive: &[u8; 36usize] = b"http://lv2plug.in/ns/lv2core#isLive\0";
 pub const LV2_CORE__latency: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#latency\0";
 pub const LV2_CORE__maximum: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#maximum\0";
-pub const LV2_CORE__microVersion: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#microVersion\0";
+pub const LV2_CORE__microVersion: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#microVersion\0";
 pub const LV2_CORE__minimum: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#minimum\0";
-pub const LV2_CORE__minorVersion: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#minorVersion\0";
+pub const LV2_CORE__minorVersion: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#minorVersion\0";
 pub const LV2_CORE__name: &[u8; 34usize] = b"http://lv2plug.in/ns/lv2core#name\0";
 pub const LV2_CORE__optionalFeature: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#optionalFeature\0";
 pub const LV2_CORE__port: &[u8; 34usize] = b"http://lv2plug.in/ns/lv2core#port\0";
-pub const LV2_CORE__portProperty: &[u8; 42usize] =
-    b"http://lv2plug.in/ns/lv2core#portProperty\0";
+pub const LV2_CORE__portProperty: &[u8; 42usize] = b"http://lv2plug.in/ns/lv2core#portProperty\0";
 pub const LV2_CORE__project: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#project\0";
 pub const LV2_CORE__prototype: &[u8; 39usize] = b"http://lv2plug.in/ns/lv2core#prototype\0";
 pub const LV2_CORE__reportsLatency: &[u8; 44usize] =
     b"http://lv2plug.in/ns/lv2core#reportsLatency\0";
 pub const LV2_CORE__requiredFeature: &[u8; 45usize] =
     b"http://lv2plug.in/ns/lv2core#requiredFeature\0";
-pub const LV2_CORE__sampleRate: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#sampleRate\0";
-pub const LV2_CORE__scalePoint: &[u8; 40usize] =
-    b"http://lv2plug.in/ns/lv2core#scalePoint\0";
+pub const LV2_CORE__sampleRate: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#sampleRate\0";
+pub const LV2_CORE__scalePoint: &[u8; 40usize] = b"http://lv2plug.in/ns/lv2core#scalePoint\0";
 pub const LV2_CORE__symbol: &[u8; 36usize] = b"http://lv2plug.in/ns/lv2core#symbol\0";
 pub const LV2_CORE__toggled: &[u8; 37usize] = b"http://lv2plug.in/ns/lv2core#toggled\0";
 pub type __uint32_t = ::std::os::raw::c_uint;
