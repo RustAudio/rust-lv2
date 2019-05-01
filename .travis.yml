@@ -12,8 +12,10 @@ os:
 before_script:
   - rustup component add rustfmt
   - rustup component add clippy
+  - cargo install --force cargo-audit
 
 script:
+  - cargo audit
   - cargo clippy --all-targets --all-features -- -D warnings
   - cargo fmt --all -- --check
   - cargo build --verbose --all
