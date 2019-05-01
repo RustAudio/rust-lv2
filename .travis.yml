@@ -1,23 +1,23 @@
 language: rust
 
 rust:
- - stable
- - beta
+  - stable
+  - beta
 
 os:
- - linux
- - windows
- - osx
+  - linux
+  - windows
+  - osx
 
 before_script:
-- rustup component add rustfmt
-- rustup component add clippy
+  - rustup component add rustfmt
+  - rustup component add clippy
 
 script:
- - cargo clippy --all-targets --all-features -- -D warnings
- - cargo fmt --all -- --check
- - cargo build --verbose --all
- - cargo build --verbose --examples
- - cargo test --verbose --all
+  - cargo clippy --all-targets --all-features -- -D warnings
+  - cargo fmt --all -- --check
+  - cargo build --verbose --all
+  - cargo build --verbose --examples
+  - cargo test --verbose --all
 
 cache: cargo
