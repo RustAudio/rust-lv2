@@ -3,11 +3,17 @@ language: rust
 rust:
   - stable
   - beta
+  - nightly
 
 os:
   - linux
   - windows
   - osx
+
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
 
 before_script:
   - rustup component add rustfmt
