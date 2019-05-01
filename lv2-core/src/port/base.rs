@@ -25,6 +25,11 @@ impl<T: Copy> InputSampledData<T> {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[inline]
     pub fn iter(&self) -> ::std::slice::Iter<T> {
         self.as_slice().iter()
     }
@@ -77,5 +82,10 @@ impl<T: Copy> OutputSampledData<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.sample_count as usize
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }

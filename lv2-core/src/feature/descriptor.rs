@@ -3,8 +3,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
 
-use crate::feature::feature::Feature;
-use crate::feature::feature::RawFeatureDescriptor;
+use crate::feature::Feature;
+use crate::feature::RawFeatureDescriptor;
 use crate::uri::{Uri, UriBound};
 
 #[derive(Copy, Clone)]

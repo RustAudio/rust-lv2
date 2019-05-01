@@ -1,6 +1,6 @@
 use crate::feature::descriptor::FeatureDescriptor;
-use crate::feature::feature::Feature;
-use crate::feature::feature::RawFeatureDescriptor;
+use crate::feature::Feature;
+use crate::feature::RawFeatureDescriptor;
 use std::marker::PhantomData;
 
 pub struct FeatureList<'a> {
