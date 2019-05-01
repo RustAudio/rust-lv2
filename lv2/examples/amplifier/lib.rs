@@ -1,7 +1,7 @@
 use std::ffi::CStr;
 
 use lv2::core::plugin::{lv2_descriptors, InputPort, Lv2Ports, OutputPort, Plugin};
-use lv2::core::ports::{Audio, Control};
+use lv2::core::port::{Audio, Control};
 use lv2::core::uri::Uri;
 
 struct Amp;
