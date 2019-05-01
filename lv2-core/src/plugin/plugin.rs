@@ -1,8 +1,8 @@
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 
-use crate::sys::LV2_Handle;
 use crate::plugin::features::Lv2Features;
+use crate::sys::LV2_Handle;
 use crate::uri::Uri;
 use crate::{FeatureList, PluginDescriptor, RawFeatureDescriptor};
 
@@ -51,7 +51,7 @@ impl<T: Plugin> PluginInstance<T> {
             None => {
                 eprintln!("Failed to initialize plugin: Descriptor points to null");
                 return std::ptr::null_mut();
-            },
+            }
         };
         let plugin_uri = Uri::from_cstr_unchecked(CStr::from_ptr(descriptor.URI));
 

@@ -1,4 +1,7 @@
-use crate::port::{PortType, base::{InputSampledData, OutputSampledData}};
+use crate::port::{
+    base::{InputSampledData, OutputSampledData},
+    PortType,
+};
 use std::ptr::NonNull;
 
 pub struct CV;
