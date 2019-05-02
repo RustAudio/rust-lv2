@@ -27,9 +27,7 @@ impl Plugin for Amp {
     type Features = ();
 
     #[inline]
-    fn new(_plugin_uri: &Uri,
-        _sample_rate: f64,
-        _bundle_path: &CStr, _features: ()) -> Self {
+    fn new(_plugin_uri: &Uri, _sample_rate: f64, _bundle_path: &CStr, _features: ()) -> Self {
         Amp
     }
 

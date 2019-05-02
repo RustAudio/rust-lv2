@@ -1,7 +1,7 @@
 use std::os::raw::c_char;
 
-use crate::sys::LV2_Handle;
 use crate::feature::RawFeatureDescriptor;
+use crate::sys::LV2_Handle;
 use std::ffi::c_void;
 
 #[allow(non_snake_case)]
