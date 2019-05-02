@@ -1,5 +1,7 @@
 # rust-lv2
 
+[![Build Status](https://travis-ci.org/rust-dsp/rust-lv2.svg?branch=master)](https://travis-ci.org/rust-dsp/rust-lv2)
+
 A library to create LV2-compatible audio plugins in the Rust programming language.
 
 ## License
