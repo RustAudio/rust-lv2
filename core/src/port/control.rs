@@ -11,6 +11,8 @@ impl Control {
     }
 }
 
+unsafe impl Send for Control {}
+
 impl PortType for Control {
     const NAME: &'static str = "Control";
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__ControlPort;

@@ -5,6 +5,8 @@ pub struct InputSampledData<T: Copy> {
     sample_count: u32,
 }
 
+unsafe impl<T: Copy + Send> Send for InputSampledData<T> {}
+
 impl<T: Copy> InputSampledData<T> {
     #[inline]
     pub unsafe fn new(pointer: NonNull<()>, sample_count: u32) -> Self {
@@ -39,6 +41,8 @@ pub struct OutputSampledData<T: Copy> {
     pointer: NonNull<T>,
     sample_count: u32,
 }
+
+unsafe impl<T: Copy + Send> Send for OutputSampledData<T> {}
 
 impl<T: Copy> OutputSampledData<T> {
     #[inline]

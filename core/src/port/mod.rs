@@ -11,12 +11,12 @@ pub use self::audio::*;
 pub use self::control::*;
 pub use self::cv::*;
 
-pub trait PortType: 'static + Sized {
+pub trait PortType: 'static + Sized + Send {
     const NAME: &'static str;
     const URI: &'static [u8];
 
-    type InputPortType: Sized;
-    type OutputPortType: Sized;
+    type InputPortType: Sized + Send;
+    type OutputPortType: Sized + Send;
 
     unsafe fn input_from_raw(pointer: NonNull<()>, sample_count: u32) -> Self::InputPortType;
     unsafe fn output_from_raw(pointer: NonNull<()>, sample_count: u32) -> Self::OutputPortType;
