@@ -1,5 +1,4 @@
-pub extern crate lv2_core_derive as derive;
-pub extern crate lv2_core_sys as sys;
+extern crate lv2_core_sys as sys;
 
 mod extension_data;
 mod feature;
