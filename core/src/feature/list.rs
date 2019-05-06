@@ -1,15 +1,14 @@
 use crate::feature::descriptor::FeatureDescriptor;
 use crate::feature::Feature;
-use crate::feature::RawFeatureDescriptor;
 use std::marker::PhantomData;
 
 pub struct FeatureList<'a> {
-    inner: *const *const ::lv2_core_sys::LV2_Feature,
+    inner: *const *const sys::LV2_Feature,
     _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> FeatureList<'a> {
-    pub unsafe fn from_raw(inner: *const *const RawFeatureDescriptor) -> FeatureList<'a> {
+    pub unsafe fn from_raw(inner: *const *const sys::LV2_Feature) -> FeatureList<'a> {
         Self {
             inner: inner as _,
             _lifetime: PhantomData,
@@ -36,7 +35,7 @@ impl<'a, 'b> IntoIterator for &'b FeatureList<'a> {
 }
 
 pub struct FeatureIter<'a> {
-    ptr: *const *const ::lv2_core_sys::LV2_Feature,
+    ptr: *const *const sys::LV2_Feature,
     _lifetime: PhantomData<&'a ()>,
 }
 
