@@ -12,7 +12,7 @@ use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use sys::LV2_Handle;
 
-pub trait Plugin: Sized + Send {
+pub trait Plugin: Sized + Send + Sync {
     type Ports: Lv2Ports;
     type Features: Lv2Features;
 
@@ -30,7 +30,7 @@ pub trait Plugin: Sized + Send {
     fn deactivate(&mut self) {}
 }
 
-pub trait Lv2Ports: Sized + Send {
+pub trait Lv2Ports: Sized + Send + Sync {
     type Connections: PortsConnections;
 
     fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;

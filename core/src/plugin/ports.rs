@@ -15,8 +15,6 @@ impl<T: PortType> Deref for InputPort<T> {
     }
 }
 
-unsafe impl<T: PortType + Send> Send for InputPort<T> {}
-
 pub struct OutputPort<T: PortType> {
     port: T::OutputPortType,
 }
@@ -36,8 +34,6 @@ impl<T: PortType> DerefMut for OutputPort<T> {
         &mut self.port
     }
 }
-
-unsafe impl<T: PortType + Send> Send for OutputPort<T> {}
 
 pub trait PortHandle: Sized {
     unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self;

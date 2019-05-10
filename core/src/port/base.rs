@@ -6,6 +6,7 @@ pub struct InputSampledData<T: Copy> {
 }
 
 unsafe impl<T: Copy + Send> Send for InputSampledData<T> {}
+unsafe impl<T: Copy + Sync> Sync for InputSampledData<T> {}
 
 impl<T: Copy> InputSampledData<T> {
     #[inline]
@@ -43,6 +44,7 @@ pub struct OutputSampledData<T: Copy> {
 }
 
 unsafe impl<T: Copy + Send> Send for OutputSampledData<T> {}
+unsafe impl<T: Copy + Sync> Sync for OutputSampledData<T> {}
 
 impl<T: Copy> OutputSampledData<T> {
     #[inline]
