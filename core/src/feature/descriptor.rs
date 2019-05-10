@@ -4,7 +4,6 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 
 use crate::feature::Feature;
-use crate::feature::RawFeatureDescriptor;
 use crate::uri::{Uri, UriBound};
 
 #[derive(Copy, Clone)]
@@ -34,8 +33,8 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     #[inline]
-    pub unsafe fn from_raw(raw: *const RawFeatureDescriptor) -> FeatureDescriptor<'a> {
-        let inner = (*raw).inner;
+    pub unsafe fn from_raw(raw: *const sys::LV2_Feature) -> FeatureDescriptor<'a> {
+        let inner = *raw;
         let uri_len = CStr::from_ptr(inner.URI).to_bytes_with_nul().len();
 
         FeatureDescriptor {
@@ -79,7 +78,7 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     #[inline]
-    pub fn as_raw(&self) -> *const RawFeatureDescriptor {
+    pub fn as_raw(&self) -> *const sys::LV2_Feature {
         self as *const _ as *const _
     }
 }

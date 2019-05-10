@@ -27,7 +27,7 @@ impl Lv2DescriptorItem {
                     union Slices<'a> { str: &'a str, slice: &'a [u8] }
                     Slices { str: concat!(#uri, "\0") }.slice
                 };
-                const DESCRIPTOR: ::lv2_core::PluginDescriptor<::lv2_core::plugin::PluginInstance<Self>> = ::lv2_core::PluginDescriptor::<::lv2_core::plugin::PluginInstance<Self>> {
+                const DESCRIPTOR: ::lv2_core::sys::LV2_Descriptor = ::lv2_core::sys::LV2_Descriptor {
                     URI: (&Self::URI[0]) as *const u8 as *const ::std::os::raw::c_char,
                     instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instantiate),
                     connect_port: Some(::lv2_core::plugin::PluginInstance::<Self>::connect_port),
@@ -44,7 +44,7 @@ impl Lv2DescriptorItem {
     fn make_index_matcher(&self, index: u32) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         quote! {
-            #index => (<#plugin_type as ::lv2_core::plugin::PluginInstanceDescriptor>::DESCRIPTOR).get_raw(),
+            #index => &<#plugin_type as ::lv2_core::plugin::PluginInstanceDescriptor>::DESCRIPTOR,
         }
     }
 }
@@ -79,7 +79,7 @@ impl Lv2DescriptorList {
 
         quote! {
             #[no_mangle]
-            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2::core::RawFeatureDescriptor {
+            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2_core::sys::LV2_Descriptor {
                 match index {
                     #(#index_matchers)*
                     _ => ::std::ptr::null()

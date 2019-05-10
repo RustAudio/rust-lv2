@@ -24,11 +24,6 @@ unsafe impl<F: Feature> UriBound for F {
     const URI: &'static [u8] = <F as Feature>::URI;
 }
 
-#[repr(transparent)]
-pub struct RawFeatureDescriptor {
-    pub(crate) inner: ::lv2_core_sys::LV2_Feature,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
 pub struct HardRTCapable;
