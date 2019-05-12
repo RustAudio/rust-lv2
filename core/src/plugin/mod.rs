@@ -1,14 +1,15 @@
 mod features;
+pub(crate) mod info;
 mod ports;
 
 pub use features::*;
+pub use info::PluginInfo;
 pub use ports::*;
 
 pub use lv2_core_derive::*;
 
-use crate::uri::Uri;
 use crate::FeatureList;
-use std::ffi::{c_void, CStr};
+use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
 
@@ -16,12 +17,7 @@ pub trait Plugin: Sized {
     type Ports: Lv2Ports;
     type Features: Lv2Features;
 
-    fn new(
-        plugin_uri: &Uri,
-        sample_rate: f64,
-        bundle_path: &CStr,
-        features: Self::Features,
-    ) -> Self;
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
     fn run(&mut self, ports: &Self::Ports);
 
     #[inline]
@@ -59,9 +55,17 @@ impl<T: Plugin> PluginInstance<T> {
                 return std::ptr::null_mut();
             }
         };
-        let plugin_uri = Uri::from_cstr_unchecked(CStr::from_ptr(descriptor.URI));
 
-        let bundle_path = CStr::from_ptr(bundle_path);
+        let plugin_info = match PluginInfo::from_raw(descriptor, bundle_path, sample_rate) {
+            Ok(info) => info,
+            Err(e) => {
+                eprintln!(
+                    "Failed to initialize plugin: Illegal info from host: {:?}",
+                    e
+                );
+                return std::ptr::null_mut();
+            }
+        };
 
         let feature_list = FeatureList::from_raw(features);
         let features = match <T::Features as Lv2Features>::from_feature_list(feature_list) {
@@ -73,7 +77,7 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         let instance = Box::new(Self {
-            instance: T::new(plugin_uri, sample_rate, bundle_path, features),
+            instance: T::new(&plugin_info, features),
             connections: <<T::Ports as Lv2Ports>::Connections as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
