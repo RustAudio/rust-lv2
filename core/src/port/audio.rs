@@ -2,13 +2,17 @@ use crate::port::{
     base::{InputSampledData, OutputSampledData},
     PortType,
 };
+use crate::uri::UriBound;
 use std::ptr::NonNull;
 
 pub struct Audio;
 
+unsafe impl UriBound for Audio {
+    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__AudioPort;
+}
+
 impl PortType for Audio {
     const NAME: &'static str = "Audio";
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__AudioPort;
 
     type InputPortType = InputSampledData<f32>;
     type OutputPortType = OutputSampledData<f32>;

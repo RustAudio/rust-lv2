@@ -1,4 +1,5 @@
 use crate::port::PortType;
+use crate::uri::UriBound;
 use std::ptr::NonNull;
 
 pub struct Control {
@@ -11,9 +12,12 @@ impl Control {
     }
 }
 
+unsafe impl UriBound for Control {
+    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__ControlPort;
+}
+
 impl PortType for Control {
     const NAME: &'static str = "Control";
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__ControlPort;
 
     type InputPortType = Self;
     type OutputPortType = Self;

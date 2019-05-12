@@ -2,7 +2,7 @@ mod audio;
 mod control;
 mod cv;
 
-use crate::uri::Uri;
+use crate::uri::{Uri, UriBound};
 use std::ptr::NonNull;
 
 pub mod base;
@@ -11,9 +11,8 @@ pub use self::audio::*;
 pub use self::control::*;
 pub use self::cv::*;
 
-pub trait PortType: 'static + Sized {
+pub trait PortType: 'static + Sized + UriBound {
     const NAME: &'static str;
-    const URI: &'static [u8];
 
     type InputPortType: Sized;
     type OutputPortType: Sized;
