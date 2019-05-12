@@ -2,13 +2,17 @@ use crate::port::{
     base::{InputSampledData, OutputSampledData},
     PortType,
 };
+use crate::uri::UriBound;
 use std::ptr::NonNull;
 
 pub struct CV;
 
+unsafe impl UriBound for CV {
+    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__CVPort;
+}
+
 impl PortType for CV {
     const NAME: &'static str = "CV";
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__CVPort;
 
     type InputPortType = InputSampledData<f32>;
     type OutputPortType = OutputSampledData<f32>;
