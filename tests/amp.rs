@@ -1,8 +1,6 @@
-use std::ffi::CStr;
-
 use lv2::core::plugin::{lv2_descriptors, InputPort, Lv2Ports, OutputPort, Plugin};
 use lv2::core::port::{Audio, Control};
-use lv2::core::uri::Uri;
+use lv2_core::plugin::PluginInfo;
 
 struct Amp;
 
@@ -27,7 +25,7 @@ impl Plugin for Amp {
     type Features = ();
 
     #[inline]
-    fn new(_plugin_uri: &Uri, _sample_rate: f64, _bundle_path: &CStr, _features: ()) -> Self {
+    fn new(_plugin_info: &PluginInfo, _features: ()) -> Self {
         Amp
     }
 
