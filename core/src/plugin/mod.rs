@@ -30,7 +30,7 @@ pub trait Plugin: Sized + Send + Sync {
     fn deactivate(&mut self) {}
 }
 
-pub trait Lv2Ports: Sized + Send + Sync {
+pub trait Lv2Ports: Sized {
     type Connections: PortsConnections;
 
     fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;
