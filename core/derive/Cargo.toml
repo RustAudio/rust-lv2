@@ -9,3 +9,6 @@ proc-macro = true
 [dependencies]
 syn = "0.15.22"
 quote = "0.6.10"
+
+[dev-dependencies]
+lv2-core = { path = "../" }

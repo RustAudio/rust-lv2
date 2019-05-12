@@ -3,6 +3,7 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, LitStr, Result, Token, Type};
 
+/// A plugin that should be exported with a descriptor.
 struct Lv2DescriptorItem {
     plugin_type: Type,
     uri: LitStr,
@@ -18,6 +19,11 @@ impl Parse for Lv2DescriptorItem {
 }
 
 impl Lv2DescriptorItem {
+    /// Implement the `PluginInstanceDescriptor` for the plugin.
+    ///
+    /// By implementing `PluginInstanceDescriptor`, two static objects are created: The URI of the
+    /// plugin, stored as a string, and the descriptor, a struct with pointers to the plugin's
+    /// basic functions; Like `instantiate` or `run`.
     pub fn make_instance_descriptor(&self) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         let uri = &self.uri;
@@ -41,6 +47,11 @@ impl Lv2DescriptorItem {
         }
     }
 
+    /// Create a matching arm for the plugin.
+    ///
+    /// The root function receives an index and has to return one plugin descriptor per index,
+    /// or NULL. In this crate's implementation, this index is matched in a `match` statement and
+    /// this method creates a match arm for this plugin.
     fn make_index_matcher(&self, index: u32) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         quote! {
