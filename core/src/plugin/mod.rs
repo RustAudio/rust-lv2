@@ -13,7 +13,7 @@ use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
 
-pub trait Plugin: Sized {
+pub trait Plugin: Sized + Send + Sync {
     type Ports: Lv2Ports;
     type Features: Lv2Features;
 
