@@ -3,7 +3,9 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, LitStr, Result, Token, Type};
 
-/// A plugin that should be exported with a descriptor.
+/// An instance descriptor that should be exported.
+///
+/// The instance descriptor is defined by the plugin type and the URI of the instance.
 struct Lv2InstanceDescriptor {
     plugin_type: Type,
     uri: LitStr,
@@ -60,6 +62,10 @@ impl Lv2InstanceDescriptor {
     }
 }
 
+/// A container for instance descriptors.
+///
+/// The contained instance descriptors are used to create the export function `lv2_descriptor` that
+/// tells the host of a library's plugins.
 struct Lv2InstanceDescriptorList {
     descriptors: Punctuated<Lv2InstanceDescriptor, Token![,]>,
 }
@@ -73,7 +79,8 @@ impl Parse for Lv2InstanceDescriptorList {
 }
 
 impl Lv2InstanceDescriptorList {
-    fn make_instance_descriptors<'a>(
+    /// Implement `PluginInstanceDescriptor` for all plugin instances.
+    fn make_instance_descriptor_impls<'a>(
         &'a self,
     ) -> impl Iterator<Item = impl ::quote::ToTokens> + 'a {
         self.descriptors
@@ -81,6 +88,10 @@ impl Lv2InstanceDescriptorList {
             .map(Lv2InstanceDescriptor::make_instance_descriptor_impl)
     }
 
+    /// Create the `lv2_descriptor` function.
+    ///
+    /// This function tells the host of a library's plugin instances by returning one plugin
+    /// instance per index.
     fn make_descriptor_function(&self) -> impl ::quote::ToTokens {
         let index_matchers = self
             .descriptors
@@ -100,10 +111,11 @@ impl Lv2InstanceDescriptorList {
     }
 }
 
+/// Generate external symbols for LV2 plugins.
 #[inline]
 pub fn lv2_descriptors_impl(input: TokenStream) -> TokenStream {
     let list: Lv2InstanceDescriptorList = parse_macro_input!(input);
-    let descriptors = list.make_instance_descriptors();
+    let descriptors = list.make_instance_descriptor_impls();
     let export_function = list.make_descriptor_function();
 
     (quote! {
