@@ -4,16 +4,16 @@ use syn::DeriveInput;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
 
-/// A field in the struct we implement `Lv2Ports` for.
-struct Lv2PortsField<'a> {
+/// A field in the struct we implement `PortContainer` for.
+struct PortContainerField<'a> {
     identifier: &'a Ident,
     port_type: &'a Type,
 }
 
-impl<'a> Lv2PortsField<'a> {
+impl<'a> PortContainerField<'a> {
     /// Create a `Self` instance from a field object.
     fn from_input_field(input: &'a Field) -> Self {
-        Lv2PortsField {
+        PortContainerField {
             identifier: input.ident.as_ref().unwrap(),
             port_type: &input.ty,
         }
@@ -53,16 +53,16 @@ impl<'a> Lv2PortsField<'a> {
     }
 }
 
-/// Representation of a struct we implement `Lv2Ports` for.
+/// Representation of a struct we implement `PortContainer` for.
 ///
 /// The implementation creates a hidden, mirrored version of the implementing struct that contains  
 /// the raw pointers for the port. Then, the ports object is created from the raw version.
-struct Lv2PortsStruct<'a> {
+struct PortContainerStruct<'a> {
     struct_name: &'a Ident,
-    fields: Vec<Lv2PortsField<'a>>,
+    fields: Vec<PortContainerField<'a>>,
 }
 
-impl<'a> Lv2PortsStruct<'a> {
+impl<'a> PortContainerStruct<'a> {
     /// Return an `Ident` for the internal module name.
     fn internal_mod_name(&self) -> Ident {
         Ident::new(
@@ -75,18 +75,19 @@ impl<'a> Lv2PortsStruct<'a> {
     fn from_derive_input(input: &'a DeriveInput) -> Self {
         let struct_name = &input.ident;
         let fields = match &input.data {
-            Data::Enum(_) | Data::Union(_) => panic!("Only structs can implement Lv2Ports"),
-            Data::Struct(DataStruct { fields, .. }) => {
-                fields.iter().map(Lv2PortsField::from_input_field).collect()
-            }
+            Data::Enum(_) | Data::Union(_) => panic!("Only structs can implement PortContainer"),
+            Data::Struct(DataStruct { fields, .. }) => fields
+                .iter()
+                .map(PortContainerField::from_input_field)
+                .collect(),
         };
-        Lv2PortsStruct {
+        PortContainerStruct {
             struct_name,
             fields,
         }
     }
 
-    /// Implement `Lv2Ports` for the struct.
+    /// Implement `PortContainer` for the struct.
     fn make_derived_contents(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let internal_mod_name = self.internal_mod_name();
@@ -94,15 +95,15 @@ impl<'a> Lv2PortsStruct<'a> {
         let connections_from_raw = self
             .fields
             .iter()
-            .map(Lv2PortsField::make_connection_from_raw);
+            .map(PortContainerField::make_connection_from_raw);
         let raw_field_declarations = self
             .fields
             .iter()
-            .map(Lv2PortsField::make_raw_field_declaration);
+            .map(PortContainerField::make_raw_field_declaration);
         let raw_field_inits = self
             .fields
             .iter()
-            .map(Lv2PortsField::make_raw_field_initialization);
+            .map(PortContainerField::make_raw_field_initialization);
         let connect_matchers = self
             .fields
             .iter()
@@ -110,11 +111,11 @@ impl<'a> Lv2PortsStruct<'a> {
             .map(|(i, f)| f.make_connect_matcher(i as u32));
 
         (quote! {
-            impl Lv2Ports for #struct_name {
+            impl PortContainer for #struct_name {
                 type Connections = #internal_mod_name::DerivedPortsConnections;
 
                 #[inline]
-                fn from_connections(connections: &<Self as Lv2Ports>::Connections, sample_count: u32) -> Self {
+                fn from_connections(connections: &<Self as PortContainer>::Connections, sample_count: u32) -> Self {
                     unsafe {
                         Self {
                             #(#connections_from_raw)*
@@ -152,10 +153,10 @@ impl<'a> Lv2PortsStruct<'a> {
     }
 }
 
-/// Implement `Lv2Ports` for a struct.
+/// Implement `PortContainer` for a struct.
 #[inline]
-pub fn lv2_ports_derive_impl(input: TokenStream) -> TokenStream {
+pub fn port_container_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
-    let list = Lv2PortsStruct::from_derive_input(&input);
+    let list = PortContainerStruct::from_derive_input(&input);
     list.make_derived_contents()
 }
