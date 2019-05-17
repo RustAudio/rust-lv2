@@ -58,19 +58,8 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     #[inline]
-    pub fn as_feature<T: Feature>(&self) -> Option<&'a T> {
-        let uri = unsafe { Uri::from_bytes_unchecked(T::URI) };
-        if self.matches_uri(uri) {
-            unsafe { (self.inner.data as *const T).as_ref() }
-        } else {
-            None
-        }
-    }
-
-    #[inline]
     pub fn into_feature_ref<T: Feature>(self) -> Option<&'a T> {
-        let uri = unsafe { Uri::from_bytes_unchecked(T::URI) };
-        if self.matches_uri(uri) {
+        if self.matches_uri(T::uri()) {
             unsafe { (self.inner.data as *const T).as_ref() }
         } else {
             None
@@ -78,8 +67,8 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     #[inline]
-    pub fn as_raw(&self) -> *const sys::LV2_Feature {
-        self as *const _ as *const _
+    pub fn as_raw(&self) -> *const ::sys::LV2_Feature {
+        &self.inner as *const _
     }
 }
 
