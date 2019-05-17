@@ -1,9 +1,11 @@
-use lv2::core::plugin::{lv2_descriptors, InputPort, Lv2Ports, OutputPort, Plugin, PluginInfo};
+use lv2::core::plugin::{
+    lv2_descriptors, InputPort, OutputPort, Plugin, PluginInfo, PortContainer,
+};
 use lv2::core::port::{Audio, Control};
 
 struct Amp;
 
-#[derive(Lv2Ports)]
+#[derive(PortContainer)]
 struct AmpPorts {
     gain: InputPort<Control>,
     input: InputPort<Audio>,

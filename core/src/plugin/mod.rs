@@ -14,7 +14,7 @@ use std::os::raw::c_char;
 use sys::LV2_Handle;
 
 pub trait Plugin: Sized + Send + Sync {
-    type Ports: Lv2Ports;
+    type Ports: PortContainer;
     type Features: Lv2Features;
 
     fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
@@ -26,7 +26,7 @@ pub trait Plugin: Sized + Send + Sync {
     fn deactivate(&mut self) {}
 }
 
-pub trait Lv2Ports: Sized {
+pub trait PortContainer: Sized {
     type Connections: PortsConnections;
 
     fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;
@@ -38,7 +38,7 @@ pub trait PortsConnections: Sized + Default {
 
 pub struct PluginInstance<T: Plugin> {
     instance: T,
-    connections: <T::Ports as Lv2Ports>::Connections,
+    connections: <T::Ports as PortContainer>::Connections,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -78,7 +78,7 @@ impl<T: Plugin> PluginInstance<T> {
 
         let instance = Box::new(Self {
             instance: T::new(&plugin_info, features),
-            connections: <<T::Ports as Lv2Ports>::Connections as Default>::default(),
+            connections: <<T::Ports as PortContainer>::Connections as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
     }
@@ -106,7 +106,7 @@ impl<T: Plugin> PluginInstance<T> {
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = instance as *mut Self;
         let ports =
-            <T::Ports as Lv2Ports>::from_connections(&(*instance).connections, sample_count);
+            <T::Ports as PortContainer>::from_connections(&(*instance).connections, sample_count);
         (*instance).instance.run(&ports);
     }
 
