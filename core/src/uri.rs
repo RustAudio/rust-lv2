@@ -34,12 +34,17 @@ impl Uri {
     }
 
     #[inline]
+    pub unsafe fn from_ptr<'a>(ptr: *const i8) -> &'a Uri {
+        Uri::from_cstr_unchecked(CStr::from_ptr(ptr))
+    }
+
+    #[inline]
     pub unsafe fn from_cstr_unchecked(string: &CStr) -> &Uri {
         &*(string as *const CStr as *const Uri)
     }
 
     #[inline]
-    pub unsafe fn from_bytes_unchecked(bytes: &[u8]) -> &Uri {
+    pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &Uri {
         Uri::from_cstr_unchecked(CStr::from_bytes_with_nul_unchecked(bytes))
     }
 
@@ -240,6 +245,6 @@ pub unsafe trait UriBound {
 
     #[inline]
     fn uri() -> &'static Uri {
-        unsafe { Uri::from_bytes_unchecked(Self::URI) }
+        unsafe { Uri::from_bytes_with_nul_unchecked(Self::URI) }
     }
 }

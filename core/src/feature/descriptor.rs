@@ -48,7 +48,7 @@ impl<'a> FeatureDescriptor<'a> {
     pub fn uri(&self) -> &Uri {
         unsafe {
             let slice = ::std::slice::from_raw_parts(self.inner.URI as *const u8, self.uri_len);
-            Uri::from_bytes_unchecked(slice)
+            Uri::from_bytes_with_nul_unchecked(slice)
         }
     }
 

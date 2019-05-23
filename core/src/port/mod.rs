@@ -22,7 +22,7 @@ pub trait PortType: 'static + Sized + UriBound {
 
     #[inline]
     fn uri() -> &'static Uri {
-        unsafe { Uri::from_bytes_unchecked(Self::URI) }
+        unsafe { Uri::from_bytes_with_nul_unchecked(Self::URI) }
     }
 }
 

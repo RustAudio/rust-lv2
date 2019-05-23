@@ -8,7 +8,9 @@ pub use ports::*;
 
 pub use lv2_core_derive::*;
 
+use crate::uri::Uri;
 use crate::FeatureList;
+use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
@@ -24,6 +26,10 @@ pub trait Plugin: Sized + Send + Sync {
     fn activate(&mut self) {}
     #[inline]
     fn deactivate(&mut self) {}
+
+    fn extension_data(_uri: &Uri) -> Option<&'static Any> {
+        None
+    }
 }
 
 pub trait PortContainer: Sized {
@@ -32,8 +38,18 @@ pub trait PortContainer: Sized {
     fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;
 }
 
+impl PortContainer for () {
+    type Connections = ();
+
+    fn from_connections(_connections: &Self::Connections, _sample_count: u32) -> Self {}
+}
+
 pub trait PortsConnections: Sized + Default {
     unsafe fn connect(&mut self, index: u32, pointer: *mut ());
+}
+
+impl PortsConnections for () {
+    unsafe fn connect(&mut self, _index: u32, _pointer: *mut ()) {}
 }
 
 pub struct PluginInstance<T: Plugin> {
@@ -110,9 +126,12 @@ impl<T: Plugin> PluginInstance<T> {
         (*instance).instance.run(&ports);
     }
 
-    pub unsafe extern "C" fn extension_data(_uri: *const c_char) -> *const c_void {
-        // TODO
-        ::std::ptr::null()
+    pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
+        let uri: &Uri = Uri::from_ptr(uri);
+        match T::extension_data(uri) {
+            Some(data) => data as *const _ as *const c_void,
+            None => ::std::ptr::null(),
+        }
     }
 }
 
