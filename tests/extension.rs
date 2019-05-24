@@ -1,6 +1,10 @@
 use lv2::core::plugin::{lv2_descriptors, Plugin, PluginInfo};
 use lv2::core::{export_extension_interfaces, make_extension_interface};
 
+// #############
+// The extension
+// #############
+
 pub struct AddExtensionInterface {
     pub add: unsafe extern "C" fn(*const u32, usize) -> u32,
 }
@@ -21,6 +25,10 @@ pub trait AddExtension {
         }
     ];
 }
+
+// ##########
+// The plugin
+// ##########
 
 pub struct ExtendedPlugin {}
 
@@ -52,6 +60,10 @@ impl Plugin for ExtendedPlugin {
 lv2_descriptors! {
     ExtendedPlugin: "urn:extended-plugin"
 }
+
+// #######
+// Testing
+// #######
 
 #[test]
 fn test_extension() {
