@@ -5,6 +5,7 @@ use lv2::core::{export_extension_interfaces, make_extension_interface};
 // The extension
 // #############
 
+#[repr(C)]
 pub struct AddExtensionInterface {
     pub add: unsafe extern "C" fn(*const u32, usize) -> u32,
 }

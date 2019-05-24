@@ -27,6 +27,20 @@ pub trait Plugin: Sized + Send + Sync {
     #[inline]
     fn deactivate(&mut self) {}
 
+    /// Return extension-specific data.
+    ///
+    /// There are some specifications for LV2 that require additional callback functions from the
+    /// plugin. These callbacks are usually implemented as traits other plugins can implement.
+    /// However, these additional functions have to be exported and this function is the usual way
+    /// to return them.
+    ///
+    /// The host calls this function for every extension interface it wants to have, with `uri` set
+    /// to the URI of the interface. Then, the plugin has to return the data required by the
+    /// specification, or `None` if it doesn't support the interface.
+    ///
+    /// Usually, you don't have to worry about implementing this on your own, because most
+    /// extension interfaces can be exported with the [`export_extension_interfaces`](../
+    /// macro.export_extension_interface.html) macro.
     fn extension_data(_uri: &Uri) -> Option<&'static Any> {
         None
     }
