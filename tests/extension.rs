@@ -1,7 +1,5 @@
 use lv2::core::plugin::{lv2_descriptors, Plugin, PluginInfo};
-use lv2::core::uri::Uri;
 use lv2::core::{export_extension_interfaces, make_extension_interface};
-use std::any::Any;
 
 pub struct AddExtensionInterface {
     pub add: unsafe extern "C" fn(*const u32, usize) -> u32,
@@ -48,10 +46,7 @@ impl Plugin for ExtendedPlugin {
     #[inline]
     fn run(&mut self, _ports: &()) {}
 
-    fn extension_data(uri: &Uri) -> Option<&'static Any> {
-        export_extension_interfaces![uri, AddExtension];
-        None
-    }
+    export_extension_interfaces![AddExtension];
 }
 
 lv2_descriptors! {

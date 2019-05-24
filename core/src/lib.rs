@@ -23,11 +23,12 @@ macro_rules! make_extension_interface {
 
 #[macro_export]
 macro_rules! export_extension_interfaces {
-    ($uri:expr, $($extension:ident),*) => {
-        $(
-        if <Self as $extension>::extension_uri() == $uri {
-            return Some(&<Self as $extension>::INTERFACE);
+    ($($extension:ident),*) => {
+        fn extension_data(uri: &::lv2_core::uri::Uri) -> Option<&'static ::std::any::Any> {
+            $(if <Self as $extension>::extension_uri() == uri {
+                return Some(&<Self as $extension>::INTERFACE);
+            })*
+            None
         }
-        )*
     }
 }
