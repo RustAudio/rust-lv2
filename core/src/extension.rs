@@ -1,15 +1,15 @@
 use crate::plugin::Plugin;
-use crate::uri::Uri;
+use crate::uri::{Uri, UriBound};
+use std::any::Any;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
 
-pub trait Extension<P: Plugin> {
-    const URI: &'static [u8];
-    const RAW_DATA: *mut c_void;
+pub unsafe trait Extension<P: Plugin>: UriBound {
+    const RAW_DATA: &'static Any;
 
     const DESCRIPTOR: ExtensionDescriptor<P> = ExtensionDescriptor {
         uri: Self::URI,
-        raw_data: Self::RAW_DATA,
+        raw_data: Self::RAW_DATA as *const _ as *mut _,
         _plugin: PhantomData,
     };
 }

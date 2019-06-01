@@ -8,16 +8,13 @@ pub use ports::*;
 
 pub use lv2_core_derive::*;
 
-use std::ffi::c_void;
 use crate::extension::ExtensionDescriptor;
+use crate::feature::FeatureList;
 use crate::uri::Uri;
-use crate::FeatureList;
 
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use sys::LV2_Handle;
-
-use crate::feature::FeatureList;
 
 /// The main trait to implement to create an LV2 plugin instance.
 pub trait Plugin: Sized + Send + Sync + 'static {

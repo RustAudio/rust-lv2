@@ -1,6 +1,8 @@
 use lv2_core::extension::Extension;
 use lv2_core::lv2_extensions;
 use lv2_core::plugin::{lv2_descriptors, Plugin, PluginInfo, PortContainer};
+use lv2_core::uri::UriBound;
+use std::any::Any;
 use std::os::raw::c_void;
 
 // Test extensions
@@ -19,11 +21,14 @@ unsafe extern "C" fn foo_ext_impl<P: FooExtension>(handle: *mut c_void) -> f32 {
     (&*(handle as *const P)).foo()
 }
 
-impl<P: Plugin + FooExtension> Extension<P> for FooExtension {
+unsafe impl UriBound for FooExtension {
     const URI: &'static [u8] = b"foo\0";
-    const RAW_DATA: *mut c_void = &LV2FooInterface {
+}
+
+unsafe impl<P: Plugin + FooExtension> Extension<P> for FooExtension {
+    const RAW_DATA: &'static Any = &LV2FooInterface {
         foo: foo_ext_impl::<P>,
-    } as *const _ as _;
+    };
 }
 
 #[derive(Copy, Clone)]
@@ -40,11 +45,14 @@ trait BarExtension {
     fn bar(&self) -> i32;
 }
 
-impl<P: Plugin + BarExtension> Extension<P> for BarExtension {
+unsafe impl UriBound for BarExtension {
     const URI: &'static [u8] = b"bar\0";
-    const RAW_DATA: *mut c_void = &LV2BarInterface {
+}
+
+unsafe impl<P: Plugin + BarExtension> Extension<P> for BarExtension {
+    const RAW_DATA: &'static Any = &LV2BarInterface {
         bar: bar_ext_impl::<P>,
-    } as *const _ as _;
+    };
 }
 
 // Test plugin
