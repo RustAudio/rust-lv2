@@ -23,7 +23,7 @@
 //! * … and more! (Not yet implemented either)
 //!
 //! Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible
-//! any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
+//! with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
 //! to any other specification that will integrate with this library.
 //!
 //! This specific crate actually does nothing but re-export the several sub-crates of this library,
