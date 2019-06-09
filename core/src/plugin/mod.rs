@@ -20,7 +20,7 @@ use sys::LV2_Handle;
 pub trait Plugin: Sized + Send + Sync + 'static {
     /// See the docs for [PortContainer](lv2_core::PortContainer)
     type Ports: PortContainer;
-    type Features: crate::plugin::features::Lv2Features;
+    type Features: Lv2Features;
 
     const EXTENSIONS: &'static [ExtensionDescriptor<Self>] = &[];
 
@@ -78,16 +78,13 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         let feature_list = FeatureList::from_raw(features);
-        let features =
-            match <T::Features as crate::plugin::features::Lv2Features>::from_feature_list(
-                feature_list,
-            ) {
-                Ok(features) => features,
-                Err(error) => {
-                    eprintln!("Failed to initialize plugin: {:?}", error);
-                    return std::ptr::null_mut();
-                }
-            };
+        let features = match <T::Features as Lv2Features>::from_feature_list(feature_list) {
+            Ok(features) => features,
+            Err(error) => {
+                eprintln!("Failed to initialize plugin: {:?}", error);
+                return std::ptr::null_mut();
+            }
+        };
 
         let instance = Box::new(Self {
             instance: T::new(&plugin_info, features),
