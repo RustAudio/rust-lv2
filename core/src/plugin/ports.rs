@@ -1,6 +1,7 @@
-use crate::PortType;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
+
+use crate::port::PortType;
 
 pub struct InputPort<T: PortType> {
     port: T::InputPortType,

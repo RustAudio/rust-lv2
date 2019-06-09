@@ -1,10 +1,9 @@
 mod descriptor;
-mod list;
+pub mod list;
 
-pub use self::descriptor::*;
-pub use self::list::*;
+pub use self::descriptor::FeatureDescriptor;
+pub use self::list::FeatureList;
 
-use crate::feature::descriptor::FeatureDescriptor;
 use crate::uri::UriBound;
 
 /// Represents extension data for a given feature.

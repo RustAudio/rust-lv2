@@ -2,18 +2,21 @@ mod features;
 pub(crate) mod info;
 mod ports;
 
-pub use features::*;
+pub use self::features::Lv2Features;
 pub use info::PluginInfo;
 pub use ports::*;
 
 pub use lv2_core_derive::*;
 
-use crate::FeatureList;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
 
+use crate::feature::FeatureList;
+
+/// The main trait to implement to create an LV2 plugin instance.
 pub trait Plugin: Sized + Send + Sync {
+    /// See the docs for [PortContainer](lv2_core::PortContainer)
     type Ports: PortContainer;
     type Features: Lv2Features;
 
@@ -32,15 +35,18 @@ pub trait PortContainer: Sized {
     fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;
 }
 
+#[doc(hidden)]
 pub trait PortsConnections: Sized + Default {
     unsafe fn connect(&mut self, index: u32, pointer: *mut ());
 }
 
+#[doc(hidden)]
 pub struct PluginInstance<T: Plugin> {
     instance: T,
     connections: <T::Ports as PortContainer>::Connections,
 }
 
+#[doc(hidden)]
 impl<T: Plugin> PluginInstance<T> {
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2_Descriptor,
@@ -116,6 +122,7 @@ impl<T: Plugin> PluginInstance<T> {
     }
 }
 
+#[doc(hidden)]
 pub unsafe trait PluginInstanceDescriptor: Plugin {
     const URI: &'static [u8];
     const DESCRIPTOR: sys::LV2_Descriptor;

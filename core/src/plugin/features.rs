@@ -1,5 +1,5 @@
+use crate::feature::FeatureList;
 use crate::uri::Uri;
-use crate::FeatureList;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 

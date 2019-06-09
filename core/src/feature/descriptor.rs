@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 
 use crate::feature::Feature;
-use crate::uri::{Uri, UriBound};
+use crate::uri::Uri;
 
 #[derive(Copy, Clone)]
 pub struct FeatureDescriptor<'a> {
@@ -15,7 +15,7 @@ pub struct FeatureDescriptor<'a> {
 
 impl<'a> FeatureDescriptor<'a> {
     #[inline]
-    pub fn from_feature<T: Feature + UriBound>(feature: &'a T) -> FeatureDescriptor<'a> {
+    pub fn from_feature<T: Feature>(feature: &'a T) -> FeatureDescriptor<'a> {
         let uri = T::uri();
         let data = if ::std::mem::size_of::<T>() == 0 {
             ::std::ptr::null_mut()

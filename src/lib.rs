@@ -33,4 +33,6 @@
 //! production code we recommend relying on each sub-crate you really need, to reduce the number
 //! of dependencies to be built, as well as the final binary size.
 
+#![deny(missing_docs)]
+
 pub extern crate lv2_core as core;
