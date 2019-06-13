@@ -27,12 +27,12 @@ mod lv2_foo {
         (&*(handle as *const P)).foo()
     }
 
-    unsafe impl UriBound for FooExtension {
+    unsafe impl UriBound for dyn FooExtension {
         const URI: &'static [u8] = b"foo\0";
     }
 
-    unsafe impl<P: Plugin + FooExtension> Extension<P> for FooExtension {
-        const RAW_DATA: &'static Any = &sys::LV2FooInterface {
+    unsafe impl<P: Plugin + FooExtension> Extension<P> for dyn FooExtension {
+        const RAW_DATA: &'static dyn Any = &sys::LV2FooInterface {
             foo: foo_ext_impl::<P>,
         };
     }
@@ -64,12 +64,12 @@ mod lv2_bar {
         fn bar(&self) -> i32;
     }
 
-    unsafe impl UriBound for BarExtension {
+    unsafe impl UriBound for dyn BarExtension {
         const URI: &'static [u8] = b"bar\0";
     }
 
-    unsafe impl<P: Plugin + BarExtension> Extension<P> for BarExtension {
-        const RAW_DATA: &'static Any = &sys::LV2BarInterface {
+    unsafe impl<P: Plugin + BarExtension> Extension<P> for dyn BarExtension {
+        const RAW_DATA: &'static dyn Any = &sys::LV2BarInterface {
             bar: bar_ext_impl::<P>,
         };
     }
@@ -86,7 +86,7 @@ impl Plugin for TestPlugin {
     type Ports = TestPorts;
     type Features = ();
 
-    lv2_extensions![lv2_foo::FooExtension, lv2_bar::BarExtension];
+    lv2_extensions![dyn lv2_foo::FooExtension, dyn lv2_bar::BarExtension];
 
     fn new(_plugin_info: &PluginInfo, _features: ()) -> Self {
         Self

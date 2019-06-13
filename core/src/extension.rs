@@ -26,7 +26,7 @@ use std::os::raw::c_void;
 ///
 pub unsafe trait Extension<P: Plugin>: UriBound {
     /// The raw data structure defined by the extension, as returned by the plugin's `extension_data()` method.
-    const RAW_DATA: &'static (Any + 'static);
+    const RAW_DATA: &'static (dyn Any + 'static);
 
     /// The descriptor corresponding to an implementation of the extension.
     ///
