@@ -21,7 +21,7 @@ pub trait Plugin: Sized + Send + Sync {
     type Features: Lv2Features;
 
     fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
-    fn run(&mut self, ports: &Self::Ports);
+    fn run(&mut self, ports: &mut Self::Ports);
 
     #[inline]
     fn activate(&mut self) {}
@@ -37,7 +37,7 @@ pub trait PortContainer: Sized {
 
 #[doc(hidden)]
 pub trait PortsConnections: Sized + Default {
-    unsafe fn connect(&mut self, index: u32, pointer: *mut ());
+    unsafe fn connect(&mut self, index: u32, pointer: *mut c_void);
 }
 
 #[doc(hidden)]
@@ -106,14 +106,14 @@ impl<T: Plugin> PluginInstance<T> {
 
     pub unsafe extern "C" fn connect_port(instance: *mut c_void, port: u32, data: *mut c_void) {
         let instance = instance as *mut Self;
-        (*instance).connections.connect(port, data as *mut ())
+        (*instance).connections.connect(port, data)
     }
 
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = instance as *mut Self;
-        let ports =
+        let mut ports =
             <T::Ports as PortContainer>::from_connections(&(*instance).connections, sample_count);
-        (*instance).instance.run(&ports);
+        (*instance).instance.run(&mut ports);
     }
 
     pub unsafe extern "C" fn extension_data(_uri: *const c_char) -> *const c_void {
