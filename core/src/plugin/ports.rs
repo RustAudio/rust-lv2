@@ -1,6 +1,6 @@
+use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
-use std::ffi::c_void;
 
 use crate::port_type::PortType;
 
