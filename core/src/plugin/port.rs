@@ -1,3 +1,6 @@
+//! Types to declare derivable port containers.
+//!
+//! Every plugin has a type of [`PortContainer`](../trait.PortContainer.html) which is used to handle input/output ports. In order to make the creation of these port container types easier, `PortContainer` can simply be derived. However, the macro that implements `PortContainer` requires the fields of the struct to have specific types. These types are provided in this module.
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
@@ -59,6 +62,8 @@ impl PortType for Audio {
 /// Control value port type.
 ///
 /// Control ports in general are used to control the behaviour of the plugin. These control value ports only have one value per `run` call and therefore don't have a fixed sampling rate.
+///
+/// Therefore, their input is a floating-point number and their output is a mutable reference to a floating-point number.
 pub struct Control;
 
 unsafe impl UriBound for Control {
@@ -81,7 +86,7 @@ impl PortType for Control {
 
 /// CV port type.
 ///
-/// Control ports in general are used to control the behaviour of the plugin. CV ports are sampled just like audio data. This means that audio data is often valid CV data, but CV data generally is not audio data, because it may not be within the audio bounds of -1.0 to 1.0.
+/// Control ports in general are used to control the behaviour of the plugin. CV ports are sampled just like [audio data](struct.Audio.html). This means that audio data is often valid CV data, but CV data generally is not audio data, because it may not be within the audio bounds of -1.0 to 1.0.
 pub struct CV;
 
 unsafe impl UriBound for CV {
@@ -103,6 +108,21 @@ impl PortType for CV {
     }
 }
 
+/// Abstraction of safe port handles.
+pub trait PortHandle: Sized {
+    /// Try to create a port handle from a port connection pointer and the sample count.
+    ///
+    /// If the pointer is null, this method will return `None`.
+    ///
+    /// # unsafety
+    ///
+    /// Implementing this method requires a de-referentation of a raw pointer and therefore, it is unsafe.
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self>;
+}
+
+/// Handle for input ports.
+///
+/// Fields of this type can be dereferenced to the input type of the port type.
 pub struct InputPort<T: PortType> {
     port: T::InputPortType,
 }
@@ -116,6 +136,22 @@ impl<T: PortType> Deref for InputPort<T> {
     }
 }
 
+impl<T: PortType> PortHandle for InputPort<T> {
+    #[inline]
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        if let Some(pointer) = NonNull::new(pointer) {
+            Some(Self {
+                port: T::input_from_raw(pointer, sample_count),
+            })
+        } else {
+            None
+        }
+    }
+}
+
+/// Handle for output ports.
+///
+/// Fields of this type can be dereferenced to the output type of the port type.
 pub struct OutputPort<T: PortType> {
     port: T::OutputPortType,
 }
@@ -133,23 +169,6 @@ impl<T: PortType> DerefMut for OutputPort<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.port
-    }
-}
-
-pub trait PortHandle: Sized {
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self>;
-}
-
-impl<T: PortType> PortHandle for InputPort<T> {
-    #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
-        if let Some(pointer) = NonNull::new(pointer) {
-            Some(Self {
-                port: T::input_from_raw(pointer, sample_count),
-            })
-        } else {
-            None
-        }
     }
 }
 
