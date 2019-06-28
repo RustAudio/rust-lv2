@@ -29,24 +29,38 @@ pub trait Plugin: Sized + Send + Sync {
     fn deactivate(&mut self) {}
 }
 
+/// Container for port handling.
+///
+/// Plugins do not have to port management on their own. Instead, they define a struct with all of the required ports, derive `PortContainer` for them and add them as their `Ports` type.
+///
+/// Then, the plugin instance will collect the port pointers from the host and create a `PortContainer` instance for every `run` call. Using this instance, plugins have access to all of their required ports.
 pub trait PortContainer: Sized {
-    type Connections: PortsConnections;
+    /// The type of the port pointer cache.
+    type Cache: PortPointerCache;
 
-    fn from_connections(connections: &Self::Connections, sample_count: u32) -> Self;
+    /// Try to construct a port container instance from a port pointer cache.
+    ///
+    /// If one of the port connection pointers is null, this method will return `None`, because a `PortContainer` can not be constructed.
+    ///
+    /// # unsafety
+    ///
+    /// Implementing this method requires the de-referencation of raw pointers and therefore, this method is unsafe.
+    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self>;
 }
 
-#[doc(hidden)]
-pub trait PortsConnections: Sized + Default {
-    unsafe fn connect(&mut self, index: u32, pointer: *mut c_void);
+/// Cache for port connection pointers.
+///
+/// The host will pass the port connection pointers in an undefined order. Therefore, the `PortContainer` struct can not be created instantly. Instead, the pointers will be stored in a cache, which is then used to create a proper port container for the plugin.
+pub trait PortPointerCache: Sized + Default {
+    /// Store the connection pointer for the port with index `index`.
+    fn connect(&mut self, index: u32, pointer: *mut c_void);
 }
 
-#[doc(hidden)]
 pub struct PluginInstance<T: Plugin> {
     instance: T,
-    connections: <T::Ports as PortContainer>::Connections,
+    connections: <T::Ports as PortContainer>::Cache,
 }
 
-#[doc(hidden)]
 impl<T: Plugin> PluginInstance<T> {
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2_Descriptor,
@@ -84,7 +98,7 @@ impl<T: Plugin> PluginInstance<T> {
 
         let instance = Box::new(Self {
             instance: T::new(&plugin_info, features),
-            connections: <<T::Ports as PortContainer>::Connections as Default>::default(),
+            connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
     }
@@ -111,9 +125,11 @@ impl<T: Plugin> PluginInstance<T> {
 
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = instance as *mut Self;
-        let mut ports =
+        let ports =
             <T::Ports as PortContainer>::from_connections(&(*instance).connections, sample_count);
-        (*instance).instance.run(&mut ports);
+        if let Some(mut ports) = ports {
+            (*instance).instance.run(&mut ports);
+        }
     }
 
     pub unsafe extern "C" fn extension_data(_uri: *const c_char) -> *const c_void {

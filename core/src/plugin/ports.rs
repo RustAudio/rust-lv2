@@ -38,30 +38,37 @@ impl<T: PortType> DerefMut for OutputPort<T> {
 }
 
 pub trait PortHandle: Sized {
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self;
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self>;
 }
 
 impl<T: PortType> PortHandle for InputPort<T> {
     #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
-        Self {
-            port: T::input_from_raw(NonNull::new_unchecked(pointer), sample_count),
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        if let Some(pointer) = NonNull::new(pointer) {
+            Some(Self {
+                port: T::input_from_raw(pointer, sample_count),
+            })
+        } else {
+            None
         }
     }
 }
 
 impl<T: PortType> PortHandle for OutputPort<T> {
     #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
-        Self {
-            port: T::output_from_raw(NonNull::new_unchecked(pointer), sample_count),
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        if let Some(pointer) = NonNull::new(pointer) {
+            Some(Self {
+                port: T::output_from_raw(pointer, sample_count),
+            })
+        } else {
+            None
         }
     }
 }
 
 impl<T: PortHandle> PortHandle for Option<T> {
-    #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
-        NonNull::new(pointer).map(|ptr| T::from_raw(ptr.as_ptr(), sample_count))
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        Some(T::from_raw(pointer, sample_count))
     }
 }

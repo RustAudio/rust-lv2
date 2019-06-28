@@ -24,7 +24,14 @@ impl<'a> PortContainerField<'a> {
         let identifier = self.identifier;
         let port_type = self.port_type;
         quote! {
-            #identifier: <#port_type as ::lv2_core::plugin::PortHandle>::from_raw(connections.#identifier, sample_count),
+            #identifier: {
+                let connection = <#port_type as ::lv2_core::plugin::PortHandle>::from_raw(connections.#identifier, sample_count);
+                if let Some(connection) = connection {
+                    connection
+                } else {
+                    return None;
+                }
+            },
         }
     }
 
@@ -112,26 +119,26 @@ impl<'a> PortContainerStruct<'a> {
 
         (quote! {
             impl PortContainer for #struct_name {
-                type Connections = #internal_mod_name::DerivedPortsConnections;
+                type Cache = #internal_mod_name::DerivedPortPointerCache;
 
                 #[inline]
-                fn from_connections(connections: &<Self as PortContainer>::Connections, sample_count: u32) -> Self {
-                    unsafe {
+                unsafe fn from_connections(connections: &<Self as PortContainer>::Cache, sample_count: u32) -> Option<Self> {
+                    Some(
                         Self {
                             #(#connections_from_raw)*
                         }
-                    }
+                    )
                 }
             }
 
             #[doc(hidden)]
             #[allow(non_snake_case)]
             mod #internal_mod_name {
-                pub struct DerivedPortsConnections {
+                pub struct DerivedPortPointerCache {
                     #(#raw_field_declarations)*
                 }
 
-                impl Default for DerivedPortsConnections {
+                impl Default for DerivedPortPointerCache {
                     #[inline]
                     fn default() -> Self {
                         Self {
@@ -140,8 +147,8 @@ impl<'a> PortContainerStruct<'a> {
                     }
                 }
 
-                impl ::lv2_core::plugin::PortsConnections for DerivedPortsConnections {
-                    unsafe fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
+                impl ::lv2_core::plugin::PortPointerCache for DerivedPortPointerCache {
+                    fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
                         match index {
                             #(#connect_matchers)*
                             _ => ()
