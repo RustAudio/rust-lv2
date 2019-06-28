@@ -104,7 +104,6 @@ pub struct PluginInstance<T: Plugin> {
 }
 
 impl<T: Plugin> PluginInstance<T> {
-
     /// Instantiate the plugin.
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2_Descriptor,
