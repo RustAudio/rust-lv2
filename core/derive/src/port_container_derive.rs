@@ -32,7 +32,7 @@ impl<'a> PortContainerField<'a> {
     fn make_raw_field_declaration(&self) -> impl ::quote::ToTokens {
         let identifier = self.identifier;
         quote! {
-            pub #identifier: *mut ::std::ffi::c_void,
+            pub #identifier: *mut (),
         }
     }
 
@@ -141,7 +141,7 @@ impl<'a> PortContainerStruct<'a> {
                 }
 
                 impl ::lv2_core::plugin::PortsConnections for DerivedPortsConnections {
-                    unsafe fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
+                    unsafe fn connect(&mut self, index: u32, pointer: *mut ()) {
                         match index {
                             #(#connect_matchers)*
                             _ => ()

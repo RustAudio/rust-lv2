@@ -1,7 +1,7 @@
 use lv2::core::plugin::{
     lv2_descriptors, InputPort, OutputPort, Plugin, PluginInfo, PortContainer,
 };
-use lv2::core::port_type::{Audio, Control};
+use lv2::core::port::{Audio, Control};
 
 struct Amp;
 
@@ -31,15 +31,12 @@ impl Plugin for Amp {
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts) {
-        let coef = db_co(*(ports.gain));
+    fn run(&mut self, ports: &AmpPorts) {
+        let coef = db_co(ports.gain.value());
 
-        let input = ports.input.iter();
-        let output = ports.output.iter_mut();
-
-        for (input_sample, output_sample) in input.zip(output) {
-            *output_sample = (*input_sample) * coef;
-        }
+        ports
+            .output
+            .collect_from(ports.input.iter().map(|v| *v * coef));
     }
 }
 

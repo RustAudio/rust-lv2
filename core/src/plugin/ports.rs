@@ -1,8 +1,7 @@
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
-use std::ffi::c_void;
 
-use crate::port_type::PortType;
+use crate::port::PortType;
 
 pub struct InputPort<T: PortType> {
     port: T::InputPortType,
@@ -38,12 +37,12 @@ impl<T: PortType> DerefMut for OutputPort<T> {
 }
 
 pub trait PortHandle: Sized {
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self;
+    unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self;
 }
 
 impl<T: PortType> PortHandle for InputPort<T> {
     #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
+    unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self {
         Self {
             port: T::input_from_raw(NonNull::new_unchecked(pointer), sample_count),
         }
@@ -52,7 +51,7 @@ impl<T: PortType> PortHandle for InputPort<T> {
 
 impl<T: PortType> PortHandle for OutputPort<T> {
     #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
+    unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self {
         Self {
             port: T::output_from_raw(NonNull::new_unchecked(pointer), sample_count),
         }
@@ -61,7 +60,7 @@ impl<T: PortType> PortHandle for OutputPort<T> {
 
 impl<T: PortHandle> PortHandle for Option<T> {
     #[inline]
-    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Self {
+    unsafe fn from_raw(pointer: *mut (), sample_count: u32) -> Self {
         NonNull::new(pointer).map(|ptr| T::from_raw(ptr.as_ptr(), sample_count))
     }
 }
