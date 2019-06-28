@@ -25,7 +25,7 @@ impl<'a> PortContainerField<'a> {
         let port_type = self.port_type;
         quote! {
             #identifier: {
-                let connection = <#port_type as ::lv2_core::plugin::PortHandle>::from_raw(connections.#identifier, sample_count);
+                let connection = <#port_type as ::lv2_core::plugin::port::PortHandle>::from_raw(connections.#identifier, sample_count);
                 if let Some(connection) = connection {
                     connection
                 } else {

@@ -1,11 +1,9 @@
 mod features;
 pub(crate) mod info;
-mod ports;
+pub mod port;
 
 pub use self::features::Lv2Features;
 pub use info::PluginInfo;
-pub use ports::*;
-
 pub use lv2_core_derive::*;
 
 use std::ffi::c_void;
@@ -13,21 +11,6 @@ use std::os::raw::c_char;
 use sys::LV2_Handle;
 
 use crate::feature::FeatureList;
-
-/// The main trait to implement to create an LV2 plugin instance.
-pub trait Plugin: Sized + Send + Sync {
-    /// See the docs for [PortContainer](lv2_core::PortContainer)
-    type Ports: PortContainer;
-    type Features: Lv2Features;
-
-    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
-    fn run(&mut self, ports: &mut Self::Ports);
-
-    #[inline]
-    fn activate(&mut self) {}
-    #[inline]
-    fn deactivate(&mut self) {}
-}
 
 /// Container for port handling.
 ///
@@ -54,6 +37,21 @@ pub trait PortContainer: Sized {
 pub trait PortPointerCache: Sized + Default {
     /// Store the connection pointer for the port with index `index`.
     fn connect(&mut self, index: u32, pointer: *mut c_void);
+}
+
+/// The main trait to implement to create an LV2 plugin instance.
+pub trait Plugin: Sized + Send + Sync {
+    /// See the docs for [PortContainer](lv2_core::PortContainer)
+    type Ports: PortContainer;
+    type Features: Lv2Features;
+
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
+    fn run(&mut self, ports: &mut Self::Ports);
+
+    #[inline]
+    fn activate(&mut self) {}
+    #[inline]
+    fn deactivate(&mut self) {}
 }
 
 pub struct PluginInstance<T: Plugin> {

@@ -1,7 +1,5 @@
-use lv2::core::plugin::{
-    lv2_descriptors, InputPort, OutputPort, Plugin, PluginInfo, PortContainer,
-};
-use lv2::core::port_type::{Audio, Control};
+use lv2::core::plugin::port::{Audio, Control, InputPort, OutputPort};
+use lv2::core::plugin::{lv2_descriptors, Plugin, PluginInfo, PortContainer};
 
 struct Amp;
 
