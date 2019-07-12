@@ -3,15 +3,14 @@ mod features;
 pub(crate) mod info;
 pub mod port;
 
-pub use self::features::Lv2Features;
+pub use crate::plugin::features::FeatureContainer;
 pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
+use crate::feature::FeatureDescriptor;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
-
-use crate::feature::FeatureList;
 
 /// Container for port handling.
 ///
@@ -72,7 +71,7 @@ pub trait Plugin: Sized + Send + Sync {
     /// The list of required host features.
     ///
     /// If one of the required features is not supported by the host, the plugin creation will fail and `new` will not be called.
-    type Features: Lv2Features;
+    type Features: FeatureContainer;
 
     /// Create a new plugin instance.
     ///
@@ -133,8 +132,15 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let feature_list = FeatureList::from_raw(features);
-        let features = match <T::Features as Lv2Features>::from_feature_list(feature_list) {
+        let mut feature_descriptors = Vec::new();
+        let mut feature_ptr = features;
+        while !feature_ptr.is_null() {
+            feature_descriptors.push(FeatureDescriptor::from_raw(*feature_ptr));
+            feature_ptr = feature_ptr.add(1);
+        }
+        let feature_container = match <T::Features as FeatureContainer>::from_feature_list(
+            feature_descriptors.as_ref(),
+        ) {
             Ok(features) => features,
             Err(error) => {
                 eprintln!("Failed to initialize plugin: {:?}", error);
@@ -144,7 +150,7 @@ impl<T: Plugin> PluginInstance<T> {
 
         // Instantiate the plugin.
         let instance = Box::new(Self {
-            instance: T::new(&plugin_info, features),
+            instance: T::new(&plugin_info, feature_container),
             connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle

@@ -1,4 +1,4 @@
-use crate::feature::FeatureList;
+use crate::feature::FeatureDescriptor;
 use crate::uri::Uri;
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
@@ -26,16 +26,16 @@ impl Display for FeatureResolutionError {
 
 impl Error for FeatureResolutionError {}
 
-pub trait Lv2Features: Sized {
+pub trait FeatureContainer: Sized {
     fn from_feature_list(
-        feature_list: FeatureList<'static>,
+        feature_list: &[FeatureDescriptor<'static>],
     ) -> Result<Self, FeatureResolutionError>;
 }
 
-impl Lv2Features for () {
+impl FeatureContainer for () {
     #[inline(always)]
     fn from_feature_list(
-        _feature_list: FeatureList<'static>,
+        _feature_list: &[FeatureDescriptor<'static>],
     ) -> Result<Self, FeatureResolutionError> {
         Ok(())
     }

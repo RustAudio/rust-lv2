@@ -1,8 +1,6 @@
 mod descriptor;
-pub mod list;
 
 pub use self::descriptor::FeatureDescriptor;
-pub use self::list::FeatureList;
 
 use crate::uri::UriBound;
 
