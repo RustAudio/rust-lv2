@@ -1,19 +1,10 @@
-mod descriptor;
-
-pub use self::descriptor::FeatureDescriptor;
-
 use crate::uri::UriBound;
 
 /// Represents extension data for a given feature.
 ///
 /// Features have to be `#[repr(C)]`, since they have to have a valid representation in C. Since
 /// this requirement can not be checked with super-traits, this trait is `unsafe` to implement.
-pub unsafe trait Feature: Sized + Copy + UriBound {
-    #[inline]
-    fn descriptor(&self) -> FeatureDescriptor {
-        FeatureDescriptor::from_feature(self)
-    }
-}
+pub unsafe trait Feature: Sized + Copy + UriBound {}
 
 #[repr(C)]
 #[derive(Copy, Clone, Default)]

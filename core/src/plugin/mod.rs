@@ -1,13 +1,12 @@
 //! Types to create plugins.
-mod features;
+mod feature_container;
 pub(crate) mod info;
 pub mod port;
 
-pub use crate::plugin::features::FeatureContainer;
+pub use feature_container::*;
 pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
-use crate::feature::FeatureDescriptor;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
