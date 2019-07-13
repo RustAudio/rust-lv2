@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::error::Error;
 use std::ffi::{CStr, CString, NulError};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone)]
@@ -46,6 +47,12 @@ impl Uri {
     #[inline]
     pub const fn as_cstr(&self) -> &CStr {
         &self.inner
+    }
+}
+
+impl Hash for Uri {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
     }
 }
 

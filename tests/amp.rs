@@ -1,5 +1,5 @@
 use lv2::core::plugin::port::{Audio, Control, InputPort, OutputPort};
-use lv2::core::plugin::{lv2_descriptors, Plugin, PluginInfo, PortContainer};
+use lv2::core::plugin::{lv2_descriptors, FeatureContainer, Plugin, PluginInfo, PortContainer};
 
 struct Amp;
 
@@ -21,10 +21,9 @@ fn db_co(g: f32) -> f32 {
 
 impl Plugin for Amp {
     type Ports = AmpPorts;
-    type Features = ();
 
     #[inline]
-    fn new(_plugin_info: &PluginInfo, _features: ()) -> Self {
+    fn new(_plugin_info: &PluginInfo, _features: FeatureContainer) -> Self {
         Amp
     }
 

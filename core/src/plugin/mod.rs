@@ -1,14 +1,16 @@
 //! Types to create plugins.
-mod feature_container;
 pub(crate) mod info;
 pub mod port;
 
-pub use feature_container::*;
 pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
-use std::ffi::c_void;
+use crate::feature::Feature;
+use crate::uri::Uri;
+use std::collections::HashMap;
+use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
+use std::ptr::NonNull;
 use sys::LV2_Handle;
 
 /// Container for port handling.
@@ -67,15 +69,10 @@ pub trait Plugin: Sized + Send + Sync {
     /// The type of the port container.
     type Ports: PortContainer;
 
-    /// The list of required host features.
-    ///
-    /// If one of the required features is not supported by the host, the plugin creation will fail and `new` will not be called.
-    type Features: FeatureContainer;
-
     /// Create a new plugin instance.
     ///
     /// This method only creates an instance of the plugin, it does not reset or set up it's internal state. This is done by the `activate` method.
-    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
+    fn new(plugin_info: &PluginInfo, features: FeatureContainer) -> Self;
 
     /// Run a processing step.
     ///
@@ -91,6 +88,36 @@ pub trait Plugin: Sized + Send + Sync {
     ///
     /// The host will always call this method when it wants to shut the plugin down. After `deactivate` has been called, `run` will not be called until `activate` has been called again.
     fn deactivate(&mut self) {}
+}
+
+pub struct FeatureContainer<'a> {
+    internal: HashMap<&'a Uri, NonNull<c_void>>,
+}
+
+impl<'a> FeatureContainer<'a> {
+    unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Result<Self, ()> {
+        let mut internal_map = HashMap::new();
+        let mut feature_ptr = raw;
+        while !feature_ptr.is_null() {
+            let uri = Uri::from_cstr_unchecked(CStr::from_ptr((**feature_ptr).URI));
+            let data = if let Some(data) = NonNull::new((**feature_ptr).data) {
+                data
+            } else {
+                return Err(());
+            };
+            internal_map.insert(uri, data);
+            feature_ptr = feature_ptr.add(1);
+        }
+        Ok(Self {
+            internal: internal_map,
+        })
+    }
+
+    pub fn try_get<T: Feature>(&mut self) -> Option<&mut T> {
+        let pointer = self.internal.get_mut(T::uri());
+
+        unsafe { pointer.map(|ptr| (ptr.as_ptr() as *mut T).as_mut().unwrap()) }
+    }
 }
 
 /// Plugin wrapper which translated between the host and the plugin.
@@ -131,25 +158,16 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut feature_descriptors = Vec::new();
-        let mut feature_ptr = features;
-        while !feature_ptr.is_null() {
-            feature_descriptors.push(FeatureDescriptor::from_raw(*feature_ptr));
-            feature_ptr = feature_ptr.add(1);
-        }
-        let feature_container = match <T::Features as FeatureContainer>::from_feature_list(
-            feature_descriptors.as_ref(),
-        ) {
-            Ok(features) => features,
-            Err(error) => {
-                eprintln!("Failed to initialize plugin: {:?}", error);
-                return std::ptr::null_mut();
-            }
+        let features = if let Ok(container) = FeatureContainer::from_raw(features) {
+            container
+        } else {
+            eprintln!("Failed to initialize plugin: Invalid features list");
+            return std::ptr::null_mut();
         };
 
         // Instantiate the plugin.
         let instance = Box::new(Self {
-            instance: T::new(&plugin_info, feature_container),
+            instance: T::new(&plugin_info, features),
             connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
