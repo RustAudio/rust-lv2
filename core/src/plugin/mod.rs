@@ -90,63 +90,137 @@ pub trait Plugin: Sized + Send + Sync {
     fn deactivate(&mut self) {}
 }
 
+/// Descriptor of a single host feature.
 pub struct FeatureDescriptor<'a> {
     uri: &'a Uri,
-    data: NonNull<c_void>
+    data: Option<NonNull<c_void>>,
 }
 
 impl<'a> FeatureDescriptor<'a> {
+    /// Return the URI of the feature.
     pub fn uri(&self) -> &Uri {
         self.uri
     }
 
-    pub fn data(&self) -> NonNull<c_void> {
+    /// Return the data pointer of the feature.
+    pub fn data(&self) -> Option<NonNull<c_void>> {
         self.data
     }
-    
-    pub fn try_as<T: Feature>(&mut self) -> Option<&mut T> {
+
+    /// Evaluate whether this object describes the given feature.
+    pub fn is_feature<T: Feature>(&self) -> bool {
+        self.uri == T::uri()
+    }
+
+    /// Try to return a reference the data of the feature.
+    ///
+    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    pub fn as_ref<T: Feature>(&self) -> Option<&T> {
         if self.uri == T::uri() {
-            unsafe { (self.data.as_ptr() as *mut T).as_mut() }
+            self.data.and_then(|ptr| unsafe { (ptr.as_ptr() as *const T).as_ref()})
+        } else {
+            None
+        }
+    }
+
+    /// Try to return a mutable reference the data of the feature.
+    ///
+    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    pub fn as_mut<T: Feature>(&mut self) -> Option<&mut T> {
+        if self.uri == T::uri() {
+            self.data.and_then(|ptr| unsafe { (ptr.as_ptr() as *mut T).as_mut()})
         } else {
             None
         }
     }
 }
 
+/// Container for host features.
+///
+/// At initialization time, a raw LV2 plugin receives a null-terminated array containing all requested host features. Obviously, this is not suited for safe Rust code and therefore, it needs an abstraction layer.
+///
+/// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify features and retrieve their data.
+/// 
+/// # Feature data access methods
+/// 
+/// There are several methods to retrieve the data for a feature, all with similar behaviour:
+/// * [`FeatureContainer::get_data`](#method.get_data)
+/// * [`FeatureContainer::get_mut_data`](#method.get_mut_data)
+/// * [`FeatureContainer::get_raw_data`](#method.get_raw_data)
+/// * [`FeatureDescriptor::as_ref`](struct.FeatureDescriptor.html#method.as_ref)
+/// * [`FeatureDescriptor::as_mut`](struct.FeatureDescriptor.html#method.as_mut)
+/// 
+/// They all have a type parameter to request a feature and return an optional reference or mutable reference to the requested data. Also, all of them may return `None` due to several reasons:
+/// 
+/// First of all, the requested feature might not be contained in or is not described by the object. In this case, casting an internal data pointer to the requested type would yield undefined behaviour, which is something to avoid.
+///
+/// However, the feature might also have no data at all; One such example is the `IsLive` feature. Since there is no data, these methods can not return something.
+///
+/// If you just want to know if a certain feature is contained or described, you should use the [`contains`](struct.FeatureContainer.html#method.contains) or [`is_feature`](struct.FeatureDescriptor.html#method.is_feature) methods, respectively.
+///
+/// ## Safety and Soundness
+///
+/// These methods are safe, although they technically do something unsafe: They cast and dereference pointers. This is sound since objects of their types can only be created from host-supplied data: We can not safe ourselves if the host provides invalid pointers and we may therefore assume that these pointers are correct. Therefore, these methods are sound.
 pub struct FeatureContainer<'a> {
-    internal: HashMap<&'a Uri, NonNull<c_void>>,
+    internal: HashMap<&'a Uri, Option<NonNull<c_void>>>,
 }
 
 impl<'a> FeatureContainer<'a> {
-    unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Result<Self, ()> {
+    /// Construct a container from the raw features array.
+    ///
+    /// It basically populates a hash map by walking through the array and then creates a `FeatureContainer` with it. However, this method is unsafe since it dereferences a C string to a URI. Also, this method should only be used with the features list supplied by the host since the soundness of the whole module depends on that assumption.
+    unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Self {
         let mut internal_map = HashMap::new();
         let mut feature_ptr = raw;
+
         while !feature_ptr.is_null() {
             let uri = Uri::from_cstr_unchecked(CStr::from_ptr((**feature_ptr).URI));
-            let data = if let Some(data) = NonNull::new((**feature_ptr).data) {
-                data
-            } else {
-                return Err(());
-            };
+            let data = NonNull::new((**feature_ptr).data);
             internal_map.insert(uri, data);
             feature_ptr = feature_ptr.add(1);
         }
-        Ok(Self {
+
+        Self {
             internal: internal_map,
-        })
+        }
     }
 
-    pub fn try_get<T: Feature>(&mut self) -> Option<&mut T> {
-        let pointer = self.internal.get_mut(T::uri());
-
-        unsafe { pointer.map(|ptr| (ptr.as_ptr() as *mut T).as_mut().unwrap()) }
+    /// Evaluate whether this object contains the requested feature.
+    pub fn contains<T: Feature>(&self) -> bool {
+        self.internal.contains_key(T::uri())
     }
 
+    /// Try to return a pointer to the data of the requested feature.
+    ///
+    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    pub fn get_raw_data<T: Feature>(&self) -> Option<NonNull<c_void>> {
+        self.internal.get(T::uri()).and_then(|entry| *entry)
+    }
+
+    /// Try to return a reference to the data of the requested feature.
+    ///
+    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    pub fn get_data<T: Feature>(&self) -> Option<&T> {
+        self.get_raw_data::<T>()
+            .and_then(|ptr| unsafe { (ptr.as_ptr() as *const T).as_ref() })
+    }
+
+    /// Try to return a mutable reference to the data of the requested feature.
+    ///
+    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    pub fn get_mut_data<T: Feature>(&mut self) -> Option<&mut T> {
+        self.get_raw_data::<T>()
+            .and_then(|ptr| unsafe { (ptr.as_ptr() as *mut T).as_mut() })
+    }
+
+    /// Iterate over all contained features.
+    /// 
+    /// Access to the individual features is abstracted to make their use safe, but the raw pointers are still retrievable.
     pub fn iter(&self) -> impl std::iter::Iterator<Item = FeatureDescriptor> {
         self.internal.iter().map(|element| {
             let uri = *(element.0);
             let data = *(element.1);
-            FeatureDescriptor{uri, data}
+            FeatureDescriptor { uri, data }
         })
     }
 }
@@ -189,12 +263,7 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let features = if let Ok(container) = FeatureContainer::from_raw(features) {
-            container
-        } else {
-            eprintln!("Failed to initialize plugin: Invalid features list");
-            return std::ptr::null_mut();
-        };
+        let features = FeatureContainer::from_raw(features);
 
         // Instantiate the plugin.
         let instance = Box::new(Self {
