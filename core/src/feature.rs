@@ -6,7 +6,6 @@ use std::ffi::c_void;
 /// Features have to be `#[repr(C)]`, since they have to have a valid representation in C. Since
 /// this requirement can not be checked with super-traits, this trait is `unsafe` to implement.
 pub unsafe trait Feature: Sized + Copy + UriBound {
-    
     /// Create a raw feature descriptor for the plugin.
     fn create_raw_feature(&mut self) -> ::sys::LV2_Feature {
         ::sys::LV2_Feature {

@@ -332,8 +332,8 @@ pub unsafe fn create_feature_container<'a>(
 #[cfg(test)]
 mod tests {
     use crate::feature::*;
-    use crate::uri::*;
     use crate::plugin::*;
+    use crate::uri::*;
 
     #[derive(Clone, Copy)]
     #[repr(C)]
@@ -396,11 +396,15 @@ mod tests {
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
                 let retrieved_feature_a = features_container.get_data::<FeatureA>().unwrap();
-                assert!(retrieved_feature_a as *const _ as usize == &feature_a as *const _ as usize);
+                assert!(
+                    retrieved_feature_a as *const _ as usize == &feature_a as *const _ as usize
+                );
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
                 let retrieved_feature_b = features_container.get_data::<FeatureB>().unwrap();
-                assert!(retrieved_feature_b as *const _ as usize == &feature_b as *const _ as usize);
+                assert!(
+                    retrieved_feature_b as *const _ as usize == &feature_b as *const _ as usize
+                );
                 feature_b_found = true;
             } else {
                 panic!("Invalid feature in feature iterator!");
