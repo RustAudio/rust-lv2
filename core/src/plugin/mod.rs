@@ -90,6 +90,29 @@ pub trait Plugin: Sized + Send + Sync {
     fn deactivate(&mut self) {}
 }
 
+pub struct FeatureDescriptor<'a> {
+    uri: &'a Uri,
+    data: NonNull<c_void>
+}
+
+impl<'a> FeatureDescriptor<'a> {
+    pub fn uri(&self) -> &Uri {
+        self.uri
+    }
+
+    pub fn data(&self) -> NonNull<c_void> {
+        self.data
+    }
+    
+    pub fn try_as<T: Feature>(&mut self) -> Option<&mut T> {
+        if self.uri == T::uri() {
+            unsafe { (self.data.as_ptr() as *mut T).as_mut() }
+        } else {
+            None
+        }
+    }
+}
+
 pub struct FeatureContainer<'a> {
     internal: HashMap<&'a Uri, NonNull<c_void>>,
 }
@@ -117,6 +140,14 @@ impl<'a> FeatureContainer<'a> {
         let pointer = self.internal.get_mut(T::uri());
 
         unsafe { pointer.map(|ptr| (ptr.as_ptr() as *mut T).as_mut().unwrap()) }
+    }
+
+    pub fn iter(&self) -> impl std::iter::Iterator<Item = FeatureDescriptor> {
+        self.internal.iter().map(|element| {
+            let uri = *(element.0);
+            let data = *(element.1);
+            FeatureDescriptor{uri, data}
+        })
     }
 }
 
