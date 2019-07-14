@@ -10,7 +10,6 @@ use crate::uri::Uri;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
-use std::ptr::NonNull;
 use sys::LV2_Handle;
 
 /// Container for port handling.
@@ -93,7 +92,7 @@ pub trait Plugin: Sized + Send + Sync {
 /// Descriptor of a single host feature.
 pub struct FeatureDescriptor<'a> {
     uri: &'a Uri,
-    data: Option<NonNull<c_void>>,
+    data: *mut c_void,
 }
 
 impl<'a> FeatureDescriptor<'a> {
@@ -103,7 +102,7 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     /// Return the data pointer of the feature.
-    pub fn data(&self) -> Option<NonNull<c_void>> {
+    pub fn data(&self) -> *mut c_void {
         self.data
     }
 
@@ -115,24 +114,11 @@ impl<'a> FeatureDescriptor<'a> {
     /// Try to return a reference the data of the feature.
     ///
     /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
-    pub fn as_ref<T: Feature>(&self) -> Option<&T> {
+    pub fn as_feature<T: Feature>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
-            self.data
-                .and_then(|ptr| unsafe { (ptr.as_ptr() as *const T).as_ref() })
+            Ok(unsafe { T::from_raw_data(self.data as *mut _) })
         } else {
-            None
-        }
-    }
-
-    /// Try to return a mutable reference the data of the feature.
-    ///
-    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
-    pub fn as_mut<T: Feature>(&mut self) -> Option<&mut T> {
-        if self.uri == T::uri() {
-            self.data
-                .and_then(|ptr| unsafe { (ptr.as_ptr() as *mut T).as_mut() })
-        } else {
-            None
+            Err(self)
         }
     }
 }
@@ -141,30 +127,9 @@ impl<'a> FeatureDescriptor<'a> {
 ///
 /// At initialization time, a raw LV2 plugin receives a null-terminated array containing all requested host features. Obviously, this is not suited for safe Rust code and therefore, it needs an abstraction layer.
 ///
-/// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify features and retrieve their data.
-///
-/// # Feature data access methods
-///
-/// There are several methods to retrieve the data for a feature, all with similar behaviour:
-/// * [`FeatureContainer::get_data`](#method.get_data)
-/// * [`FeatureContainer::get_mut_data`](#method.get_mut_data)
-/// * [`FeatureContainer::get_raw_data`](#method.get_raw_data)
-/// * [`FeatureDescriptor::as_ref`](struct.FeatureDescriptor.html#method.as_ref)
-/// * [`FeatureDescriptor::as_mut`](struct.FeatureDescriptor.html#method.as_mut)
-///
-/// They all have a type parameter to request a feature and return an optional reference or mutable reference to the requested data. Also, all of them may return `None` due to several reasons:
-///
-/// First of all, the requested feature might not be contained in or is not described by the object. In this case, casting an internal data pointer to the requested type would yield undefined behaviour, which is something to avoid.
-///
-/// However, the feature might also have no data at all; One such example is the `IsLive` feature. Since there is no data, these methods can not return something.
-///
-/// If you just want to know if a certain feature is contained or described, you should use the [`contains`](struct.FeatureContainer.html#method.contains) or [`is_feature`](struct.FeatureDescriptor.html#method.is_feature) methods, respectively.
-///
-/// ## Safety and Soundness
-///
-/// These methods are safe, although they technically do something unsafe: They cast and dereference pointers. This is sound since objects of their types can only be created from host-supplied data: We can not safe ourselves if the host provides invalid pointers and we may therefore assume that these pointers are correct. Therefore, these methods are sound.
+/// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify and retrieve features.
 pub struct FeatureContainer<'a> {
-    internal: HashMap<&'a Uri, Option<NonNull<c_void>>>,
+    internal: HashMap<&'a Uri, *mut c_void>,
 }
 
 impl<'a> FeatureContainer<'a> {
@@ -177,7 +142,7 @@ impl<'a> FeatureContainer<'a> {
 
         while !(*feature_ptr).is_null() {
             let uri = Uri::from_cstr_unchecked(CStr::from_ptr((**feature_ptr).URI));
-            let data = NonNull::new((**feature_ptr).data);
+            let data = (**feature_ptr).data;
             internal_map.insert(uri, data);
             feature_ptr = feature_ptr.add(1);
         }
@@ -192,36 +157,20 @@ impl<'a> FeatureContainer<'a> {
         self.internal.contains_key(T::uri())
     }
 
-    /// Try to return a pointer to the data of the requested feature.
+    /// Try to retrieve a feature.
     ///
-    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
-    pub fn get_raw_data<T: Feature>(&self) -> Option<NonNull<c_void>> {
-        self.internal.get(T::uri()).and_then(|entry| *entry)
-    }
-
-    /// Try to return a reference to the data of the requested feature.
-    ///
-    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
-    pub fn get_data<T: Feature>(&self) -> Option<&T> {
-        self.get_raw_data::<T>()
-            .and_then(|ptr| unsafe { (ptr.as_ptr() as *const T).as_ref() })
-    }
-
-    /// Try to return a mutable reference to the data of the requested feature.
-    ///
-    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
-    pub fn get_mut_data<T: Feature>(&mut self) -> Option<&mut T> {
-        self.get_raw_data::<T>()
-            .and_then(|ptr| unsafe { (ptr.as_ptr() as *mut T).as_mut() })
+    /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
+    pub fn retrieve_feature<T: Feature>(&mut self) -> Option<T> {
+        self.internal
+            .remove(T::uri())
+            .map(|ptr| unsafe { T::from_raw_data(ptr as *mut T::RawDataType) })
     }
 
     /// Iterate over all contained features.
-    ///
-    /// Access to the individual features is abstracted to make their use safe, but the raw pointers are still retrievable.
-    pub fn iter(&self) -> impl std::iter::Iterator<Item = FeatureDescriptor> {
-        self.internal.iter().map(|element| {
-            let uri = *(element.0);
-            let data = *(element.1);
+    pub fn into_iter(self) -> impl std::iter::Iterator<Item = FeatureDescriptor<'a>> {
+        self.internal.into_iter().map(|element| {
+            let uri = element.0;
+            let data = element.1;
             FeatureDescriptor { uri, data }
         })
     }
@@ -351,13 +300,33 @@ mod tests {
         const URI: &'static [u8] = b"urn:lv2Feature:A\0";
     }
 
-    unsafe impl Feature for FeatureA {}
+    unsafe impl Feature for FeatureA {
+        type RawDataType = i32;
+
+        unsafe fn from_raw_data(data: *mut i32) -> Self {
+            FeatureA { number: *data }
+        }
+
+        fn raw_data(&mut self) -> *mut i32 {
+            &mut self.number
+        }
+    }
 
     unsafe impl UriBound for FeatureB {
         const URI: &'static [u8] = b"urn:lv2Fearure:B\0";
     }
 
-    unsafe impl Feature for FeatureB {}
+    unsafe impl Feature for FeatureB {
+        type RawDataType = f32;
+
+        unsafe fn from_raw_data(data: *mut f32) -> Self {
+            FeatureB { number: *data }
+        }
+
+        fn raw_data(&mut self) -> *mut f32 {
+            &mut self.number
+        }
+    }
 
     #[test]
     fn test_feature_container() {
@@ -372,21 +341,38 @@ mod tests {
             &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
 
         // Constructing the container.
-        let features_container =
+        let mut features_container =
             unsafe { crate::plugin::create_feature_container(features_list.as_ptr()) };
 
         // Testing the container.
         assert!(features_container.contains::<FeatureA>());
         assert!(features_container.contains::<FeatureB>());
 
-        let retrieved_feature_a = features_container.get_data::<FeatureA>().unwrap();
-        assert!(retrieved_feature_a as *const _ as usize == &feature_a as *const _ as usize);
+        let retrieved_feature_a = features_container.retrieve_feature::<FeatureA>().unwrap();
+        assert!(retrieved_feature_a.number == feature_a.number);
 
-        let retrieved_feature_b = features_container.get_data::<FeatureB>().unwrap();
-        assert!(retrieved_feature_b as *const _ as usize == &feature_b as *const _ as usize);
+        let retrieved_feature_b = features_container.retrieve_feature::<FeatureB>().unwrap();
+        assert!(retrieved_feature_b.number == feature_b.number);
+    }
+
+    #[test]
+    fn test_feature_descriptor() {
+        // Constructing the test case.
+        let mut feature_a = FeatureA { number: 42 };
+        let feature_a_sys = feature_a.create_raw_feature();
+
+        let mut feature_b = FeatureB { number: 17.0 };
+        let feature_b_sys = feature_b.create_raw_feature();
+
+        let features_list: &[*const ::sys::LV2_Feature] =
+            &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
+
+        // Constructing the container.
+        let features_container =
+            unsafe { crate::plugin::create_feature_container(features_list.as_ptr()) };
 
         // Collect all items from the feature iterator.
-        let feature_descriptors: Vec<FeatureDescriptor> = features_container.iter().collect();
+        let feature_descriptors: Vec<FeatureDescriptor> = features_container.into_iter().collect();
 
         // Test the collected items.
         assert_eq!(feature_descriptors.len(), 2);
@@ -395,16 +381,18 @@ mod tests {
         let mut feature_b_found = false;
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
-                let retrieved_feature_a = features_container.get_data::<FeatureA>().unwrap();
-                assert!(
-                    retrieved_feature_a as *const _ as usize == &feature_a as *const _ as usize
-                );
+                if let Ok(retrieved_feature_a) = descriptor.as_feature::<FeatureA>() {
+                    assert!(retrieved_feature_a.number == feature_a.number);
+                } else {
+                    panic!("Feature interpretation failed!");
+                }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
-                let retrieved_feature_b = features_container.get_data::<FeatureB>().unwrap();
-                assert!(
-                    retrieved_feature_b as *const _ as usize == &feature_b as *const _ as usize
-                );
+                if let Ok(retrieved_feature_b) = descriptor.as_feature::<FeatureB>() {
+                    assert!(retrieved_feature_b.number == feature_b.number);
+                } else {
+                    panic!("Feature interpretation failed!");
+                }
                 feature_b_found = true;
             } else {
                 panic!("Invalid feature in feature iterator!");
