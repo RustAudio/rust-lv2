@@ -114,7 +114,7 @@ impl<'a> FeatureDescriptor<'a> {
     /// Try to return a reference the data of the feature.
     ///
     /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise.
-    /// 
+    ///
     /// If the feature construction fails, the descriptor will be returned again.
     pub fn as_feature<T: Feature>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
@@ -176,6 +176,23 @@ impl<'a> FeatureContainer<'a> {
             FeatureDescriptor { uri, data }
         })
     }
+}
+
+/// Convenience trait for feature collections.
+///
+/// The feature container is only for temporary use; Once a feature is retrieved, it is removed from the container. Therefore you need a way to properly store features.
+///
+/// You can simply create a struct with features as it's fields and derive `FeatureCollection` for it. A procedural macro will then create a method that populates the struct from the container, or returns `None` if one of the required features is not in the container.
+pub trait FeatureCollection: Sized {
+    /// Populate a collection with features from the container.
+    fn from_container(container: &mut FeatureContainer) -> Option<Self>;
+}
+
+/// Convenience trait for optional features collections.
+///
+/// This is a variant of [`FeatureCollection`](trait.FeatureCollection.html). The only difference is that the collections holds optional features instead of required ones and the construction method does not fail if one of the features is not in the container.
+pub trait OptionalFeatureCollection: Sized {
+    fn from_container(container: &mut FeatureContainer) -> Self;
 }
 
 /// Plugin wrapper which translated between the host and the plugin.
@@ -330,48 +347,63 @@ mod tests {
         }
     }
 
+    #[derive(FeatureCollection)]
+    struct Collection {
+        a: FeatureA,
+        b: FeatureB,
+    }
+
+    struct FeatureTestSetting<'a> {
+        pub feature_a: Box<FeatureA>,
+        pub feature_b: Box<FeatureB>,
+        pub features_container: FeatureContainer<'a>,
+    }
+
+    impl<'a> FeatureTestSetting<'a> {
+        fn new() -> Self {
+            let mut feature_a = Box::new(FeatureA { number: 42 });
+            let feature_a_sys = feature_a.create_raw_feature();
+
+            let mut feature_b = Box::new(FeatureB { number: 17.0 });
+            let feature_b_sys = feature_b.create_raw_feature();
+
+            let features_list: &[*const ::sys::LV2_Feature] =
+                &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
+
+            // Constructing the container.
+            let features_container =
+                unsafe { crate::plugin::create_feature_container(features_list.as_ptr()) };
+
+            Self {
+                feature_a,
+                feature_b,
+                features_container,
+            }
+        }
+    }
+
     #[test]
     fn test_feature_container() {
         // Constructing the test case.
-        let mut feature_a = FeatureA { number: 42 };
-        let feature_a_sys = feature_a.create_raw_feature();
-
-        let mut feature_b = FeatureB { number: 17.0 };
-        let feature_b_sys = feature_b.create_raw_feature();
-
-        let features_list: &[*const ::sys::LV2_Feature] =
-            &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
-
-        // Constructing the container.
-        let mut features_container =
-            unsafe { crate::plugin::create_feature_container(features_list.as_ptr()) };
+        let setting = FeatureTestSetting::new();
+        let mut features_container = setting.features_container;
 
         // Testing the container.
         assert!(features_container.contains::<FeatureA>());
         assert!(features_container.contains::<FeatureB>());
 
         let retrieved_feature_a = features_container.retrieve_feature::<FeatureA>().unwrap();
-        assert!(retrieved_feature_a.number == feature_a.number);
+        assert!(retrieved_feature_a.number == setting.feature_a.number);
 
         let retrieved_feature_b = features_container.retrieve_feature::<FeatureB>().unwrap();
-        assert!(retrieved_feature_b.number == feature_b.number);
+        assert!(retrieved_feature_b.number == setting.feature_b.number);
     }
 
     #[test]
     fn test_feature_descriptor() {
         // Constructing the test case.
-        let mut feature_a = FeatureA { number: 42 };
-        let feature_a_sys = feature_a.create_raw_feature();
-
-        let mut feature_b = FeatureB { number: 17.0 };
-        let feature_b_sys = feature_b.create_raw_feature();
-
-        let features_list: &[*const ::sys::LV2_Feature] =
-            &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
-
-        // Constructing the container.
-        let features_container =
-            unsafe { crate::plugin::create_feature_container(features_list.as_ptr()) };
+        let setting = FeatureTestSetting::new();
+        let features_container = setting.features_container;
 
         // Collect all items from the feature iterator.
         let feature_descriptors: Vec<FeatureDescriptor> = features_container.into_iter().collect();
@@ -384,14 +416,14 @@ mod tests {
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
                 if let Ok(retrieved_feature_a) = descriptor.as_feature::<FeatureA>() {
-                    assert!(retrieved_feature_a.number == feature_a.number);
+                    assert!(retrieved_feature_a.number == setting.feature_a.number);
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
                 if let Ok(retrieved_feature_b) = descriptor.as_feature::<FeatureB>() {
-                    assert!(retrieved_feature_b.number == feature_b.number);
+                    assert!(retrieved_feature_b.number == setting.feature_b.number);
                 } else {
                     panic!("Feature interpretation failed!");
                 }
@@ -401,5 +433,16 @@ mod tests {
             }
         }
         assert!(feature_a_found && feature_b_found);
+    }
+
+    #[test]
+    fn test_feature_collection() {
+        // Construct the setting.
+        let setting = FeatureTestSetting::new();
+        let mut features_container = setting.features_container;
+
+        let container = Collection::from_container(&mut features_container).unwrap();
+        assert_eq!(container.a.number, setting.feature_a.number);
+        assert_eq!(container.b.number, setting.feature_b.number);
     }
 }

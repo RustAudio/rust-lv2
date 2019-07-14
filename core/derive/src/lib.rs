@@ -6,6 +6,7 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
+mod feature_collection_derive;
 mod lv2_descriptors;
 mod port_container_derive;
 
@@ -21,4 +22,14 @@ pub fn lv2_descriptors(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(PortContainer)]
 pub fn port_container_derive(input: TokenStream) -> TokenStream {
     port_container_derive::port_container_derive_impl(input)
+}
+
+#[proc_macro_derive(FeatureCollection)]
+pub fn feature_collection_derive(input: TokenStream) -> TokenStream {
+    feature_collection_derive::feature_collection_derive_impl(input, true)
+}
+
+#[proc_macro_derive(OptionalFeatureCollection)]
+pub fn optional_feature_collection_derive(input: TokenStream) -> TokenStream {
+    feature_collection_derive::feature_collection_derive_impl(input, false)
 }
