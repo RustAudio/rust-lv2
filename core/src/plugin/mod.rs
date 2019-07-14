@@ -113,7 +113,9 @@ impl<'a> FeatureDescriptor<'a> {
 
     /// Try to return a reference the data of the feature.
     ///
-    /// The exact behaviour of this method is described in the top-level documentation of the [`FeatureContainer`](struct.FeatureContainer.html#feature-data-access-methods).
+    /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise.
+    /// 
+    /// If the feature construction fails, the descriptor will be returned again.
     pub fn as_feature<T: Feature>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
             Ok(unsafe { T::from_raw_data(self.data as *mut _) })
