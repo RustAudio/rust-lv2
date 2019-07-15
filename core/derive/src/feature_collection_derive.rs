@@ -46,10 +46,7 @@ impl<'a> FeatureCollectionStruct<'a> {
 
     fn make_implementation(&self) -> TokenStream {
         let struct_name = self.struct_name;
-        let retrievals = self
-            .fields
-            .iter()
-            .map(|field| field.make_retrieval());
+        let retrievals = self.fields.iter().map(|field| field.make_retrieval());
         (quote! {
             impl FeatureCollection for #struct_name {
                 fn from_container(container: &mut FeatureContainer) -> Option<Self> {

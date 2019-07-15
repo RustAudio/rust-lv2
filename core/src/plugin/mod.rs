@@ -116,7 +116,7 @@ impl<'a> FeatureDescriptor<'a> {
     /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise.
     ///
     /// If the feature construction fails, the descriptor will be returned again.
-    pub fn as_feature<T: Feature>(self) -> Result<T, Self> {
+    pub fn into_feature<T: Feature>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
             Ok(unsafe { T::from_raw_data(self.data as *mut _) })
         } else {
@@ -167,9 +167,18 @@ impl<'a> FeatureContainer<'a> {
             .remove(T::uri())
             .map(|ptr| unsafe { T::from_raw_data(ptr as *mut T::RawDataType) })
     }
+}
 
-    /// Iterate over all contained features.
-    pub fn into_iter(self) -> impl std::iter::Iterator<Item = FeatureDescriptor<'a>> {
+use std::collections::hash_map;
+use std::iter::Map;
+type HashMapIterator<'a> = hash_map::IntoIter<&'a Uri, *mut c_void>;
+type DescriptorBuildFn<'a> = fn((&'a Uri, *mut c_void)) -> FeatureDescriptor<'a>;
+
+impl<'a> std::iter::IntoIterator for FeatureContainer<'a> {
+    type Item = FeatureDescriptor<'a>;
+    type IntoIter = Map<HashMapIterator<'a>, DescriptorBuildFn<'a>>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.internal.into_iter().map(|element| {
             let uri = element.0;
             let data = element.1;
@@ -183,12 +192,12 @@ impl<'a> FeatureContainer<'a> {
 /// The feature container is only for temporary use; Once a feature is retrieved, it is removed from the container. Therefore you need a way to properly store features.
 ///
 /// You can simply create a struct with features as it's fields and derive `FeatureCollection` for it. A procedural macro will then create a method that populates the struct from the container, or returns `None` if one of the required features is not in the container.
-/// 
+///
 /// An example using the few built-in features:
-/// 
+///
 ///     use lv2_core::plugin::*;
 ///     use lv2_core::feature::*;
-/// 
+///
 ///     #[derive(FeatureCollection)]
 ///     struct MyCollection {
 ///         hardrt: HardRTCapable,
@@ -419,14 +428,14 @@ mod tests {
         let mut feature_b_found = false;
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
-                if let Ok(retrieved_feature_a) = descriptor.as_feature::<FeatureA>() {
+                if let Ok(retrieved_feature_a) = descriptor.into_feature::<FeatureA>() {
                     assert!(retrieved_feature_a.number == setting.feature_a.number);
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
-                if let Ok(retrieved_feature_b) = descriptor.as_feature::<FeatureB>() {
+                if let Ok(retrieved_feature_b) = descriptor.into_feature::<FeatureB>() {
                     assert!(retrieved_feature_b.number == setting.feature_b.number);
                 } else {
                     panic!("Feature interpretation failed!");
