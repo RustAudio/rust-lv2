@@ -6,7 +6,6 @@ pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
 use crate::feature::Feature;
-use crate::uri::Uri;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
@@ -91,13 +90,13 @@ pub trait Plugin: Sized + Send + Sync {
 
 /// Descriptor of a single host feature.
 pub struct FeatureDescriptor<'a> {
-    uri: &'a Uri,
+    uri: &'a CStr,
     data: *mut c_void,
 }
 
 impl<'a> FeatureDescriptor<'a> {
     /// Return the URI of the feature.
-    pub fn uri(&self) -> &Uri {
+    pub fn uri(&self) -> &CStr {
         self.uri
     }
 
@@ -131,7 +130,7 @@ impl<'a> FeatureDescriptor<'a> {
 ///
 /// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify and retrieve features.
 pub struct FeatureContainer<'a> {
-    internal: HashMap<&'a Uri, *mut c_void>,
+    internal: HashMap<&'a CStr, *mut c_void>,
 }
 
 impl<'a> FeatureContainer<'a> {
@@ -143,7 +142,7 @@ impl<'a> FeatureContainer<'a> {
         let mut feature_ptr = raw;
 
         while !(*feature_ptr).is_null() {
-            let uri = Uri::from_cstr_unchecked(CStr::from_ptr((**feature_ptr).URI));
+            let uri = CStr::from_ptr((**feature_ptr).URI);
             let data = (**feature_ptr).data;
             internal_map.insert(uri, data);
             feature_ptr = feature_ptr.add(1);
@@ -171,8 +170,8 @@ impl<'a> FeatureContainer<'a> {
 
 use std::collections::hash_map;
 use std::iter::Map;
-type HashMapIterator<'a> = hash_map::IntoIter<&'a Uri, *mut c_void>;
-type DescriptorBuildFn<'a> = fn((&'a Uri, *mut c_void)) -> FeatureDescriptor<'a>;
+type HashMapIterator<'a> = hash_map::IntoIter<&'a CStr, *mut c_void>;
+type DescriptorBuildFn<'a> = fn((&'a CStr, *mut c_void)) -> FeatureDescriptor<'a>;
 
 impl<'a> std::iter::IntoIterator for FeatureContainer<'a> {
     type Item = FeatureDescriptor<'a>;
@@ -314,7 +313,7 @@ pub unsafe fn create_feature_container<'a>(
 mod tests {
     use crate::feature::*;
     use crate::plugin::*;
-    use crate::uri::*;
+    use crate::UriBound;
 
     #[derive(Clone, Copy)]
     #[repr(C)]

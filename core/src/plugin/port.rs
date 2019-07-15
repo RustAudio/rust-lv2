@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
-use crate::uri::UriBound;
+use crate::UriBound;
 
 /// Generalization of port types.
 ///

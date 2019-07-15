@@ -1,4 +1,4 @@
-use crate::uri::UriBound;
+use crate::UriBound;
 
 /// Represents extension data for a given feature, as returned by the `extension_data()` plugin's method.
 /// # Unsafety

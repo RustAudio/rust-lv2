@@ -1,4 +1,3 @@
-use crate::uri::{Uri, UriError};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::path::Path;
@@ -7,7 +6,6 @@ use std::str::Utf8Error;
 #[derive(Debug)]
 #[doc(hidden)]
 pub(crate) enum PluginInfoError {
-    InvalidPluginUri(UriError),
     InvalidBundlePathUtf8(Utf8Error),
 }
 
@@ -15,7 +13,7 @@ pub(crate) enum PluginInfoError {
 ///
 /// See the methods' documentation to know which data is available.
 pub struct PluginInfo<'a> {
-    plugin_uri: &'a Uri,
+    plugin_uri: &'a CStr,
     bundle_path: &'a Path,
     sample_rate: f64,
 }
@@ -40,8 +38,6 @@ impl<'a> PluginInfo<'a> {
         bundle_path: &'a CStr,
         sample_rate: f64,
     ) -> Result<Self, PluginInfoError> {
-        let plugin_uri = Uri::from_cstr(plugin_uri).map_err(PluginInfoError::InvalidPluginUri)?;
-
         let bundle_path = Path::new(
             bundle_path
                 .to_str()
@@ -57,7 +53,7 @@ impl<'a> PluginInfo<'a> {
 
     /// The URI of the plugin that is being instantiated.
     #[inline]
-    pub fn plugin_uri(&self) -> &Uri {
+    pub fn plugin_uri(&self) -> &CStr {
         self.plugin_uri
     }
 

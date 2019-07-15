@@ -1,4 +1,4 @@
-use crate::uri::UriBound;
+use crate::UriBound;
 use std::ffi::c_void;
 
 /// Represents extension data for a given feature.
