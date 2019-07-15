@@ -7,6 +7,8 @@ pub use lv2_core_derive::*;
 
 use crate::feature::Feature;
 use std::collections::HashMap;
+use crate::extension::ExtensionDescriptor;
+
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use sys::LV2_Handle;
@@ -63,9 +65,11 @@ pub trait PortPointerCache: Sized + Default {
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
 ///
 /// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods.
-pub trait Plugin: Sized + Send + Sync {
+pub trait Plugin: Sized + Send + Sync + 'static {
     /// The type of the port container.
     type Ports: PortContainer;
+
+    const EXTENSIONS: &'static [ExtensionDescriptor<Self>] = &[];
 
     /// Create a new plugin instance.
     ///
@@ -140,7 +144,7 @@ impl<'a> FeatureContainer<'a> {
     unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Self {
         let mut internal_map = HashMap::new();
         let mut feature_ptr = raw;
-
+        
         while !(*feature_ptr).is_null() {
             let uri = CStr::from_ptr((**feature_ptr).URI);
             let data = (**feature_ptr).data;
@@ -289,10 +293,12 @@ impl<T: Plugin> PluginInstance<T> {
         }
     }
 
-    /// Return extension data.
-    pub unsafe extern "C" fn extension_data(_uri: *const c_char) -> *const c_void {
-        // TODO
-        ::std::ptr::null()
+    pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
+        let uri = CStr::from_ptr(uri);
+        T::EXTENSIONS
+            .iter()
+            .find(|desc| desc.uri() == uri)
+            .map_or(std::ptr::null(), |ext| ext.raw_data())
     }
 }
 

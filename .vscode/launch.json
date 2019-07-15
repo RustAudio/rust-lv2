@@ -79,6 +79,25 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'extension'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=extension",
+                    "--package=lv2-core"
+                ],
+                "filter": {
+                    "name": "extension",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

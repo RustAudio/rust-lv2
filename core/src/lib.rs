@@ -1,11 +1,8 @@
 pub extern crate lv2_core_sys as sys;
 
-mod extension_data;
-
+pub mod extension;
 pub mod feature;
 pub mod plugin;
-
-pub use self::extension_data::*;
 
 use std::ffi::CStr;
 
