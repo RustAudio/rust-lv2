@@ -1,9 +1,9 @@
 use crate::plugin::Plugin;
 use crate::UriBound;
 use std::any::Any;
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
-use std::ffi::CStr;
 
 /// A trait for marking a type as an LV2 Plugin extension.
 ///

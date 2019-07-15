@@ -5,9 +5,9 @@ pub mod port;
 pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
+use crate::extension::ExtensionDescriptor;
 use crate::feature::Feature;
 use std::collections::HashMap;
-use crate::extension::ExtensionDescriptor;
 
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
@@ -144,12 +144,14 @@ impl<'a> FeatureContainer<'a> {
     unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Self {
         let mut internal_map = HashMap::new();
         let mut feature_ptr = raw;
-        
-        while !(*feature_ptr).is_null() {
-            let uri = CStr::from_ptr((**feature_ptr).URI);
-            let data = (**feature_ptr).data;
-            internal_map.insert(uri, data);
-            feature_ptr = feature_ptr.add(1);
+
+        if !raw.is_null() {
+            while !(*feature_ptr).is_null() {
+                let uri = CStr::from_ptr((**feature_ptr).URI);
+                let data = (**feature_ptr).data;
+                internal_map.insert(uri, data);
+                feature_ptr = feature_ptr.add(1);
+            }
         }
 
         Self {
