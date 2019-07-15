@@ -183,16 +183,20 @@ impl<'a> FeatureContainer<'a> {
 /// The feature container is only for temporary use; Once a feature is retrieved, it is removed from the container. Therefore you need a way to properly store features.
 ///
 /// You can simply create a struct with features as it's fields and derive `FeatureCollection` for it. A procedural macro will then create a method that populates the struct from the container, or returns `None` if one of the required features is not in the container.
+/// 
+/// An example using the few built-in features:
+/// 
+///     use lv2_core::plugin::*;
+///     use lv2_core::feature::*;
+/// 
+///     #[derive(FeatureCollection)]
+///     struct MyCollection {
+///         hardrt: HardRTCapable,
+///         live: IsLive,
+///     }
 pub trait FeatureCollection: Sized {
     /// Populate a collection with features from the container.
     fn from_container(container: &mut FeatureContainer) -> Option<Self>;
-}
-
-/// Convenience trait for optional features collections.
-///
-/// This is a variant of [`FeatureCollection`](trait.FeatureCollection.html). The only difference is that the collections holds optional features instead of required ones and the construction method does not fail if one of the features is not in the container.
-pub trait OptionalFeatureCollection: Sized {
-    fn from_container(container: &mut FeatureContainer) -> Self;
 }
 
 /// Plugin wrapper which translated between the host and the plugin.

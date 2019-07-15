@@ -26,10 +26,5 @@ pub fn port_container_derive(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(FeatureCollection)]
 pub fn feature_collection_derive(input: TokenStream) -> TokenStream {
-    feature_collection_derive::feature_collection_derive_impl(input, true)
-}
-
-#[proc_macro_derive(OptionalFeatureCollection)]
-pub fn optional_feature_collection_derive(input: TokenStream) -> TokenStream {
-    feature_collection_derive::feature_collection_derive_impl(input, false)
+    feature_collection_derive::feature_collection_derive_impl(input)
 }

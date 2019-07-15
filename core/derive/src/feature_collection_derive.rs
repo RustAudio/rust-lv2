@@ -16,14 +16,10 @@ impl<'a> FeatureCollectionField<'a> {
         }
     }
 
-    fn make_retrieval(&self, required: bool) -> impl ::quote::ToTokens {
+    fn make_retrieval(&self) -> impl ::quote::ToTokens {
         let identifier = self.identifier;
         let feature_type = self.feature_type;
-        if required {
-            quote! {#identifier: container.retrieve_feature::<#feature_type>()?,}
-        } else {
-            quote! {#identifier: container.retrieve_feature::<#feature_type>(),}
-        }
+        quote! {#identifier: container.retrieve_feature::<#feature_type>()?,}
     }
 }
 
@@ -48,12 +44,12 @@ impl<'a> FeatureCollectionStruct<'a> {
         }
     }
 
-    fn make_implementation(&self, required: bool) -> TokenStream {
+    fn make_implementation(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let retrievals = self
             .fields
             .iter()
-            .map(|field| field.make_retrieval(required));
+            .map(|field| field.make_retrieval());
         (quote! {
             impl FeatureCollection for #struct_name {
                 fn from_container(container: &mut FeatureContainer) -> Option<Self> {
@@ -67,8 +63,8 @@ impl<'a> FeatureCollectionStruct<'a> {
     }
 }
 
-pub fn feature_collection_derive_impl(input: TokenStream, required: bool) -> TokenStream {
+pub fn feature_collection_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
     let list = FeatureCollectionStruct::from_derive_input(&input);
-    list.make_implementation(required)
+    list.make_implementation()
 }
