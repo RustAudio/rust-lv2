@@ -28,9 +28,9 @@ jobs:
         - cargo fmt --all -- --check
     - stage: tests
       script:
-         - cargo build --verbose -- --all
-         - cargo build --verbose -- --examples
-         - cargo test --verbose -- --all
+         - cargo build --all --verbose
+         - cargo build --all --verbose
+         - cargo test --all --verbose
 
 matrix:
   allow_failures:
