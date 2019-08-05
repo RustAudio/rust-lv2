@@ -21,7 +21,7 @@ jobs:
       before_script:
         - rustup component add rustfmt
         - rustup component add clippy
-        - rustup install --force cargo-audit
+        - cargo install --force cargo-audit
       script:
         - cargo audit
         - cargo clippy --all-targets --all-features -- -D warnings
