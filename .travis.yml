@@ -4,35 +4,33 @@ branches:
   only:
   - master
 
+rust:
+  - stable
+  - beta
+  - nightly
+
+os:
+  - linux
+  - windows
+  - osx
+
 jobs:
   include:
-    - stage: test
-      os:
-        - linux
-        - windows
-        - osx
-      rust:
-        - stable
-        - beta
-        - nightly
-      script:
-        - cargo build --all --verbose
-        - cargo build --examples --verbose
-        - cargo test --all --verbose
-    
     - stage: style
-      os:
-        - linux
-      rust:
-        - stable
-        - nightly
+      os: linux
       before_script:
         - rustup component add rustfmt
+        - rustup component add clippy
         - rustup install --force cargo-audit
       script:
         - cargo audit
         - cargo clippy --all-targets --all-features -- -D warnings
         - cargo fmt --all -- --check
+    - stage: test
+      script:
+         - cargo build --verbose --all
+         - cargo build --verbose --examples
+         - cargo test --verbose --all
 
 matrix:
   allow_failures:
