@@ -5,10 +5,9 @@ pub mod port;
 pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
-use crate::extension::ExtensionDescriptor;
 use crate::feature::Feature;
+use std::any::Any;
 use std::collections::HashMap;
-
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use sys::LV2_Handle;
@@ -50,6 +49,14 @@ pub trait PortContainer: Sized {
     unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self>;
 }
 
+impl PortContainer for () {
+    type Cache = ();
+
+    unsafe fn from_connections(_cache: &(), _sample_count: u32) -> Option<Self> {
+        Some(())
+    }
+}
+
 /// Cache for port connection pointers.
 ///
 /// The host will pass the port connection pointers one by one and in an undefined order. Therefore, the `PortContainer` struct can not be created instantly. Instead, the pointers will be stored in a cache, which is then used to create a proper port container for the plugin.
@@ -60,6 +67,10 @@ pub trait PortPointerCache: Sized + Default {
     fn connect(&mut self, index: u32, pointer: *mut c_void);
 }
 
+impl PortPointerCache for () {
+    fn connect(&mut self, _index: u32, _pointer: *mut c_void) {}
+}
+
 /// The central trait to describe LV2 plugins.
 ///
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
@@ -68,8 +79,6 @@ pub trait PortPointerCache: Sized + Default {
 pub trait Plugin: Sized + Send + Sync + 'static {
     /// The type of the port container.
     type Ports: PortContainer;
-
-    const EXTENSIONS: &'static [ExtensionDescriptor<Self>] = &[];
 
     /// Create a new plugin instance.
     ///
@@ -90,6 +99,17 @@ pub trait Plugin: Sized + Send + Sync + 'static {
     ///
     /// The host will always call this method when it wants to shut the plugin down. After `deactivate` has been called, `run` will not be called until `activate` has been called again.
     fn deactivate(&mut self) {}
+
+    /// Return additional, extension-specific data.
+    ///
+    /// Sometimes, the methods from the `Plugin` trait aren't enough to support additional LV2 specifications. For these cases, extension exist. In most cases and for Rust users, an extension is simply a trait that can be implemented for a plugin.
+    ///
+    /// However, these implemented methods must be passed to the host. This is where this method comes into play: The host will call it with a URI for an extension. Then, it is the plugin's responsibilty to return the extension data to the host.
+    ///
+    /// In most cases, you can simply use the [`match_extensions`](../macro.match_extensions.html) macro to generate an appropiate method body.
+    fn extension_data(_uri: &CStr) -> Option<&'static dyn Any> {
+        None
+    }
 }
 
 /// Descriptor of a single host feature.
@@ -295,12 +315,14 @@ impl<T: Plugin> PluginInstance<T> {
         }
     }
 
+    /// Dereference the URI, call the `extension_data` function and return the pointer.
     pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
         let uri = CStr::from_ptr(uri);
-        T::EXTENSIONS
-            .iter()
-            .find(|desc| desc.uri() == uri)
-            .map_or(std::ptr::null(), |ext| ext.raw_data())
+        if let Some(data) = T::extension_data(uri) {
+            data as *const _ as *const c_void
+        } else {
+            std::ptr::null()
+        }
     }
 }
 
