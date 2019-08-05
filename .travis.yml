@@ -4,32 +4,39 @@ branches:
   only:
   - master
 
-rust:
-  - stable
-  - beta
-  - nightly
-
-os:
-  - linux
-  - windows
-  - osx
+jobs:
+  include:
+    - stage: test
+      os:
+        - linux
+        - windows
+        - osx
+      rust:
+        - stable
+        - beta
+        - nightly
+      script:
+        - cargo build --all --verbose
+        - cargo build --examples --verbose
+        - cargo test --all --verbose
+    
+    - stage: style
+      os:
+        - linux
+      rust:
+        - stable
+        - nightly
+      before_script:
+        - rustup component add rustfmt
+        - rustup install --force cargo-audit
+      script:
+        - cargo audit
+        - cargo clippy --all-targets --all-features -- -D warnings
+        - cargo fmt --all -- --check
 
 matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
-
-before_script:
-  - rustup component add rustfmt
-  - rustup component add clippy
-  - cargo install --force cargo-audit
-
-script:
-  - cargo build --verbose --all
-  - cargo build --verbose --examples
-  - cargo test --verbose --all
-  - cargo audit
-  - cargo clippy --all-targets --all-features -- -D warnings
-  - cargo fmt --all -- --check
 
 cache: cargo
