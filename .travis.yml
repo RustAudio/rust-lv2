@@ -26,15 +26,15 @@ jobs:
         - cargo audit
         - cargo clippy --all-targets --all-features -- -D warnings
         - cargo fmt --all -- --check
-    - stage: tests
-      script:
-         - cargo build --all --verbose
-         - cargo build --all --verbose
-         - cargo test --all --verbose
 
 matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+
+script:
+  - cargo build --all --verbose
+  - cargo build --examples --verbose
+  - cargo test --all --verbose
 
 cache: cargo
