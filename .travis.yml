@@ -23,6 +23,7 @@ jobs:
         - rustup component add clippy
         - cargo install --force cargo-audit
       script:
+        - cargo build --all --verbose
         - cargo audit
         - cargo clippy --all-targets --all-features -- -D warnings
         - cargo fmt --all -- --check
