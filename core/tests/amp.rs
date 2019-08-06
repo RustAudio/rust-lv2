@@ -24,7 +24,10 @@ impl Plugin for Amp {
             plugin_info.plugin_uri().to_str().unwrap(),
             "http://lv2plug.in/plugins.rs/example_amp"
         );
-        assert_eq!(plugin_info.bundle_path().to_str().unwrap(), "/home/lv2/amp.lv2/");
+        assert_eq!(
+            plugin_info.bundle_path().to_str().unwrap(),
+            "/home/lv2/amp.lv2/"
+        );
         assert_eq!(plugin_info.sample_rate(), 44100.0);
 
         // Finding and verifying all features.
