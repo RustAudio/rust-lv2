@@ -1,11 +1,12 @@
 //! Types to declare derivable port containers.
 //!
-//! Every plugin has a type of [`PortContainer`](../trait.PortContainer.html) which is used to handle input/output ports. In order to make the creation of these port container types easier, `PortContainer` can simply be derived. However, the macro that implements `PortContainer` requires the fields of the struct to have specific types. These types are provided in this module.
+//! Every plugin has a type of [`PortContainer`](trait.PortContainer.html) which is used to handle input/output ports. In order to make the creation of these port container types easier, `PortContainer` can simply be derived. However, the macro that implements `PortContainer` requires the fields of the struct to have specific types. These types are provided in this module.
+use crate::UriBound;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
-use crate::UriBound;
+pub use lv2_core_derive::*;
 
 /// Generalization of port types.
 ///
@@ -189,4 +190,62 @@ impl<T: PortHandle> PortHandle for Option<T> {
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
         Some(T::from_raw(pointer, sample_count))
     }
+}
+
+/// Container for port handling.
+///
+/// Plugins do not handle port management on their own. Instead, they define a struct with all of the required ports. Then, the plugin instance will collect the port pointers from the host and create a `PortContainer` instance for every `run` call. Using this instance, plugins have access to all of their required ports.
+///
+/// # Implementing
+///
+/// The most convenient way to create port containers is to define a struct with port types from the [`port`](index.html) module and then simply derive `PortContainer` for it. An example:
+///
+///     use lv2_core::port::*;
+///
+///     #[derive(PortContainer)]
+///     struct MyPortContainer {
+///         audio_input: InputPort<Audio>,
+///         audio_output: OutputPort<Audio>,
+///         control_input: InputPort<Control>,
+///         control_output: OutputPort<Control>,
+///         optional_control_input: Option<InputPort<Control>>,
+///     }
+///
+/// Please note that port indices are mapped in the order of occurence; In our example, the implementation will treat `audio_input` as port `0`, `audio_output` as port `1` and so on. Therefore, your plugin definition and your port container have to match. Otherwise, undefined behaviour will occur.
+pub trait PortContainer: Sized {
+    /// The type of the port pointer cache.
+    ///
+    /// The host passes port pointers to the plugin one by one and in an undefined order. Therefore, the plugin instance can not collect these pointers in the port container directly. Instead, the pointers are stored in a cache which is then used to create the proper port container.
+    type Cache: PortPointerCache;
+
+    /// Try to construct a port container instance from a port pointer cache.
+    ///
+    /// If one of the port connection pointers is null, this method will return `None`, because a `PortContainer` can not be constructed.
+    ///
+    /// # unsafety
+    ///
+    /// Since the pointer cache is only storing the pointers, implementing this method requires the de-referencation of raw pointers and therefore, this method is unsafe.
+    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self>;
+}
+
+impl PortContainer for () {
+    type Cache = ();
+
+    unsafe fn from_connections(_cache: &(), _sample_count: u32) -> Option<Self> {
+        Some(())
+    }
+}
+
+/// Cache for port connection pointers.
+///
+/// The host will pass the port connection pointers one by one and in an undefined order. Therefore, the `PortContainer` struct can not be created instantly. Instead, the pointers will be stored in a cache, which is then used to create a proper port container for the plugin.
+pub trait PortPointerCache: Sized + Default {
+    /// Store the connection pointer for the port with index `index`.
+    ///
+    /// The passed pointer may not be valid yet and therefore, implementors should only store the pointer, not dereference it.
+    fn connect(&mut self, index: u32, pointer: *mut c_void);
+}
+
+impl PortPointerCache for () {
+    fn connect(&mut self, _index: u32, _pointer: *mut c_void) {}
 }

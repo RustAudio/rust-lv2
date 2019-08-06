@@ -25,7 +25,7 @@ impl<'a> PortContainerField<'a> {
         let port_type = self.port_type;
         quote! {
             #identifier: {
-                let connection = <#port_type as ::lv2_core::plugin::port::PortHandle>::from_raw(connections.#identifier, sample_count);
+                let connection = <#port_type as ::lv2_core::port::PortHandle>::from_raw(connections.#identifier, sample_count);
                 if let Some(connection) = connection {
                     connection
                 } else {
@@ -147,7 +147,7 @@ impl<'a> PortContainerStruct<'a> {
                     }
                 }
 
-                impl ::lv2_core::plugin::PortPointerCache for DerivedPortPointerCache {
+                impl ::lv2_core::port::PortPointerCache for DerivedPortPointerCache {
                     fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
                         match index {
                             #(#connect_matchers)*

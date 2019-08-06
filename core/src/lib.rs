@@ -7,8 +7,7 @@ pub mod extension;
 pub mod feature;
 pub mod plugin;
 pub mod prelude;
-
-pub use plugin::Plugin;
+pub mod port;
 
 /// Trait for types that can be identified by a URI.
 ///
