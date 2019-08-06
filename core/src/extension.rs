@@ -19,7 +19,8 @@ use std::any::Any;
 ///
 ///  An example on how to put it all together:
 ///
-///     use lv2_core::plugin::{Plugin, PluginInfo, FeatureContainer};
+///     use lv2_core::plugin::{Plugin, PluginInfo};
+///     use lv2_core::feature::FeatureContainer;
 ///     use lv2_core::extension::Extension;
 ///     use lv2_core::{UriBound, match_extensions};
 ///

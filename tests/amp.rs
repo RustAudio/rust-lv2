@@ -1,5 +1,6 @@
+use lv2::core::feature::FeatureContainer;
 use lv2::core::plugin::port::{Audio, Control, InputPort, OutputPort};
-use lv2::core::plugin::{lv2_descriptors, FeatureContainer, Plugin, PluginInfo, PortContainer};
+use lv2::core::plugin::{lv2_descriptors, Plugin, PluginInfo, PortContainer};
 
 struct Amp;
 
