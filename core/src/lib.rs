@@ -6,8 +6,8 @@ pub extern crate lv2_core_sys as sys;
 pub mod extension;
 pub mod feature;
 pub mod plugin;
-pub mod prelude;
 pub mod port;
+pub mod prelude;
 
 /// Trait for types that can be identified by a URI.
 ///
