@@ -361,7 +361,7 @@ mod tests {
         const URI: &'static [u8] = b"urn:lv2Feature:A\0";
     }
 
-    unsafe impl Feature for FeatureA {
+    impl Feature for FeatureA {
         type RawDataType = i32;
 
         unsafe fn from_raw_data(data: *mut i32) -> Self {
@@ -377,7 +377,7 @@ mod tests {
         const URI: &'static [u8] = b"urn:lv2Fearure:B\0";
     }
 
-    unsafe impl Feature for FeatureB {
+    impl Feature for FeatureB {
         type RawDataType = f32;
 
         unsafe fn from_raw_data(data: *mut f32) -> Self {

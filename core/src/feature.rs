@@ -1,15 +1,23 @@
+//! Additional host functionalities.
 use crate::UriBound;
 use std::ffi::c_void;
 
-/// Represents extension data for a given feature.
+/// Trait to generalize the feature detection system.
 ///
-/// Features have to be `#[repr(C)]`, since they have to have a valid representation in C. Since
-/// this requirement can not be checked with super-traits, this trait is `unsafe` to implement.
-pub unsafe trait Feature: UriBound {
+/// A host that only implements the core LV2 specification does not have much functionality. Therefore, host can provide extra functionalities, called "Features", a plugin can use to become more useful.
+///
+/// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
+///
+/// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#method.from_raw_data) method.
+pub trait Feature: UriBound {
     /// The type that is used by the C interface to contain a feature's data.
+    ///
+    /// This should be the struct type defined by the specification, contained in your `sys` crate, if you have one.
     type RawDataType;
 
     /// Create a feature object from raw data.
+    ///
+    /// Since this will most likely involve dereferencing the data pointer, this method is marked as `unsafe´.
     unsafe fn from_raw_data(data: *mut Self::RawDataType) -> Self;
 
     /// Return a pointer to the raw data.
@@ -24,13 +32,14 @@ pub unsafe trait Feature: UriBound {
     }
 }
 
+/// Marker feature to signal that the plugin can run in a hard real-time environment.
 pub struct HardRTCapable;
 
 unsafe impl UriBound for HardRTCapable {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__hardRTCapable;
 }
 
-unsafe impl Feature for HardRTCapable {
+impl Feature for HardRTCapable {
     type RawDataType = c_void;
 
     unsafe fn from_raw_data(_data: *mut c_void) -> Self {
@@ -42,13 +51,16 @@ unsafe impl Feature for HardRTCapable {
     }
 }
 
+/// Marker feature to signal the host to avoid in-place operation.
+///
+/// This feature has to be required by any plugin that may break if ANY input port is connected to the same memory location as ANY output port.
 pub struct InPlaceBroken;
 
 unsafe impl UriBound for InPlaceBroken {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__inPlaceBroken;
 }
 
-unsafe impl Feature for InPlaceBroken {
+impl Feature for InPlaceBroken {
     type RawDataType = c_void;
 
     unsafe fn from_raw_data(_data: *mut c_void) -> Self {
@@ -60,13 +72,14 @@ unsafe impl Feature for InPlaceBroken {
     }
 }
 
+/// Marker feature to signal the host to only run the plugin in a live environment.
 pub struct IsLive;
 
 unsafe impl UriBound for IsLive {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__isLive;
 }
 
-unsafe impl Feature for IsLive {
+impl Feature for IsLive {
     type RawDataType = c_void;
 
     unsafe fn from_raw_data(_data: *mut c_void) -> Self {

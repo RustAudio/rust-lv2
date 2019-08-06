@@ -10,8 +10,6 @@ pub(crate) enum PluginInfoError {
 }
 
 /// Holds various data that is passed from the host at plugin instantiation time.
-///
-/// See the methods' documentation to know which data is available.
 pub struct PluginInfo<'a> {
     plugin_uri: &'a CStr,
     bundle_path: &'a Path,
@@ -19,7 +17,6 @@ pub struct PluginInfo<'a> {
 }
 
 impl<'a> PluginInfo<'a> {
-    #[doc(hidden)]
     pub(crate) unsafe fn from_raw(
         plugin_descriptor: *const crate::sys::_LV2_Descriptor,
         bundle_path: *const c_char,
@@ -32,7 +29,6 @@ impl<'a> PluginInfo<'a> {
         )
     }
 
-    #[doc(hidden)]
     pub(crate) fn new(
         plugin_uri: &'a CStr,
         bundle_path: &'a CStr,
@@ -52,7 +48,6 @@ impl<'a> PluginInfo<'a> {
     }
 
     /// The URI of the plugin that is being instantiated.
-    #[inline]
     pub fn plugin_uri(&self) -> &CStr {
         self.plugin_uri
     }
@@ -61,14 +56,12 @@ impl<'a> PluginInfo<'a> {
     ///
     /// This is useful to get if the plugin needs to store extra resources in its bundle directory,
     /// such as presets, or any other kind of data.
-    #[inline]
     pub fn bundle_path(&self) -> &Path {
         self.bundle_path
     }
 
     /// The sample rate, in Hz, that is being used by the host.
     /// The host will always send audio data to the plugin at this sample rate.
-    #[inline]
     pub fn sample_rate(&self) -> f64 {
         self.sample_rate
     }
