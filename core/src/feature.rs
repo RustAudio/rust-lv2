@@ -10,27 +10,14 @@ use std::ffi::{c_void, CStr};
 /// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
 ///
 /// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#tymethod.from_raw_data) method.
-pub trait Feature: UriBound {
+pub trait Feature: UriBound + Sized {
     /// The type that is used by the C interface to contain a feature's data.
     ///
     /// This should be the struct type defined by the specification, contained in your `sys` crate, if you have one.
     type RawDataType;
 
     /// Create a feature object from raw data.
-    ///
-    /// Since this will most likely involve dereferencing the data pointer, this method is marked as `unsafe´.
-    unsafe fn from_raw_data(data: *mut Self::RawDataType) -> Self;
-
-    /// Return a pointer to the raw data.
-    fn raw_data(&mut self) -> *mut Self::RawDataType;
-
-    /// Create a raw feature descriptor for the plugin.
-    fn create_raw_feature(&mut self) -> ::sys::LV2_Feature {
-        ::sys::LV2_Feature {
-            URI: <Self as UriBound>::URI.as_ptr() as *const i8,
-            data: self.raw_data() as *mut c_void,
-        }
-    }
+    fn from_raw_data(data: Option<&mut Self::RawDataType>) -> Option<Self>;
 }
 
 /// Marker feature to signal that the plugin can run in a hard real-time environment.
@@ -43,12 +30,8 @@ unsafe impl UriBound for HardRTCapable {
 impl Feature for HardRTCapable {
     type RawDataType = c_void;
 
-    unsafe fn from_raw_data(_data: *mut c_void) -> Self {
-        Self {}
-    }
-
-    fn raw_data(&mut self) -> *mut c_void {
-        std::ptr::null_mut()
+    fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
+        Some(Self {})
     }
 }
 
@@ -64,12 +47,8 @@ unsafe impl UriBound for InPlaceBroken {
 impl Feature for InPlaceBroken {
     type RawDataType = c_void;
 
-    unsafe fn from_raw_data(_data: *mut c_void) -> Self {
-        Self {}
-    }
-
-    fn raw_data(&mut self) -> *mut c_void {
-        std::ptr::null_mut()
+    fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
+        Some(Self {})
     }
 }
 
@@ -83,12 +62,8 @@ unsafe impl UriBound for IsLive {
 impl Feature for IsLive {
     type RawDataType = c_void;
 
-    unsafe fn from_raw_data(_data: *mut c_void) -> Self {
-        Self {}
-    }
-
-    fn raw_data(&mut self) -> *mut c_void {
-        std::ptr::null_mut()
+    fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
+        Some(Self {})
     }
 }
 
@@ -121,7 +96,13 @@ impl<'a> FeatureDescriptor<'a> {
     /// If the feature construction fails, the descriptor will be returned again.
     pub fn into_feature<T: Feature>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
-            Ok(unsafe { T::from_raw_data(self.data as *mut _) })
+            if let Some(feature) =
+                T::from_raw_data(unsafe { (self.data as *mut T::RawDataType).as_mut() })
+            {
+                Ok(feature)
+            } else {
+                Err(self)
+            }
         } else {
             Err(self)
         }
@@ -168,9 +149,9 @@ impl<'a> FeatureContainer<'a> {
     ///
     /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
     pub fn retrieve_feature<T: Feature>(&mut self) -> Option<T> {
-        self.internal
-            .remove(T::uri())
-            .map(|ptr| unsafe { T::from_raw_data(ptr as *mut T::RawDataType) })
+        self.internal.remove(T::uri()).map_or(None, |ptr| {
+            T::from_raw_data(unsafe { (ptr as *mut T::RawDataType).as_mut() })
+        })
     }
 }
 
@@ -217,14 +198,10 @@ pub trait FeatureCollection: Sized {
 mod tests {
     use crate::{feature::*, plugin::*, UriBound};
 
-    #[derive(Clone, Copy)]
-    #[repr(C)]
     struct FeatureA {
         pub number: i32,
     }
 
-    #[derive(Clone, Copy)]
-    #[repr(C)]
     struct FeatureB {
         number: f32,
     }
@@ -236,12 +213,12 @@ mod tests {
     impl Feature for FeatureA {
         type RawDataType = i32;
 
-        unsafe fn from_raw_data(data: *mut i32) -> Self {
-            FeatureA { number: *data }
-        }
-
-        fn raw_data(&mut self) -> *mut i32 {
-            &mut self.number
+        fn from_raw_data(data: Option<&mut i32>) -> Option<Self> {
+            if let Some(data) = data {
+                Some(FeatureA { number: *data })
+            } else {
+                None
+            }
         }
     }
 
@@ -252,12 +229,12 @@ mod tests {
     impl Feature for FeatureB {
         type RawDataType = f32;
 
-        unsafe fn from_raw_data(data: *mut f32) -> Self {
-            FeatureB { number: *data }
-        }
-
-        fn raw_data(&mut self) -> *mut f32 {
-            &mut self.number
+        fn from_raw_data(data: Option<&mut f32>) -> Option<Self> {
+            if let Some(data) = data {
+                Some(FeatureB { number: *data })
+            } else {
+                None
+            }
         }
     }
 
@@ -268,28 +245,41 @@ mod tests {
     }
 
     struct FeatureTestSetting<'a> {
-        pub feature_a: Box<FeatureA>,
-        pub feature_b: Box<FeatureB>,
+        pub data_a: Box<i32>,
+        pub feature_a_sys: Box<::sys::LV2_Feature>,
+        pub data_b: Box<f32>,
+        pub feature_b_sys: Box<::sys::LV2_Feature>,
         pub features_container: FeatureContainer<'a>,
     }
 
     impl<'a> FeatureTestSetting<'a> {
         fn new() -> Self {
-            let mut feature_a = Box::new(FeatureA { number: 42 });
-            let feature_a_sys = feature_a.create_raw_feature();
+            let mut data_a: Box<i32> = Box::new(42);
+            let feature_a_sys = Box::new(::sys::LV2_Feature {
+                URI: FeatureA::URI.as_ptr() as *const i8,
+                data: data_a.as_mut() as *mut i32 as *mut c_void,
+            });
 
-            let mut feature_b = Box::new(FeatureB { number: 17.0 });
-            let feature_b_sys = feature_b.create_raw_feature();
+            let mut data_b: Box<f32> = Box::new(17.0);
+            let feature_b_sys = Box::new(::sys::LV2_Feature {
+                URI: FeatureB::URI.as_ptr() as *const i8,
+                data: data_b.as_mut() as *mut f32 as *mut c_void,
+            });
 
-            let features_list: &[*const sys::LV2_Feature] =
-                &[&feature_a_sys, &feature_b_sys, std::ptr::null()];
+            let features_list: &[*const sys::LV2_Feature] = &[
+                feature_a_sys.as_ref(),
+                feature_b_sys.as_ref(),
+                std::ptr::null(),
+            ];
 
             // Constructing the container.
             let features_container = unsafe { FeatureContainer::from_raw(features_list.as_ptr()) };
 
             Self {
-                feature_a,
-                feature_b,
+                data_a,
+                feature_a_sys,
+                data_b,
+                feature_b_sys,
                 features_container,
             }
         }
@@ -306,10 +296,10 @@ mod tests {
         assert!(features_container.contains::<FeatureB>());
 
         let retrieved_feature_a = features_container.retrieve_feature::<FeatureA>().unwrap();
-        assert!(retrieved_feature_a.number == setting.feature_a.number);
+        assert!(retrieved_feature_a.number == *(setting.data_a));
 
         let retrieved_feature_b = features_container.retrieve_feature::<FeatureB>().unwrap();
-        assert!(retrieved_feature_b.number == setting.feature_b.number);
+        assert!(retrieved_feature_b.number == *(setting.data_b));
     }
 
     #[test]
@@ -329,14 +319,14 @@ mod tests {
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
                 if let Ok(retrieved_feature_a) = descriptor.into_feature::<FeatureA>() {
-                    assert!(retrieved_feature_a.number == setting.feature_a.number);
+                    assert!(retrieved_feature_a.number == *(setting.data_a));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
                 if let Ok(retrieved_feature_b) = descriptor.into_feature::<FeatureB>() {
-                    assert!(retrieved_feature_b.number == setting.feature_b.number);
+                    assert!(retrieved_feature_b.number == *(setting.data_b));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
@@ -355,7 +345,7 @@ mod tests {
         let mut features_container = setting.features_container;
 
         let container = Collection::from_container(&mut features_container).unwrap();
-        assert_eq!(container.a.number, setting.feature_a.number);
-        assert_eq!(container.b.number, setting.feature_b.number);
+        assert_eq!(container.a.number, *(setting.data_a));
+        assert_eq!(container.b.number, *(setting.data_b));
     }
 }

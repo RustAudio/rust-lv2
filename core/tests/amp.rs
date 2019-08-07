@@ -90,7 +90,7 @@ fn test_discovery() {
 
 #[test]
 fn test_plugin() {
-    use lv2_core::feature::Feature;
+    use lv2_core::UriBound;
     use lv2_core_sys::*;
 
     // Creating the ports.
@@ -102,7 +102,10 @@ fn test_plugin() {
     let mut output: Box<[f32; 128]> = Box::new([0.0; 128]);
 
     // Creating the hard-rt feature.
-    let hard_rt_capable = HardRTCapable {}.create_raw_feature();
+    let hard_rt_capable = LV2_Feature {
+        URI: HardRTCapable::URI.as_ptr() as *const i8,
+        data: std::ptr::null_mut(),
+    };
     let features: &[*const LV2_Feature] = &[&hard_rt_capable, std::ptr::null()];
 
     unsafe {
