@@ -5,24 +5,22 @@ use std::ffi::CStr;
 pub use sys::LV2_URID as URID;
 
 pub struct Map<'a> {
-    internal: &'a mut sys::LV2_URID_Map,
+    internal: &'a sys::LV2_URID_Map,
 }
 
 unsafe impl<'a> UriBound for Map<'a> {
     const URI: &'static [u8] = sys::LV2_URID_MAP_URI;
 }
 
-impl<'a> Feature for Map<'a> {
+impl<'a> Feature<'a> for Map<'a> {
     type RawDataType = sys::LV2_URID_Map;
 
-    unsafe fn from_raw_data(data: *mut sys::LV2_URID_Map) -> Self {
-        Self {
-            internal: data.as_mut().unwrap(),
+    fn from_raw_data(data: Option<&'a mut sys::LV2_URID_Map>) -> Option<Self> {
+        if let Some(internal) = data {
+            Some(Self { internal })
+        } else {
+            None
         }
-    }
-
-    fn raw_data(&mut self) -> *mut sys::LV2_URID_Map {
-        self.internal
     }
 }
 
@@ -35,24 +33,22 @@ impl<'a> Map<'a> {
 }
 
 pub struct Unmap<'a> {
-    internal: &'a mut sys::LV2_URID_Unmap,
+    internal: &'a sys::LV2_URID_Unmap,
 }
 
 unsafe impl<'a> UriBound for Unmap<'a> {
     const URI: &'static [u8] = sys::LV2_URID_UNMAP_URI;
 }
 
-impl<'a> Feature for Unmap<'a> {
+impl<'a> Feature<'a> for Unmap<'a> {
     type RawDataType = sys::LV2_URID_Unmap;
 
-    unsafe fn from_raw_data(data: *mut sys::LV2_URID_Unmap) -> Self {
-        Self {
-            internal: data.as_mut().unwrap(),
+    fn from_raw_data(data: Option<&'a mut sys::LV2_URID_Unmap>) -> Option<Self> {
+        if let Some(internal) = data {
+            Some(Self { internal })
+        } else {
+            None
         }
-    }
-
-    fn raw_data(&mut self) -> *mut sys::LV2_URID_Unmap {
-        self.internal
     }
 }
 
