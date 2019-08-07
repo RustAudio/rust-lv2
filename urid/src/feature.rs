@@ -1,9 +1,11 @@
+//! Thin but safe wrappers for the URID mapping features.
 use core::feature::Feature;
 use core::UriBound;
 use std::ffi::CStr;
 
 pub use sys::LV2_URID as URID;
 
+/// Host feature to map URIs to integers
 pub struct Map<'a> {
     internal: &'a sys::LV2_URID_Map,
 }
@@ -25,6 +27,9 @@ impl<'a> Feature<'a> for Map<'a> {
 }
 
 impl<'a> Map<'a> {
+    /// Return the URID of the given URI.
+    ///
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
     pub fn map(&self, uri: &CStr) -> URID {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
@@ -32,6 +37,7 @@ impl<'a> Map<'a> {
     }
 }
 
+/// Host feature to revert the URI -> URID mapping.
 pub struct Unmap<'a> {
     internal: &'a sys::LV2_URID_Unmap,
 }
@@ -53,6 +59,9 @@ impl<'a> Feature<'a> for Unmap<'a> {
 }
 
 impl<'a> Unmap<'a> {
+    /// Return the URI of the given URID.
+    ///
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
     pub fn unmap(&self, urid: URID) -> &CStr {
         let handle = self.internal.handle;
         unsafe {
