@@ -6,4 +6,5 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+lv2-core = { path = "../core" }
 lv2-urid-sys = { path = "sys" }
