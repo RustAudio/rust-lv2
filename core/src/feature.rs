@@ -149,7 +149,7 @@ impl<'a> FeatureContainer<'a> {
     ///
     /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
     pub fn retrieve_feature<T: Feature<'a>>(&mut self) -> Option<T> {
-        self.internal.remove(T::uri()).map_or(None, |ptr| {
+        self.internal.remove(T::uri()).and_then(|ptr| {
             T::from_raw_data(unsafe { (ptr as *mut T::RawDataType).as_mut() })
         })
     }
