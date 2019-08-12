@@ -3,22 +3,22 @@ use crate::URID;
 use core::feature::Feature;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
+use std::sync::Mutex;
+
+type InternalMap = Mutex<HashMap<&'static CStr, URID>>;
 
 unsafe extern "C" fn internal_mapping_fn(handle: *mut c_void, uri: *const i8) -> URID {
-    let handle = (handle as *mut HashMap<&'static CStr, URID>)
-        .as_mut()
-        .unwrap();
+    let mut handle = (*(handle as *mut InternalMap)).lock().unwrap();
     let uri = CStr::from_ptr(uri);
     if !handle.contains_key(uri) {
-        handle.insert(uri, handle.len() as u32);
+        let new_urid = handle.len() as u32;
+        handle.insert(uri, new_urid);
     }
     handle[uri]
 }
 
 unsafe extern "C" fn internal_unmapping_fn(handle: *mut c_void, urid: URID) -> *const i8 {
-    let handle = (handle as *mut HashMap<&'static CStr, URID>)
-        .as_mut()
-        .unwrap();
+    let handle = (*(handle as *mut InternalMap)).lock().unwrap();
     for key in handle.keys() {
         if handle[key] == urid {
             return key.as_ptr();
@@ -28,20 +28,20 @@ unsafe extern "C" fn internal_unmapping_fn(handle: *mut c_void, urid: URID) -> *
 }
 
 pub struct TestBench {
-    pub internal_map: Box<HashMap<&'static CStr, URID>>,
+    pub internal_map: Box<InternalMap>,
     pub sys_map: sys::LV2_URID_Map,
     pub sys_unmap: sys::LV2_URID_Unmap,
 }
 
 impl TestBench {
     pub fn new() -> Self {
-        let mut internal_map = Box::new(HashMap::new());
+        let mut internal_map = Box::new(Mutex::new(HashMap::new()));
         let sys_map = sys::LV2_URID_Map {
-            handle: internal_map.as_mut() as *mut HashMap<&'static CStr, URID> as *mut c_void,
+            handle: internal_map.as_mut() as *mut InternalMap as *mut c_void,
             map: Some(internal_mapping_fn),
         };
         let sys_unmap = sys::LV2_URID_Unmap {
-            handle: internal_map.as_mut() as *mut HashMap<&'static CStr, URID> as *mut c_void,
+            handle: internal_map.as_mut() as *mut InternalMap as *mut c_void,
             unmap: Some(internal_unmapping_fn),
         };
         Self {
