@@ -32,6 +32,9 @@
 //! This crate is provided only for convenience (like in examples or prototypes), however in
 //! production code we recommend relying on each sub-crate you really need, to reduce the number
 //! of dependencies to be built, as well as the final binary size.
+//! 
+//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
+//! you need to have clang installed on your machine.
 
 #![deny(missing_docs)]
 
