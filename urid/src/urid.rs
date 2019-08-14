@@ -5,6 +5,7 @@ use std::ffi::CStr;
 use std::ops::Deref;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(transparent)]
 pub struct URID(u32);
 
 impl URID {
