@@ -1,23 +1,22 @@
 use crate::feature::*;
-use crate::URID;
 use core::feature::Feature;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
 use std::sync::Mutex;
 
-type InternalMap = Mutex<HashMap<&'static CStr, URID>>;
+type InternalMap = Mutex<HashMap<&'static CStr, u32>>;
 
-unsafe extern "C" fn internal_mapping_fn(handle: *mut c_void, uri: *const i8) -> URID {
+unsafe extern "C" fn internal_mapping_fn(handle: *mut c_void, uri: *const i8) -> u32 {
     let mut handle = (*(handle as *mut InternalMap)).lock().unwrap();
     let uri = CStr::from_ptr(uri);
     if !handle.contains_key(uri) {
-        let new_urid = handle.len() as u32;
+        let new_urid = handle.len() as u32 + 1;
         handle.insert(uri, new_urid);
     }
     handle[uri]
 }
 
-unsafe extern "C" fn internal_unmapping_fn(handle: *mut c_void, urid: URID) -> *const i8 {
+unsafe extern "C" fn internal_unmapping_fn(handle: *mut c_void, urid: u32) -> *const i8 {
     let handle = (*(handle as *mut InternalMap)).lock().unwrap();
     for key in handle.keys() {
         if handle[key] == urid {

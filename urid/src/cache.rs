@@ -23,14 +23,19 @@ impl<'a> CachedMap<'a> {
         }
     }
 
-    pub fn urid_of<T: UriBound>(&mut self) -> URID {
+    pub fn urid_of<T: UriBound>(&mut self) -> Option<URID> {
         let cache = &mut self.cache;
         let map_feature = &mut self.map_feature;
         let uri_address = T::URI.as_ptr() as *const i8;
 
-        *(cache
-            .entry(uri_address)
-            .or_insert_with(|| map_feature.map(T::uri())))
+        cache.get(&uri_address).cloned().or_else(|| {
+            if let Some(urid) = map_feature.map(T::uri()) {
+                cache.insert(uri_address, urid);
+                Some(urid)
+            } else {
+                None
+            }
+        })
     }
 
     pub fn try_urid_of<T: UriBound>(&self) -> Option<URID> {
@@ -58,23 +63,23 @@ fn test_cached_map() {
     let mut cached_map = CachedMap::from_feature(test_bench.make_map());
 
     // urid_of
-    assert_eq!(0, cached_map.urid_of::<Map>());
-    assert_eq!(1, cached_map.urid_of::<Unmap>());
-    assert_eq!(0, cached_map.urid_of::<Map>());
+    assert_eq!(1, cached_map.urid_of::<Map>().unwrap());
+    assert_eq!(2, cached_map.urid_of::<Unmap>().unwrap());
+    assert_eq!(1, cached_map.urid_of::<Map>().unwrap());
 
     // try_urid_of
-    assert_eq!(Some(0), cached_map.try_urid_of::<Map>());
-    assert_eq!(Some(1), cached_map.try_urid_of::<Unmap>());
+    assert_eq!(1, *cached_map.try_urid_of::<Map>().unwrap());
+    assert_eq!(2, *cached_map.try_urid_of::<Unmap>().unwrap());
     assert_eq!(None, cached_map.try_urid_of::<IsLive>());
 
     // map_feature
     let feature = cached_map.map_feature();
-    assert_eq!(0, feature.map(Map::uri()));
-    assert_eq!(1, feature.map(Unmap::uri()));
+    assert_eq!(1, feature.map(Map::uri()).unwrap());
+    assert_eq!(2, feature.map(Unmap::uri()).unwrap());
 
     // iter
     let urids: Vec<(&CStr, URID)> = cached_map.iter().collect();
     assert_eq!(2, urids.len());
-    assert!(urids.contains(&(Map::uri(), 0)));
-    assert!(urids.contains(&(Unmap::uri(), 1)));
+    assert!(urids.contains(&(Map::uri(), URID::new(1).unwrap())));
+    assert!(urids.contains(&(Unmap::uri(), URID::new(2).unwrap())));
 }

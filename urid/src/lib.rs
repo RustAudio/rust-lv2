@@ -6,8 +6,8 @@ pub extern crate lv2_urid_sys as sys;
 
 pub mod cache;
 pub mod feature;
+mod urid;
 
 #[cfg(test)]
 pub(crate) mod test_bench;
-
-pub use sys::LV2_URID as URID;
+pub use urid::URID;

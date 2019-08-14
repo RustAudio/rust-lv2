@@ -29,10 +29,10 @@ impl<'a> Map<'a> {
     /// Return the URID of the given URI.
     ///
     /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
-    pub fn map(&self, uri: &CStr) -> URID {
+    pub fn map(&self, uri: &CStr) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
-        unsafe { (self.internal.map.unwrap())(handle, uri) }
+        URID::new(unsafe { (self.internal.map.unwrap())(handle, uri) })
     }
 }
 
@@ -61,11 +61,13 @@ impl<'a> Unmap<'a> {
     /// Return the URI of the given URID.
     ///
     /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
-    pub fn unmap(&self, urid: URID) -> &CStr {
+    pub fn unmap(&self, urid: URID) -> Option<&CStr> {
         let handle = self.internal.handle;
-        unsafe {
-            let uri = (self.internal.unmap.unwrap())(handle, urid);
-            CStr::from_ptr(uri)
+        let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, *urid) };
+        if uri_ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { CStr::from_ptr(uri_ptr) })
         }
     }
 }
@@ -73,6 +75,7 @@ impl<'a> Unmap<'a> {
 #[cfg(test)]
 mod tests {
     use crate::feature::*;
+    use crate::URID;
 
     #[test]
     fn test_map_unmap() {
@@ -83,15 +86,15 @@ mod tests {
         {
             let map = test_bench.make_map();
 
-            assert_eq!(0, map.map(uri_a));
-            assert_eq!(1, map.map(uri_b));
-            assert_eq!(0, map.map(uri_a));
+            assert_eq!(1, *(map.map(uri_a).unwrap()));
+            assert_eq!(2, *(map.map(uri_b).unwrap()));
+            assert_eq!(1, *(map.map(uri_a).unwrap()));
         }
         {
             let unmap = test_bench.make_unmap();
 
-            assert_eq!(uri_a, unmap.unmap(0));
-            assert_eq!(uri_b, unmap.unmap(1));
+            assert_eq!(uri_a, unmap.unmap(URID::new(1).unwrap()).unwrap());
+            assert_eq!(uri_b, unmap.unmap(URID::new(2).unwrap()).unwrap());
         }
     }
 }
