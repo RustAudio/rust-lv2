@@ -68,8 +68,8 @@ fn test_cached_map() {
     assert_eq!(1, cached_map.urid_of::<Map>().unwrap());
 
     // try_urid_of
-    assert_eq!(1, *cached_map.try_urid_of::<Map>().unwrap());
-    assert_eq!(2, *cached_map.try_urid_of::<Unmap>().unwrap());
+    assert_eq!(1, cached_map.try_urid_of::<Map>().unwrap());
+    assert_eq!(2, cached_map.try_urid_of::<Unmap>().unwrap());
     assert_eq!(None, cached_map.try_urid_of::<IsLive>());
 
     // map_feature

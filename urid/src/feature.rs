@@ -63,7 +63,7 @@ impl<'a> Unmap<'a> {
     /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
     pub fn unmap(&self, urid: URID) -> Option<&CStr> {
         let handle = self.internal.handle;
-        let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, *urid) };
+        let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, urid.get()) };
         if uri_ptr.is_null() {
             None
         } else {
@@ -86,9 +86,9 @@ mod tests {
         {
             let map = test_bench.make_map();
 
-            assert_eq!(1, *(map.map(uri_a).unwrap()));
-            assert_eq!(2, *(map.map(uri_b).unwrap()));
-            assert_eq!(1, *(map.map(uri_a).unwrap()));
+            assert_eq!(1, map.map(uri_a).unwrap());
+            assert_eq!(2, map.map(uri_b).unwrap());
+            assert_eq!(1, map.map(uri_a).unwrap());
         }
         {
             let unmap = test_bench.make_unmap();
