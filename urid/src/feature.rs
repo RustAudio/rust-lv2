@@ -28,7 +28,7 @@ impl<'a> Feature<'a> for Map<'a> {
 impl<'a> Map<'a> {
     /// Return the URID of the given URI.
     ///
-    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](../trait.URIDCache.html).
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](trait.URIDCache.html).
     pub fn map_uri(&self, uri: &CStr) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
@@ -37,7 +37,7 @@ impl<'a> Map<'a> {
 
     /// Return the URID of the given URI bound.
     ///
-    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](../trait.URIDCache.html).
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](trait.URIDCache.html).
     pub fn map_type<T: UriBound>(&self) -> Option<URID<T>> {
         let handle = self.internal.handle;
         let uri = T::URI.as_ptr() as *const i8;
@@ -50,7 +50,7 @@ impl<'a> Map<'a> {
     }
 
     /// Populate a URID cache.
-    /// 
+    ///
     /// This is basically an alias for `T::from_map(self)` that makes the derive macro for `URIDCache` easier.
     pub fn populate_cache<T: URIDCache>(&self) -> Option<T> {
         T::from_map(self)
@@ -81,7 +81,7 @@ impl<'a> Feature<'a> for Unmap<'a> {
 impl<'a> Unmap<'a> {
     /// Return the URI of the given URID.
     ///
-    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](../trait.URIDCache.html).
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it using a [`URIDCache`](trait.URIDCache.html).
     pub fn unmap<T>(&self, urid: URID<T>) -> Option<&CStr> {
         let handle = self.internal.handle;
         let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, urid.get()) };
