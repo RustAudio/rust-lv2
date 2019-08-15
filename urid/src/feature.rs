@@ -29,10 +29,21 @@ impl<'a> Map<'a> {
     /// Return the URID of the given URI.
     ///
     /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
-    pub fn map(&self, uri: &CStr) -> Option<URID> {
+    pub fn map_uri(&self, uri: &CStr) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
         URID::new(unsafe { (self.internal.map.unwrap())(handle, uri) })
+    }
+
+    pub fn map_type<T: UriBound>(&self) -> Option<URID<T>> {
+        let handle = self.internal.handle;
+        let uri = T::URI.as_ptr() as *const i8;
+        let urid = unsafe { (self.internal.map?)(handle, uri) };
+        if urid == 0 {
+            None
+        } else {
+            Some(unsafe { URID::new_unchecked(urid) })
+        }
     }
 }
 
@@ -61,7 +72,7 @@ impl<'a> Unmap<'a> {
     /// Return the URI of the given URID.
     ///
     /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and cache it.
-    pub fn unmap(&self, urid: URID) -> Option<&CStr> {
+    pub fn unmap<T>(&self, urid: URID<T>) -> Option<&CStr> {
         let handle = self.internal.handle;
         let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, urid.get()) };
         if uri_ptr.is_null() {
@@ -74,27 +85,51 @@ impl<'a> Unmap<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::feature::*;
-    use crate::URID;
+    use core::UriBound;
+
+    struct MyTypeA();
+
+    unsafe impl UriBound for MyTypeA {
+        const URI: &'static [u8] = b"urn:my-type-a\0";
+    }
+
+    struct MyTypeB();
+
+    unsafe impl UriBound for MyTypeB {
+        const URI: &'static [u8] = b"urn:my-type-b\0";
+    }
 
     #[test]
-    fn test_map_unmap() {
+    fn test_map() {
         let mut test_bench = crate::test_bench::TestBench::new();
 
-        let uri_a = CStr::from_bytes_with_nul(b"urn:my-uri-a\0").unwrap();
-        let uri_b = CStr::from_bytes_with_nul(b"urn:my_uri-b\0").unwrap();
-        {
+        let map = test_bench.make_map();
+
+        assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
+        assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
+
+        assert_eq!(2, map.map_type::<MyTypeB>().unwrap());
+        assert_eq!(2, map.map_uri(MyTypeB::uri()).unwrap());
+
+        assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
+        assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
+    }
+
+    #[test]
+    fn test_unmap() {
+        let mut test_bench = crate::test_bench::TestBench::new();
+
+        let (type_a, type_b) = {
             let map = test_bench.make_map();
 
-            assert_eq!(1, map.map(uri_a).unwrap());
-            assert_eq!(2, map.map(uri_b).unwrap());
-            assert_eq!(1, map.map(uri_a).unwrap());
-        }
-        {
-            let unmap = test_bench.make_unmap();
+            (
+                map.map_type::<MyTypeA>().unwrap(),
+                map.map_type::<MyTypeB>().unwrap(),
+            )
+        };
 
-            assert_eq!(uri_a, unmap.unmap(URID::new(1).unwrap()).unwrap());
-            assert_eq!(uri_b, unmap.unmap(URID::new(2).unwrap()).unwrap());
-        }
+        let unmap = test_bench.make_unmap();
+        assert_eq!(MyTypeA::uri(), unmap.unmap(type_a).unwrap());
+        assert_eq!(MyTypeB::uri(), unmap.unmap(type_b).unwrap());
     }
 }

@@ -29,7 +29,7 @@ impl<'a> CachedMap<'a> {
         let uri_address = T::URI.as_ptr() as *const i8;
 
         cache.get(&uri_address).cloned().or_else(|| {
-            if let Some(urid) = map_feature.map(T::uri()) {
+            if let Some(urid) = map_feature.map_uri(T::uri()) {
                 cache.insert(uri_address, urid);
                 Some(urid)
             } else {
@@ -74,8 +74,8 @@ fn test_cached_map() {
 
     // map_feature
     let feature = cached_map.map_feature();
-    assert_eq!(1, feature.map(Map::uri()).unwrap());
-    assert_eq!(2, feature.map(Unmap::uri()).unwrap());
+    assert_eq!(1, feature.map_uri(Map::uri()).unwrap());
+    assert_eq!(2, feature.map_uri(Unmap::uri()).unwrap());
 
     // iter
     let urids: Vec<(&CStr, URID)> = cached_map.iter().collect();
