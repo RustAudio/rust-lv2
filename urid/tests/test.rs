@@ -6,8 +6,8 @@ mod test_bench {
     use core::feature::Feature;
     use std::collections::HashMap;
     use std::ffi::{c_void, CStr};
-    use std::sync::{Arc, Mutex};
     use std::ptr::null;
+    use std::sync::{Arc, Mutex};
     use urid::*;
 
     /// Our URID map store.
@@ -34,7 +34,7 @@ mod test_bench {
             } else {
                 return 0;
             };
-            
+
             if uri == null() {
                 return 0;
             }
