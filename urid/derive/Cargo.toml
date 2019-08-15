@@ -1,11 +1,12 @@
 [package]
-name = "lv2-urid"
+name = "lv2-urid-derive"
 version = "0.1.0"
 authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 edition = "2018"
-license = "MIT OR Apache-2.0"
+
+[lib]
+proc-macro = true
 
 [dependencies]
-lv2-core = { path = "../core" }
-lv2-urid-sys = { path = "sys" }
-lv2-urid-derive = { path = "derive" }
+syn = "0.15.22"
+quote = "0.6.10"

@@ -6,9 +6,15 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::num::NonZeroU32;
 
+pub use lv2_urid_derive::*;
+
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
 pub struct URID<T = ()>(NonZeroU32, PhantomData<T>);
+
+pub trait URIDCache: Sized {
+    fn from_map(map: &Map) -> Option<Self>;
+}
 
 impl<T> URID<T> {
     pub unsafe fn new_unchecked(urid: u32) -> Self {
@@ -74,13 +80,23 @@ impl<T> PartialOrd<URID<T>> for u32 {
     }
 }
 
+impl<T: UriBound> URIDCache for URID<T> {
+    fn from_map(map: &Map) -> Option<Self> {
+        Self::from_type(map)
+    }
+}
+
 #[cfg(test)]
-#[test]
-fn test_urid_size() {
-    use std::mem::size_of;
+mod tests {
+    use crate::URID;
 
-    let size = size_of::<u32>();
+    #[test]
+    fn test_urid_size() {
+        use std::mem::size_of;
 
-    assert_eq!(size, size_of::<URID>());
-    assert_eq!(size, size_of::<Option<URID>>());
+        let size = size_of::<u32>();
+
+        assert_eq!(size, size_of::<URID>());
+        assert_eq!(size, size_of::<Option<URID>>());
+    }
 }

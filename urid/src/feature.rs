@@ -1,5 +1,5 @@
 //! Thin but safe wrappers for the URID mapping features.
-use crate::URID;
+use crate::{URIDCache, URID};
 use core::feature::Feature;
 use core::UriBound;
 use std::ffi::CStr;
@@ -45,6 +45,10 @@ impl<'a> Map<'a> {
             Some(unsafe { URID::new_unchecked(urid) })
         }
     }
+
+    pub fn populate_cache<T: URIDCache>(&self) -> Option<T> {
+        T::from_map(self)
+    }
 }
 
 /// Host feature to revert the URI -> URID mapping.
@@ -84,52 +88,4 @@ impl<'a> Unmap<'a> {
 }
 
 #[cfg(test)]
-mod tests {
-    use core::UriBound;
-
-    struct MyTypeA();
-
-    unsafe impl UriBound for MyTypeA {
-        const URI: &'static [u8] = b"urn:my-type-a\0";
-    }
-
-    struct MyTypeB();
-
-    unsafe impl UriBound for MyTypeB {
-        const URI: &'static [u8] = b"urn:my-type-b\0";
-    }
-
-    #[test]
-    fn test_map() {
-        let mut test_bench = crate::test_bench::TestBench::new();
-
-        let map = test_bench.make_map();
-
-        assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
-        assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
-
-        assert_eq!(2, map.map_type::<MyTypeB>().unwrap());
-        assert_eq!(2, map.map_uri(MyTypeB::uri()).unwrap());
-
-        assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
-        assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
-    }
-
-    #[test]
-    fn test_unmap() {
-        let mut test_bench = crate::test_bench::TestBench::new();
-
-        let (type_a, type_b) = {
-            let map = test_bench.make_map();
-
-            (
-                map.map_type::<MyTypeA>().unwrap(),
-                map.map_type::<MyTypeB>().unwrap(),
-            )
-        };
-
-        let unmap = test_bench.make_unmap();
-        assert_eq!(MyTypeA::uri(), unmap.unmap(type_a).unwrap());
-        assert_eq!(MyTypeB::uri(), unmap.unmap(type_b).unwrap());
-    }
-}
+mod tests {}
