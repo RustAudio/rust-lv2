@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
 use std::ptr::null;
 use std::sync::{Arc, Mutex};
+use std::pin::Pin;
 
 /// A working URI → URID mapper.
 ///
@@ -77,9 +78,9 @@ impl URIDMap {
     ///
     /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
     pub fn make_map_interface(&self) -> MapInterface {
-        let mut map = Box::new(self.clone());
+        let mut map = Box::pin(self.clone());
         let raw_map = sys::LV2_URID_Map {
-            handle: map.as_mut() as *mut _ as *mut c_void,
+            handle: map.as_mut().get_mut() as *mut _ as *mut c_void,
             map: Some(Self::extern_map),
         };
         MapInterface { _map: map, raw_map }
@@ -89,9 +90,9 @@ impl URIDMap {
     ///
     /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
     pub fn make_unmap_interface(&self) -> UnmapInterface {
-        let mut map = Box::new(self.clone());
+        let mut map = Box::pin(self.clone());
         let raw_unmap = sys::LV2_URID_Unmap {
-            handle: map.as_mut() as *mut _ as *mut c_void,
+            handle: map.as_mut().get_mut() as *mut _ as *mut c_void,
             unmap: Some(Self::extern_unmap),
         };
         UnmapInterface {
@@ -109,7 +110,7 @@ impl Default for URIDMap {
 
 /// Copy of a `URIDMap` to ensure the validity of a `sys::LV2_URID_Map`.
 pub struct MapInterface {
-    _map: Box<URIDMap>,
+    _map: Pin<Box<URIDMap>>,
     raw_map: sys::LV2_URID_Map,
 }
 
@@ -127,7 +128,7 @@ impl MapInterface {
 
 /// Copy of a `URIDMap` to ensure the validity of a `sys::LV2_URID_Unmap`.
 pub struct UnmapInterface {
-    _map: Box<URIDMap>,
+    _map: Pin<Box<URIDMap>>,
     raw_unmap: sys::LV2_URID_Unmap,
 }
 
