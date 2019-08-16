@@ -1,7 +1,6 @@
 use crate::feature::*;
 use core::UriBound;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
-use std::ffi::CStr;
 use std::fmt;
 use std::marker::PhantomData;
 use std::num::NonZeroU32;
@@ -10,7 +9,7 @@ use std::num::NonZeroU32;
 ///
 /// A URID is basically a number which represents a URI, which makes the identification of other features faster and easier. The mapping of URIs to URIDs is handled by the host and plugins can retrieve them using the [`Map`](struct.Map.html) feature. A given URID can also be converted back to a URI with the [`Unmap`](struct.Unmap.html) feature.
 ///
-/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier, since you only need the mapper to create it, and also turns it into an atomic [`URIDCache`](trait.URIDCache.html), which can be used to build bigger caches.
+/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCache`](trait.URIDCache.html), which can be used to build bigger caches.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
 pub struct URID<T = ()>(NonZeroU32, PhantomData<T>);
@@ -62,8 +61,12 @@ pub trait URIDCache: Sized {
 
 impl<T> URID<T> {
     /// Create a URID without checking for type or value validity.
+    /// 
+    /// First of all, the value may only be a URID the host actually recognizes. Therefore, it should only be used by [`Map::map_uri`](struct.Map.html#method.map_uri) or [`Map::map_type`](struct.Map.html#method.map_type), after the raw mapping function was called.
+    /// 
+    /// Additionally, the value of 0 is reserved for a failed URI mapping process and therefore, is not a valid URID. If `T` is a URI bound, the URID may only be the one the host maps the bounded URI.
     ///
-    /// If `T` is a UriBound, `urid` may only be the URID which is mapped to the URI returned by `T::uri()`. Additionally, a URID may never be zero. Since all of these constraints are not checked by this method, it is unsafe.
+    /// Since all of these constraints are not checked by this method, it is unsafe.
     pub unsafe fn new_unchecked(urid: u32) -> Self {
         Self(NonZeroU32::new_unchecked(urid), PhantomData)
     }
@@ -72,42 +75,12 @@ impl<T> URID<T> {
     pub fn get(&self) -> u32 {
         self.0.get()
     }
-
-    /// Unmap the URID to its string representation.
-    ///
-    /// This is basically an alias for `unmap.unmap(self)`.
-    pub fn into_cstr<'a>(self, unmap: &'a Unmap) -> Option<&'a CStr> {
-        unmap.unmap(self)
-    }
-}
-
-impl URID<()> {
-    /// Create a URID instance.
-    ///
-    /// Since URIDs may never be zero, this method will return `None` if `urid` is zero.
-    pub fn new(urid: u32) -> Option<Self> {
-        Some(Self(NonZeroU32::new(urid)?, PhantomData))
-    }
-
-    /// Create a URID by retrieving the URID of the given URI.
-    ///
-    /// This is basically an alias for `map.map_uri(uri)`.
-    pub fn from_uri(map: &Map, uri: &CStr) -> Option<Self> {
-        map.map_uri(uri)
-    }
 }
 
 impl<T: UriBound> URID<T> {
-    /// Create a URID by retrieving the URID of the given type.
-    ///
-    /// This is basically an alias for `map.map_type::<T>()`.
-    pub fn from_type(map: &Map) -> Option<Self> {
-        map.map_type::<T>()
-    }
-
     /// Transform the type-specific URID into a generalized one.
     pub fn into_general(self) -> URID<()> {
-        URID::new(self.get()).unwrap()
+        unsafe { URID::new_unchecked(self.get()) }
     }
 }
 
@@ -143,7 +116,7 @@ impl<T> PartialOrd<URID<T>> for u32 {
 
 impl<T: UriBound> URIDCache for URID<T> {
     fn from_map(map: &Map) -> Option<Self> {
-        Self::from_type(map)
+        map.map_type()
     }
 }
 

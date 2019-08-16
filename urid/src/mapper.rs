@@ -25,7 +25,8 @@ impl URIDMap {
     /// If the URI has not been mapped before, a new URID will be assigned. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
     pub fn map(&self, uri: &'static CStr) -> URID {
         let mut map = self.0.lock().unwrap();
-        let next_urid = URID::new(map.len() as u32 + 1).unwrap();
+        let next_urid = map.len() as u32 + 1;
+        let next_urid = unsafe { URID::new_unchecked(next_urid)};
         *map.entry(uri).or_insert(next_urid)
     }
 
@@ -65,8 +66,9 @@ impl URIDMap {
         } else {
             return null();
         };
-        let urid = if let Some(urid) = URID::new(urid) {
-            urid
+
+        let urid = if urid != 0 {
+            URID::new_unchecked(urid)
         } else {
             return null();
         };

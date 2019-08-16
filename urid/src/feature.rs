@@ -48,7 +48,12 @@ impl<'a> Map<'a> {
     pub fn map_uri(&self, uri: &CStr) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
-        URID::new(unsafe { (self.internal.map.unwrap())(handle, uri) })
+        let urid = unsafe { (self.internal.map.unwrap())(handle, uri)};
+        if urid == 0 {
+            None
+        } else {
+            Some(unsafe { URID::new_unchecked(urid) })
+        }
     }
 
     /// Return the URID of the given URI bound.
