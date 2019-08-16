@@ -61,9 +61,9 @@ pub trait URIDCache: Sized {
 
 impl<T> URID<T> {
     /// Create a URID without checking for type or value validity.
-    /// 
+    ///
     /// First of all, the value may only be a URID the host actually recognizes. Therefore, it should only be used by [`Map::map_uri`](struct.Map.html#method.map_uri) or [`Map::map_type`](struct.Map.html#method.map_type), after the raw mapping function was called.
-    /// 
+    ///
     /// Additionally, the value of 0 is reserved for a failed URI mapping process and therefore, is not a valid URID. If `T` is a URI bound, the URID may only be the one the host maps the bounded URI.
     ///
     /// Since all of these constraints are not checked by this method, it is unsafe.

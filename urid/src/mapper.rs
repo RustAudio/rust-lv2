@@ -26,7 +26,7 @@ impl URIDMap {
     pub fn map(&self, uri: &'static CStr) -> URID {
         let mut map = self.0.lock().unwrap();
         let next_urid = map.len() as u32 + 1;
-        let next_urid = unsafe { URID::new_unchecked(next_urid)};
+        let next_urid = unsafe { URID::new_unchecked(next_urid) };
         *map.entry(uri).or_insert(next_urid)
     }
 

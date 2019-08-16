@@ -48,7 +48,7 @@ impl<'a> Map<'a> {
     pub fn map_uri(&self, uri: &CStr) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
-        let urid = unsafe { (self.internal.map.unwrap())(handle, uri)};
+        let urid = unsafe { (self.internal.map.unwrap())(handle, uri) };
         if urid == 0 {
             None
         } else {
