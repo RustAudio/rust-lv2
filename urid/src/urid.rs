@@ -19,11 +19,12 @@ pub struct URID<T = ()>(NonZeroU32, PhantomData<T>);
 ///
 /// This trait makes the creation of static URID caches easy: You simply define the cache and derive `URIDCache` for it, and you have a single method to create it.
 ///
-/// Usage example:
+/// # Usage example:
 ///
 ///     use lv2_core::UriBound;
 ///     use lv2_urid::*;
 ///
+///     // Defining all URI bounds.
 ///     struct MyTypeA();
 ///     
 ///     unsafe impl UriBound for MyTypeA {
@@ -36,15 +37,24 @@ pub struct URID<T = ()>(NonZeroU32, PhantomData<T>);
 ///         const URI: &'static [u8] = b"urn:my-type-b\0";
 ///     }
 ///
+///     // Defining the cache.
 ///     #[derive(URIDCache)]
 ///     struct MyCache {
 ///         my_type_a: URID<MyTypeA>,
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     fn build_cache(map: &Map) -> MyCache {
-///         MyCache::from_map(map).unwrap()
-///     }
+///     // Creating a mapping feature.
+///     // This is normally done by the host.
+///     let mut raw_interface = mapper::URIDMap::new().make_map_interface();
+///     let map: Map = raw_interface.map();
+///
+///     // Populating the cache.
+///     let cache = MyCache::from_map(&map).unwrap();
+///
+///     // Asserting.
+///     assert_eq!(1, cache.my_type_a);
+///     assert_eq!(2, cache.my_type_b);
 pub trait URIDCache: Sized {
     /// Construct the cache from the mapper.
     fn from_map(map: &Map) -> Option<Self>;
@@ -64,6 +74,8 @@ impl<T> URID<T> {
     }
 
     /// Unmap the URID to its string representation.
+    ///
+    /// This is basically an alias for `unmap.unmap(self)`.
     pub fn into_cstr<'a>(self, unmap: &'a Unmap) -> Option<&'a CStr> {
         unmap.unmap(self)
     }
@@ -87,6 +99,8 @@ impl URID<()> {
 
 impl<T: UriBound> URID<T> {
     /// Create a URID by retrieving the URID of the given type.
+    ///
+    /// This is basically an alias for `map.map_type::<T>()`.
     pub fn from_type(map: &Map) -> Option<Self> {
         map.map_type::<T>()
     }

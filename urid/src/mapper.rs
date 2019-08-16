@@ -1,6 +1,6 @@
 //! Implementation of the mapping feature for testing purposes.
-use crate::{Map, Unmap};
 use crate::URID;
+use crate::{Map, Unmap};
 use core::feature::Feature;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
@@ -8,7 +8,7 @@ use std::ptr::null;
 use std::sync::{Arc, Mutex};
 
 /// A working URI → URID mapper.
-/// 
+///
 /// This mapper is able to map URIs (technically even every string) to URIDs. Since it's map store is hidden behind a mutex and an `Arc`, it can be cloned and accessed from any thread at any time.
 #[derive(Clone)]
 pub struct URIDMap(Arc<Mutex<HashMap<&'static CStr, URID>>>);
@@ -20,7 +20,7 @@ impl URIDMap {
     }
 
     /// Map a URI to a URID.
-    /// 
+    ///
     /// If the URI has not been mapped before, a new URID will be assigned. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
     pub fn map(&self, uri: &'static CStr) -> URID {
         let mut map = self.0.lock().unwrap();
@@ -36,7 +36,7 @@ impl URIDMap {
             return 0;
         };
 
-        if uri == null() {
+        if uri.is_null() {
             return 0;
         }
         let uri = CStr::from_ptr(uri);
@@ -45,7 +45,7 @@ impl URIDMap {
     }
 
     /// Try to find the URI which is mapped to the given URID.
-    /// 
+    ///
     /// In this implementation, this is failable: If the given URID has not been assigned to URI, this method will return `None`. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
     pub fn unmap(&self, urid: URID) -> Option<&'static CStr> {
         let map = self.0.lock().unwrap();
@@ -74,7 +74,7 @@ impl URIDMap {
     }
 
     /// Create an interface for the `map` feature.
-    /// 
+    ///
     /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
     pub fn make_map_interface(&self) -> MapInterface {
         let mut map = Box::new(self.clone());
@@ -86,7 +86,7 @@ impl URIDMap {
     }
 
     /// Create an interface for the `unmap` feature.
-    /// 
+    ///
     /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
     pub fn make_unmap_interface(&self) -> UnmapInterface {
         let mut map = Box::new(self.clone());
@@ -98,6 +98,12 @@ impl URIDMap {
             _map: map,
             raw_unmap,
         }
+    }
+}
+
+impl Default for URIDMap {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
