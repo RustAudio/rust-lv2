@@ -37,5 +37,3 @@ script:
   - cargo build --all --verbose
   - cargo build --examples --verbose
   - cargo test --all --verbose
-
-cache: cargo
