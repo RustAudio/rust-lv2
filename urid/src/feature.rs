@@ -82,7 +82,7 @@ impl<'a> Map<'a> {
     ///     // Mapping the type to it's URID.
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     assert_eq!(1, urid);
-    pub fn map_type<T: UriBound>(&self) -> Option<URID<T>> {
+    pub fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
         let handle = self.internal.handle;
         let uri = T::URI.as_ptr() as *const c_char;
         let urid = unsafe { (self.internal.map?)(handle, uri) };
@@ -154,7 +154,7 @@ impl<'a> Unmap<'a> {
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     let uri: &CStr = unmap.unmap(urid).unwrap();
     ///     assert_eq!(MyUriBound::uri(), uri);
-    pub fn unmap<T>(&self, urid: URID<T>) -> Option<&CStr> {
+    pub fn unmap<T: ?Sized>(&self, urid: URID<T>) -> Option<&CStr> {
         let handle = self.internal.handle;
         let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, urid.get()) };
         if uri_ptr.is_null() {

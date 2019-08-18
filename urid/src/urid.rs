@@ -12,7 +12,7 @@ use std::num::NonZeroU32;
 /// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCache`](trait.URIDCache.html), which can be used to build bigger caches.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
-pub struct URID<T = ()>(NonZeroU32, PhantomData<T>);
+pub struct URID<T = ()>(NonZeroU32, PhantomData<T>) where T: ?Sized;
 
 /// Abstraction of types that store URIDs.
 ///
@@ -59,7 +59,7 @@ pub trait URIDCache: Sized {
     fn from_map(map: &Map) -> Option<Self>;
 }
 
-impl<T> URID<T> {
+impl<T: ?Sized> URID<T> {
     /// Create a URID without checking for type or value validity.
     ///
     /// First of all, the value may only be a URID the host actually recognizes. Therefore, it should only be used by [`Map::map_uri`](struct.Map.html#method.map_uri) or [`Map::map_type`](struct.Map.html#method.map_type), after the raw mapping function was called.
@@ -77,44 +77,44 @@ impl<T> URID<T> {
     }
 }
 
-impl<T: UriBound> URID<T> {
+impl<T: UriBound + ?Sized> URID<T> {
     /// Transform the type-specific URID into a generalized one.
     pub fn into_general(self) -> URID<()> {
         unsafe { URID::new_unchecked(self.get()) }
     }
 }
 
-impl<T> fmt::Debug for URID<T> {
+impl<T: ?Sized> fmt::Debug for URID<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<T> PartialEq<u32> for URID<T> {
+impl<T: ?Sized> PartialEq<u32> for URID<T> {
     fn eq(&self, other: &u32) -> bool {
         self.get() == *other
     }
 }
 
-impl<T> PartialEq<URID<T>> for u32 {
+impl<T: ?Sized> PartialEq<URID<T>> for u32 {
     fn eq(&self, other: &URID<T>) -> bool {
         *self == other.get()
     }
 }
 
-impl<T> PartialOrd<u32> for URID<T> {
+impl<T: ?Sized> PartialOrd<u32> for URID<T> {
     fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
         self.get().partial_cmp(other)
     }
 }
 
-impl<T> PartialOrd<URID<T>> for u32 {
+impl<T: ?Sized> PartialOrd<URID<T>> for u32 {
     fn partial_cmp(&self, other: &URID<T>) -> Option<Ordering> {
         self.partial_cmp(&other.get())
     }
 }
 
-impl<T: UriBound> URIDCache for URID<T> {
+impl<T: UriBound + ?Sized> URIDCache for URID<T> {
     fn from_map(map: &Map) -> Option<Self> {
         map.map_type()
     }
