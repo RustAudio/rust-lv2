@@ -1,16 +1,20 @@
 [package]
 name = "lv2"
 version = "0.1.0"
-authors = ["Janonard <janonard@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
 lv2-core = { path = "core" }
+lv2-urid = { path = "urid" }
 
 [workspace]
 members = [
     "core",
     "core/sys",
     "core/derive",
+    "urid",
+    "urid/sys",
+    "urid/derive",
 ]

@@ -1,10 +1,11 @@
 [package]
-name = "lv2-core"
+name = "lv2-urid"
 version = "0.1.0"
 authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-lv2-core-sys = { path = "./sys" }
-lv2-core-derive = { path = "./derive" }
+lv2-core = { path = "../core" }
+lv2-urid-sys = { path = "sys" }
+lv2-urid-derive = { path = "derive" }

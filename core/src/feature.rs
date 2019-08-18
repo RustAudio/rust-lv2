@@ -10,14 +10,14 @@ use std::ffi::{c_void, CStr};
 /// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
 ///
 /// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#tymethod.from_raw_data) method.
-pub trait Feature: UriBound + Sized {
+pub trait Feature<'a>: UriBound + Sized {
     /// The type that is used by the C interface to contain a feature's data.
     ///
     /// This should be the struct type defined by the specification, contained in your `sys` crate, if you have one.
-    type RawDataType;
+    type RawDataType: 'static;
 
     /// Create a feature object from raw data.
-    fn from_raw_data(data: Option<&mut Self::RawDataType>) -> Option<Self>;
+    fn from_raw_data(data: Option<&'a mut Self::RawDataType>) -> Option<Self>;
 }
 
 /// Marker feature to signal that the plugin can run in a hard real-time environment.
@@ -27,7 +27,7 @@ unsafe impl UriBound for HardRTCapable {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__hardRTCapable;
 }
 
-impl Feature for HardRTCapable {
+impl<'a> Feature<'a> for HardRTCapable {
     type RawDataType = c_void;
 
     fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
@@ -44,7 +44,7 @@ unsafe impl UriBound for InPlaceBroken {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__inPlaceBroken;
 }
 
-impl Feature for InPlaceBroken {
+impl<'a> Feature<'a> for InPlaceBroken {
     type RawDataType = c_void;
 
     fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
@@ -59,7 +59,7 @@ unsafe impl UriBound for IsLive {
     const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__isLive;
 }
 
-impl Feature for IsLive {
+impl<'a> Feature<'a> for IsLive {
     type RawDataType = c_void;
 
     fn from_raw_data(_data: Option<&mut c_void>) -> Option<Self> {
@@ -85,7 +85,7 @@ impl<'a> FeatureDescriptor<'a> {
     }
 
     /// Evaluate whether this object describes the given feature.
-    pub fn is_feature<T: Feature>(&self) -> bool {
+    pub fn is_feature<T: Feature<'a>>(&self) -> bool {
         self.uri == T::uri()
     }
 
@@ -94,7 +94,7 @@ impl<'a> FeatureDescriptor<'a> {
     /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise.
     ///
     /// If the feature construction fails, the descriptor will be returned again.
-    pub fn into_feature<T: Feature>(self) -> Result<T, Self> {
+    pub fn into_feature<T: Feature<'a>>(self) -> Result<T, Self> {
         if self.uri == T::uri() {
             if let Some(feature) =
                 T::from_raw_data(unsafe { (self.data as *mut T::RawDataType).as_mut() })
@@ -141,17 +141,17 @@ impl<'a> FeatureContainer<'a> {
     }
 
     /// Evaluate whether this object contains the requested feature.
-    pub fn contains<T: Feature>(&self) -> bool {
+    pub fn contains<T: Feature<'a>>(&self) -> bool {
         self.internal.contains_key(T::uri())
     }
 
     /// Try to retrieve a feature.
     ///
     /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
-    pub fn retrieve_feature<T: Feature>(&mut self) -> Option<T> {
-        self.internal.remove(T::uri()).map_or(None, |ptr| {
-            T::from_raw_data(unsafe { (ptr as *mut T::RawDataType).as_mut() })
-        })
+    pub fn retrieve_feature<T: Feature<'a>>(&mut self) -> Option<T> {
+        self.internal
+            .remove(T::uri())
+            .and_then(|ptr| T::from_raw_data(unsafe { (ptr as *mut T::RawDataType).as_mut() }))
     }
 }
 
@@ -210,7 +210,7 @@ mod tests {
         const URI: &'static [u8] = b"urn:lv2Feature:A\0";
     }
 
-    impl Feature for FeatureA {
+    impl<'a> Feature<'a> for FeatureA {
         type RawDataType = i32;
 
         fn from_raw_data(data: Option<&mut i32>) -> Option<Self> {
@@ -226,7 +226,7 @@ mod tests {
         const URI: &'static [u8] = b"urn:lv2Fearure:B\0";
     }
 
-    impl Feature for FeatureB {
+    impl<'a> Feature<'a> for FeatureB {
         type RawDataType = f32;
 
         fn from_raw_data(data: Option<&mut f32>) -> Option<Self> {

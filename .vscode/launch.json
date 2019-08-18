@@ -26,6 +26,25 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug integration test 'amp'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=amp",
+                    "--package=lv2-core"
+                ],
+                "filter": {
+                    "name": "amp",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in library 'lv2-core-sys'",
             "cargo": {
                 "args": [
@@ -36,6 +55,63 @@
                 ],
                 "filter": {
                     "name": "lv2-core-sys",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'lv2-urid'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=lv2-urid"
+                ],
+                "filter": {
+                    "name": "lv2-urid",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'urid'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=urid",
+                    "--package=lv2-urid"
+                ],
+                "filter": {
+                    "name": "urid",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'lv2-urid-sys'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=lv2-urid-sys"
+                ],
+                "filter": {
+                    "name": "lv2-urid-sys",
                     "kind": "lib"
                 }
             },
@@ -56,44 +132,6 @@
                 "filter": {
                     "name": "lv2",
                     "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug integration test 'amp'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--test=amp",
-                    "--package=lv2"
-                ],
-                "filter": {
-                    "name": "amp",
-                    "kind": "test"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug integration test 'extension'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--test=extension",
-                    "--package=lv2-core"
-                ],
-                "filter": {
-                    "name": "extension",
-                    "kind": "test"
                 }
             },
             "args": [],

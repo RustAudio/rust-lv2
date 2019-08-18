@@ -30,6 +30,10 @@ Note that this library will only provide Rust bindings for the official LV2 spec
 with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
 to any other specification that will integrate with this library.
 
+## Building
+
+Since the `sys` crates provided by this workspace use `bindgen` to create the C API bindings at compile time, you need to have clang installed on your machine in order to build them.
+
 ## License
 
 Licensed under either of
