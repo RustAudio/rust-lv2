@@ -69,6 +69,13 @@ impl<'a, H> AtomIter<'a, H> {
             None
         }
     }
+
+    fn jump_atom_body(&mut self, atom: &Atom) -> bool {
+        let mut body_size = atom.size as usize;
+        body_size += body_size % 8;
+        self.position += body_size;
+        self.position < self.data.len()
+    }
 }
 
 impl<'a> Iterator for AtomIter<'a> {
@@ -77,8 +84,7 @@ impl<'a> Iterator for AtomIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let atom = unsafe {self.retrieve::<Atom>()?};
 
-        if self.has_space(atom.size as usize) {
-            self.position += atom.0.size as usize;
+        if self.jump_atom_body(atom) {
             Some(atom)
         } else {
             None
@@ -93,8 +99,7 @@ impl<'a, H: PreHeader> Iterator for AtomIter<'a, H> {
         let pre_header = unsafe { self.retrieve::<H>()? };
         let atom = unsafe { self.retrieve::<Atom>()?};
 
-        if self.has_space(atom.size as usize) {
-            self.position += atom.size as usize;
+        if self.jump_atom_body(atom) {
             Some((pre_header, atom))
         } else {
             None
