@@ -2,6 +2,7 @@ use lv2_core::feature::FeatureDescriptor;
 use lv2_core::feature::HardRTCapable;
 use lv2_core::prelude::*;
 use std::ops::Drop;
+use std::os::raw::c_char;
 
 struct Amp {
     activated: bool,
@@ -103,7 +104,7 @@ fn test_plugin() {
 
     // Creating the hard-rt feature.
     let hard_rt_capable = LV2_Feature {
-        URI: HardRTCapable::URI.as_ptr() as *const i8,
+        URI: HardRTCapable::URI.as_ptr() as *const c_char,
         data: std::ptr::null_mut(),
     };
     let features: &[*const LV2_Feature] = &[&hard_rt_capable, std::ptr::null()];
@@ -116,7 +117,7 @@ fn test_plugin() {
         let plugin: LV2_Handle = (descriptor.instantiate.unwrap())(
             descriptor,
             44100.0,
-            "/home/lv2/amp.lv2/\0".as_ptr() as *const i8,
+            "/home/lv2/amp.lv2/\0".as_ptr() as *const c_char,
             features.as_ptr(),
         );
         assert_ne!(plugin, std::ptr::null_mut());
