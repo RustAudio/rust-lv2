@@ -7,6 +7,7 @@ use std::ffi::{c_void, CStr};
 use std::pin::Pin;
 use std::ptr::null;
 use std::sync::{Arc, Mutex};
+use std::os::raw::c_char;
 
 /// A working URI → URID mapper.
 ///
@@ -31,7 +32,7 @@ impl URIDMap {
     }
 
     /// Unsafe interface version of `map`.
-    unsafe extern "C" fn extern_map(handle: *mut c_void, uri: *const i8) -> u32 {
+    unsafe extern "C" fn extern_map(handle: *mut c_void, uri: *const c_char) -> u32 {
         let handle = if let Some(handle) = (handle as *mut Self).as_ref() {
             handle
         } else {
@@ -60,7 +61,7 @@ impl URIDMap {
     }
 
     /// Unsafe interface version of `unmap`.
-    unsafe extern "C" fn extern_unmap(handle: *mut c_void, urid: u32) -> *const i8 {
+    unsafe extern "C" fn extern_unmap(handle: *mut c_void, urid: u32) -> *const c_char {
         let handle = if let Some(handle) = (handle as *mut Self).as_ref() {
             handle
         } else {

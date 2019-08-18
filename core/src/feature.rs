@@ -197,6 +197,7 @@ pub trait FeatureCollection: Sized {
 #[cfg(test)]
 mod tests {
     use crate::{feature::*, plugin::*, UriBound};
+    use std::os::raw::c_char;
 
     struct FeatureA {
         pub number: i32,
@@ -256,13 +257,13 @@ mod tests {
         fn new() -> Self {
             let mut data_a: Box<i32> = Box::new(42);
             let feature_a_sys = Box::new(::sys::LV2_Feature {
-                URI: FeatureA::URI.as_ptr() as *const i8,
+                URI: FeatureA::URI.as_ptr() as *const c_char,
                 data: data_a.as_mut() as *mut i32 as *mut c_void,
             });
 
             let mut data_b: Box<f32> = Box::new(17.0);
             let feature_b_sys = Box::new(::sys::LV2_Feature {
-                URI: FeatureB::URI.as_ptr() as *const i8,
+                URI: FeatureB::URI.as_ptr() as *const c_char,
                 data: data_b.as_mut() as *mut f32 as *mut c_void,
             });
 

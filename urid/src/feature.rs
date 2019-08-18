@@ -3,6 +3,7 @@ use crate::{URIDCache, URID};
 use core::feature::Feature;
 use core::UriBound;
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 /// Host feature to map URIs to integers
 pub struct Map<'a> {
@@ -83,7 +84,7 @@ impl<'a> Map<'a> {
     ///     assert_eq!(1, urid);
     pub fn map_type<T: UriBound>(&self) -> Option<URID<T>> {
         let handle = self.internal.handle;
-        let uri = T::URI.as_ptr() as *const i8;
+        let uri = T::URI.as_ptr() as *const c_char;
         let urid = unsafe { (self.internal.map?)(handle, uri) };
         if urid == 0 {
             None
