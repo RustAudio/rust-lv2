@@ -4,10 +4,10 @@ use crate::{Map, Unmap};
 use core::feature::Feature;
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr};
+use std::os::raw::c_char;
 use std::pin::Pin;
 use std::ptr::null;
 use std::sync::{Arc, Mutex};
-use std::os::raw::c_char;
 
 /// A working URI → URID mapper.
 ///
