@@ -69,3 +69,45 @@ make_scalar_atom!(
     sys::LV2_ATOM__URID,
     |urids: &AtomURIDCache| urids.urid
 );
+
+#[cfg(test)]
+mod tests {
+    use crate::scalar::*;
+    use crate::UnidentifiedAtom;
+    use std::mem::{size_of, size_of_val};
+    use urid::URIDCache;
+    use sys::*;
+
+    #[test]
+    fn test_scalars() {
+        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
+        let map = map_interface.map();
+        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+
+        macro_rules! test_atom {
+            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
+                let original_atom = $orig {
+                    atom: sys::LV2_Atom {
+                        type_: <$atom>::urid(&urids).get(),
+                        size: size_of::<$raw>() as u32,
+                    },
+                    body: $value
+                };
+                let data_slice = unsafe {
+                    std::slice::from_raw_parts(
+                        &original_atom as *const _ as *const u8,
+                        size_of_val(&original_atom),
+                    )
+                };
+                let atom = unsafe { UnidentifiedAtom::from_slice(data_slice) }.unwrap();
+                let value = atom.identify::<$atom>(&urids).unwrap();
+                assert_eq!($value, **value);
+            };
+        }
+
+        test_atom!(LV2_Atom_Double, c_double, AtomDouble, 42.0);
+        test_atom!(LV2_Atom_Float, c_float, AtomFloat, 42.0);
+        test_atom!(LV2_Atom_Long, c_long, AtomLong, 42);
+        test_atom!(LV2_Atom_Int, c_int, AtomInt, 42);
+    }
+}

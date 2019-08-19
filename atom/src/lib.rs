@@ -7,6 +7,7 @@ extern crate lv2_urid as urid;
 pub mod scalar;
 
 use core::UriBound;
+use std::mem::size_of;
 use urid::{URIDCache, URID};
 
 #[derive(URIDCache)]
@@ -32,6 +33,19 @@ pub struct UnidentifiedAtom<'a> {
 impl<'a> UnidentifiedAtom<'a> {
     pub fn new(type_urid: URID, data: &'a [u8]) -> Self {
         Self { type_urid, data }
+    }
+
+    pub unsafe fn from_slice(data: &'a [u8]) -> Option<Self> {
+        if data.len() < size_of::<sys::LV2_Atom>() {
+            return None;
+        }
+        let atom = &*(data.as_ptr() as *const sys::LV2_Atom);
+        let data = &data[size_of::<sys::LV2_Atom>()..];
+        if (atom.type_ == 0) || (data.len() < atom.size as usize) {
+            return None;
+        }
+        let type_urid: URID = URID::new_unchecked(atom.type_);
+        Some(Self { type_urid, data })
     }
 
     pub fn identify<T: AtomBody>(&self, urids: &AtomURIDCache) -> Option<&T> {
