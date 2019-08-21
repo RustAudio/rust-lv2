@@ -39,7 +39,10 @@ impl<'a> UnidentifiedAtom<'a> {
         if data.len() < size_of::<sys::LV2_Atom>() {
             return None;
         }
-        let atom = &*(data.as_ptr() as *const sys::LV2_Atom);
+
+        #[allow(clippy::cast_ptr_alignment)]
+        let atom = std::ptr::read_unaligned(data.as_ptr() as *const sys::LV2_Atom);
+        
         let data = &data[size_of::<sys::LV2_Atom>()..];
         if (atom.type_ == 0) || (data.len() < atom.size as usize) {
             return None;

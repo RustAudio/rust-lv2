@@ -5,12 +5,10 @@ use std::mem::size_of;
 use std::ops::Deref;
 use std::os::raw::*;
 use urid::URID;
+use std::alloc::Layout;
 
 macro_rules! make_scalar_atom {
-    ($atom:ident, $internal:ty, $uri:expr, $urid:expr) => {
-        #[repr(transparent)]
-        pub struct $atom($internal);
-
+    ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {
         impl Deref for $atom {
             type Target = $internal;
 
@@ -24,12 +22,18 @@ macro_rules! make_scalar_atom {
         }
 
         impl AtomBody for $atom {
+            #[allow(clippy::redundant_closure_call)]
             fn urid(urids: &AtomURIDCache) -> URID<Self> {
                 ($urid)(urids)
             }
 
             unsafe fn create_ref(bytes: &[u8]) -> Option<&Self> {
-                if bytes.len() == size_of::<Self>() {
+                let ptr = bytes.as_ptr() as *const Self;
+
+                let mut valid = bytes.len() == size_of::<Self>(); // check size
+                valid &= (ptr as usize % Layout::new::<Self>().align()) == 0; // check alignment
+                
+                if valid {
                     (bytes.as_ptr() as *const Self).as_ref()
                 } else {
                     None
@@ -39,30 +43,49 @@ macro_rules! make_scalar_atom {
     };
 }
 
+#[repr(transparent)]
+pub struct AtomDouble(c_double);
+
 make_scalar_atom!(
     AtomDouble,
     c_double,
     sys::LV2_ATOM__Double,
     |urids: &AtomURIDCache| urids.double
 );
+
+#[repr(transparent)]
+pub struct AtomFloat(c_float);
+
 make_scalar_atom!(
     AtomFloat,
     c_float,
     sys::LV2_ATOM__Float,
     |urids: &AtomURIDCache| urids.float
 );
+
+#[repr(transparent)]
+pub struct AtomInt(c_int);
+
 make_scalar_atom!(
     AtomInt,
     c_int,
     sys::LV2_ATOM__Int,
     |urids: &AtomURIDCache| urids.int
 );
+
+#[repr(transparent)]
+pub struct AtomLong(c_long);
+
 make_scalar_atom!(
     AtomLong,
     c_long,
     sys::LV2_ATOM__Long,
     |urids: &AtomURIDCache| urids.long
 );
+
+#[repr(transparent)]
+pub struct AtomURID(URID);
+
 make_scalar_atom!(
     AtomURID,
     URID,
@@ -109,5 +132,6 @@ mod tests {
         test_atom!(LV2_Atom_Float, c_float, AtomFloat, 42.0);
         test_atom!(LV2_Atom_Long, c_long, AtomLong, 42);
         test_atom!(LV2_Atom_Int, c_int, AtomInt, 42);
+        test_atom!(LV2_Atom_URID, URID, AtomURID, urids.urid.get());
     }
 }
