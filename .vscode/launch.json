@@ -7,6 +7,44 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug unit tests in library 'lv2-atom'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=lv2-atom"
+                ],
+                "filter": {
+                    "name": "lv2-atom",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'lv2-atom-sys'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=lv2-atom-sys"
+                ],
+                "filter": {
+                    "name": "lv2-atom-sys",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in library 'lv2-core'",
             "cargo": {
                 "args": [

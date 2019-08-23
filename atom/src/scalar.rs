@@ -1,11 +1,10 @@
+use crate::atomspace::*;
 use crate::AtomBody;
 use crate::AtomURIDCache;
 use core::UriBound;
-use std::mem::size_of;
 use std::ops::Deref;
 use std::os::raw::*;
 use urid::URID;
-use std::alloc::Layout;
 
 macro_rules! make_scalar_atom {
     ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {
@@ -27,17 +26,8 @@ macro_rules! make_scalar_atom {
                 ($urid)(urids)
             }
 
-            unsafe fn create_ref(bytes: &[u8]) -> Option<&Self> {
-                let ptr = bytes.as_ptr() as *const Self;
-
-                let mut valid = bytes.len() == size_of::<Self>(); // check size
-                valid &= (ptr as usize % Layout::new::<Self>().align()) == 0; // check alignment
-                
-                if valid {
-                    (bytes.as_ptr() as *const Self).as_ref()
-                } else {
-                    None
-                }
+            fn create_ref(bytes: AtomSpace) -> Option<&Self> {
+                Some(unsafe { bytes.retrieve_type::<Self>() }?.0)
             }
         }
     };
@@ -95,14 +85,14 @@ make_scalar_atom!(
 
 #[cfg(test)]
 mod tests {
+    use crate::atomspace::AtomSpace;
     use crate::scalar::*;
-    use crate::UnidentifiedAtom;
     use std::mem::{size_of, size_of_val};
-    use urid::URIDCache;
     use sys::*;
+    use urid::URIDCache;
 
     #[test]
-    fn test_scalars() {
+    fn test_scalar_retrieval() {
         let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
         let map = map_interface.map();
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
@@ -114,7 +104,7 @@ mod tests {
                         type_: <$atom>::urid(&urids).get(),
                         size: size_of::<$raw>() as u32,
                     },
-                    body: $value
+                    body: $value,
                 };
                 let data_slice = unsafe {
                     std::slice::from_raw_parts(
@@ -122,8 +112,8 @@ mod tests {
                         size_of_val(&original_atom),
                     )
                 };
-                let atom = unsafe { UnidentifiedAtom::from_slice(data_slice) }.unwrap();
-                let value = atom.identify::<$atom>(&urids).unwrap();
+                let space = AtomSpace::new(data_slice);
+                let value = space.retrieve_atom::<$atom>(&urids).unwrap().0;
                 assert_eq!($value, **value);
             };
         }
