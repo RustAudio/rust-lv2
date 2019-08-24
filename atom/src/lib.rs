@@ -9,20 +9,23 @@ pub mod frame;
 pub mod scalar;
 
 use crate::atomspace::*;
+use crate::frame::AtomWritingFrame;
 use core::UriBound;
 use urid::{URIDCache, URID};
 
 #[derive(URIDCache)]
 pub struct AtomURIDCache {
-    double: URID<scalar::AtomDouble>,
-    float: URID<scalar::AtomFloat>,
-    int: URID<scalar::AtomInt>,
-    long: URID<scalar::AtomLong>,
+    double: URID<scalar::Double>,
+    float: URID<scalar::Float>,
+    int: URID<scalar::Int>,
+    long: URID<scalar::Long>,
     urid: URID<scalar::AtomURID>,
 }
 
-pub trait AtomBody: UriBound {
+pub trait AtomBody: UriBound + Sized {
     fn urid(urids: &AtomURIDCache) -> URID<Self>;
 
-    fn create_ref(bytes: AtomSpace) -> Option<&Self>;
+    fn create_ref(bytes: AtomSpace) -> Option<Self>;
+
+    fn initialize_body(&self, frame: &mut AtomWritingFrame<Self>) -> bool;
 }

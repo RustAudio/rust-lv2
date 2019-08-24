@@ -148,7 +148,7 @@ mod tests {
         let mut urid_map = URIDMap::new().make_map_interface();
         let urids = AtomURIDCache::from_map(&urid_map.map()).unwrap();
 
-        let mut atom_frame: AtomWritingFrame<AtomInt> = (&mut root as &mut dyn WritingFrame)
+        let mut atom_frame: AtomWritingFrame<Int> = (&mut root as &mut dyn WritingFrame)
             .create_atom_frame(&urids)
             .unwrap();
 

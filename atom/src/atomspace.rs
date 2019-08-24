@@ -64,10 +64,7 @@ impl<'a> AtomSpace<'a> {
     /// Try to retrieve the body of an atom.
     ///
     /// This method retrieves an atom header first and checks if the URID is valid. Then, it retrieves the space, as noted in the header, and creates a body reference from it.
-    pub fn retrieve_atom<T: AtomBody>(
-        self,
-        urids: &AtomURIDCache,
-    ) -> Option<(&'a T, Option<Self>)> {
+    pub fn retrieve_atom<T: AtomBody>(self, urids: &AtomURIDCache) -> Option<(T, Option<Self>)> {
         let (header, upper_space) = unsafe { self.retrieve_type::<sys::LV2_Atom>() }?;
         let upper_space = upper_space?;
         if header.type_ != T::urid(urids) {
