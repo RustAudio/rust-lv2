@@ -1,6 +1,6 @@
 # rust-lv2
 
-[![Build Status](https://travis-ci.org/rust-dsp/rust-lv2.svg?branch=master)](https://travis-ci.org/rust-dsp/rust-lv2)
+[![Build Status](https://travis-ci.org/rustaudio/rust-lv2.svg?branch=master)](https://travis-ci.org/rustaudio/rust-lv2)
 
 A safe, fast, and ergonomic Rust library to create [LV2 plugins](http://lv2plug.in/) for audio processing or synthesis,
 on any platform.

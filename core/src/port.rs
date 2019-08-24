@@ -11,7 +11,7 @@ pub use lv2_core_derive::*;
 /// Generalization of port types.
 ///
 /// A port can read input or create a pointer to the output, but the exact type of input/output (pointer) depends on the type of port. This trait generalizes these types and behaviour.
-pub trait PortType: 'static + Sized + UriBound {
+pub trait PortType {
     /// The type of input read by the port.
     type InputPortType: Sized;
     /// The type of output reference created by the port.
