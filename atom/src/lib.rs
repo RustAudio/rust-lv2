@@ -5,6 +5,7 @@ extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
 pub mod atomspace;
+pub mod frame;
 pub mod scalar;
 
 use crate::atomspace::*;

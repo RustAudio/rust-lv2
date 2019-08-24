@@ -82,64 +82,9 @@ impl<'a> AtomSpace<'a> {
     }
 }
 
-/// Specialized smart pointer to write atoms.
-pub struct MutAtomSpace<'a> {
-    data: &'a mut [u8],
-}
-
-impl<'a> MutAtomSpace<'a> {
-    /// Create a new mutable atom space.
-    pub fn new(data: &'a mut [u8]) -> Self {
-        if data.as_ptr() as usize % 8 != 0 {
-            panic!("Trying to create an unaligned atom space");
-        }
-        Self { data }
-    }
-
-    /// Try to write raw data to the atom space.
-    ///
-    /// First, the space is split into a lower slice which will contain the written data and a upper slice which can be used later. Then, the raw data will be written into the lower slice and the upper slice will be padded and wrapped in a mutable atom space. If there is no space left after the data has been written, the method will return `None` instead of some mutable atom space.
-    ///
-    /// If there is not enough space for the raw data, `Err(self)` will be returned.
-    pub fn write_raw(self, raw_data: &[u8]) -> Result<(&'a mut [u8], Option<Self>), Self> {
-        if raw_data.len() > self.data.len() {
-            return Err(self);
-        }
-        let (lower_slice, upper_slice) = self.data.split_at_mut(raw_data.len());
-        lower_slice.copy_from_slice(raw_data);
-
-        let padding = if raw_data.len() % 8 == 0 {
-            0
-        } else {
-            8 - raw_data.len() % 8
-        };
-
-        if padding < upper_slice.len() {
-            let (_, upper_slice) = upper_slice.split_at_mut(padding);
-            Ok((lower_slice, Some(Self::new(upper_slice))))
-        } else {
-            Ok((lower_slice, None))
-        }
-    }
-
-    /// Write an instance of a sized type to the atom space.
-    ///
-    /// This method uses the [`write_raw`](#method.write_raw) method to write the data. Therefore, it has similar behaviour.
-    ///
-    /// The type `T` may only be plain-old-data (must not contain references or pointers of any kind). Since this can not properly be checked by Rust's type system, this method is unsafe.
-    pub unsafe fn write<T: Sized>(self, reference: &T) -> Result<(&'a mut T, Option<Self>), Self> {
-        let size = size_of::<T>();
-        let raw_data = std::slice::from_raw_parts(reference as *const T as *const u8, size);
-        let (written_data, space) = self.write_raw(raw_data)?;
-        let written_data = &mut *(written_data.as_mut_ptr() as *mut T);
-        Ok((written_data, space))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::atomspace::*;
-    use std::alloc::*;
 
     #[test]
     fn test_atom_space() {
@@ -161,41 +106,5 @@ mod tests {
         let upper_space = upper_space.unwrap();
         let (integer, _) = unsafe { upper_space.retrieve_type::<u32>() }.unwrap();
         assert_eq!(*integer, 0x42424242);
-    }
-
-    #[test]
-    fn test_mut_atom_space() {
-        const MEMORY_SIZE: usize = 256;
-        let layout = Layout::from_size_align(MEMORY_SIZE, 8).unwrap();
-        let memory = unsafe { alloc(layout) };
-
-        {
-            let space =
-                MutAtomSpace::new(unsafe { std::slice::from_raw_parts_mut(memory, MEMORY_SIZE) });
-
-            let mut test_data: Vec<u8> = vec![0; 24];
-            for i in 0..test_data.len() {
-                test_data[i] = i as u8;
-            }
-
-            let space = match space.write_raw(test_data.as_slice()) {
-                Ok((written_data, upper_space)) => {
-                    assert_eq!(test_data.as_slice(), written_data);
-                    upper_space.unwrap()
-                }
-                Err(_) => panic!("Writing failed!"),
-            };
-
-            let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-            match unsafe { space.write(&test_atom) } {
-                Ok((written_atom, _)) => {
-                    assert_eq!(written_atom.size, test_atom.size);
-                    assert_eq!(written_atom.type_, test_atom.type_);
-                }
-                Err(_) => panic!("Writing failed!"),
-            }
-        }
-
-        unsafe { dealloc(memory, layout) };
     }
 }
