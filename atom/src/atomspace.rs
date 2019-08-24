@@ -9,6 +9,17 @@ pub struct AtomSpace<'a> {
 }
 
 impl<'a> AtomSpace<'a> {
+    /// Create a new atom space from a pointer.
+    ///
+    /// This method is used by ports to determine the available space for atoms: First, it reads the size of the atom and then creates an atom space of the read size.
+    ///
+    /// Since it is assumed that the pointer as well as the space behind the atom is valid, this method is unsafe.
+    pub unsafe fn from_atom_ptr(atom: *const sys::LV2_Atom) -> Self {
+        let size = (*atom).size as usize + size_of::<sys::LV2_Atom>();
+        let data = std::slice::from_raw_parts(atom as *const u8, size);
+        Self { data }
+    }
+
     /// Create a new atom space from raw data.
     ///
     /// The data has to be 64-bit-aligned, which means that `data.as_ptr() as usize % 8` must always be 0. The soundness of this module depends on this invariant and the method will panic if it's not upheld.
