@@ -28,17 +28,19 @@ macro_rules! make_scalar_atom {
         }
 
         impl AtomBody for $atom {
+            type InitializationParameter = $internal;
+
             #[allow(clippy::redundant_closure_call)]
             fn urid(urids: &AtomURIDCache) -> URID<Self> {
                 ($urid)(urids)
             }
 
-            fn create_ref(bytes: AtomSpace) -> Option<Self> {
+            fn retrieve(bytes: AtomSpace) -> Option<Self> {
                 Some(Self(*unsafe { bytes.retrieve_type::<$internal>() }?.0))
             }
 
-            fn initialize_body(&self, frame: &mut AtomWritingFrame<Self>) -> bool {
-                (frame as &mut dyn WritingFrame).write(&self.0).is_some()
+            fn initialize_frame(frame: &mut AtomWritingFrame<Self>, param: &$internal) -> bool {
+                (frame as &mut dyn WritingFrame).write(param).is_some()
             }
         }
     };
@@ -145,21 +147,18 @@ mod tests {
         };
 
         macro_rules! test_atom {
-            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
-                let atom = <$atom>::new($value);
-                {
-                    let mut root_frame = RootWritingFrame::new(raw_memory);
-                    let mut atom_frame = (&mut root_frame as &mut dyn WritingFrame)
-                        .create_atom_frame(&urids)
-                        .unwrap();
+            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {{
+                let mut root_frame = RootWritingFrame::new(raw_memory);
+                let mut atom_frame = (&mut root_frame as &mut dyn WritingFrame)
+                    .create_atom_frame(&urids)
+                    .unwrap();
 
-                    atom.initialize_body(&mut atom_frame);
-                }
-                let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
-                assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
-                assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
-                assert_eq!(raw_atom.body, *atom);
-            };
+                <$atom>::initialize_frame(&mut atom_frame, &$value);
+            }
+            let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
+            assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
+            assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
+            assert_eq!(raw_atom.body, $value);};
         }
 
         test_atom!(LV2_Atom_Double, c_double, Double, 42.0);

@@ -23,9 +23,14 @@ pub struct AtomURIDCache {
 }
 
 pub trait AtomBody: UriBound + Sized {
+    type InitializationParameter: ?Sized;
+
     fn urid(urids: &AtomURIDCache) -> URID<Self>;
 
-    fn create_ref(bytes: AtomSpace) -> Option<Self>;
+    fn retrieve(bytes: AtomSpace) -> Option<Self>;
 
-    fn initialize_body(&self, frame: &mut AtomWritingFrame<Self>) -> bool;
+    fn initialize_frame(
+        frame: &mut AtomWritingFrame<Self>,
+        param: &Self::InitializationParameter,
+    ) -> bool;
 }

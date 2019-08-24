@@ -73,7 +73,7 @@ impl<'a> AtomSpace<'a> {
 
         let (raw_data, upper_space) = upper_space.retrieve_space(header.size as usize)?;
 
-        let atom_body = T::create_ref(raw_data)?;
+        let atom_body = T::retrieve(raw_data)?;
 
         Some((atom_body, upper_space))
     }
