@@ -156,6 +156,18 @@ impl<T: ?Sized> Hash for URID<T> {
     }
 }
 
+impl std::convert::TryFrom<u32> for URID {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<URID, ()> {
+        if value == 0 {
+            Err(())
+        } else {
+            Ok(unsafe { URID::new_unchecked(value) })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::URID;
