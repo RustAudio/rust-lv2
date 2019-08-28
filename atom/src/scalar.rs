@@ -1,5 +1,4 @@
-use crate::atomspace::*;
-use crate::frame::WritingFrame;
+use crate::space::*;
 use crate::AtomURIDCache;
 use core::UriBound;
 use std::mem::size_of;
@@ -9,7 +8,7 @@ use urid::{URIDBound, URID};
 pub trait ScalarAtom: URIDBound {
     type InternalValue: Sized + Copy + 'static;
 
-    fn get(space: &mut AtomSpace, urids: &Self::CacheType) -> Option<Self::InternalValue> {
+    fn get(space: &mut Space, urids: &Self::CacheType) -> Option<Self::InternalValue> {
         let atom = unsafe { space.retrieve_type::<sys::LV2_Atom>() }?;
 
         if atom.size as usize != size_of::<Self::InternalValue>()
@@ -23,12 +22,12 @@ pub trait ScalarAtom: URIDBound {
     }
 
     fn write<'a>(
-        space: &mut dyn WritingFrame<'a>,
+        space: &mut dyn MutSpace<'a>,
         value: Self::InternalValue,
         urids: &Self::CacheType,
     ) -> Option<&'a mut Self::InternalValue> {
         let mut frame = space.create_atom_frame(Self::urid(urids).into_general())?;
-        (&mut frame as &mut dyn WritingFrame).write(&value)
+        (&mut frame as &mut dyn MutSpace).write(&value)
     }
 }
 
@@ -97,8 +96,7 @@ make_scalar_atom!(
 
 #[cfg(test)]
 mod tests {
-    use crate::atomspace::AtomSpace;
-    use crate::frame::*;
+    use crate::space::*;
     use crate::scalar::*;
     use std::mem::{size_of, size_of_val};
     use sys::*;
@@ -125,7 +123,7 @@ mod tests {
                         size_of_val(&original_atom),
                     )
                 };
-                let mut space = AtomSpace::new(data_slice);
+                let mut space = Space::new(data_slice);
                 let value = <$atom>::get(&mut space, &urids).unwrap();
                 assert_eq!($value, value);
             };
@@ -150,7 +148,7 @@ mod tests {
 
         macro_rules! test_atom {
             ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {{
-                let mut root_frame = RootWritingFrame::new(raw_memory);
+                let mut root_frame = RootMutSpace::new(raw_memory);
                 <$atom>::write(&mut root_frame, $value, &urids).unwrap();
             }
             let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };

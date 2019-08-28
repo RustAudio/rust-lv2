@@ -4,8 +4,7 @@ pub extern crate lv2_atom_sys as sys;
 extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
-pub mod atomspace;
-pub mod frame;
+pub mod space;
 pub mod scalar;
 
 use urid::{URIDCache, URID};
