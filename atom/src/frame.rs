@@ -1,6 +1,5 @@
-use crate::{AtomBody, AtomURIDCache};
 use std::cell::Cell;
-use std::marker::PhantomData;
+use urid::URID;
 
 pub trait WritingFrame<'a> {
     fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]>;
@@ -48,19 +47,12 @@ impl<'a> WritingFrame<'a> for RootWritingFrame<'a> {
     }
 }
 
-pub struct AtomWritingFrame<'a, 'b, A>
-where
-    A: AtomBody + ?Sized,
-{
+pub struct AtomWritingFrame<'a, 'b> {
     atom: &'a mut sys::LV2_Atom,
     parent: &'b mut dyn WritingFrame<'a>,
-    phantom: PhantomData<A>,
 }
 
-impl<'a, 'b, A> WritingFrame<'a> for AtomWritingFrame<'a, 'b, A>
-where
-    A: AtomBody + ?Sized,
-{
+impl<'a, 'b> WritingFrame<'a> for AtomWritingFrame<'a, 'b> {
     fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
         let data = self.parent.write_raw(data)?;
         self.atom.size += data.len() as u32;
@@ -80,27 +72,20 @@ impl<'a, 'b> dyn WritingFrame<'a> + 'b {
         unsafe { Some(&mut *(output_data.as_mut_ptr() as *mut T)) }
     }
 
-    pub fn create_atom_frame<'c, A: AtomBody + ?Sized>(
-        &'c mut self,
-        urids: &AtomURIDCache,
-    ) -> Option<AtomWritingFrame<'a, 'c, A>> {
+    pub fn create_atom_frame<'c>(&'c mut self, urid: URID) -> Option<AtomWritingFrame<'a, 'c>> {
         let atom = sys::LV2_Atom {
             size: 0,
-            type_: A::urid(urids).get(),
+            type_: urid.get(),
         };
         let atom: &'a mut sys::LV2_Atom = self.write(&atom)?;
-        Some(AtomWritingFrame {
-            atom,
-            parent: self,
-            phantom: PhantomData,
-        })
+        Some(AtomWritingFrame { atom, parent: self })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::frame::*;
-    use crate::scalar::*;
+    use crate::AtomURIDCache;
     use std::mem::{size_of, size_of_val};
     use urid::mapper::URIDMap;
     use urid::URIDCache;
@@ -148,8 +133,8 @@ mod tests {
         let mut urid_map = URIDMap::new().make_map_interface();
         let urids = AtomURIDCache::from_map(&urid_map.map()).unwrap();
 
-        let mut atom_frame: AtomWritingFrame<Int> = (&mut root as &mut dyn WritingFrame)
-            .create_atom_frame(&urids)
+        let mut atom_frame: AtomWritingFrame = (&mut root as &mut dyn WritingFrame)
+            .create_atom_frame(urids.int.into_general())
             .unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];

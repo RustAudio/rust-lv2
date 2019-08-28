@@ -1,53 +1,59 @@
 use crate::atomspace::*;
-use crate::frame::{AtomWritingFrame, WritingFrame};
-use crate::AtomBody;
+use crate::frame::WritingFrame;
 use crate::AtomURIDCache;
 use core::UriBound;
-use std::ops::Deref;
+use std::mem::size_of;
 use std::os::raw::*;
-use urid::URID;
+use urid::{URIDBound, URID};
+
+pub trait ScalarAtom: URIDBound {
+    type InternalValue: Sized + Copy + 'static;
+
+    fn get(space: &mut AtomSpace, urids: &Self::CacheType) -> Option<Self::InternalValue> {
+        let atom = unsafe { space.retrieve_type::<sys::LV2_Atom>() }?;
+
+        if atom.size as usize != size_of::<Self::InternalValue>()
+            || atom.type_ != Self::urid(urids).get()
+        {
+            return None;
+        }
+
+        let value = unsafe { space.retrieve_type::<Self::InternalValue>() }?;
+        Some(*value)
+    }
+
+    fn write<'a>(
+        space: &mut dyn WritingFrame<'a>,
+        value: Self::InternalValue,
+        urids: &Self::CacheType,
+    ) -> Option<&'a mut Self::InternalValue> {
+        let mut frame = space.create_atom_frame(Self::urid(urids).into_general())?;
+        (&mut frame as &mut dyn WritingFrame).write(&value)
+    }
+}
 
 macro_rules! make_scalar_atom {
     ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {
-        impl $atom {
-            pub fn new(value: $internal) -> Self {
-                Self(value)
-            }
-        }
-
-        impl Deref for $atom {
-            type Target = $internal;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
         unsafe impl UriBound for $atom {
             const URI: &'static [u8] = $uri;
         }
 
-        impl AtomBody for $atom {
-            type InitializationParameter = $internal;
+        impl URIDBound for $atom {
+            type CacheType = AtomURIDCache;
 
-            #[allow(clippy::redundant_closure_call)]
-            fn urid(urids: &AtomURIDCache) -> URID<Self> {
-                ($urid)(urids)
+            fn urid(cache: &AtomURIDCache) -> URID<$atom> {
+                #[allow(clippy::redundant_closure_call)]
+                ($urid)(cache)
             }
+        }
 
-            fn retrieve(bytes: AtomSpace) -> Option<Self> {
-                Some(Self(*unsafe { bytes.retrieve_type::<$internal>() }?.0))
-            }
-
-            fn initialize_frame(frame: &mut AtomWritingFrame<Self>, param: &$internal) -> bool {
-                (frame as &mut dyn WritingFrame).write(param).is_some()
-            }
+        impl ScalarAtom for $atom {
+            type InternalValue = $internal;
         }
     };
 }
 
-#[repr(transparent)]
-pub struct Double(c_double);
+pub struct Double;
 
 make_scalar_atom!(
     Double,
@@ -56,8 +62,7 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.double
 );
 
-#[repr(transparent)]
-pub struct Float(c_float);
+pub struct Float;
 
 make_scalar_atom!(
     Float,
@@ -66,15 +71,13 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.float
 );
 
-#[repr(transparent)]
-pub struct Int(c_int);
+pub struct Int;
 
 make_scalar_atom!(Int, c_int, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
     urids.int
 });
 
-#[repr(transparent)]
-pub struct Long(c_long);
+pub struct Long;
 
 make_scalar_atom!(
     Long,
@@ -83,8 +86,7 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.long
 );
 
-#[repr(transparent)]
-pub struct AtomURID(URID);
+pub struct AtomURID;
 
 make_scalar_atom!(
     AtomURID,
@@ -123,9 +125,9 @@ mod tests {
                         size_of_val(&original_atom),
                     )
                 };
-                let space = AtomSpace::new(data_slice);
-                let value = space.retrieve_atom::<$atom>(&urids).unwrap().0;
-                assert_eq!($value, *value);
+                let mut space = AtomSpace::new(data_slice);
+                let value = <$atom>::get(&mut space, &urids).unwrap();
+                assert_eq!($value, value);
             };
         }
 
@@ -149,11 +151,7 @@ mod tests {
         macro_rules! test_atom {
             ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {{
                 let mut root_frame = RootWritingFrame::new(raw_memory);
-                let mut atom_frame = (&mut root_frame as &mut dyn WritingFrame)
-                    .create_atom_frame(&urids)
-                    .unwrap();
-
-                <$atom>::initialize_frame(&mut atom_frame, &$value);
+                <$atom>::write(&mut root_frame, $value, &urids).unwrap();
             }
             let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
             assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
