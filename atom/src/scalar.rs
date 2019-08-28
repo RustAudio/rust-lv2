@@ -1,33 +1,22 @@
 use crate::space::*;
 use crate::AtomURIDCache;
 use core::UriBound;
-use std::mem::size_of;
 use std::os::raw::*;
 use urid::{URIDBound, URID};
 
 pub trait ScalarAtom: URIDBound {
-    type InternalValue: Sized + Copy + 'static;
+    type InternalType: Copy + Sized + 'static;
+}
 
-    fn get(space: &mut Space, urids: &Self::CacheType) -> Option<Self::InternalValue> {
-        let atom = unsafe { space.retrieve_type::<sys::LV2_Atom>() }?;
-
-        if atom.size as usize != size_of::<Self::InternalValue>()
-            || atom.type_ != Self::urid(urids).get()
-        {
-            return None;
-        }
-
-        let value = unsafe { space.retrieve_type::<Self::InternalValue>() }?;
-        Some(*value)
+impl<'a, A: ScalarAtom> Space<'a, A> {
+    pub fn as_body(self) -> Option<A::InternalType> {
+        unsafe { self.split_type::<A::InternalType>() }.map(|(value, _)| *value)
     }
+}
 
-    fn write<'a>(
-        space: &mut dyn MutSpace<'a>,
-        value: Self::InternalValue,
-        urids: &Self::CacheType,
-    ) -> Option<&'a mut Self::InternalValue> {
-        let mut frame = space.create_atom_frame(Self::urid(urids).into_general())?;
-        (&mut frame as &mut dyn MutSpace).write(&value)
+impl<'a, 'b, A: ScalarAtom> FramedMutSpace<'a, 'b, A> {
+    pub fn write_body(&mut self, value: A::InternalType) -> Option<&'a mut A::InternalType> {
+        (self as &mut dyn MutSpace).write(&value)
     }
 }
 
@@ -47,7 +36,7 @@ macro_rules! make_scalar_atom {
         }
 
         impl ScalarAtom for $atom {
-            type InternalValue = $internal;
+            type InternalType = $internal;
         }
     };
 }
@@ -96,9 +85,8 @@ make_scalar_atom!(
 
 #[cfg(test)]
 mod tests {
-    use crate::space::*;
     use crate::scalar::*;
-    use std::mem::{size_of, size_of_val};
+    use std::mem::size_of;
     use sys::*;
     use urid::URIDCache;
 
@@ -117,14 +105,10 @@ mod tests {
                     },
                     body: $value,
                 };
-                let data_slice = unsafe {
-                    std::slice::from_raw_parts(
-                        &original_atom as *const _ as *const u8,
-                        size_of_val(&original_atom),
-                    )
-                };
-                let mut space = Space::new(data_slice);
-                let value = <$atom>::get(&mut space, &urids).unwrap();
+
+                let space: Space<$atom> =
+                    unsafe { Space::from_atom(&original_atom.atom, &urids) }.unwrap();
+                let value = space.as_body().unwrap();
                 assert_eq!($value, value);
             };
         }
@@ -147,14 +131,17 @@ mod tests {
         };
 
         macro_rules! test_atom {
-            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {{
-                let mut root_frame = RootMutSpace::new(raw_memory);
-                <$atom>::write(&mut root_frame, $value, &urids).unwrap();
-            }
-            let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
-            assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
-            assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
-            assert_eq!(raw_atom.body, $value);};
+            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
+                let mut space = RootMutSpace::new(raw_memory);
+                let mut frame = (&mut space as &mut dyn MutSpace)
+                    .create_atom_frame::<$atom>(&urids)
+                    .unwrap();
+                frame.write_body($value).unwrap();
+                let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
+                assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
+                assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
+                assert_eq!(raw_atom.body, $value);
+            };
         }
 
         test_atom!(LV2_Atom_Double, c_double, Double, 42.0);
