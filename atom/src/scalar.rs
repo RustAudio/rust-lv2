@@ -101,11 +101,11 @@ mod tests {
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         macro_rules! test_atom {
-            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
+            ($orig:ident, $atom:ty, $value:expr) => {
                 let original_atom = $orig {
                     atom: sys::LV2_Atom {
                         type_: <$atom>::urid(&urids).get(),
-                        size: size_of::<$raw>() as u32,
+                        size: size_of::<<$atom as ScalarAtom>::InternalType>() as u32,
                     },
                     body: $value,
                 };
@@ -117,11 +117,11 @@ mod tests {
             };
         }
 
-        test_atom!(LV2_Atom_Double, c_double, Double, 42.0);
-        test_atom!(LV2_Atom_Float, c_float, Float, 42.0);
-        test_atom!(LV2_Atom_Long, c_long, Long, 42);
-        test_atom!(LV2_Atom_Int, c_int, Int, 42);
-        test_atom!(LV2_Atom_URID, URID, AtomURID, urids.urid.get());
+        test_atom!(LV2_Atom_Double, Double, 42.0);
+        test_atom!(LV2_Atom_Float, Float, 42.0);
+        test_atom!(LV2_Atom_Long, Long, 42);
+        test_atom!(LV2_Atom_Int, Int, 42);
+        test_atom!(LV2_Atom_URID, AtomURID, urids.urid.get());
     }
 
     #[test]
@@ -135,20 +135,23 @@ mod tests {
         };
 
         macro_rules! test_atom {
-            ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
+            ($orig:ident, $atom:ty, $value:expr) => {
                 let mut space = RootMutSpace::new(raw_memory);
                 <$atom>::write_body(&mut space, $value, &urids).unwrap();
                 let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
-                assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
+                assert_eq!(
+                    raw_atom.atom.size as usize,
+                    size_of::<<$atom as ScalarAtom>::InternalType>()
+                );
                 assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
                 assert_eq!(raw_atom.body, $value);
             };
         }
 
-        test_atom!(LV2_Atom_Double, c_double, Double, 42.0);
-        test_atom!(LV2_Atom_Float, c_float, Float, 42.0);
-        test_atom!(LV2_Atom_Long, c_long, Long, 42);
-        test_atom!(LV2_Atom_Int, c_int, Int, 42);
-        test_atom!(LV2_Atom_URID, URID, AtomURID, urids.urid.into_general());
+        test_atom!(LV2_Atom_Double, Double, 42.0);
+        test_atom!(LV2_Atom_Float, Float, 42.0);
+        test_atom!(LV2_Atom_Long, Long, 42);
+        test_atom!(LV2_Atom_Int, Int, 42);
+        test_atom!(LV2_Atom_URID, AtomURID, urids.urid.into_general());
     }
 }
