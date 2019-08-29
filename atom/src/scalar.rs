@@ -11,11 +11,16 @@ pub trait ScalarAtom: URIDBound {
         unsafe { space.split_type::<Self::InternalType>() }.map(|(value, _)| *value)
     }
 
-    fn write_body<'a, 'b>(
-        space: &mut FramedMutSpace<'a, 'b, Self>,
+    fn write_body<'a>(
+        space: &mut dyn MutSpace<'a>,
         value: Self::InternalType,
+        urids: &Self::CacheType,
     ) -> Option<&'a mut Self::InternalType> {
-        (space as &mut dyn MutSpace).write(&value)
+        unsafe {
+            space
+                .create_atom_frame::<Self>(urids)
+                .and_then(|mut frame| (&mut frame as &mut dyn MutSpace).write(&value, true))
+        }
     }
 }
 
@@ -132,10 +137,7 @@ mod tests {
         macro_rules! test_atom {
             ($orig:ident, $raw:ty, $atom:ty, $value:expr) => {
                 let mut space = RootMutSpace::new(raw_memory);
-                let mut frame = (&mut space as &mut dyn MutSpace)
-                    .create_atom_frame::<$atom>(&urids)
-                    .unwrap();
-                <$atom>::write_body(&mut frame, $value).unwrap();
+                <$atom>::write_body(&mut space, $value, &urids).unwrap();
                 let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
                 assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
                 assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());

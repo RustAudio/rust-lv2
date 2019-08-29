@@ -109,10 +109,10 @@ impl<'a, A: URIDBound + ?Sized> Clone for Space<'a, A> {
 impl<'a, A: URIDBound + ?Sized> Copy for Space<'a, A> {}
 
 pub trait MutSpace<'a> {
-    fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]>;
+    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]>;
 
-    fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
-        self.allocate(data.len()).map(|space| {
+    unsafe fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
+        self.allocate(data.len(), apply_padding).map(|space| {
             space.copy_from_slice(data);
             space
         })
@@ -135,7 +135,7 @@ impl<'a> RootMutSpace<'a> {
 }
 
 impl<'a> MutSpace<'a> for RootMutSpace<'a> {
-    fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
+    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
         if self.space.get_mut().is_none() {
             return None;
         }
@@ -146,7 +146,11 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
         }
         let (lower_slice, upper_slice) = space.split_at_mut(size);
 
-        let padding = if size % 8 == 0 { 0 } else { 8 - size % 8 };
+        let padding = if size % 8 == 0 || !apply_padding {
+            0
+        } else {
+            8 - size % 8
+        };
 
         if padding < upper_slice.len() {
             let (_, upper_slice) = upper_slice.split_at_mut(padding);
@@ -163,8 +167,8 @@ pub struct FramedMutSpace<'a, 'b, A: URIDBound + ?Sized> {
 }
 
 impl<'a, 'b, A: URIDBound + ?Sized> MutSpace<'a> for FramedMutSpace<'a, 'b, A> {
-    fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
-        self.parent.allocate(size).map(|data| {
+    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
+        self.parent.allocate(size, apply_padding).map(|data| {
             self.atom.size += size as u32;
             data
         })
@@ -172,18 +176,21 @@ impl<'a, 'b, A: URIDBound + ?Sized> MutSpace<'a> for FramedMutSpace<'a, 'b, A> {
 }
 
 impl<'a, 'b> dyn MutSpace<'a> + 'b {
-    pub fn write<T: Sized>(&mut self, instance: &T) -> Option<&'a mut T> {
+    pub unsafe fn write<T: Sized>(
+        &mut self,
+        instance: &T,
+        apply_padding: bool,
+    ) -> Option<&'a mut T> {
         let size = std::mem::size_of::<T>();
-        let input_data =
-            unsafe { std::slice::from_raw_parts(instance as *const T as *const u8, size) };
+        let input_data = std::slice::from_raw_parts(instance as *const T as *const u8, size);
 
-        let output_data = self.write_raw(input_data)?;
+        let output_data = self.write_raw(input_data, apply_padding)?;
 
         assert_eq!(size, output_data.len());
-        unsafe { Some(&mut *(output_data.as_mut_ptr() as *mut T)) }
+        Some(&mut *(output_data.as_mut_ptr() as *mut T))
     }
 
-    pub fn create_atom_frame<'c, A: URIDBound + ?Sized>(
+    pub unsafe fn create_atom_frame<'c, A: URIDBound + ?Sized>(
         &'c mut self,
         urids: &A::CacheType,
     ) -> Option<FramedMutSpace<'a, 'c, A>> {
@@ -191,7 +198,7 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
             size: 0,
             type_: A::urid(urids).get(),
         };
-        let atom: &'a mut sys::LV2_Atom = self.write(&atom)?;
+        let atom: &'a mut sys::LV2_Atom = self.write(&atom, true)?;
         Some(FramedMutSpace {
             atom,
             parent: self,
@@ -245,13 +252,17 @@ mod tests {
             test_data[i] = i as u8;
         }
 
-        match frame.write_raw(test_data.as_slice()) {
+        match unsafe { frame.write_raw(test_data.as_slice(), true) } {
             Some(written_data) => assert_eq!(test_data.as_slice(), written_data),
             None => panic!("Writing failed!"),
         }
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = (&mut frame as &mut dyn MutSpace).write(&test_atom).unwrap();
+        let written_atom = unsafe {
+            (&mut frame as &mut dyn MutSpace)
+                .write(&test_atom, true)
+                .unwrap()
+        };
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
     }
@@ -270,22 +281,24 @@ mod tests {
         let mut urid_map = URIDMap::new().make_map_interface();
         let urids = AtomURIDCache::from_map(&urid_map.map()).unwrap();
 
-        let mut atom_frame: FramedMutSpace<crate::Int> = (&mut root as &mut dyn MutSpace)
-            .create_atom_frame(&urids)
-            .unwrap();
+        let mut atom_frame: FramedMutSpace<crate::Int> = unsafe {
+            (&mut root as &mut dyn MutSpace)
+                .create_atom_frame(&urids)
+                .unwrap()
+        };
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
             test_data[i] = i as u8;
         }
 
-        let written_data = atom_frame.write_raw(test_data.as_slice()).unwrap();
+        let written_data = unsafe { atom_frame.write_raw(test_data.as_slice(), true) }.unwrap();
         assert_eq!(test_data.as_slice(), written_data);
         assert_eq!(atom_frame.atom.size, test_data.len() as u32);
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
         let borrowed_frame = &mut atom_frame as &mut dyn MutSpace;
-        let written_atom = borrowed_frame.write(&test_atom).unwrap();
+        let written_atom = unsafe { borrowed_frame.write(&test_atom, true) }.unwrap();
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
         assert_eq!(

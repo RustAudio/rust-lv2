@@ -20,7 +20,7 @@ impl URIDBound for Vector {
 }
 
 impl Vector {
-    pub fn space_as_children_slice<'a, C: ScalarAtom>(
+    pub fn get_children<'a, C: ScalarAtom>(
         space: Space<'a, Self>,
         urids: &C::CacheType,
     ) -> Option<&'a [C::InternalType]> {
@@ -43,25 +43,61 @@ impl Vector {
         Some(children)
     }
 
-    pub fn write_body<'a, 'b, C: ScalarAtom>(
-        space: &mut FramedMutSpace<'a, 'b, Self>,
-        urids: &C::CacheType,
-        children_count: usize,
-    ) -> Option<&'a mut [C::InternalType]> {
+    pub fn new_vector<'a, 'b, C: ScalarAtom>(
+        space: &'b mut dyn MutSpace<'a>,
+        urids: &AtomURIDCache,
+        child_urids: &C::CacheType,
+    ) -> Option<VectorWriter<'a, 'b, C>> {
+        let mut frame: FramedMutSpace<Self> = unsafe { space.create_atom_frame(urids)? };
+
         let body = sys::LV2_Atom_Vector_Body {
-            child_type: C::urid(urids).get(),
+            child_type: C::urid(child_urids).get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
-        (space as &mut dyn MutSpace).write(&body)?;
+        unsafe { (&mut frame as &mut dyn MutSpace).write(&body, true)? };
 
-        space
-            .allocate(children_count * size_of::<C::InternalType>())
-            .map(|space| unsafe {
+        let children = unsafe { frame.allocate(0, false) }?;
+        Some(VectorWriter {
+            children: unsafe {
                 std::slice::from_raw_parts_mut(
-                    space.as_mut_ptr() as *mut C::InternalType,
-                    children_count,
+                    children.as_mut_ptr() as *mut C::InternalType,
+                    children.len(),
                 )
-            })
+            },
+            space: frame,
+        })
+    }
+}
+
+pub struct VectorWriter<'a, 'b, C: ScalarAtom> {
+    children: &'a mut [C::InternalType],
+    space: FramedMutSpace<'a, 'b, Vector>,
+}
+
+impl<'a, 'b, C: ScalarAtom> VectorWriter<'a, 'b, C> {
+    pub fn add_child(&mut self, child: C::InternalType) -> Option<()> {
+        self.add_children(1).map(|slice| slice[0] = child)
+    }
+
+    pub fn add_children(&mut self, count: usize) -> Option<&mut [C::InternalType]> {
+        let new_children = unsafe {
+            self.space
+                .allocate(size_of::<C::InternalType>() * count, false)?
+        };
+        let new_children = unsafe {
+            std::slice::from_raw_parts_mut(new_children.as_mut_ptr() as *mut C::InternalType, count)
+        };
+        self.children = unsafe {
+            std::slice::from_raw_parts_mut(
+                self.children.as_mut_ptr() as *mut C::InternalType,
+                self.children.len() + new_children.len(),
+            )
+        };
+        Some(new_children)
+    }
+
+    pub fn get_children(self) -> &'a mut [C::InternalType] {
+        self.children
     }
 }
 
@@ -106,7 +142,7 @@ mod tests {
         let space: Space<Vector> =
             unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids) }
                 .unwrap();
-        let children: &[i32] = Vector::space_as_children_slice::<Int>(space, &urids).unwrap();
+        let children: &[i32] = Vector::get_children::<Int>(space, &urids).unwrap();
 
         assert_eq!(children.len(), CHILD_COUNT);
         for i in 0..children.len() {
@@ -125,13 +161,17 @@ mod tests {
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut frame: FramedMutSpace<Vector> = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(&urids)
-                .unwrap();
 
-            let children = Vector::write_body::<Int>(&mut frame, &urids, CHILD_COUNT).unwrap();
-            for i in 0..children.len() {
-                children[i] = i as i32;
+            let mut writer = Vector::new_vector::<Int>(&mut space, &urids, &urids).unwrap();
+            {
+                let children = writer.add_children(CHILD_COUNT).unwrap();
+                for i in 0..children.len() {
+                    children[i] = i as i32;
+                }
+            }
+            // Checking that the written slice and the general slice are the same.
+            for (i, child) in writer.get_children().into_iter().enumerate() {
+                assert_eq!(i, *child as usize);
             }
         }
 
