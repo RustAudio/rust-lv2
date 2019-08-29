@@ -6,17 +6,16 @@ use urid::{URIDBound, URID};
 
 pub trait ScalarAtom: URIDBound {
     type InternalType: Copy + Sized + 'static;
-}
 
-impl<'a, A: ScalarAtom> Space<'a, A> {
-    pub fn as_body(self) -> Option<A::InternalType> {
-        unsafe { self.split_type::<A::InternalType>() }.map(|(value, _)| *value)
+    fn space_as_body(space: Space<Self>) -> Option<Self::InternalType> {
+        unsafe { space.split_type::<Self::InternalType>() }.map(|(value, _)| *value)
     }
-}
 
-impl<'a, 'b, A: ScalarAtom> FramedMutSpace<'a, 'b, A> {
-    pub fn write_body(&mut self, value: A::InternalType) -> Option<&'a mut A::InternalType> {
-        (self as &mut dyn MutSpace).write(&value)
+    fn write_body<'a, 'b>(
+        space: &mut FramedMutSpace<'a, 'b, Self>,
+        value: Self::InternalType,
+    ) -> Option<&'a mut Self::InternalType> {
+        (space as &mut dyn MutSpace).write(&value)
     }
 }
 
@@ -108,7 +107,7 @@ mod tests {
 
                 let space: Space<$atom> =
                     unsafe { Space::from_atom(&original_atom.atom, &urids) }.unwrap();
-                let value = space.as_body().unwrap();
+                let value = <$atom>::space_as_body(space).unwrap();
                 assert_eq!($value, value);
             };
         }
@@ -136,7 +135,7 @@ mod tests {
                 let mut frame = (&mut space as &mut dyn MutSpace)
                     .create_atom_frame::<$atom>(&urids)
                     .unwrap();
-                frame.write_body($value).unwrap();
+                <$atom>::write_body(&mut frame, $value).unwrap();
                 let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
                 assert_eq!(raw_atom.atom.size as usize, size_of::<$raw>());
                 assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
