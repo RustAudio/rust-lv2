@@ -119,14 +119,19 @@ mod tests {
 
         // verifying
         {
-            let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            /// Generic version of the scalar atom structs.
+            #[repr(C)]
+            struct Scalar<B: Sized> {
+                atom: sys::LV2_Atom,
+                body: B,
+            }
 
-            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(atom.type_, A::urid(&urids));
-            assert_eq!(atom.size as usize, size_of::<A::InternalType>());
+            let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>());
 
-            let data = unsafe { *(data.as_ptr() as *const A::InternalType) };
-            assert_eq!(data, value);
+            let scalar = unsafe { &*(scalar.as_ptr() as *const Scalar<A::InternalType>) };
+            assert_eq!(scalar.atom.type_, A::urid(&urids));
+            assert_eq!(scalar.atom.size as usize, size_of::<A::InternalType>());
+            assert_eq!(scalar.body, value);
         }
 
         // reading
