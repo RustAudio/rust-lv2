@@ -175,6 +175,13 @@ impl<'a, 'b, A: URIDBound + ?Sized> MutSpace<'a> for FramedMutSpace<'a, 'b, A> {
     }
 }
 
+impl<'a, 'b, A: URIDBound + ?Sized> Drop for FramedMutSpace<'a, 'b, A> {
+    fn drop(&mut self) {
+        // Allocate nothing with padding in order to ensure padding.
+        unsafe { self.parent.allocate(0, true) };
+    }
+}
+
 impl<'a, 'b> dyn MutSpace<'a> + 'b {
     pub unsafe fn write<T: Sized>(
         &mut self,

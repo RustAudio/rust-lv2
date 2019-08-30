@@ -80,12 +80,9 @@ make_scalar_atom!(
 
 pub struct Bool;
 
-make_scalar_atom!(
-    Bool,
-    c_int,
-    sys::LV2_ATOM__Bool,
-    |urids: &AtomURIDCache| urids.bool
-);
+make_scalar_atom!(Bool, c_int, sys::LV2_ATOM__Bool, |urids: &AtomURIDCache| {
+    urids.bool
+});
 
 pub struct AtomURID;
 
