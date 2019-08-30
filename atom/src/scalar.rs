@@ -96,70 +96,55 @@ make_scalar_atom!(
 #[cfg(test)]
 mod tests {
     use crate::scalar::*;
+    use std::convert::TryFrom;
     use std::mem::size_of;
-    use sys::*;
     use urid::URIDCache;
 
-    #[test]
-    fn test_scalar_retrieval() {
+    fn test_scalar<A: ScalarAtom>(value: A::InternalType)
+    where
+        A::InternalType: PartialEq<A::InternalType>,
+        A::InternalType: std::fmt::Debug,
+    {
         let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
         let map = map_interface.map();
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = A::CacheType::from_map(&map).unwrap();
 
-        macro_rules! test_atom {
-            ($orig:ident, $atom:ty, $value:expr) => {
-                let original_atom = $orig {
-                    atom: sys::LV2_Atom {
-                        type_: <$atom>::urid(&urids).get(),
-                        size: size_of::<<$atom as ScalarAtom>::InternalType>() as u32,
-                    },
-                    body: $value.into(),
-                };
+        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 
-                let space: Space<$atom> =
-                    unsafe { Space::from_atom(&original_atom.atom, &urids) }.unwrap();
-                let value = <$atom>::space_as_body(space).unwrap();
-                assert_eq!($value, value);
-            };
+        // writing
+        {
+            let mut space = RootMutSpace::new(raw_space.as_mut());
+            A::write_body(&mut space, value, &urids).unwrap();
         }
 
-        test_atom!(LV2_Atom_Double, Double, 42.0);
-        test_atom!(LV2_Atom_Float, Float, 42.0);
-        test_atom!(LV2_Atom_Long, Long, 42);
-        test_atom!(LV2_Atom_Int, Int, 42);
-        test_atom!(LV2_Atom_Bool, Bool, 1);
-        test_atom!(LV2_Atom_URID, AtomURID, urids.urid.get());
+        // verifying
+        {
+            let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+
+            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
+            assert_eq!(atom.type_, A::urid(&urids));
+            assert_eq!(atom.size as usize, size_of::<A::InternalType>());
+
+            let data = unsafe { *(data.as_ptr() as *const A::InternalType) };
+            assert_eq!(data, value);
+        }
+
+        // reading
+        {
+            let space: Space<A> = unsafe {
+                Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids).unwrap()
+            };
+            assert_eq!(A::space_as_body(space).unwrap(), value);
+        }
     }
 
     #[test]
-    fn test_scalar_writing() {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let urids = crate::AtomURIDCache::from_map(&map_interface.map()).unwrap();
-
-        let mut memory: [u64; 256] = [0; 256];
-        let raw_memory: &mut [u8] = unsafe {
-            std::slice::from_raw_parts_mut(memory.as_mut_ptr() as *mut u8, 256 * size_of::<u64>())
-        };
-
-        macro_rules! test_atom {
-            ($orig:ident, $atom:ty, $value:expr) => {
-                let mut space = RootMutSpace::new(raw_memory);
-                <$atom>::write_body(&mut space, $value, &urids).unwrap();
-                let raw_atom = unsafe { &*(raw_memory.as_ptr() as *const $orig) };
-                assert_eq!(
-                    raw_atom.atom.size as usize,
-                    size_of::<<$atom as ScalarAtom>::InternalType>()
-                );
-                assert_eq!(raw_atom.atom.type_, <$atom>::urid(&urids).get());
-                assert_eq!(raw_atom.body, $value);
-            };
-        }
-
-        test_atom!(LV2_Atom_Double, Double, 42.0);
-        test_atom!(LV2_Atom_Float, Float, 42.0);
-        test_atom!(LV2_Atom_Long, Long, 42);
-        test_atom!(LV2_Atom_Int, Int, 42);
-        test_atom!(LV2_Atom_Bool, Bool, 1);
-        test_atom!(LV2_Atom_URID, AtomURID, urids.urid.into_general());
+    fn test_scalars() {
+        test_scalar::<Double>(42.0);
+        test_scalar::<Float>(42.0);
+        test_scalar::<Long>(42);
+        test_scalar::<Int>(42);
+        test_scalar::<Bool>(1);
+        test_scalar::<AtomURID>(URID::try_from(1).unwrap());
     }
 }
