@@ -78,6 +78,15 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.long
 );
 
+pub struct Bool;
+
+make_scalar_atom!(
+    Bool,
+    c_int,
+    sys::LV2_ATOM__Bool,
+    |urids: &AtomURIDCache| urids.bool
+);
+
 pub struct AtomURID;
 
 make_scalar_atom!(
@@ -107,7 +116,7 @@ mod tests {
                         type_: <$atom>::urid(&urids).get(),
                         size: size_of::<<$atom as ScalarAtom>::InternalType>() as u32,
                     },
-                    body: $value,
+                    body: $value.into(),
                 };
 
                 let space: Space<$atom> =
@@ -121,6 +130,7 @@ mod tests {
         test_atom!(LV2_Atom_Float, Float, 42.0);
         test_atom!(LV2_Atom_Long, Long, 42);
         test_atom!(LV2_Atom_Int, Int, 42);
+        test_atom!(LV2_Atom_Bool, Bool, 1);
         test_atom!(LV2_Atom_URID, AtomURID, urids.urid.get());
     }
 
@@ -152,6 +162,7 @@ mod tests {
         test_atom!(LV2_Atom_Float, Float, 42.0);
         test_atom!(LV2_Atom_Long, Long, 42);
         test_atom!(LV2_Atom_Int, Int, 42);
+        test_atom!(LV2_Atom_Bool, Bool, 1);
         test_atom!(LV2_Atom_URID, AtomURID, urids.urid.into_general());
     }
 }

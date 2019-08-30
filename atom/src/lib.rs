@@ -21,4 +21,5 @@ pub struct AtomURIDCache {
     pub long: URID<Long>,
     pub urid: URID<AtomURID>,
     pub vector: URID<Vector>,
+    pub bool: URID<Bool>,
 }
