@@ -22,17 +22,20 @@ where
 ///
 /// # Usage example:
 ///
-///     use lv2_core::UriBound;
-///     use lv2_urid::*;
+///     # #![cfg(feature = "host")]
+///     # use lv2_core::UriBound;
+///     # use lv2_urid::{URID, URIDCache};
+///     # use std::ffi::CStr;
+///
 ///
 ///     // Defining all URI bounds.
-///     struct MyTypeA();
+///     struct MyTypeA;
 ///     
 ///     unsafe impl UriBound for MyTypeA {
 ///         const URI: &'static [u8] = b"urn:my-type-a\0";
 ///     }
 ///     
-///     struct MyTypeB();
+///     struct MyTypeB;
 ///     
 ///     unsafe impl UriBound for MyTypeB {
 ///         const URI: &'static [u8] = b"urn:my-type-b\0";
@@ -45,10 +48,11 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     // Creating a mapping feature.
-///     // This is normally done by the host.
-///     let mut raw_interface = mapper::URIDMap::new().make_map_interface();
-///     let map: Map = raw_interface.map();
+///
+///     // Using the `map` and `unmap` features provided by the host:
+///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
+///     # let map = lv2_urid::feature::Map::new(&mapper);
+///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
 ///
 ///     // Populating the cache.
 ///     let cache = MyCache::from_map(&map).unwrap();
@@ -56,9 +60,20 @@ where
 ///     // Asserting.
 ///     assert_eq!(1, cache.my_type_a);
 ///     assert_eq!(2, cache.my_type_b);
+///
 pub trait URIDCache: Sized {
     /// Construct the cache from the mapper.
     fn from_map(map: &Map) -> Option<Self>;
+}
+
+impl URID<()> {
+    /// Creates a new URID from a raw number.
+    ///
+    /// URID may never be zero. If the given number is zero, `None` is returned.
+    #[inline]
+    pub fn new(raw_urid: u32) -> Option<Self> {
+        NonZeroU32::new(raw_urid).map(|inner| Self(inner, PhantomData))
+    }
 }
 
 /// An extension of `UriBound` to improve URID access.
@@ -82,8 +97,8 @@ impl<T: ?Sized> URID<T> {
     /// Additionally, the value of 0 is reserved for a failed URI mapping process and therefore, is not a valid URID. If `T` is a URI bound, the URID may only be the one the host maps the bounded URI.
     ///
     /// Since all of these constraints are not checked by this method, it is unsafe.
-    pub unsafe fn new_unchecked(urid: u32) -> Self {
-        Self(NonZeroU32::new_unchecked(urid), PhantomData)
+    pub unsafe fn new_unchecked(raw_urid: u32) -> Self {
+        Self(NonZeroU32::new_unchecked(raw_urid), PhantomData)
     }
 
     /// Return the raw URID number.

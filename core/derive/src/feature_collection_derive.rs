@@ -1,36 +1,33 @@
 use proc_macro::TokenStream;
-use syn::DeriveInput;
 use syn::Field;
-use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
+use syn::{parse_macro_input, Data, DataStruct, Ident};
+use syn::{DeriveInput, Generics};
 
 struct FeatureCollectionField<'a> {
     identifier: &'a Ident,
-    feature_type: &'a Type,
 }
 
 impl<'a> FeatureCollectionField<'a> {
     fn from_input_field(input: &'a Field) -> Self {
         FeatureCollectionField {
             identifier: input.ident.as_ref().unwrap(),
-            feature_type: &input.ty,
         }
     }
 
     fn make_retrieval(&self) -> impl ::quote::ToTokens {
         let identifier = self.identifier;
-        let feature_type = self.feature_type;
-        quote! {#identifier: container.retrieve_feature::<#feature_type>()?,}
+        quote! {#identifier: container.retrieve_feature()?,}
     }
 }
 
 struct FeatureCollectionStruct<'a> {
     struct_name: &'a Ident,
+    generics: &'a Generics,
     fields: Vec<FeatureCollectionField<'a>>,
 }
 
 impl<'a> FeatureCollectionStruct<'a> {
     fn from_derive_input(input: &'a DeriveInput) -> Self {
-        let struct_name = &input.ident;
         let fields = match &input.data {
             Data::Struct(DataStruct { fields, .. }) => fields
                 .iter()
@@ -39,17 +36,20 @@ impl<'a> FeatureCollectionStruct<'a> {
             _ => panic!("Only structs can implement `FeatureCollection`"),
         };
         FeatureCollectionStruct {
-            struct_name,
+            struct_name: &input.ident,
             fields,
+            generics: &input.generics,
         }
     }
 
     fn make_implementation(&self) -> TokenStream {
         let struct_name = self.struct_name;
+        let generics = self.generics;
+        let first_generic = self.generics.lifetimes().next().map(|l| &l.lifetime);
         let retrievals = self.fields.iter().map(|field| field.make_retrieval());
         (quote! {
-            impl FeatureCollection for #struct_name {
-                fn from_container(container: &mut FeatureContainer) -> Option<Self> {
+            impl#generics FeatureCollection<#first_generic> for #struct_name#generics {
+                fn from_container(container: &mut FeatureContainer<#first_generic>) -> Option<Self> {
                     Some(Self {
                         #(#retrievals)*
                     })

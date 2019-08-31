@@ -1,149 +1,105 @@
 //! Implementation of the mapping feature for testing purposes.
 use crate::URID;
-use crate::{Map, Unmap};
-use core::feature::Feature;
-use core::Uri;
 use std::collections::HashMap;
-use std::ffi::c_void;
-use std::os::raw::c_char;
-use std::pin::Pin;
-use std::ptr::null;
-use std::sync::{Arc, Mutex};
+use std::convert::TryInto;
+use core::{Uri, UriBuf};
+use std::sync::Mutex;
 
-/// A working URI → URID mapper.
+/// A trait to represent an implementation of an URI <-> URID mapper, i.e. that can map an URI
+/// (or any C string) to an URID, and vice-versa.
 ///
-/// This mapper is able to map URIs (technically even every string) to URIDs. Since it's map store is hidden behind a mutex and an `Arc`, it can be cloned and accessed from any thread at any time.
-#[derive(Clone)]
-pub struct URIDMap(Arc<Mutex<HashMap<&'static Uri, URID>>>);
-
-impl URIDMap {
-    /// Create a new URID map store.
-    pub fn new() -> Self {
-        Self(Arc::new(Mutex::new(HashMap::new())))
-    }
-
-    /// Map a URI to a URID.
+/// This trait allows the `Map` and `Unmap` features to be agnostic to the underlying
+/// implementation, both on the plugin-side and the host-side.
+///
+/// # Realtime usage
+/// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
+/// operations, such as memory allocation or Mutex locking.
+///
+/// Therefore, these methods should never be called in a realtime context (such as a plugin's
+/// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
+/// they might need at initialization time. See the `URIDCache` for more information on how to
+/// achieve this.
+pub trait URIDMapper {
+    /// Maps an URI to an `URID` that corresponds to it.
     ///
-    /// If the URI has not been mapped before, a new URID will be assigned. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
-    pub fn map(&self, uri: &'static Uri) -> URID {
-        let mut map = self.0.lock().unwrap();
-        let next_urid = map.len() as u32 + 1;
-        let next_urid = unsafe { URID::new_unchecked(next_urid) };
-        *map.entry(uri).or_insert(next_urid)
-    }
-
-    /// Unsafe interface version of `map`.
-    unsafe extern "C" fn extern_map(handle: *mut c_void, uri: *const c_char) -> u32 {
-        let handle = if let Some(handle) = (handle as *mut Self).as_ref() {
-            handle
-        } else {
-            return 0;
-        };
-
-        if uri.is_null() {
-            return 0;
-        }
-        let uri = Uri::from_ptr(uri);
-
-        handle.map(uri).get()
-    }
-
-    /// Try to find the URI which is mapped to the given URID.
+    /// If the URI has not been mapped before, a new URID will be assigned.
     ///
-    /// In this implementation, this is failable: If the given URID has not been assigned to URI, this method will return `None`. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
-    pub fn unmap(&self, urid: URID) -> Option<&'static Uri> {
-        let map = self.0.lock().unwrap();
-        for (uri, contained_urid) in map.iter() {
-            if *contained_urid == urid {
-                return Some(uri);
+    /// # Errors
+    /// This method may return `None` in the exceptional case that an ID for that URI could not be
+    /// created for whatever reason.
+    /// However, implementations SHOULD NOT return `None` from this function in non-exceptional
+    /// circumstances (i.e. the URI map SHOULD be dynamic).
+    ///
+    /// # Realtime usage
+    /// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
+    /// operations, such as memory allocation or Mutex locking.
+    ///
+    /// Therefore, these methods should never be called in a realtime context (such as a plugin's
+    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
+    /// they might need at initialization time. See the `URIDCache` for more information on how to
+    /// achieve this.
+    fn map(&self, uri: &Uri) -> Option<URID>;
+
+    /// Gets the URId for a previously mapped `URID`.
+    ///
+    /// This method may return `None` if the given `urid` is not yet mapped.
+    ///
+    /// # Realtime usage
+    /// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
+    /// operations, such as memory allocation or Mutex locking.
+    ///
+    /// Therefore, these methods should never be called in a realtime context (such as a plugin's
+    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
+    /// they might need at initialization time. See the `URIDCache` for more information on how to
+    /// achieve this.
+    fn unmap(&self, urid: URID) -> Option<&Uri>;
+}
+
+/// A simple URI → URID mapper, backed by a standard `HashMap` and a `Mutex` for multi-thread
+/// access.
+#[derive(Default)]
+pub struct HashURIDMapper(Mutex<HashMap<UriBuf, URID>>);
+
+impl URIDMapper for HashURIDMapper {
+    fn map(&self, uri: &Uri) -> Option<URID<()>> {
+        let mut map = self.0.lock().ok()?; // Fail if the Mutex got poisoned
+        match map.get(uri) {
+            Some(urid) => Some(*urid),
+            None => {
+                let map_length: u32 = map.len().try_into().ok()?; // Fail if there are more items into the HashMap than an u32 can hold
+                let next_urid = map_length.checked_add(1)?; // Fail on overflow when adding 1 for the next URID
+
+                // This is safe, because we just added 1 to the length and checked for overflow, therefore the number can never be 0.
+                let next_urid = unsafe { URID::new_unchecked(next_urid) };
+                map.insert(uri.into(), next_urid);
+                Some(next_urid)
             }
         }
+    }
+
+    fn unmap(&self, urid: URID<()>) -> Option<&Uri> {
+        let map = self.0.lock().ok()?;
+        for (uri, contained_urid) in map.iter() {
+            if *contained_urid == urid {
+
+                // Here we jump through some hoops to return a reference that bypasses the mutex.
+                // This is safe because the only way this reference might become invalid is if an
+                // entry gets overwritten, which is not something that we allow through this
+                // interface.
+                return Some(unsafe {
+                    let bytes = uri.as_bytes_with_nul();
+                    Uri::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(bytes.as_ptr(), bytes.len()))
+                });
+            }
+        }
+
         None
     }
-
-    /// Unsafe interface version of `unmap`.
-    unsafe extern "C" fn extern_unmap(handle: *mut c_void, urid: u32) -> *const c_char {
-        let handle = if let Some(handle) = (handle as *mut Self).as_ref() {
-            handle
-        } else {
-            return null();
-        };
-
-        let urid = if urid != 0 {
-            URID::new_unchecked(urid)
-        } else {
-            return null();
-        };
-
-        handle.unmap(urid).map(|uri| uri.as_ptr()).unwrap_or(null())
-    }
-
-    /// Create an interface for the `map` feature.
-    ///
-    /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
-    pub fn make_map_interface(&self) -> MapInterface {
-        let mut map = Box::pin(self.clone());
-        let raw_map = sys::LV2_URID_Map {
-            handle: map.as_mut().get_mut() as *mut _ as *mut c_void,
-            map: Some(Self::extern_map),
-        };
-        MapInterface { _map: map, raw_map }
-    }
-
-    /// Create an interface for the `unmap` feature.
-    ///
-    /// This is accomplished by cloning the smart pointer to the URID store, storing the copy in a `Box` and creating a raw interface struct pointing to the copied smart pointer.
-    pub fn make_unmap_interface(&self) -> UnmapInterface {
-        let mut map = Box::pin(self.clone());
-        let raw_unmap = sys::LV2_URID_Unmap {
-            handle: map.as_mut().get_mut() as *mut _ as *mut c_void,
-            unmap: Some(Self::extern_unmap),
-        };
-        UnmapInterface {
-            _map: map,
-            raw_unmap,
-        }
-    }
 }
 
-impl Default for URIDMap {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Copy of a `URIDMap` to ensure the validity of a `sys::LV2_URID_Map`.
-pub struct MapInterface {
-    _map: Pin<Box<URIDMap>>,
-    raw_map: sys::LV2_URID_Map,
-}
-
-impl MapInterface {
-    /// Return a mutable reference to the raw mapping feature.
-    pub fn raw_map(&mut self) -> &mut sys::LV2_URID_Map {
-        &mut self.raw_map
-    }
-
-    /// Return a safe mapping feature instance
-    pub fn map(&mut self) -> Map {
-        Map::from_raw_data(Some(self.raw_map())).unwrap()
-    }
-}
-
-/// Copy of a `URIDMap` to ensure the validity of a `sys::LV2_URID_Unmap`.
-pub struct UnmapInterface {
-    _map: Pin<Box<URIDMap>>,
-    raw_unmap: sys::LV2_URID_Unmap,
-}
-
-impl UnmapInterface {
-    /// Return a mutable reference to the raw unmapping feature.
-    pub fn raw_unmap(&mut self) -> &mut sys::LV2_URID_Unmap {
-        &mut self.raw_unmap
-    }
-
-    /// Return a safe unmapping feature instance
-    pub fn unmap(&mut self) -> Unmap {
-        Unmap::from_raw_data(Some(self.raw_unmap())).unwrap()
+impl HashURIDMapper {
+    /// Create a new URID map store.
+    pub fn new() -> Self {
+        Default::default()
     }
 }
