@@ -18,3 +18,7 @@ members = [
     "urid/sys",
     "urid/derive",
 ]
+
+[features]
+default = []
+host = ["lv2-core/host", "lv2-urid/host"]
