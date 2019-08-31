@@ -141,9 +141,7 @@ unsafe extern "C" fn urid_unmap<T: crate::mapper::URIDMapper>(
         Some(urid) => urid,
     };
 
-    let result = ::std::panic::catch_unwind(|| {
-        (&*(handle as *const T)).unmap(urid)
-    });
+    let result = ::std::panic::catch_unwind(|| (&*(handle as *const T)).unmap(urid));
 
     match result {
         Ok(Some(uri)) => uri.as_ptr(),

@@ -81,14 +81,16 @@ impl URIDMapper for HashURIDMapper {
         let map = self.0.lock().ok()?;
         for (uri, contained_urid) in map.iter() {
             if *contained_urid == urid {
-
                 // Here we jump through some hoops to return a reference that bypasses the mutex.
                 // This is safe because the only way this reference might become invalid is if an
                 // entry gets overwritten, which is not something that we allow through this
                 // interface.
                 return Some(unsafe {
                     let bytes = uri.as_bytes_with_nul();
-                    Uri::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(bytes.as_ptr(), bytes.len()))
+                    Uri::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(
+                        bytes.as_ptr(),
+                        bytes.len(),
+                    ))
                 });
             }
         }

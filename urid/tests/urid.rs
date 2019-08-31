@@ -4,9 +4,9 @@ extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
 use core::UriBound;
-use urid::*;
-use urid::mapper::HashURIDMapper;
 use urid::feature::*;
+use urid::mapper::HashURIDMapper;
+use urid::*;
 
 struct MyTypeA;
 
