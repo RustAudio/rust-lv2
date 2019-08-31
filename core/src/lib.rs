@@ -12,12 +12,14 @@ pub mod plugin;
 pub mod port;
 pub mod prelude;
 
+pub type Uri = ::std::ffi::CStr;
+pub type UriBuf = ::std::ffi::CString;
+
 /// Trait for types that can be identified by a URI.
 ///
 /// LV2 makes heavy use of URIs to identify resources. This is where this trait comes in: Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
 ///
 ///     use lv2_core::UriBound;
-///     use std::ffi::CStr;
 ///
 ///     // Defining the struct
 ///     pub struct MyStruct {
@@ -46,7 +48,7 @@ pub unsafe trait UriBound {
     /// Construct a `CStr` reference to the URI.
     ///
     /// Assuming that [`URI`](#associatedconstant.URI) is correct, this method constructs a `CStr` reference from the byte slice referenced by `URI`.
-    fn uri() -> &'static std::ffi::CStr {
-        unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(Self::URI) }
+    fn uri() -> &'static Uri {
+        unsafe { Uri::from_bytes_with_nul_unchecked(Self::URI) }
     }
 }

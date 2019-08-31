@@ -1,8 +1,8 @@
 //! Thin but safe wrappers for the URID mapping features.
 use crate::{URIDCache, URID};
 use core::feature::Feature;
+use core::Uri;
 use core::UriBound;
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
 /// Host feature to map URIs to integers
@@ -35,7 +35,7 @@ impl<'a> Map<'a> {
     ///
     ///     use lv2_urid::mapper::URIDMap;
     ///     use lv2_urid::URID;
-    ///     use std::ffi::CStr;
+    ///     use lv2_core::Uri;
     ///
     ///     // Creating a mapping feature.
     ///     // This is normally done by the host.
@@ -43,10 +43,10 @@ impl<'a> Map<'a> {
     ///     let map = raw_interface.map();
     ///
     ///     // Creating the URI and mapping it to it's URID.
-    ///     let uri: &CStr = CStr::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
+    ///     let uri: &Uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
     ///     let urid: URID = map.map_uri(uri).unwrap();
     ///     assert_eq!(1, urid);
-    pub fn map_uri(&self, uri: &CStr) -> Option<URID> {
+    pub fn map_uri(&self, uri: &Uri) -> Option<URID> {
         let handle = self.internal.handle;
         let uri = uri.as_ptr();
         let urid = unsafe { (self.internal.map.unwrap())(handle, uri) };
@@ -66,7 +66,6 @@ impl<'a> Map<'a> {
     ///     use lv2_core::UriBound;
     ///     use lv2_urid::mapper::URIDMap;
     ///     use lv2_urid::URID;
-    ///     use std::ffi::CStr;
     ///
     ///     struct MyUriBound;
     ///
@@ -129,10 +128,9 @@ impl<'a> Unmap<'a> {
     ///
     /// # Usage example:
     ///
-    ///     use lv2_core::UriBound;
+    ///     use lv2_core::{UriBound, Uri};
     ///     use lv2_urid::mapper::URIDMap;
     ///     use lv2_urid::URID;
-    ///     use std::ffi::CStr;
     ///
     ///     struct MyUriBound;
     ///
@@ -152,15 +150,15 @@ impl<'a> Unmap<'a> {
     ///
     ///     // Mapping the type to it's URID, and then back to it's URI.
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
-    ///     let uri: &CStr = unmap.unmap(urid).unwrap();
+    ///     let uri: &Uri = unmap.unmap(urid).unwrap();
     ///     assert_eq!(MyUriBound::uri(), uri);
-    pub fn unmap<T: ?Sized>(&self, urid: URID<T>) -> Option<&CStr> {
+    pub fn unmap<T: ?Sized>(&self, urid: URID<T>) -> Option<&Uri> {
         let handle = self.internal.handle;
         let uri_ptr = unsafe { (self.internal.unmap.unwrap())(handle, urid.get()) };
         if uri_ptr.is_null() {
             None
         } else {
-            Some(unsafe { CStr::from_ptr(uri_ptr) })
+            Some(unsafe { Uri::from_ptr(uri_ptr) })
         }
     }
 }

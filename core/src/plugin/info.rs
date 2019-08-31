@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use crate::Uri;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::str::Utf8Error;
@@ -11,7 +11,7 @@ pub(crate) enum PluginInfoError {
 
 /// Holds various data that is passed from the host at plugin instantiation time.
 pub struct PluginInfo<'a> {
-    plugin_uri: &'a CStr,
+    plugin_uri: &'a Uri,
     bundle_path: &'a Path,
     sample_rate: f64,
 }
@@ -23,15 +23,15 @@ impl<'a> PluginInfo<'a> {
         sample_rate: f64,
     ) -> Result<Self, PluginInfoError> {
         Self::new(
-            CStr::from_ptr((*plugin_descriptor).URI),
-            CStr::from_ptr(bundle_path),
+            Uri::from_ptr((*plugin_descriptor).URI),
+            Uri::from_ptr(bundle_path),
             sample_rate,
         )
     }
 
     pub(crate) fn new(
-        plugin_uri: &'a CStr,
-        bundle_path: &'a CStr,
+        plugin_uri: &'a Uri,
+        bundle_path: &'a Uri,
         sample_rate: f64,
     ) -> Result<Self, PluginInfoError> {
         let bundle_path = Path::new(
@@ -48,7 +48,7 @@ impl<'a> PluginInfo<'a> {
     }
 
     /// The URI of the plugin that is being instantiated.
-    pub fn plugin_uri(&self) -> &CStr {
+    pub fn plugin_uri(&self) -> &Uri {
         self.plugin_uri
     }
 

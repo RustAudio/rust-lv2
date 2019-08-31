@@ -6,8 +6,9 @@ pub use lv2_core_derive::*;
 
 use crate::feature::*;
 use crate::port::*;
+use crate::Uri;
 use std::any::Any;
-use std::ffi::{c_void, CStr};
+use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
 
@@ -47,7 +48,7 @@ pub trait Plugin: Sized + Send + Sync + 'static {
     /// However, these implemented methods must be passed to the host. This is where this method comes into play: The host will call it with a URI for an extension. Then, it is the plugin's responsibilty to return the extension data to the host.
     ///
     /// In most cases, you can simply use the [`match_extensions`](../macro.match_extensions.html) macro to generate an appropiate method body.
-    fn extension_data(_uri: &CStr) -> Option<&'static dyn Any> {
+    fn extension_data(_uri: &Uri) -> Option<&'static dyn Any> {
         None
     }
 }
@@ -136,7 +137,7 @@ impl<T: Plugin> PluginInstance<T> {
 
     /// Dereference the URI, call the `extension_data` function and return the pointer.
     pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
-        let uri = CStr::from_ptr(uri);
+        let uri = Uri::from_ptr(uri);
         if let Some(data) = T::extension_data(uri) {
             data as *const _ as *const c_void
         } else {
