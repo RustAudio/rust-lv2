@@ -19,13 +19,12 @@ use std::any::Any;
 ///
 ///  An example on how to put it all together:
 ///
-///     use lv2_core::plugin::{Plugin, PluginInfo};
+///     use lv2_core::prelude::*;
 ///     use lv2_core::feature::FeatureContainer;
 ///     use lv2_core::extension::Extension;
 ///     use lv2_core::{UriBound, match_extensions};
 ///
 ///     use std::any::Any;
-///     use std::ffi::{CString, CStr};
 ///
 ///     // ######################
 ///     // Defining the extension
@@ -78,7 +77,7 @@ use std::any::Any;
 ///
 ///         fn run(&mut self, _: &mut ()) {}
 ///
-///         fn extension_data(uri: &CStr) -> Option<&'static dyn Any> {
+///         fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
 ///             match_extensions![uri, dyn MyExtension]
 ///         }
 ///     }
