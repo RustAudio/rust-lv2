@@ -26,7 +26,7 @@ jobs:
         - cargo build --all --verbose
         - cargo audit
         - cargo clippy --all-targets --all-features -- -D warnings
-        - cargo fmt --all --all-features -- --check
+        - cargo fmt --all -- --check
 
 matrix:
   allow_failures:
