@@ -1,14 +1,18 @@
 use crate::space::*;
 use crate::AtomURIDCache;
 use core::UriBound;
+use std::marker::Unpin;
 use std::os::raw::*;
 use urid::{URIDBound, URID};
 
 pub trait ScalarAtom: URIDBound {
-    type InternalType: Copy + Sized + 'static;
+    type InternalType: Unpin + Copy + Sized + 'static;
 
-    fn space_as_body(space: Space<Self>) -> Option<Self::InternalType> {
-        unsafe { space.split_type::<Self::InternalType>() }.map(|(value, _)| *value)
+    fn read_body(space: Space, urids: &Self::CacheType) -> Option<Self::InternalType> {
+        space
+            .split_atom_body(Self::urid(urids))
+            .and_then(|body| body.split_type::<Self::InternalType>())
+            .map(|(value, _)| *value)
     }
 
     fn write_body<'a>(
@@ -16,11 +20,9 @@ pub trait ScalarAtom: URIDBound {
         value: Self::InternalType,
         urids: &Self::CacheType,
     ) -> Option<&'a mut Self::InternalType> {
-        unsafe {
-            space
-                .create_atom_frame::<Self>(urids)
-                .and_then(|mut frame| (&mut frame as &mut dyn MutSpace).write(&value, true))
-        }
+        space
+            .create_atom_frame(Self::urid(urids))
+            .and_then(|mut frame| (&mut frame as &mut dyn MutSpace).write(&value, true))
     }
 }
 
@@ -136,10 +138,8 @@ mod tests {
 
         // reading
         {
-            let space: Space<A> = unsafe {
-                Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids).unwrap()
-            };
-            assert_eq!(A::space_as_body(space).unwrap(), value);
+            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
+            assert_eq!(A::read_body(space, &urids).unwrap(), value);
         }
     }
 

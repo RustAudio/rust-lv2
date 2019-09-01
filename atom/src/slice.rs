@@ -22,12 +22,14 @@ impl URIDBound for Vector {
 
 impl Vector {
     pub fn get_children<'a, C: ScalarAtom>(
-        space: Space<'a, Self>,
-        urids: &C::CacheType,
+        space: Space<'a>,
+        urids: &AtomURIDCache,
+        child_urids: &C::CacheType,
     ) -> Option<&'a [C::InternalType]> {
-        let (body, space) = unsafe { space.split_type::<sys::LV2_Atom_Vector_Body>() }?;
+        let space = space.split_atom_body(urids.vector)?;
+        let (body, space) = space.split_type::<sys::LV2_Atom_Vector_Body>()?;
 
-        if body.child_type != C::urid(urids)
+        if body.child_type != C::urid(child_urids)
             || body.child_size as usize != size_of::<C::InternalType>()
         {
             return None;
@@ -48,16 +50,16 @@ impl Vector {
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
         child_urids: &C::CacheType,
-    ) -> Option<SliceWriter<'a, 'b, C::InternalType, Self>> {
-        let mut frame: FramedMutSpace<Self> = unsafe { space.create_atom_frame(urids)? };
+    ) -> Option<SliceWriter<'a, 'b, C::InternalType>> {
+        let mut frame = space.create_atom_frame(urids.vector)?;
 
         let body = sys::LV2_Atom_Vector_Body {
             child_type: C::urid(child_urids).get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
-        unsafe { (&mut frame as &mut dyn MutSpace).write(&body, true)? };
+        (&mut frame as &mut dyn MutSpace).write(&body, false)?;
 
-        let children = unsafe { frame.allocate(0, false) }?;
+        let children = frame.allocate(0, false)?;
         Some(SliceWriter {
             data: unsafe {
                 std::slice::from_raw_parts_mut(
@@ -85,17 +87,19 @@ impl URIDBound for Chunk {
 }
 
 impl Chunk {
-    pub fn get(space: Space<Self>) -> Option<&[u8]> {
-        space.data()
+    pub fn get<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<&'a [u8]> {
+        space
+            .split_atom_body(urids.chunk)
+            .and_then(|body| body.data())
     }
 
     pub fn new_chunk<'a, 'b>(
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
-    ) -> Option<SliceWriter<'a, 'b, u8, Self>> {
-        let mut frame = unsafe { space.create_atom_frame::<Self>(urids) }?;
+    ) -> Option<SliceWriter<'a, 'b, u8>> {
+        let mut frame = space.create_atom_frame(urids.chunk)?;
         Some(SliceWriter {
-            data: unsafe { frame.allocate(0, false) }?,
+            data: frame.allocate(0, false)?,
             frame,
         })
     }
@@ -147,8 +151,9 @@ impl URIDBound for Literal {
 }
 
 impl Literal {
-    pub fn get_str(space: Space<Self>) -> Option<(URID, &str)> {
-        let (header, space) = unsafe { space.split_type::<sys::LV2_Atom_Literal_Body>()? };
+    pub fn get_str<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(URID, &'a str)> {
+        let space = space.split_atom_body(urids.literal)?;
+        let (header, space) = space.split_type::<sys::LV2_Atom_Literal_Body>()?;
         if let Ok(LiteralType::Language(urid)) = LiteralType::try_from(header) {
             let data = space.data()?;
             std::str::from_utf8(&data[0..data.len() - 1])
@@ -160,8 +165,8 @@ impl Literal {
         }
     }
 
-    pub fn get(space: Space<Self>) -> Option<(LiteralType, &[u8])> {
-        let (header, space) = unsafe { space.split_type::<sys::LV2_Atom_Literal_Body>()? };
+    pub fn get(space: Space) -> Option<(LiteralType, &[u8])> {
+        let (header, space) = space.split_type::<sys::LV2_Atom_Literal_Body>()?;
         let literal_type = LiteralType::try_from(header).ok()?;
         let space = space.data()?;
         Some((literal_type, space))
@@ -169,7 +174,7 @@ impl Literal {
 
     unsafe fn write_body(frame: &mut dyn MutSpace, literal_type: LiteralType) -> Option<()> {
         frame
-            .write(&sys::LV2_Atom_Literal_Body::from(literal_type), true)
+            .write(&sys::LV2_Atom_Literal_Body::from(literal_type), false)
             .map(|_| ())
     }
 
@@ -178,11 +183,11 @@ impl Literal {
         urids: &AtomURIDCache,
         lang: URID,
     ) -> Option<LiteralWriter<'a, 'b>> {
-        let mut frame: FramedMutSpace<Self> = unsafe { space.create_atom_frame(urids)? };
+        let mut frame = space.create_atom_frame(urids.literal)?;
         unsafe { Self::write_body(&mut frame, LiteralType::Language(lang)) };
         Some(LiteralWriter {
             writer: SliceWriter {
-                data: unsafe { frame.allocate(0, false)? },
+                data: frame.allocate(0, false)?,
                 frame,
             },
         })
@@ -192,18 +197,18 @@ impl Literal {
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
         datatype: URID,
-    ) -> Option<SliceWriter<'a, 'b, u8, Self>> {
-        let mut frame: FramedMutSpace<Self> = unsafe { space.create_atom_frame(urids)? };
+    ) -> Option<SliceWriter<'a, 'b, u8>> {
+        let mut frame = space.create_atom_frame(urids.literal)?;
         unsafe { Self::write_body(&mut frame, LiteralType::Datatype(datatype)) };
         Some(SliceWriter {
-            data: unsafe { frame.allocate(0, false)? },
+            data: frame.allocate(0, false)?,
             frame,
         })
     }
 }
 
 pub struct LiteralWriter<'a, 'b> {
-    writer: SliceWriter<'a, 'b, u8, Literal>,
+    writer: SliceWriter<'a, 'b, u8>,
 }
 
 impl<'a, 'b> LiteralWriter<'a, 'b> {
@@ -221,12 +226,12 @@ impl<'a, 'b> Drop for LiteralWriter<'a, 'b> {
     }
 }
 
-pub struct SliceWriter<'a, 'b, T: Sized, A: URIDBound + ?Sized> {
+pub struct SliceWriter<'a, 'b, T: Sized> {
     data: &'a mut [T],
-    frame: FramedMutSpace<'a, 'b, A>,
+    frame: FramedMutSpace<'a, 'b>,
 }
 
-impl<'a, 'b, T: Sized, A: URIDBound + ?Sized> SliceWriter<'a, 'b, T, A> {
+impl<'a, 'b, T: Sized> SliceWriter<'a, 'b, T> {
     pub fn push(&mut self, child: T) -> Option<&mut T> {
         self.allocate(1).map(|slice| {
             slice[0] = child;
@@ -235,7 +240,7 @@ impl<'a, 'b, T: Sized, A: URIDBound + ?Sized> SliceWriter<'a, 'b, T, A> {
     }
 
     pub fn allocate(&mut self, count: usize) -> Option<&mut [T]> {
-        let new_children = unsafe { self.frame.allocate(size_of::<T>() * count, false)? };
+        let new_children = self.frame.allocate(size_of::<T>() * count, false)?;
         let new_children =
             unsafe { std::slice::from_raw_parts_mut(new_children.as_mut_ptr() as *mut T, count) };
         self.data = unsafe {
@@ -310,10 +315,8 @@ mod tests {
 
         // reading
         {
-            let space: Space<Vector> =
-                unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids) }
-                    .unwrap();
-            let children: &[i32] = Vector::get_children::<Int>(space, &urids).unwrap();
+            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
+            let children: &[i32] = Vector::get_children::<Int>(space, &urids, &urids).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() {
@@ -364,11 +367,9 @@ mod tests {
 
         // reading
         {
-            let space: Space<Chunk> =
-                unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids) }
-                    .unwrap();
+            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
 
-            let data = Chunk::get(space).unwrap();
+            let data = Chunk::get(space, &urids).unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {
@@ -426,11 +427,8 @@ mod tests {
 
         // reading
         {
-            let space: Space<Literal> = unsafe {
-                Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom), &urids.atom)
-                    .unwrap()
-            };
-            let (lang, text) = Literal::get_str(space).unwrap();
+            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
+            let (lang, text) = Literal::get_str(space, &urids.atom).unwrap();
 
             assert_eq!(lang, urids.german);
             assert_eq!(text, SAMPLE);

@@ -1,54 +1,42 @@
+//! Smart pointers with safe atom reading and writing methods.
 use std::cell::Cell;
-use std::marker::PhantomData;
+use std::marker::Unpin;
 use std::mem::size_of;
-use urid::URIDBound;
+use urid::URID;
 
-/// Specialized smart pointer to retrieve atoms.
-pub struct Space<'a, A: URIDBound + ?Sized> {
+/// Specialized smart pointer to retrieve struct instances from a slice of memory.
+///
+/// The accessor methods of this struct all behave in a similar way: If the internal slice is big enough, they create a reference to the start of the slice with the desired type and create a new space object that contains the space after the references instance.
+#[derive(Clone, Copy)]
+pub struct Space<'a> {
     data: Option<&'a [u8]>,
-    atom_type: PhantomData<A>,
 }
 
-impl<'a, A: URIDBound + ?Sized> Space<'a, A> {
-    /// Create a new atom space from a pointer.
+impl<'a> Space<'a> {
+    /// Create a new space from an atom pointer.
     ///
-    /// This method is used by ports to determine the available space for atoms: First, it reads the size of the atom and then creates an atom space of the read size.
-    ///
-    /// Since it is assumed that the pointer as well as the space behind the atom is valid, this method is unsafe.
+    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method as to assume that it is valid memory and therefore is unsafe.
     #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub unsafe fn from_atom(atom: &sys::LV2_Atom, urids: &A::CacheType) -> Option<Self> {
-        if atom.type_ == A::urid(urids) {
-            let size = atom.size as usize;
-            let data = std::slice::from_raw_parts(
-                (atom as *const sys::LV2_Atom).add(1) as *const u8,
-                size,
-            );
-            Some(Self::from_slice(data))
-        } else {
-            None
-        }
+    pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
+        let size = atom.size as usize;
+        let data = std::slice::from_raw_parts(
+            atom as *const sys::LV2_Atom as *const u8,
+            size + size_of::<sys::LV2_Atom>(),
+        );
+        Self::from_slice(data)
     }
 
+    /// Create a new space from a slice.
+    ///
+    /// Since everything regarding atoms is 64-bit-aligned, this method panics if the data slice is not 64-bit-aligned.
     pub fn from_slice(data: &'a [u8]) -> Self {
-        if data.as_ptr() as usize % 8 != 0 {
-            panic!("Trying to create an unaligned atom space");
-        }
-        Space {
-            data: Some(data),
-            atom_type: PhantomData,
-        }
-    }
-
-    pub unsafe fn from_space<A2: URIDBound>(other: Space<'a, A2>) -> Self {
-        Self {
-            data: other.data,
-            atom_type: PhantomData,
-        }
+        assert_eq!(data.as_ptr() as usize % 8, 0);
+        Space { data: Some(data) }
     }
 
     /// Try to retrieve a slice of bytes.
     ///
-    /// This method basically splits off the lower part of the internal bytes slice and creates a new atom space pointer of the upper part, if it's big enough. Since atom space has to be 64-bit-aligned, there might be a padding space that's neither in the lower nor in the upper slice.
+    /// This method basically splits off the lower part of the internal bytes slice and creates a new atom space pointer of the upper part. Since atoms have to be 64-bit-aligned, there might be a padding space that's neither in the lower nor in the upper part.
     pub fn split_raw(self, size: usize) -> Option<(&'a [u8], Self)> {
         let data = self.data?;
 
@@ -64,17 +52,14 @@ impl<'a, A: URIDBound + ?Sized> Space<'a, A> {
         } else {
             None
         };
-        let upper_space = Self {
-            data: upper_space,
-            atom_type: PhantomData,
-        };
+        let upper_space = Self { data: upper_space };
 
         Some((lower_space, upper_space))
     }
 
-    /// Try to retrieve atom space.
+    /// Try to retrieve space.
     ///
-    /// This method calls [`retrieve_raw`](#method.retrieve_raw) and wraps the returned slice in an atom space.
+    /// This method calls [`split_raw`](#method.split_raw) and wraps the returned slice in an atom space. The second space is the space after the first one.
     pub fn split_space(self, size: usize) -> Option<(Self, Self)> {
         self.split_raw(size)
             .map(|(data, rhs)| (Self::from_slice(data), rhs))
@@ -82,36 +67,49 @@ impl<'a, A: URIDBound + ?Sized> Space<'a, A> {
 
     /// Try to retrieve a reference to a sized type.
     ///
-    /// This method retrieves a slice of memory using the [`retrieve_raw`](#method.retrieve_raw) method and interprets it as an instance of `T`. Since there is no way to check that the memory is actually a valid instance of `T`, this method is unsafe.
-    pub unsafe fn split_type<T: Sized>(self) -> Option<(&'a T, Self)> {
+    /// This method retrieves a slice of memory using the [`split_raw`](#method.split_raw) method and interprets it as an instance of `T`. Since there is no way to check that the memory is actually a valid instance of `T`, this method is unsafe. The second return value is the space after the instance of `T`.
+    pub fn split_type<T: Unpin + Copy + Sized + 'static>(self) -> Option<(&'a T, Self)> {
         self.split_raw(size_of::<T>())
-            .map(|(data, rhs)| (&*(data.as_ptr() as *const T), rhs))
+            .map(|(data, rhs)| (unsafe { &*(data.as_ptr() as *const T) }, rhs))
     }
 
+    /// Try to retrieve the body of the atom.
+    ///
+    /// This method retrieves the header of the atom. If the type URID in the header matches the given URID, it returns the body of the atom. If not, it returns `None`.
+    pub fn split_atom_body<T: ?Sized>(self, urid: URID<T>) -> Option<Self> {
+        let (header, space) = self.split_type::<sys::LV2_Atom>()?;
+        if header.type_ != urid.get() {
+            return None;
+        }
+        space
+            .split_space(header.size as usize)
+            .map(|(body, _)| body)
+    }
+
+    /// Return the internal slice of the space.
     pub fn data(&self) -> Option<&'a [u8]> {
         self.data
     }
 
+    /// Return a mutable reference to the internal slice of the space.
     pub fn mut_data(&mut self) -> &mut Option<&'a [u8]> {
         &mut self.data
     }
 }
 
-impl<'a, A: URIDBound + ?Sized> Clone for Space<'a, A> {
-    fn clone(&self) -> Self {
-        Self {
-            data: self.data,
-            atom_type: PhantomData,
-        }
-    }
-}
-
-impl<'a, A: URIDBound + ?Sized> Copy for Space<'a, A> {}
-
+/// A smart pointer that writes atom data to an internal slice.
+///
+/// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
 pub trait MutSpace<'a> {
-    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]>;
+    /// Try to allocate memory on the internal data slice.
+    ///
+    /// After the memory has been allocated, the `MutSpace` can not allocate it again and therefore, the next allocated slice is directly behind it. If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned.
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]>;
 
-    unsafe fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
+    /// Try to write data to the internal data slice.
+    ///
+    /// The method allocates a slice with the [`allocate`](#tymethod.allocate) method and copies the data to the slice.
+    fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
         self.allocate(data.len(), apply_padding).map(|space| {
             space.copy_from_slice(data);
             space
@@ -119,11 +117,13 @@ pub trait MutSpace<'a> {
     }
 }
 
+/// A `MutSpace` that directly manages it's own internal data slice.
 pub struct RootMutSpace<'a> {
     space: Cell<Option<&'a mut [u8]>>,
 }
 
 impl<'a> RootMutSpace<'a> {
+    /// Create a new instance.
     pub fn new(space: &'a mut [u8]) -> Self {
         if space.as_ptr() as usize % 8 != 0 {
             panic!("Trying to create an unaligned atom space");
@@ -135,39 +135,39 @@ impl<'a> RootMutSpace<'a> {
 }
 
 impl<'a> MutSpace<'a> for RootMutSpace<'a> {
-    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
         if self.space.get_mut().is_none() {
             return None;
         }
-        let space = self.space.replace(None).unwrap();
+        let mut space = self.space.replace(None).unwrap();
+
+        if apply_padding {
+            let alignment = space.as_ptr() as usize % 8;
+            let padding = if alignment == 0 { 0 } else { 8 - alignment };
+            if padding > space.len() {
+                return None;
+            }
+            space = space.split_at_mut(padding).1;
+        }
 
         if size > space.len() {
             return None;
         }
         let (lower_slice, upper_slice) = space.split_at_mut(size);
 
-        let padding = if size % 8 == 0 || !apply_padding {
-            0
-        } else {
-            8 - size % 8
-        };
-
-        if padding < upper_slice.len() {
-            let (_, upper_slice) = upper_slice.split_at_mut(padding);
-            self.space.set(Some(upper_slice))
-        }
+        self.space.set(Some(upper_slice));
         Some(lower_slice)
     }
 }
 
-pub struct FramedMutSpace<'a, 'b, A: URIDBound + ?Sized> {
+/// A `MutSpace` that notes the amount of allocated space in an atom header.
+pub struct FramedMutSpace<'a, 'b> {
     atom: &'a mut sys::LV2_Atom,
     parent: &'b mut dyn MutSpace<'a>,
-    atom_type: PhantomData<A>,
 }
 
-impl<'a, 'b, A: URIDBound + ?Sized> MutSpace<'a> for FramedMutSpace<'a, 'b, A> {
-    unsafe fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
+impl<'a, 'b> MutSpace<'a> for FramedMutSpace<'a, 'b> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
         self.parent.allocate(size, apply_padding).map(|data| {
             self.atom.size += size as u32;
             data
@@ -175,42 +175,45 @@ impl<'a, 'b, A: URIDBound + ?Sized> MutSpace<'a> for FramedMutSpace<'a, 'b, A> {
     }
 }
 
-impl<'a, 'b, A: URIDBound + ?Sized> Drop for FramedMutSpace<'a, 'b, A> {
+impl<'a, 'b> Drop for FramedMutSpace<'a, 'b> {
     fn drop(&mut self) {
         // Allocate nothing with padding in order to ensure padding.
-        unsafe { self.parent.allocate(0, true) };
+        self.parent.allocate(0, true);
     }
 }
 
 impl<'a, 'b> dyn MutSpace<'a> + 'b {
-    pub unsafe fn write<T: Sized>(
+    /// Write a sized object to the space.
+    ///
+    /// If `apply_padding` is `true`, the method will assure that the written instance is 64-bit-aligned.
+    pub fn write<T: Unpin + Copy + Sized + 'static>(
         &mut self,
         instance: &T,
         apply_padding: bool,
     ) -> Option<&'a mut T> {
         let size = std::mem::size_of::<T>();
-        let input_data = std::slice::from_raw_parts(instance as *const T as *const u8, size);
+        let input_data =
+            unsafe { std::slice::from_raw_parts(instance as *const T as *const u8, size) };
 
         let output_data = self.write_raw(input_data, apply_padding)?;
 
         assert_eq!(size, output_data.len());
-        Some(&mut *(output_data.as_mut_ptr() as *mut T))
+        Some(unsafe { &mut *(output_data.as_mut_ptr() as *mut T) })
     }
 
-    pub unsafe fn create_atom_frame<'c, A: URIDBound + ?Sized>(
+    /// Create new `FramedMutSpace` to write an atom.
+    /// 
+    /// Simply pass the URID of the atom as an argument.
+    pub fn create_atom_frame<'c, A: ?Sized>(
         &'c mut self,
-        urids: &A::CacheType,
-    ) -> Option<FramedMutSpace<'a, 'c, A>> {
+        urid: URID<A>,
+    ) -> Option<FramedMutSpace<'a, 'c>> {
         let atom = sys::LV2_Atom {
             size: 0,
-            type_: A::urid(urids).get(),
+            type_: urid.get(),
         };
         let atom: &'a mut sys::LV2_Atom = self.write(&atom, true)?;
-        Some(FramedMutSpace {
-            atom,
-            parent: self,
-            atom_type: PhantomData,
-        })
+        Some(FramedMutSpace { atom, parent: self })
     }
 }
 
@@ -233,13 +236,13 @@ mod tests {
             *(ptr) = 0x42424242;
         }
 
-        let space: Space<crate::Int> = Space::from_slice(vector.as_slice());
+        let space = Space::from_slice(vector.as_slice());
         let (lower_space, space) = space.split_raw(128).unwrap();
         for i in 0..128 {
             assert_eq!(lower_space[i], i as u8);
         }
 
-        let (integer, _) = unsafe { space.split_type::<u32>() }.unwrap();
+        let (integer, _) = space.split_type::<u32>().unwrap();
         assert_eq!(*integer, 0x42424242);
     }
 
@@ -259,17 +262,15 @@ mod tests {
             test_data[i] = i as u8;
         }
 
-        match unsafe { frame.write_raw(test_data.as_slice(), true) } {
+        match frame.write_raw(test_data.as_slice(), true) {
             Some(written_data) => assert_eq!(test_data.as_slice(), written_data),
             None => panic!("Writing failed!"),
         }
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = unsafe {
-            (&mut frame as &mut dyn MutSpace)
-                .write(&test_atom, true)
-                .unwrap()
-        };
+        let written_atom = (&mut frame as &mut dyn MutSpace)
+            .write(&test_atom, true)
+            .unwrap();
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
     }
@@ -288,24 +289,22 @@ mod tests {
         let mut urid_map = URIDMap::new().make_map_interface();
         let urids = AtomURIDCache::from_map(&urid_map.map()).unwrap();
 
-        let mut atom_frame: FramedMutSpace<crate::Int> = unsafe {
-            (&mut root as &mut dyn MutSpace)
-                .create_atom_frame(&urids)
-                .unwrap()
-        };
+        let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)
+            .create_atom_frame(urids.chunk)
+            .unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
             test_data[i] = i as u8;
         }
 
-        let written_data = unsafe { atom_frame.write_raw(test_data.as_slice(), true) }.unwrap();
+        let written_data = atom_frame.write_raw(test_data.as_slice(), true).unwrap();
         assert_eq!(test_data.as_slice(), written_data);
         assert_eq!(atom_frame.atom.size, test_data.len() as u32);
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
         let borrowed_frame = &mut atom_frame as &mut dyn MutSpace;
-        let written_atom = unsafe { borrowed_frame.write(&test_atom, true) }.unwrap();
+        let written_atom = borrowed_frame.write(&test_atom, true).unwrap();
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
         assert_eq!(
