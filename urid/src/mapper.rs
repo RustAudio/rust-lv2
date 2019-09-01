@@ -2,8 +2,9 @@
 use crate::URID;
 use crate::{Map, Unmap};
 use core::feature::Feature;
+use core::Uri;
 use std::collections::HashMap;
-use std::ffi::{c_void, CStr};
+use std::ffi::c_void;
 use std::os::raw::c_char;
 use std::pin::Pin;
 use std::ptr::null;
@@ -13,7 +14,7 @@ use std::sync::{Arc, Mutex};
 ///
 /// This mapper is able to map URIs (technically even every string) to URIDs. Since it's map store is hidden behind a mutex and an `Arc`, it can be cloned and accessed from any thread at any time.
 #[derive(Clone)]
-pub struct URIDMap(Arc<Mutex<HashMap<&'static CStr, URID>>>);
+pub struct URIDMap(Arc<Mutex<HashMap<&'static Uri, URID>>>);
 
 impl URIDMap {
     /// Create a new URID map store.
@@ -24,7 +25,7 @@ impl URIDMap {
     /// Map a URI to a URID.
     ///
     /// If the URI has not been mapped before, a new URID will be assigned. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
-    pub fn map(&self, uri: &'static CStr) -> URID {
+    pub fn map(&self, uri: &'static Uri) -> URID {
         let mut map = self.0.lock().unwrap();
         let next_urid = map.len() as u32 + 1;
         let next_urid = unsafe { URID::new_unchecked(next_urid) };
@@ -42,7 +43,7 @@ impl URIDMap {
         if uri.is_null() {
             return 0;
         }
-        let uri = CStr::from_ptr(uri);
+        let uri = Uri::from_ptr(uri);
 
         handle.map(uri).get()
     }
@@ -50,7 +51,7 @@ impl URIDMap {
     /// Try to find the URI which is mapped to the given URID.
     ///
     /// In this implementation, this is failable: If the given URID has not been assigned to URI, this method will return `None`. Please note that this method may block the thread since it tries to lock an internal mutex. You should therefore never call this method in a performance or real-time-critical context.
-    pub fn unmap(&self, urid: URID) -> Option<&'static CStr> {
+    pub fn unmap(&self, urid: URID) -> Option<&'static Uri> {
         let map = self.0.lock().unwrap();
         for (uri, contained_urid) in map.iter() {
             if *contained_urid == urid {

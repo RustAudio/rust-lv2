@@ -77,13 +77,12 @@ lv2_descriptors! {
 #[test]
 fn test_discovery() {
     use lv2_core_sys::*;
-    use std::ffi::CStr;
 
     unsafe {
         let descriptor: &LV2_Descriptor = lv2_descriptor(0).as_ref().unwrap();
         assert_eq!(
-            CStr::from_ptr(descriptor.URI),
-            CStr::from_bytes_with_nul_unchecked(b"http://lv2plug.in/plugins.rs/example_amp\0")
+            Uri::from_ptr(descriptor.URI),
+            Uri::from_bytes_with_nul_unchecked(b"http://lv2plug.in/plugins.rs/example_amp\0")
         );
         assert_eq!(lv2_descriptor(1), std::ptr::null());
     }
