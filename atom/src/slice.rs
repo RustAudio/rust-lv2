@@ -3,9 +3,13 @@ use crate::AtomURIDCache;
 use crate::ScalarAtom;
 use core::UriBound;
 use std::convert::TryFrom;
+use std::marker::PhantomData;
 use std::mem::size_of;
 use urid::{URIDBound, URID};
 
+/// An atom containing a slice of scalar atoms.
+///
+/// This atom is specified [here](http://lv2plug.in/ns/ext/atom/atom.html#Vector).
 pub struct Vector;
 
 unsafe impl UriBound for Vector {
@@ -21,7 +25,12 @@ impl URIDBound for Vector {
 }
 
 impl Vector {
-    pub fn get_children<'a, C: ScalarAtom>(
+    /// Try to read the content of a vector containing `C` atoms.
+    ///
+    /// If successful, the method returns the content of the atom, a slice of `C::InternalType`, and the space behind the atom.
+    ///
+    /// If the space is not big enough or does not contain a vector with the given content type, the method returns `None`.
+    pub fn read<'a, C: ScalarAtom>(
         space: Space<'a>,
         urids: &AtomURIDCache,
         child_urids: &C::CacheType,
@@ -46,11 +55,14 @@ impl Vector {
         Some((children, space))
     }
 
-    pub fn new_vector<'a, 'b, C: ScalarAtom>(
+    /// Initialize a vector containing `C` atoms.
+    ///
+    /// This method initializes an empty vector and returns a writer to add `C` to the vector. If the space is not big enough, the method returns `None`.
+    pub fn write<'a, 'b, C: ScalarAtom>(
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
         child_urids: &C::CacheType,
-    ) -> Option<SliceWriter<'a, 'b, C::InternalType>> {
+    ) -> Option<VectorWriter<'a, 'b, C::InternalType>> {
         let mut frame = space.create_atom_frame(urids.vector)?;
 
         let body = sys::LV2_Atom_Vector_Body {
@@ -59,19 +71,16 @@ impl Vector {
         };
         (&mut frame as &mut dyn MutSpace).write(&body, false)?;
 
-        let children = frame.allocate(0, false)?;
-        Some(SliceWriter {
-            data: unsafe {
-                std::slice::from_raw_parts_mut(
-                    children.as_mut_ptr() as *mut C::InternalType,
-                    children.len(),
-                )
-            },
+        Some(VectorWriter {
             frame,
+            type_: PhantomData,
         })
     }
 }
 
+/// An atom containing a chunk of memory with undefined contents.
+///
+/// This atom is specified [here](http://lv2plug.in/ns/ext/atom/atom.html#Chunk).
 pub struct Chunk;
 
 unsafe impl UriBound for Chunk {
@@ -87,23 +96,28 @@ impl URIDBound for Chunk {
 }
 
 impl Chunk {
-    pub fn get<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
+    /// Read a chunk of bytes.
+    ///
+    /// The returned slice is the body of the atom and the space is the space behind the atom.
+    pub fn read<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.chunk)?;
         Some((body.data()?, space))
     }
 
-    pub fn new_chunk<'a, 'b>(
+    /// Initialize a chunk atom.
+    ///
+    /// This method creates an empty chunk and returns a writer to add more data to the chunk.
+    pub fn write<'a, 'b>(
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
-    ) -> Option<SliceWriter<'a, 'b, u8>> {
-        let mut frame = space.create_atom_frame(urids.chunk)?;
-        Some(SliceWriter {
-            data: frame.allocate(0, false)?,
-            frame,
-        })
+    ) -> Option<FramedMutSpace<'a, 'b>> {
+        space.create_atom_frame(urids.chunk)
     }
 }
 
+/// Either the language or the datatype of a literal.
+///
+/// A literal is either a UTF8 string or another type. If it's a string, it has a language, and if it's a value of another type, the exact type has to be known. This enum covers these options.
 #[derive(Clone, Copy)]
 pub enum LiteralType {
     Language(URID),
@@ -135,6 +149,9 @@ impl From<LiteralType> for sys::LV2_Atom_Literal_Body {
     }
 }
 
+/// An atom that holds either a UTF8 string or a value of another type.
+///
+/// Usually, a literal is just a localized UTF8 string. However, the [specification](http://lv2plug.in/ns/ext/atom/atom.html#Literal) also leaves space for the literal to hold a value of an arbitrary type. Therefore, this implementation provides convenient methods to read/write strings and not-so-convenient methods to read/write arbitrary data.
 pub struct Literal;
 
 unsafe impl UriBound for Literal {
@@ -150,7 +167,10 @@ impl URIDBound for Literal {
 }
 
 impl Literal {
-    pub fn get_str<'a>(
+    /// Read a literal containing a localised UTF8 string.
+    ///
+    /// If the space is big enough and contains a string literal, the method returns the URID of the language, the string itself and the space behind the atom.
+    pub fn read_str<'a>(
         space: Space<'a>,
         urids: &AtomURIDCache,
     ) -> Option<(URID, &'a str, Space<'a>)> {
@@ -167,95 +187,126 @@ impl Literal {
         }
     }
 
-    pub fn get(space: Space) -> Option<(LiteralType, &[u8])> {
-        let (header, space) = space.split_type::<sys::LV2_Atom_Literal_Body>()?;
+    /// Read a literal.
+    ///
+    /// If the space is big enough and contains a literal, the method returns the datatype/language of the literal, the body data of the literal and the space behind the atom.
+    pub fn read<'a>(
+        space: Space<'a>,
+        urids: &AtomURIDCache,
+    ) -> Option<(LiteralType, Space<'a>, Space<'a>)> {
+        let (body, space) = space.split_atom_body(urids.literal)?;
+        let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
         let literal_type = LiteralType::try_from(header).ok()?;
-        let space = space.data()?;
-        Some((literal_type, space))
+        Some((literal_type, body, space))
     }
 
-    unsafe fn write_body(frame: &mut dyn MutSpace, literal_type: LiteralType) -> Option<()> {
-        frame
-            .write(&sys::LV2_Atom_Literal_Body::from(literal_type), false)
-            .map(|_| ())
+    /// Create an atom frame of a literal atom, write the literal body and return the frame.
+    fn write_body<'a, 'b>(
+        space: &'a mut dyn MutSpace<'b>,
+        literal_type: LiteralType,
+        urid: URID<Literal>,
+    ) -> Option<FramedMutSpace<'b, 'a>> {
+        let mut frame = space.create_atom_frame(urid)?;
+        (&mut frame as &mut dyn MutSpace)
+            .write(&sys::LV2_Atom_Literal_Body::from(literal_type), false)?;
+        Some(frame)
     }
 
-    pub fn new_str_literal<'a, 'b>(
+    /// Initialize a string literal atom.
+    ///
+    /// This method creates an empty string literal with the given language and returns a writer to append slices to it.
+    ///
+    /// If the space is not big enough, this method returns `None`.
+    pub fn write_str<'a, 'b>(
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
         lang: URID,
     ) -> Option<LiteralWriter<'a, 'b>> {
-        let mut frame = space.create_atom_frame(urids.literal)?;
-        unsafe { Self::write_body(&mut frame, LiteralType::Language(lang)) };
-        Some(LiteralWriter {
-            writer: SliceWriter {
-                data: frame.allocate(0, false)?,
-                frame,
-            },
-        })
+        let frame = Self::write_body(space, LiteralType::Language(lang), urids.literal)?;
+        Some(LiteralWriter { frame })
     }
 
-    pub fn new_data_literal<'a, 'b>(
+    /// Initialize a literal.
+    ///
+    /// This method creates an empty literal with the given datatype or language and returns a framed space to append data to it.
+    ///
+    /// If the space is not big enough, this method returns `None`.
+    pub fn write<'a, 'b>(
         space: &'b mut dyn MutSpace<'a>,
         urids: &AtomURIDCache,
         datatype: URID,
-    ) -> Option<SliceWriter<'a, 'b, u8>> {
-        let mut frame = space.create_atom_frame(urids.literal)?;
-        unsafe { Self::write_body(&mut frame, LiteralType::Datatype(datatype)) };
-        Some(SliceWriter {
-            data: frame.allocate(0, false)?,
-            frame,
-        })
+    ) -> Option<FramedMutSpace<'a, 'b>> {
+        Self::write_body(space, LiteralType::Datatype(datatype), urids.literal)
     }
 }
 
+/// Handle to append strings to a string literal.
 pub struct LiteralWriter<'a, 'b> {
-    writer: SliceWriter<'a, 'b, u8>,
+    frame: FramedMutSpace<'a, 'b>,
 }
 
 impl<'a, 'b> LiteralWriter<'a, 'b> {
+    /// Append a string to the literal.
+    ///
+    /// This method copies the given string to the end of the literal and then returns a mutable reference to the copy.
+    ///
+    /// If the internal space for the literal is not big enough, this method returns `None`.
     pub fn append(&mut self, string: &str) -> Option<&mut str> {
         let data = string.as_bytes();
-        let space = self.writer.allocate(data.len())?;
-        space.copy_from_slice(data);
+        let space = self.frame.write_raw(data, false)?;
         unsafe { Some(std::str::from_utf8_unchecked_mut(space)) }
     }
 }
 
 impl<'a, 'b> Drop for LiteralWriter<'a, 'b> {
     fn drop(&mut self) {
-        self.writer.push(0);
+        // Null terminator.
+        (&mut self.frame as &mut dyn MutSpace).write(&0u8, false);
     }
 }
 
-pub struct SliceWriter<'a, 'b, T: Sized> {
-    data: &'a mut [T],
+/// Handle to append elements to a vector.
+///
+/// This works by allocating a slice of memory behind the vector and then writing your data to it.
+pub struct VectorWriter<'a, 'b, T>
+where
+    T: Unpin + Copy + Send + Sync + Sized + 'static,
+{
     frame: FramedMutSpace<'a, 'b>,
+    type_: PhantomData<T>,
 }
 
-impl<'a, 'b, T: Sized> SliceWriter<'a, 'b, T> {
+impl<'a, 'b, T> VectorWriter<'a, 'b, T>
+where
+    T: Unpin + Copy + Send + Sync + Sized + 'static,
+{
+    /// Push a single value to the vector.
     pub fn push(&mut self, child: T) -> Option<&mut T> {
-        self.allocate(1).map(|slice| {
-            slice[0] = child;
-            &mut slice[0]
-        })
+        (&mut self.frame as &mut dyn MutSpace).write(&child, false)
     }
 
-    pub fn allocate(&mut self, count: usize) -> Option<&mut [T]> {
-        let new_children = self.frame.allocate(size_of::<T>() * count, false)?;
-        let new_children =
-            unsafe { std::slice::from_raw_parts_mut(new_children.as_mut_ptr() as *mut T, count) };
-        self.data = unsafe {
-            std::slice::from_raw_parts_mut(
-                self.data.as_mut_ptr() as *mut T,
-                self.data.len() + new_children.len(),
-            )
+    /// Append a slice of undefined memory to the vector.
+    ///
+    /// Using this method, you don't need to have the elements in memory before you can write them.
+    pub fn allocate(&mut self, size: usize) -> Option<&mut [T]> {
+        self.frame
+            .allocate(size_of::<T>() * size, false)
+            .map(|data| unsafe {
+                std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut T, size)
+            })
+    }
+
+    /// Append multiple elements to the vector.
+    pub fn append(&mut self, data: &[T]) -> Option<&mut [T]> {
+        let raw_data = unsafe {
+            std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data))
         };
-        Some(new_children)
-    }
-
-    pub fn get(self) -> &'a mut [T] {
-        self.data
+        self.frame
+            .allocate(raw_data.len(), false)
+            .map(|space| unsafe {
+                space.copy_from_slice(raw_data);
+                std::slice::from_raw_parts_mut(space.as_mut_ptr() as *mut T, data.len())
+            })
     }
 }
 
@@ -281,18 +332,9 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-
-            let mut writer = Vector::new_vector::<Int>(&mut space, &urids, &urids).unwrap();
-            {
-                let children = writer.allocate(CHILD_COUNT).unwrap();
-                for i in 0..children.len() {
-                    children[i] = i as i32;
-                }
-            }
-            // Checking that the written slice and the general slice are the same.
-            for (i, child) in writer.get().into_iter().enumerate() {
-                assert_eq!(i, *child as usize);
-            }
+            let mut writer = Vector::write::<Int>(&mut space, &urids, &urids).unwrap();
+            writer.append(&[42; CHILD_COUNT - 1]);
+            writer.push(1);
         }
 
         // verifying
@@ -310,22 +352,22 @@ mod tests {
 
             let children =
                 unsafe { std::slice::from_raw_parts(children.as_ptr() as *const i32, CHILD_COUNT) };
-            for i in 0..CHILD_COUNT {
-                assert_eq!(children[i], i as i32);
+            for value in &children[0..children.len() - 1] {
+                assert_eq!(*value, 42);
             }
+            assert_eq!(children[children.len() - 1], 1);
         }
 
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let children: &[i32] = Vector::get_children::<Int>(space, &urids, &urids)
-                .unwrap()
-                .0;
+            let children: &[i32] = Vector::read::<Int>(space, &urids, &urids).unwrap().0;
 
             assert_eq!(children.len(), CHILD_COUNT);
-            for i in 0..children.len() {
-                assert_eq!(children[i], i as i32);
+            for i in 0..children.len() - 1 {
+                assert_eq!(children[i], 42);
             }
+            assert_eq!(children[children.len() - 1], 1);
         }
     }
 
@@ -342,17 +384,19 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Chunk::new_chunk(&mut space, &urids).unwrap();
+            let mut writer = Chunk::write(&mut space, &urids).unwrap();
 
-            for (i, value) in writer
-                .allocate(SLICE_LENGTH - 1)
+            for (i, value) in (&mut writer as &mut dyn MutSpace)
+                .allocate(SLICE_LENGTH - 1, false)
                 .unwrap()
                 .into_iter()
                 .enumerate()
             {
                 *value = i as u8;
             }
-            writer.push(41).unwrap();
+            (&mut writer as &mut dyn MutSpace)
+                .write(&41u8, false)
+                .unwrap();
         }
 
         // verifying
@@ -373,7 +417,7 @@ mod tests {
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
 
-            let data = Chunk::get(space, &urids).unwrap().0;
+            let data = Chunk::read(space, &urids).unwrap().0;
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {
@@ -407,8 +451,7 @@ mod tests {
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
             let mut writer =
-                Literal::new_str_literal(&mut space, &urids.atom, urids.german.into_general())
-                    .unwrap();
+                Literal::write_str(&mut space, &urids.atom, urids.german.into_general()).unwrap();
             writer.append(SAMPLE).unwrap();
         }
 
@@ -432,7 +475,7 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let (lang, text, _) = Literal::get_str(space, &urids.atom).unwrap();
+            let (lang, text, _) = Literal::read_str(space, &urids.atom).unwrap();
 
             assert_eq!(lang, urids.german);
             assert_eq!(text, SAMPLE);
