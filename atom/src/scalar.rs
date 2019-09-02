@@ -5,17 +5,30 @@ use std::marker::Unpin;
 use std::os::raw::*;
 use urid::{URIDBound, URID};
 
+/// An atom that only contains a single, scalar value.
+///
+/// Since scalar values are so simple, the reading and writing methods are exactly the same.
 pub trait ScalarAtom: URIDBound {
-    type InternalType: Unpin + Copy + Sized + 'static;
+    /// The internal representation of the atom.
+    ///
+    /// For example, the `Int` atom has the internal type of `c_int`, which is `i32` on most platforms.
+    type InternalType: Unpin + Copy + Send + Sync + Sized + 'static;
 
-    fn read_body(space: Space, urids: &Self::CacheType) -> Option<Self::InternalType> {
-        space
-            .split_atom_body(Self::urid(urids))
-            .and_then(|body| body.split_type::<Self::InternalType>())
-            .map(|(value, _)| *value)
+    /// Try to read the atom from a space.
+    ///
+    /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
+    fn read<'a>(
+        space: Space<'a>,
+        urids: &Self::CacheType,
+    ) -> Option<(Self::InternalType, Space<'a>)> {
+        let (body, space) = space.split_atom_body(Self::urid(urids))?;
+        Some((*body.split_type::<Self::InternalType>()?.0, space))
     }
 
-    fn write_body<'a>(
+    /// Try to write the atom into a space.
+    ///
+    /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
+    fn write<'a>(
         space: &mut dyn MutSpace<'a>,
         value: Self::InternalType,
         urids: &Self::CacheType,
@@ -26,6 +39,7 @@ pub trait ScalarAtom: URIDBound {
     }
 }
 
+/// Macro to atomate the definition of scalar atoms.
 macro_rules! make_scalar_atom {
     ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {
         unsafe impl UriBound for $atom {
@@ -47,6 +61,7 @@ macro_rules! make_scalar_atom {
     };
 }
 
+/// A scalar atom containing a `c_double` (`f64` on most platforms).
 pub struct Double;
 
 make_scalar_atom!(
@@ -56,6 +71,7 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.double
 );
 
+/// A scalar atom containing a `c_float` (`f32` on most platforms).
 pub struct Float;
 
 make_scalar_atom!(
@@ -65,12 +81,7 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.float
 );
 
-pub struct Int;
-
-make_scalar_atom!(Int, c_int, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
-    urids.int
-});
-
+/// A scalar atom containing a `c_long` (`i64` on most platforms).
 pub struct Long;
 
 make_scalar_atom!(
@@ -80,12 +91,23 @@ make_scalar_atom!(
     |urids: &AtomURIDCache| urids.long
 );
 
+/// A scalar atom containing a `c_int` (`i32` on most platforms).
+pub struct Int;
+
+make_scalar_atom!(Int, c_int, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
+    urids.int
+});
+
+/// A scalar atom representing a boolean.
+///
+/// Internally, this atom is represented by a `c_int`, which is `==0` for `false` and `>= 1` for `true`
 pub struct Bool;
 
 make_scalar_atom!(Bool, c_int, sys::LV2_ATOM__Bool, |urids: &AtomURIDCache| {
     urids.bool
 });
 
+/// A scalar atom containing a URID.
 pub struct AtomURID;
 
 make_scalar_atom!(
@@ -116,7 +138,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            A::write_body(&mut space, value, &urids).unwrap();
+            A::write(&mut space, value, &urids).unwrap();
         }
 
         // verifying
@@ -139,7 +161,7 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            assert_eq!(A::read_body(space, &urids).unwrap(), value);
+            assert_eq!(A::read(space, &urids).unwrap().0, value);
         }
     }
 

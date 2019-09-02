@@ -25,17 +25,17 @@ impl Vector {
         space: Space<'a>,
         urids: &AtomURIDCache,
         child_urids: &C::CacheType,
-    ) -> Option<&'a [C::InternalType]> {
-        let space = space.split_atom_body(urids.vector)?;
-        let (body, space) = space.split_type::<sys::LV2_Atom_Vector_Body>()?;
+    ) -> Option<(&'a [C::InternalType], Space<'a>)> {
+        let (body, space) = space.split_atom_body(urids.vector)?;
+        let (header, body) = body.split_type::<sys::LV2_Atom_Vector_Body>()?;
 
-        if body.child_type != C::urid(child_urids)
-            || body.child_size as usize != size_of::<C::InternalType>()
+        if header.child_type != C::urid(child_urids)
+            || header.child_size as usize != size_of::<C::InternalType>()
         {
             return None;
         }
 
-        let data = space.data()?;
+        let data = body.data()?;
 
         assert_eq!(data.len() % size_of::<C::InternalType>(), 0);
         let children_count = data.len() / size_of::<C::InternalType>();
@@ -43,7 +43,7 @@ impl Vector {
         let children = unsafe {
             std::slice::from_raw_parts(data.as_ptr() as *const C::InternalType, children_count)
         };
-        Some(children)
+        Some((children, space))
     }
 
     pub fn new_vector<'a, 'b, C: ScalarAtom>(
@@ -87,10 +87,9 @@ impl URIDBound for Chunk {
 }
 
 impl Chunk {
-    pub fn get<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<&'a [u8]> {
-        space
-            .split_atom_body(urids.chunk)
-            .and_then(|body| body.data())
+    pub fn get<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
+        let (body, space) = space.split_atom_body(urids.chunk)?;
+        Some((body.data()?, space))
     }
 
     pub fn new_chunk<'a, 'b>(
@@ -151,15 +150,18 @@ impl URIDBound for Literal {
 }
 
 impl Literal {
-    pub fn get_str<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(URID, &'a str)> {
-        let space = space.split_atom_body(urids.literal)?;
-        let (header, space) = space.split_type::<sys::LV2_Atom_Literal_Body>()?;
+    pub fn get_str<'a>(
+        space: Space<'a>,
+        urids: &AtomURIDCache,
+    ) -> Option<(URID, &'a str, Space<'a>)> {
+        let (body, space) = space.split_atom_body(urids.literal)?;
+        let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
         if let Ok(LiteralType::Language(urid)) = LiteralType::try_from(header) {
-            let data = space.data()?;
+            let data = body.data()?;
             std::str::from_utf8(&data[0..data.len() - 1])
                 .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
                 .ok()
-                .map(|string| (urid, string))
+                .map(|string| (urid, string, space))
         } else {
             None
         }
@@ -316,7 +318,9 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let children: &[i32] = Vector::get_children::<Int>(space, &urids, &urids).unwrap();
+            let children: &[i32] = Vector::get_children::<Int>(space, &urids, &urids)
+                .unwrap()
+                .0;
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() {
@@ -369,7 +373,7 @@ mod tests {
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
 
-            let data = Chunk::get(space, &urids).unwrap();
+            let data = Chunk::get(space, &urids).unwrap().0;
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {
@@ -428,7 +432,7 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let (lang, text) = Literal::get_str(space, &urids.atom).unwrap();
+            let (lang, text, _) = Literal::get_str(space, &urids.atom).unwrap();
 
             assert_eq!(lang, urids.german);
             assert_eq!(text, SAMPLE);

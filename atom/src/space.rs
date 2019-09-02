@@ -68,22 +68,23 @@ impl<'a> Space<'a> {
     /// Try to retrieve a reference to a sized type.
     ///
     /// This method retrieves a slice of memory using the [`split_raw`](#method.split_raw) method and interprets it as an instance of `T`. Since there is no way to check that the memory is actually a valid instance of `T`, this method is unsafe. The second return value is the space after the instance of `T`.
-    pub fn split_type<T: Unpin + Copy + Sized + 'static>(self) -> Option<(&'a T, Self)> {
+    pub fn split_type<T>(self) -> Option<(&'a T, Self)>
+    where
+        T: Unpin + Copy + Send + Sync + Sized + 'static,
+    {
         self.split_raw(size_of::<T>())
             .map(|(data, rhs)| (unsafe { &*(data.as_ptr() as *const T) }, rhs))
     }
 
     /// Try to retrieve the body of the atom.
     ///
-    /// This method retrieves the header of the atom. If the type URID in the header matches the given URID, it returns the body of the atom. If not, it returns `None`.
-    pub fn split_atom_body<T: ?Sized>(self, urid: URID<T>) -> Option<Self> {
+    /// This method retrieves the header of the atom. If the type URID in the header matches the given URID, it returns the body of the atom. If not, it returns `None`. The first space is the body of the atom, the second one is the space behind it.
+    pub fn split_atom_body<T: ?Sized>(self, urid: URID<T>) -> Option<(Self, Self)> {
         let (header, space) = self.split_type::<sys::LV2_Atom>()?;
         if header.type_ != urid.get() {
             return None;
         }
-        space
-            .split_space(header.size as usize)
-            .map(|(body, _)| body)
+        space.split_space(header.size as usize)
     }
 
     /// Return the internal slice of the space.
@@ -186,11 +187,10 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
     /// Write a sized object to the space.
     ///
     /// If `apply_padding` is `true`, the method will assure that the written instance is 64-bit-aligned.
-    pub fn write<T: Unpin + Copy + Sized + 'static>(
-        &mut self,
-        instance: &T,
-        apply_padding: bool,
-    ) -> Option<&'a mut T> {
+    pub fn write<T>(&mut self, instance: &T, apply_padding: bool) -> Option<&'a mut T>
+    where
+        T: Unpin + Copy + Send + Sync + Sized + 'static,
+    {
         let size = std::mem::size_of::<T>();
         let input_data =
             unsafe { std::slice::from_raw_parts(instance as *const T as *const u8, size) };
@@ -202,7 +202,7 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
     }
 
     /// Create new `FramedMutSpace` to write an atom.
-    /// 
+    ///
     /// Simply pass the URID of the atom as an argument.
     pub fn create_atom_frame<'c, A: ?Sized>(
         &'c mut self,
