@@ -1,7 +1,7 @@
 //! Smart pointers with safe atom reading and writing methods.
 use std::cell::Cell;
 use std::marker::Unpin;
-use std::mem::size_of;
+use std::mem::{size_of, size_of_val};
 use urid::URID;
 
 /// Specialized smart pointer to retrieve struct instances from a slice of memory.
@@ -87,6 +87,36 @@ impl<'a> Space<'a> {
         space.split_space(header.size as usize)
     }
 
+    /// Create a space from a reference.
+    pub fn from_reference<T: ?Sized>(instance: &'a T) -> Self {
+        let data = unsafe {
+            std::slice::from_raw_parts(instance as *const T as *const u8, size_of_val(instance))
+        };
+        assert_eq!(data.as_ptr() as usize % 8, 0);
+        Space { data: Some(data) }
+    }
+
+    /// Concatenate two spaces.
+    ///
+    /// There are situations where a space is split too often and you might want to reunite these two adjacent spaces. This method checks if the given spaces are adjacent, which means that the left space has to end exactly where the right one begins. In this case, the concatenated space is returned. If this is not the case, this method returns `None`.
+    pub fn concat(lhs: Self, rhs: Self) -> Option<Self> {
+        let lhs_data = match lhs.data {
+            Some(data) => data,
+            None => return Some(rhs),
+        };
+        let rhs_data = match rhs.data {
+            Some(data) => data,
+            None => return Some(lhs),
+        };
+        if unsafe { lhs_data.as_ptr().add(lhs_data.len()) } == rhs_data.as_ptr() {
+            Some(Self::from_slice(unsafe {
+                std::slice::from_raw_parts(lhs_data.as_ptr(), lhs_data.len() + rhs_data.len())
+            }))
+        } else {
+            None
+        }
+    }
+
     /// Return the internal slice of the space.
     pub fn data(&self) -> Option<&'a [u8]> {
         self.data
@@ -125,6 +155,8 @@ pub struct RootMutSpace<'a> {
 
 impl<'a> RootMutSpace<'a> {
     /// Create a new instance.
+    ///
+    /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`). This way, you can, for example, create a mutable space from a slice of `u64`s and therefore guarantee that the space is 64-bit aligned.
     pub fn new(space: &'a mut [u8]) -> Self {
         if space.as_ptr() as usize % 8 != 0 {
             panic!("Trying to create an unaligned atom space");
@@ -244,6 +276,29 @@ mod tests {
 
         let (integer, _) = space.split_type::<u32>().unwrap();
         assert_eq!(*integer, 0x42424242);
+    }
+
+    #[test]
+    fn test_from_reference() {
+        let value: u64 = 0x42424242;
+        let space = Space::from_reference(&value);
+        assert_eq!(value, *space.split_type::<u64>().unwrap().0);
+    }
+
+    #[test]
+    fn test_concat() {
+        let data: Box<[u64]> = Box::new([0; 64]);
+        let space = Space::from_reference(data.as_ref());
+        let (lhs, rhs) = space.split_space(8).unwrap();
+        let concated_space = Space::concat(lhs, rhs).unwrap();
+        assert_eq!(
+            space.data().unwrap().as_ptr(),
+            concated_space.data().unwrap().as_ptr()
+        );
+        assert_eq!(
+            space.data().unwrap().len(),
+            concated_space.data().unwrap().len()
+        );
     }
 
     #[test]

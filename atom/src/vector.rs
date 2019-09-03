@@ -1,6 +1,6 @@
+use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::AtomURIDCache;
-use crate::scalar::ScalarAtom;
 use core::UriBound;
 use std::marker::PhantomData;
 use std::mem::size_of;
@@ -124,9 +124,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::scalar::Int;
     use crate::space::*;
     use crate::vector::*;
-    use crate::scalar::Int;
     use std::mem::size_of;
     use urid::URIDCache;
 

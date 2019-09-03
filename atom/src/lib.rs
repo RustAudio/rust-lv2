@@ -4,16 +4,16 @@ pub extern crate lv2_atom_sys as sys;
 extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
-pub mod scalar;
-pub mod vector;
 pub mod chunk;
 pub mod literal;
+pub mod scalar;
+pub mod vector;
 
 pub mod space;
 
 use urid::{URIDCache, URID};
 
-#[derive(URIDCache)]
+#[derive(Clone, URIDCache)]
 /// Container for the URIDs of all `UriBound`s in this crate.
 pub struct AtomURIDCache {
     pub double: URID<scalar::Double>,

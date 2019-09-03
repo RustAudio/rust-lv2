@@ -156,7 +156,6 @@ impl<'a, 'b> Drop for LiteralWriter<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use crate::space::*;
     use crate::literal::*;
     use core::UriBound;
     use std::ffi::CStr;
@@ -164,15 +163,15 @@ mod tests {
     use urid::URIDCache;
 
     struct German;
-        unsafe impl UriBound for German {
-            const URI: &'static [u8] = b"http://lexvo.org/id/iso639-1/de\0";
-        }
+    unsafe impl UriBound for German {
+        const URI: &'static [u8] = b"http://lexvo.org/id/iso639-1/de\0";
+    }
 
-        #[derive(URIDCache)]
-        pub struct TestURIDs {
-            atom: AtomURIDCache,
-            german: URID<German>,
-        }
+    #[derive(URIDCache)]
+    pub struct TestURIDs {
+        atom: AtomURIDCache,
+        german: URID<German>,
+    }
 
     #[test]
     fn test_literal() {
