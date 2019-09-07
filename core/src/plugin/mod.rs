@@ -98,11 +98,9 @@ impl<T: Plugin> PluginInstance<T> {
         let mut features = FeatureContainer::from_raw(features);
 
         let features = match <T::Features as FeatureCollection>::from_container(&mut features) {
-            Some(f) => f,
-            None => {
-                eprintln!(
-                    "Failed to initialize plugin: Missing feature from host" // TODO: better error messages
-                );
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
                 return std::ptr::null_mut();
             }
         };

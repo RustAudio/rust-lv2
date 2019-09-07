@@ -1,8 +1,8 @@
 //! Implementation of the mapping feature for testing purposes.
 use crate::URID;
+use core::{Uri, UriBuf};
 use std::collections::HashMap;
 use std::convert::TryInto;
-use core::{Uri, UriBuf};
 use std::sync::Mutex;
 
 /// A trait to represent an implementation of an URI <-> URID mapper, i.e. that can map an URI

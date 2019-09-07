@@ -1,5 +1,5 @@
 //! Additional host functionalities.
-use crate::UriBound;
+use crate::{UriBound, Uri};
 
 mod container;
 mod core_features;
@@ -16,13 +16,27 @@ pub use descriptor::FeatureDescriptor;
 /// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
 ///
 /// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#tymethod.from_raw_data) method.
-pub unsafe trait Feature<'a>: UriBound + Sized {
+pub unsafe trait Feature<'a>: UriBound + Sized + 'a {
+    /// Returns a feature descriptor for this feature instance, to be passed down to plugins.
     #[cfg(feature = "host")]
     fn descriptor(&self) -> FeatureDescriptor<'a> {
         FeatureDescriptor {
             uri: &<Self as UriBound>::uri(),
             data: self as *const Self as *const std::ffi::c_void,
         }
+    }
+}
+
+/// An error created during feature resolution when a required feature is missing.
+#[derive(Copy, Clone, Debug)]
+pub struct MissingFeatureError {
+    pub(crate) uri: &'static Uri
+}
+
+impl std::fmt::Display for MissingFeatureError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let uri = self.uri.to_str().unwrap_or("[error while reading URI]");
+        write!(f, "Unable to instantiate plugin: missing required feature: {}", uri)
     }
 }
 
@@ -44,13 +58,13 @@ pub unsafe trait Feature<'a>: UriBound + Sized {
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
     /// Populate a collection with features from the container.
-    fn from_container(container: &mut FeatureContainer<'a>) -> Option<Self>;
+    fn from_container(container: &mut FeatureContainer<'a>) -> Result<Self, MissingFeatureError>;
 }
 
 impl<'a> FeatureCollection<'a> for () {
     #[inline]
-    fn from_container(_container: &mut FeatureContainer) -> Option<Self> {
-        Some(())
+    fn from_container(_container: &mut FeatureContainer) -> Result<Self, MissingFeatureError> {
+        Ok(())
     }
 }
 
@@ -138,10 +152,10 @@ mod tests {
         assert!(features_container.contains::<FeatureA>());
         assert!(features_container.contains::<FeatureB>());
 
-        let retrieved_feature_a = features_container.retrieve_feature::<FeatureA>().unwrap();
+        let retrieved_feature_a: &FeatureA = features_container.retrieve_feature().unwrap();
         assert_eq!(retrieved_feature_a.number, *(setting.data_a));
 
-        let retrieved_feature_b = features_container.retrieve_feature::<FeatureB>().unwrap();
+        let retrieved_feature_b: &FeatureB = features_container.retrieve_feature().unwrap();
         assert_eq!(retrieved_feature_b.number, *(setting.data_b));
     }
 

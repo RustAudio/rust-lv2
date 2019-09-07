@@ -49,8 +49,8 @@ impl<'a> FeatureCollectionStruct<'a> {
         let retrievals = self.fields.iter().map(|field| field.make_retrieval());
         (quote! {
             impl#generics FeatureCollection<#first_generic> for #struct_name#generics {
-                fn from_container(container: &mut FeatureContainer<#first_generic>) -> Option<Self> {
-                    Some(Self {
+                fn from_container(container: &mut FeatureContainer<#first_generic>) -> Result<Self, MissingFeatureError> {
+                    Ok(Self {
                         #(#retrievals)*
                     })
                 }

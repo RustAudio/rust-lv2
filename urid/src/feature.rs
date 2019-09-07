@@ -26,7 +26,7 @@ unsafe extern "C" fn urid_map<T: crate::mapper::URIDMapper>(
 ) -> crate::sys::LV2_URID {
     let result = ::std::panic::catch_unwind(|| {
         (&*(handle as *const T))
-            .map(CStr::from_ptr(uri))
+            .map(::std::ffi::CStr::from_ptr(uri))
             .map(URID::get)
     });
 
@@ -54,9 +54,8 @@ impl<'a> Map<'a> {
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
-    ///     # use lv2_core::UriBound;
+    ///     # use lv2_core::{Uri, UriBound};
     ///     # use lv2_urid::URID;
-    ///     # use std::ffi::CStr;
     ///
     ///     struct MyUriBound;
     ///
@@ -69,7 +68,7 @@ impl<'a> Map<'a> {
     ///     # let map = lv2_urid::feature::Map::new(&mapper);
     ///
     ///     // Creating the URI and mapping it to its URID.
-    ///     let uri = CStr::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
+    ///     let uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
     ///     let urid: URID = map.map_uri(uri).unwrap();
     ///     assert_eq!(1, urid);
     pub fn map_uri(&self, uri: &Uri) -> Option<URID> {
@@ -167,9 +166,8 @@ impl<'a> Unmap<'a> {
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
-    ///     # use lv2_core::UriBound;
+    ///     # use lv2_core::{Uri, UriBound};
     ///     # use lv2_urid::URID;
-    ///     # use std::ffi::CStr;
     ///
     ///     struct MyUriBound;
     ///

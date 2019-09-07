@@ -1,5 +1,5 @@
-use lv2_core::feature::HardRTCapable;
-use lv2_core::feature::{FeatureCollection, FeatureContainer};
+use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
+use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
 use std::ops::Drop;
 use std::os::raw::c_char;
@@ -17,7 +17,8 @@ struct AmpPorts {
 
 #[derive(FeatureCollection)]
 struct Features<'a> {
-    _rt_capable: &'a HardRTCapable,
+    rt_capable: &'a HardRTCapable,
+    is_live: Option<&'a IsLive>,
 }
 
 impl Plugin for Amp {
@@ -38,7 +39,8 @@ impl Plugin for Amp {
         assert_eq!(plugin_info.sample_rate(), 44100.0);
 
         // Finding and verifying all features.
-        assert_ne!(features._rt_capable as *const _, std::ptr::null());
+        assert_ne!(features.rt_capable as *const _, std::ptr::null());
+        assert!(features.is_live.is_none());
 
         Amp { activated: false }
     }
