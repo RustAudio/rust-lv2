@@ -26,7 +26,7 @@ impl Plugin for Amp {
     type Features = Features<'static>;
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: &Features) -> Self {
+    fn new(plugin_info: &PluginInfo, features: Features) -> Self {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -45,13 +45,13 @@ impl Plugin for Amp {
         Amp { activated: false }
     }
 
-    fn activate(&mut self, _features: &Features) {
+    fn activate(&mut self) {
         assert!(!self.activated);
         self.activated = true;
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _features: &Features) {
+    fn run(&mut self, ports: &mut AmpPorts) {
         assert!(self.activated);
 
         let coef = *(ports.gain);
@@ -64,7 +64,7 @@ impl Plugin for Amp {
         }
     }
 
-    fn deactivate(&mut self, _features: &Features) {
+    fn deactivate(&mut self) {
         assert!(self.activated);
         self.activated = false;
     }

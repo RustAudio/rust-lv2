@@ -70,13 +70,13 @@ use std::any::Any;
 ///         type Ports = ();
 ///         type Features = ();
 ///
-///         fn new(_: &PluginInfo, _features: &()) -> Self {
+///         fn new(_: &PluginInfo, _features: ()) -> Self {
 ///             MyPlugin {
 ///                 data: 42.0
 ///             }
 ///         }
 ///
-///         fn run(&mut self, _: &mut (), _features: &()) {}
+///         fn run(&mut self, _: &mut ()) {}
 ///
 ///         fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
 ///             match_extensions![uri, dyn MyExtension]

@@ -27,22 +27,22 @@ pub trait Plugin: Sized + Send + Sync + 'static {
     /// Create a new plugin instance.
     ///
     /// This method only creates an instance of the plugin, it does not reset or set up it's internal state. This is done by the `activate` method.
-    fn new(plugin_info: &PluginInfo, features: &Self::Features) -> Self;
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
 
     /// Run a processing step.
     ///
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
-    fn run(&mut self, ports: &mut Self::Ports, features: &Self::Features);
+    fn run(&mut self, ports: &mut Self::Ports);
 
     /// Reset and initialize the complete internal state of the plugin.
     ///
     /// This method will be called if the plugin has just been created of if the plugin has been deactivated. Also, a host's `activate` call will be as close as possible to the first `run` call.
-    fn activate(&mut self, _features: &Self::Features) {}
+    fn activate(&mut self) {}
 
     /// Deactivate the plugin.
     ///
     /// The host will always call this method when it wants to shut the plugin down. After `deactivate` has been called, `run` will not be called until `activate` has been called again.
-    fn deactivate(&mut self, _features: &Self::Features) {}
+    fn deactivate(&mut self) {}
 
     /// Return additional, extension-specific data.
     ///
@@ -62,7 +62,6 @@ pub trait Plugin: Sized + Send + Sync + 'static {
 pub struct PluginInstance<T: Plugin> {
     instance: T,
     connections: <T::Ports as PortContainer>::Cache,
-    features: T::Features,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -105,12 +104,11 @@ impl<T: Plugin> PluginInstance<T> {
             }
         };
 
-        let instance = T::new(&plugin_info, &features);
+        let instance = T::new(&plugin_info, features);
 
         // Instantiate the plugin.
         let instance = Box::new(Self {
             instance,
-            features,
             connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
@@ -125,13 +123,13 @@ impl<T: Plugin> PluginInstance<T> {
     /// Call `activate`.
     pub unsafe extern "C" fn activate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
-        instance.instance.activate(&instance.features)
+        instance.instance.activate()
     }
 
     /// Call `deactivate`
     pub unsafe extern "C" fn deactivate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
-        instance.instance.deactivate(&instance.features)
+        instance.instance.deactivate()
     }
 
     /// Update a port pointer.
@@ -146,7 +144,7 @@ impl<T: Plugin> PluginInstance<T> {
         let ports =
             <T::Ports as PortContainer>::from_connections(&instance.connections, sample_count);
         if let Some(mut ports) = ports {
-            instance.instance.run(&mut ports, &instance.features);
+            instance.instance.run(&mut ports);
         }
     }
 
