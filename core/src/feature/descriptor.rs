@@ -30,6 +30,9 @@ pub unsafe fn cast_feature_ref<'a, T: Feature<'a>>(feature: *const c_void) -> Op
 }
 
 /// Descriptor of a single host feature.
+///
+/// This struct is slightly different from the raw `LV2_Feature` struct, as the length of the
+/// contained URI is precomputed for faster comparison.
 pub struct FeatureDescriptor<'a> {
     pub(crate) uri: &'a CStr,
     pub(crate) data: *const c_void,

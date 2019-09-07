@@ -1,5 +1,5 @@
 //! Additional host functionalities.
-use crate::{UriBound, Uri};
+use crate::{Uri, UriBound};
 
 mod container;
 mod core_features;
@@ -30,13 +30,17 @@ pub unsafe trait Feature<'a>: UriBound + Sized + 'a {
 /// An error created during feature resolution when a required feature is missing.
 #[derive(Copy, Clone, Debug)]
 pub struct MissingFeatureError {
-    pub(crate) uri: &'static Uri
+    pub(crate) uri: &'static Uri,
 }
 
 impl std::fmt::Display for MissingFeatureError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         let uri = self.uri.to_str().unwrap_or("[error while reading URI]");
-        write!(f, "Unable to instantiate plugin: missing required feature: {}", uri)
+        write!(
+            f,
+            "Unable to instantiate plugin: missing required feature: {}",
+            uri
+        )
     }
 }
 

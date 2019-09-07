@@ -37,10 +37,14 @@ impl<'a> FeatureContainer<'a> {
     /// Try to retrieve a feature.
     ///
     /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
-    pub fn retrieve_feature<F: Feature<'a>, T: FromResolvedFeature<'a, F>>(&mut self) -> Result<T, MissingFeatureError> {
-        T::from_resolved_feature(self.internal
-            .remove(F::uri())
-            .and_then(|ptr| unsafe { cast_feature_ref(ptr) }))
+    pub fn retrieve_feature<F: Feature<'a>, T: FromResolvedFeature<'a, F>>(
+        &mut self,
+    ) -> Result<T, MissingFeatureError> {
+        T::from_resolved_feature(
+            self.internal
+                .remove(F::uri())
+                .and_then(|ptr| unsafe { cast_feature_ref(ptr) }),
+        )
     }
 }
 
