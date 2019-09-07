@@ -65,6 +65,7 @@ mod tests {
             for (i, value) in (&mut writer as &mut dyn MutSpace)
                 .allocate(SLICE_LENGTH - 1, false)
                 .unwrap()
+                .1
                 .into_iter()
                 .enumerate()
             {

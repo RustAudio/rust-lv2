@@ -146,14 +146,16 @@ impl<'a> Space<'a> {
 pub trait MutSpace<'a> {
     /// Try to allocate memory on the internal data slice.
     ///
-    /// After the memory has been allocated, the `MutSpace` can not allocate it again and therefore, the next allocated slice is directly behind it. If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned.
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]>;
+    /// If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned. The first return value is the number of padding bytes that has been used and the second return value is a mutable slice referencing the allocated data.
+    ///
+    /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])>;
 
     /// Try to write data to the internal data slice.
     ///
     /// The method allocates a slice with the [`allocate`](#tymethod.allocate) method and copies the data to the slice.
     fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
-        self.allocate(data.len(), apply_padding).map(|space| {
+        self.allocate(data.len(), apply_padding).map(|(_, space)| {
             space.copy_from_slice(data);
             space
         })
@@ -180,20 +182,23 @@ impl<'a> RootMutSpace<'a> {
 }
 
 impl<'a> MutSpace<'a> for RootMutSpace<'a> {
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
         if self.space.get_mut().is_none() {
             return None;
         }
         let mut space = self.space.replace(None).unwrap();
 
-        if apply_padding {
+        let padding = if apply_padding {
             let alignment = space.as_ptr() as usize % 8;
             let padding = if alignment == 0 { 0 } else { 8 - alignment };
             if padding > space.len() {
                 return None;
             }
             space = space.split_at_mut(padding).1;
-        }
+            padding
+        } else {
+            0
+        };
 
         if size > space.len() {
             return None;
@@ -201,7 +206,7 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
         let (lower_slice, upper_slice) = space.split_at_mut(size);
 
         self.space.set(Some(upper_slice));
-        Some(lower_slice)
+        Some((padding, lower_slice))
     }
 }
 
@@ -212,18 +217,13 @@ pub struct FramedMutSpace<'a, 'b> {
 }
 
 impl<'a, 'b> MutSpace<'a> for FramedMutSpace<'a, 'b> {
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<&'a mut [u8]> {
-        self.parent.allocate(size, apply_padding).map(|data| {
-            self.atom.size += size as u32;
-            data
-        })
-    }
-}
-
-impl<'a, 'b> Drop for FramedMutSpace<'a, 'b> {
-    fn drop(&mut self) {
-        // Allocate nothing with padding in order to ensure padding.
-        self.parent.allocate(0, true);
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
+        self.parent
+            .allocate(size, apply_padding)
+            .map(|(padding, data)| {
+                self.atom.size += (size + padding) as u32;
+                (padding, data)
+            })
     }
 }
 
@@ -404,5 +404,47 @@ mod tests {
             atom_frame.atom.size as usize,
             test_data.len() + size_of_val(&test_atom)
         );
+    }
+
+    #[test]
+    fn test_padding_inside_frame() {
+        const MEMORY_SIZE: usize = 256;
+        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
+        let raw_space: &mut [u8] = unsafe {
+            std::slice::from_raw_parts_mut(
+                (&mut memory).as_mut_ptr() as *mut u8,
+                MEMORY_SIZE * size_of::<u64>(),
+            )
+        };
+
+        // writing
+        {
+            let mut root: RootMutSpace = RootMutSpace::new(raw_space);
+            let mut frame = (&mut root as &mut dyn MutSpace)
+                .create_atom_frame(unsafe { URID::<()>::new_unchecked(1) })
+                .unwrap();
+            {
+                let frame = &mut frame as &mut dyn MutSpace;
+                frame.write::<u32>(&42, true).unwrap();
+                frame.write::<u32>(&17, true).unwrap();
+            }
+        }
+
+        // checking
+        {
+            let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
+            assert_eq!(atom.type_, 1);
+            assert_eq!(atom.size as usize, 12);
+
+            let (value, space) = space.split_at(size_of::<u32>());
+            let value = unsafe { *(value.as_ptr() as *const u32) };
+            assert_eq!(value, 42);
+            let (_, space) = space.split_at(4);
+
+            let (value, _) = space.split_at(size_of::<u32>());
+            let value = unsafe { *(value.as_ptr() as *const u32) };
+            assert_eq!(value, 17);
+        }
     }
 }

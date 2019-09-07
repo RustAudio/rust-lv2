@@ -103,7 +103,7 @@ where
     pub fn allocate(&mut self, size: usize) -> Option<&mut [T]> {
         self.frame
             .allocate(size_of::<T>() * size, false)
-            .map(|data| unsafe {
+            .map(|(_, data)| unsafe {
                 std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut T, size)
             })
     }
@@ -115,7 +115,7 @@ where
         };
         self.frame
             .allocate(raw_data.len(), false)
-            .map(|space| unsafe {
+            .map(|(_, space)| unsafe {
                 space.copy_from_slice(raw_data);
                 std::slice::from_raw_parts_mut(space.as_mut_ptr() as *mut T, data.len())
             })
