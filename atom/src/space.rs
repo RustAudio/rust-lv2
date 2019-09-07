@@ -76,9 +76,21 @@ impl<'a> Space<'a> {
             .map(|(data, rhs)| (unsafe { &*(data.as_ptr() as *const T) }, rhs))
     }
 
+    /// Try to retrieve the space occupied by an atom.
+    ///
+    /// This method assumes that the space contains an atom and retrieves the space occupied by the atom, including the atom header. The second return value is the rest of the space behind the atom.
+    ///
+    /// The difference to [`split_atom_body`](#method.split_atom_body) is that the returned space contains the header of the atom and that the type of the atom is not checked.
+    pub fn split_atom(self) -> Option<(Self, Self)> {
+        let (header, _) = self.split_type::<sys::LV2_Atom>()?;
+        self.split_space(size_of::<sys::LV2_Atom>() + header.size as usize)
+    }
+
     /// Try to retrieve the body of the atom.
     ///
     /// This method retrieves the header of the atom. If the type URID in the header matches the given URID, it returns the body of the atom. If not, it returns `None`. The first space is the body of the atom, the second one is the space behind it.
+    ///
+    /// The difference to [`split_atom`](#method.split_atom) is that the returned space does not contain the header of the atom and that the type of the atom is checked.
     pub fn split_atom_body<T: ?Sized>(self, urid: URID<T>) -> Option<(Self, Self)> {
         let (header, space) = self.split_type::<sys::LV2_Atom>()?;
         if header.type_ != urid.get() {
@@ -254,6 +266,7 @@ mod tests {
     use crate::space::*;
     use crate::AtomURIDCache;
     use std::mem::{size_of, size_of_val};
+    use std::os::raw::c_int;
     use urid::mapper::URIDMap;
     use urid::URIDCache;
 
@@ -276,6 +289,31 @@ mod tests {
 
         let (integer, _) = space.split_type::<u32>().unwrap();
         assert_eq!(*integer, 0x42424242);
+    }
+
+    #[test]
+    fn test_split_atom() {
+        let mut data: Box<[u64]> = Box::new([0; 256]);
+        let urid: URID = unsafe { URID::new_unchecked(17) };
+
+        // Writing an integer atom.
+        unsafe {
+            *(data.as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
+                atom: sys::LV2_Atom {
+                    size: size_of::<c_int>() as u32,
+                    type_: urid.get(),
+                },
+                body: 42,
+            }
+        }
+
+        let space = Space::from_reference(data.as_ref());
+        let (atom, _) = space.split_atom().unwrap();
+        let (body, _) = atom.split_atom_body(urid).unwrap();
+        let body = body.data().unwrap();
+
+        assert_eq!(size_of::<c_int>(), size_of_val(body));
+        assert_eq!(42, unsafe { *(body.as_ptr() as *const c_int) });
     }
 
     #[test]

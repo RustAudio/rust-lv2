@@ -6,6 +6,7 @@ extern crate lv2_urid as urid;
 
 pub mod chunk;
 pub mod literal;
+pub mod object;
 pub mod scalar;
 pub mod vector;
 
@@ -25,4 +26,6 @@ pub struct AtomURIDCache {
     pub vector: URID<vector::Vector>,
     pub chunk: URID<chunk::Chunk>,
     pub literal: URID<literal::Literal>,
+    pub object: URID<object::Object>,
+    pub property: URID<object::Property>,
 }
