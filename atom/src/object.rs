@@ -183,11 +183,7 @@ impl Property {
     /// Write out the header of a property atom.
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
-    fn write_header<'a, 'b>(
-        space: &'b mut dyn MutSpace<'a>,
-        key: URID,
-        context: Option<URID>,
-    ) -> Option<()> {
+    fn write_header(space: &mut dyn MutSpace, key: URID, context: Option<URID>) -> Option<()> {
         space.write(&key.get(), true)?;
         space.write(&context.map(|urid| urid.get()).unwrap_or(0), false)?;
         Some(())
