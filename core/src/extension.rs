@@ -68,8 +68,9 @@ use std::any::Any;
 ///
 ///     impl Plugin for MyPlugin {
 ///         type Ports = ();
+///         type Features = ();
 ///
-///         fn new(_: &PluginInfo, _: FeatureContainer) -> Self {
+///         fn new(_: &PluginInfo, _features: ()) -> Self {
 ///             MyPlugin {
 ///                 data: 42.0
 ///             }
