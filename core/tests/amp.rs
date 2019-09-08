@@ -1,5 +1,5 @@
-use lv2_core::feature::FeatureDescriptor;
-use lv2_core::feature::HardRTCapable;
+use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
+use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
 use std::ops::Drop;
 use std::os::raw::c_char;
@@ -15,11 +15,18 @@ struct AmpPorts {
     output: OutputPort<Audio>,
 }
 
+#[derive(FeatureCollection)]
+struct Features<'a> {
+    rt_capable: &'a HardRTCapable,
+    is_live: Option<&'a IsLive>,
+}
+
 impl Plugin for Amp {
     type Ports = AmpPorts;
+    type Features = Features<'static>;
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: FeatureContainer) -> Self {
+    fn new(plugin_info: &PluginInfo, features: Features) -> Self {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -32,9 +39,8 @@ impl Plugin for Amp {
         assert_eq!(plugin_info.sample_rate(), 44100.0);
 
         // Finding and verifying all features.
-        let features: Vec<FeatureDescriptor> = features.into_iter().collect();
-        assert_eq!(features.len(), 1);
-        assert!(features[0].is_feature::<HardRTCapable>());
+        assert_ne!(features.rt_capable as *const _, std::ptr::null());
+        assert!(features.is_live.is_none());
 
         Amp { activated: false }
     }

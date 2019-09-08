@@ -208,6 +208,7 @@ impl Property {
 }
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::object::*;
     use crate::scalar::*;
@@ -215,12 +216,14 @@ mod tests {
     use core::Uri;
     use std::mem::size_of;
     use std::os::raw::*;
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     #[test]
     fn test_object() {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = AtomURIDCache::from_map(&map).unwrap();
 
         let object_type = map
@@ -321,8 +324,8 @@ mod tests {
 
     #[test]
     fn test_property() {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = AtomURIDCache::from_map(&map).unwrap();
 
         let key = map

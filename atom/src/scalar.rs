@@ -118,10 +118,13 @@ make_scalar_atom!(
 );
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::scalar::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
@@ -129,8 +132,8 @@ mod tests {
         A::InternalType: PartialEq<A::InternalType>,
         A::InternalType: std::fmt::Debug,
     {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = A::CacheType::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

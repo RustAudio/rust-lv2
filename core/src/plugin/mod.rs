@@ -21,10 +21,13 @@ pub trait Plugin: Sized + Send + Sync + 'static {
     /// The type of the port container.
     type Ports: PortContainer;
 
+    /// The host features used by this plugin.
+    type Features: FeatureCollection<'static>;
+
     /// Create a new plugin instance.
     ///
     /// This method only creates an instance of the plugin, it does not reset or set up it's internal state. This is done by the `activate` method.
-    fn new(plugin_info: &PluginInfo, features: FeatureContainer) -> Self;
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
 
     /// Run a processing step.
     ///
@@ -91,11 +94,21 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let features = FeatureContainer::from_raw(features);
+        let mut features = FeatureContainer::from_raw(features);
+
+        let features = match <T::Features as FeatureCollection>::from_container(&mut features) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
+                return std::ptr::null_mut();
+            }
+        };
+
+        let instance = T::new(&plugin_info, features);
 
         // Instantiate the plugin.
         let instance = Box::new(Self {
-            instance: T::new(&plugin_info, features),
+            instance,
             connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
         });
         Box::leak(instance) as *mut Self as LV2_Handle
@@ -109,14 +122,14 @@ impl<T: Plugin> PluginInstance<T> {
 
     /// Call `activate`.
     pub unsafe extern "C" fn activate(instance: *mut c_void) {
-        let instance = instance as *mut Self;
-        (*instance).instance.activate()
+        let instance = &mut *(instance as *mut Self);
+        instance.instance.activate()
     }
 
     /// Call `deactivate`
     pub unsafe extern "C" fn deactivate(instance: *mut c_void) {
-        let instance = instance as *mut Self;
-        (*instance).instance.deactivate()
+        let instance = &mut *(instance as *mut Self);
+        instance.instance.deactivate()
     }
 
     /// Update a port pointer.
@@ -127,11 +140,11 @@ impl<T: Plugin> PluginInstance<T> {
 
     /// Construct a port container and call the `run` method.
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
-        let instance = instance as *mut Self;
+        let instance = &mut *(instance as *mut Self);
         let ports =
-            <T::Ports as PortContainer>::from_connections(&(*instance).connections, sample_count);
+            <T::Ports as PortContainer>::from_connections(&instance.connections, sample_count);
         if let Some(mut ports) = ports {
-            (*instance).instance.run(&mut ports);
+            instance.instance.run(&mut ports);
         }
     }
 

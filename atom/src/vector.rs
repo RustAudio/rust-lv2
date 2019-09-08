@@ -123,19 +123,22 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::scalar::Int;
     use crate::space::*;
     use crate::vector::*;
     use std::mem::size_of;
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     #[test]
     fn test_vector() {
         const CHILD_COUNT: usize = 17;
 
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

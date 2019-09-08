@@ -7,11 +7,11 @@
 extern crate lv2_core as core;
 pub extern crate lv2_urid_sys as sys;
 
-mod feature;
+pub mod feature;
+#[cfg(feature = "host")]
 pub mod mapper;
 mod urid;
 
 pub use lv2_urid_derive::*;
 
-pub use feature::*;
 pub use urid::*;

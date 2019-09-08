@@ -197,11 +197,14 @@ impl<'a, 'b> Drop for StringWriter<'a, 'b> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::string::*;
     use core::UriBound;
     use std::ffi::CStr;
     use std::mem::size_of;
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     struct German;
@@ -220,8 +223,8 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = TestURIDs::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -264,16 +267,16 @@ mod tests {
 
     #[test]
     fn test_string() {
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
-        let urids = TestURIDs::from_map(&map).unwrap();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
+        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = String::write(&mut space, &urids.atom).unwrap();
+            let mut writer = String::write(&mut space, &urids).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -283,7 +286,7 @@ mod tests {
             let (string, space) = raw_space.split_at(size_of::<sys::LV2_Atom_String>());
 
             let string = unsafe { &*(string.as_ptr() as *const sys::LV2_Atom_String) };
-            assert_eq!(string.atom.type_, urids.atom.string);
+            assert_eq!(string.atom.type_, urids.string);
             assert_eq!(string.atom.size as usize, SAMPLE0.len() + SAMPLE1.len() + 1);
 
             let string = std::str::from_utf8(space.split_at(string.atom.size as usize).0).unwrap();
@@ -293,7 +296,7 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let string = String::read(space, &urids.atom).unwrap().0;
+            let string = String::read(space, &urids).unwrap().0;
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);
         }
     }

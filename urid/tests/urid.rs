@@ -1,17 +1,20 @@
+#![cfg(feature = "host")]
+
 extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
 use core::UriBound;
-use urid::mapper::URIDMap;
+use urid::feature::*;
+use urid::mapper::HashURIDMapper;
 use urid::*;
 
-struct MyTypeA();
+struct MyTypeA;
 
 unsafe impl UriBound for MyTypeA {
     const URI: &'static [u8] = b"urn:my-type-a\0";
 }
 
-struct MyTypeB();
+struct MyTypeB;
 
 unsafe impl UriBound for MyTypeB {
     const URI: &'static [u8] = b"urn:my-type-b\0";
@@ -19,10 +22,8 @@ unsafe impl UriBound for MyTypeB {
 
 #[test]
 fn test_map() {
-    let host_map = URIDMap::new();
-
-    let mut raw_map_feature = host_map.make_map_interface();
-    let map_feature = raw_map_feature.map();
+    let host_map = HashURIDMapper::new();
+    let map_feature = Map::new(&host_map);
 
     assert_eq!(1, map_feature.map_uri(MyTypeA::uri()).unwrap());
     assert_eq!(1, map_feature.map_type::<MyTypeA>().unwrap());
@@ -36,13 +37,9 @@ fn test_map() {
 
 #[test]
 fn test_unmap() {
-    let host_map = URIDMap::new();
-
-    let mut raw_map_feature = host_map.make_map_interface();
-    let map_feature = raw_map_feature.map();
-
-    let mut raw_unmap_feature = host_map.make_unmap_interface();
-    let unmap_feature = raw_unmap_feature.unmap();
+    let host_map = HashURIDMapper::new();
+    let map_feature = Map::new(&host_map);
+    let unmap_feature = Unmap::new(&host_map);
 
     let (type_a, type_b) = {
         (
@@ -63,11 +60,8 @@ struct MyURIDCache {
 
 #[test]
 fn test_cache() {
-    let host_map = URIDMap::new();
-
-    let mut raw_map_feature = host_map.make_map_interface();
-    let map_feature = raw_map_feature.map();
-
+    let host_map = HashURIDMapper::new();
+    let map_feature = Map::new(&host_map);
     let cache = MyURIDCache::from_map(&map_feature).unwrap();
 
     assert_eq!(1, cache.type_a);

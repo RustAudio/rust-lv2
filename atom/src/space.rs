@@ -262,12 +262,13 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 }
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::space::*;
-    use crate::AtomURIDCache;
     use std::mem::{size_of, size_of_val};
     use std::os::raw::c_int;
-    use urid::mapper::URIDMap;
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     #[test]
@@ -379,8 +380,9 @@ mod tests {
             )
         });
 
-        let mut urid_map = URIDMap::new().make_map_interface();
-        let urids = AtomURIDCache::from_map(&urid_map.map()).unwrap();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
+        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)
             .create_atom_frame(urids.chunk)

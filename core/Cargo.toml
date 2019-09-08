@@ -8,3 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 lv2-core-sys = { path = "./sys" }
 lv2-core-derive = { path = "./derive" }
+
+[features]
+default = []
+host = []

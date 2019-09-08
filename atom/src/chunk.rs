@@ -41,18 +41,21 @@ impl Chunk {
 }
 
 #[cfg(test)]
+#[cfg(feature = "host")]
 mod tests {
     use crate::chunk::*;
     use crate::*;
     use std::mem::{size_of, size_of_val};
+    use urid::feature::Map;
+    use urid::mapper::HashURIDMapper;
     use urid::URIDCache;
 
     #[test]
     fn test_chunk_and_slice_writer() {
         const SLICE_LENGTH: usize = 42;
 
-        let mut map_interface = urid::mapper::URIDMap::new().make_map_interface();
-        let map = map_interface.map();
+        let mapper = HashURIDMapper::new();
+        let map = Map::new(&mapper);
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

@@ -9,3 +9,7 @@ license = "MIT OR Apache-2.0"
 lv2-core = { path = "../core" }
 lv2-urid-sys = { path = "sys" }
 lv2-urid-derive = { path = "derive" }
+
+[features]
+default = []
+host = ["lv2-core/host"]
