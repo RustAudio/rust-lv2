@@ -57,8 +57,8 @@ impl std::fmt::Display for MissingFeatureError {
 ///
 ///     #[derive(FeatureCollection)]
 ///     struct MyCollection<'a> {
-///         hardrt: &'a HardRTCapable,
 ///         live: &'a IsLive,
+///         hardrt: Option<&'a HardRTCapable>,
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
     /// Populate a collection with features from the container.

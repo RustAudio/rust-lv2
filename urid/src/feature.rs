@@ -56,19 +56,18 @@ impl<'a> Map<'a> {
     ///     # #![cfg(feature = "host")]
     ///     # use lv2_core::{Uri, UriBound};
     ///     # use lv2_urid::URID;
-    ///
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
     ///         const URI: &'static [u8] = b"http://lv2plug.in\0";
     ///     }
     ///
+    ///     // Creating the URI and mapping it to its URID.
+    ///     let uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
+    ///
     ///     // Use the `map` feature provided by the host:
     ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
     ///     # let map = lv2_urid::feature::Map::new(&mapper);
-    ///
-    ///     // Creating the URI and mapping it to its URID.
-    ///     let uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
     ///     let urid: URID = map.map_uri(uri).unwrap();
     ///     assert_eq!(1, urid);
     pub fn map_uri(&self, uri: &Uri) -> Option<URID> {
@@ -86,7 +85,6 @@ impl<'a> Map<'a> {
     ///     # use lv2_core::UriBound;
     ///     # use lv2_urid::URID;
     ///     # use std::ffi::CStr;
-    ///
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
@@ -96,7 +94,6 @@ impl<'a> Map<'a> {
     ///     // Use the `map` feature provided by the host:
     ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
     ///     # let map = lv2_urid::feature::Map::new(&mapper);
-    ///
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     assert_eq!(1, urid);
     pub fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
@@ -168,7 +165,6 @@ impl<'a> Unmap<'a> {
     ///     # #![cfg(feature = "host")]
     ///     # use lv2_core::{Uri, UriBound};
     ///     # use lv2_urid::URID;
-    ///
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
@@ -179,7 +175,6 @@ impl<'a> Unmap<'a> {
     ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
     ///     # let map = lv2_urid::feature::Map::new(&mapper);
     ///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
-    ///
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     let uri: &Uri = unmap.unmap(urid).unwrap();
     ///     assert_eq!(MyUriBound::uri(), uri);

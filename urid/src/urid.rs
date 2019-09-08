@@ -26,8 +26,6 @@ where
 ///     # use lv2_core::UriBound;
 ///     # use lv2_urid::{URID, URIDCache};
 ///     # use std::ffi::CStr;
-///
-///
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
 ///     
@@ -48,19 +46,15 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///
-///     // Using the `map` and `unmap` features provided by the host:
 ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
 ///     # let map = lv2_urid::feature::Map::new(&mapper);
 ///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
-///
-///     // Populating the cache.
+///     // Populating the cache, Using the `map` and `unmap` features provided by the host:
 ///     let cache = MyCache::from_map(&map).unwrap();
 ///
 ///     // Asserting.
 ///     assert_eq!(1, cache.my_type_a);
 ///     assert_eq!(2, cache.my_type_b);
-///
 pub trait URIDCache: Sized {
     /// Construct the cache from the mapper.
     fn from_map(map: &Map) -> Option<Self>;
