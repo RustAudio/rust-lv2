@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 pub struct MapInterface<T: URIDMapper> {
     pub mapper: Pin<Box<T>>,
     pub map: Pin<Box<sys::LV2_URID_Map>>,
-    pub feature: core::sys::LV2_Feature,
+    pub feature: Pin<Box<core::sys::LV2_Feature>>,
 }
 
 /// Interface container for the unmap feature.
@@ -22,7 +22,7 @@ pub struct MapInterface<T: URIDMapper> {
 pub struct UnmapInterface<T: URIDMapper> {
     pub mapper: Pin<Box<T>>,
     pub unmap: Pin<Box<sys::LV2_URID_Unmap>>,
-    pub feature: core::sys::LV2_Feature,
+    pub feature: Pin<Box<core::sys::LV2_Feature>>,
 }
 
 /// A trait to represent an implementation of an URI <-> URID mapper, i.e. that can map an URI
@@ -90,10 +90,10 @@ pub trait URIDMapper: Clone + Unpin + Sized {
             handle: mapper.as_mut().get_mut() as *mut Self as *mut c_void,
             map: Some(Self::extern_map),
         });
-        let feature = core::sys::LV2_Feature {
+        let feature = Box::pin(core::sys::LV2_Feature {
             URI: sys::LV2_URID__map.as_ptr() as *const c_char,
             data: map.as_mut().get_mut() as *mut sys::LV2_URID_Map as *mut c_void,
-        };
+        });
         MapInterface {
             mapper,
             map,
@@ -142,10 +142,10 @@ pub trait URIDMapper: Clone + Unpin + Sized {
             handle: mapper.as_mut().get_mut() as *mut Self as *mut c_void,
             unmap: Some(Self::extern_unmap),
         });
-        let feature = core::sys::LV2_Feature {
+        let feature = Box::pin(core::sys::LV2_Feature {
             URI: sys::LV2_URID__unmap.as_ptr() as *const c_char,
             data: unmap.as_mut().get_mut() as *mut sys::LV2_URID_Unmap as *mut c_void,
-        };
+        });
         UnmapInterface {
             mapper,
             unmap,
