@@ -9,22 +9,24 @@ pub use container::FeatureContainer;
 pub use core_features::*;
 pub use descriptor::FeatureDescriptor;
 
+use std::ffi::c_void;
+
 /// Trait to generalize the feature detection system.
 ///
-/// A host that only implements the core LV2 specification does not have much functionality. Therefore, host can provide extra functionalities, called "Features", a plugin can use to become more useful.
+/// A host that only implements the core LV2 specification does not have much functionality. Therefore, hosts can provide extra functionalities, called "Features", a plugin can use to become more useful.
 ///
 /// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
 ///
 /// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#tymethod.from_raw_data) method.
-pub unsafe trait Feature<'a>: UriBound + Sized + 'a {
-    /// Returns a feature descriptor for this feature instance, to be passed down to plugins.
-    #[cfg(feature = "host")]
-    fn descriptor(&self) -> FeatureDescriptor<'a> {
-        FeatureDescriptor {
-            uri: &<Self as UriBound>::uri(),
-            data: self as *const Self as *const std::ffi::c_void,
-        }
-    }
+pub unsafe trait Feature: UriBound + Sized {
+    /// Create an instance of the featurer.
+    ///
+    /// The feature pointer is provided by the host and points to the feature-specific data. If the data is invalid, for one reason or another, the method returns `None`.
+    ///
+    /// # Implementing
+    ///
+    /// If nescessary, you should dereference it and store the reference inside the feature struct in order to use it.
+    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self>;
 }
 
 /// An error created during feature resolution when a required feature is missing.
@@ -56,9 +58,9 @@ impl std::fmt::Display for MissingFeatureError {
 ///     use lv2_core::feature::*;
 ///
 ///     #[derive(FeatureCollection)]
-///     struct MyCollection<'a> {
-///         live: &'a IsLive,
-///         hardrt: Option<&'a HardRTCapable>,
+///     struct MyCollection {
+///         live: IsLive,
+///         hardrt: Option<HardRTCapable>,
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
     /// Populate a collection with features from the container.
@@ -79,30 +81,42 @@ mod tests {
     use std::ffi::c_void;
     use std::os::raw::c_char;
 
-    struct FeatureA {
-        pub number: i32,
+    struct FeatureA<'a> {
+        number: &'a i32,
     }
 
-    struct FeatureB {
-        number: f32,
+    struct FeatureB<'a> {
+        number: &'a f32,
     }
 
-    unsafe impl UriBound for FeatureA {
+    unsafe impl<'a> UriBound for FeatureA<'a> {
         const URI: &'static [u8] = b"urn:lv2Feature:A\0";
     }
 
-    unsafe impl<'a> Feature<'a> for FeatureA {}
+    unsafe impl<'a> Feature for FeatureA<'a> {
+        unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+            (feature as *const i32)
+                .as_ref()
+                .map(|number| Self { number })
+        }
+    }
 
-    unsafe impl UriBound for FeatureB {
+    unsafe impl<'a> UriBound for FeatureB<'a> {
         const URI: &'static [u8] = b"urn:lv2Feature:B\0";
     }
 
-    unsafe impl<'a> Feature<'a> for FeatureB {}
+    unsafe impl<'a> Feature for FeatureB<'a> {
+        unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+            (feature as *const f32)
+                .as_ref()
+                .map(|number| Self { number })
+        }
+    }
 
     #[derive(FeatureCollection)]
     struct Collection<'a> {
-        a: &'a FeatureA,
-        b: &'a FeatureB,
+        a: FeatureA<'a>,
+        b: FeatureB<'a>,
     }
 
     struct FeatureTestSetting<'a> {
@@ -156,11 +170,11 @@ mod tests {
         assert!(features_container.contains::<FeatureA>());
         assert!(features_container.contains::<FeatureB>());
 
-        let retrieved_feature_a: &FeatureA = features_container.retrieve_feature().unwrap();
-        assert_eq!(retrieved_feature_a.number, *(setting.data_a));
+        let retrieved_feature_a: FeatureA = features_container.retrieve_feature().unwrap();
+        assert_eq!(*retrieved_feature_a.number, *(setting.data_a));
 
-        let retrieved_feature_b: &FeatureB = features_container.retrieve_feature().unwrap();
-        assert_eq!(retrieved_feature_b.number, *(setting.data_b));
+        let retrieved_feature_b: FeatureB = features_container.retrieve_feature().unwrap();
+        assert_eq!(*retrieved_feature_b.number, *(setting.data_b));
     }
 
     #[test]
@@ -180,14 +194,14 @@ mod tests {
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
                 if let Ok(retrieved_feature_a) = descriptor.into_feature::<FeatureA>() {
-                    assert!(retrieved_feature_a.number == *(setting.data_a));
+                    assert!(*retrieved_feature_a.number == *(setting.data_a));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
                 if let Ok(retrieved_feature_b) = descriptor.into_feature::<FeatureB>() {
-                    assert_eq!(retrieved_feature_b.number, *(setting.data_b));
+                    assert_eq!(*retrieved_feature_b.number, *(setting.data_b));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
@@ -206,7 +220,7 @@ mod tests {
         let mut features_container = setting.features_container;
 
         let container = Collection::from_container(&mut features_container).unwrap();
-        assert_eq!(container.a.number, *(setting.data_a));
-        assert_eq!(container.b.number, *(setting.data_b));
+        assert_eq!(*container.a.number, *setting.data_a);
+        assert_eq!(*container.b.number, *setting.data_b);
     }
 }

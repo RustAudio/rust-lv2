@@ -4,48 +4,30 @@ use crate::{URIDCache, URID};
 use core::feature::Feature;
 use core::Uri;
 use core::UriBound;
-use std::marker::PhantomData;
+use std::ffi::c_void;
 use std::os::raw::c_char;
 
 /// Host feature to map URIs to integers
 pub struct Map<'a> {
-    internal: sys::LV2_URID_Map,
-    _mapper_lifetime: PhantomData<&'a ()>,
+    internal: &'a sys::LV2_URID_Map,
 }
 
 unsafe impl<'a> UriBound for Map<'a> {
     const URI: &'static [u8] = sys::LV2_URID_MAP_URI;
 }
 
-unsafe impl<'a> Feature<'a> for Map<'a> {}
-
-#[cfg(feature = "host")]
-unsafe extern "C" fn urid_map<T: crate::mapper::URIDMapper>(
-    handle: crate::sys::LV2_URID_Map_Handle,
-    uri: *const c_char,
-) -> crate::sys::LV2_URID {
-    let result = ::std::panic::catch_unwind(|| {
-        (&*(handle as *const T))
-            .map(::std::ffi::CStr::from_ptr(uri))
-            .map(URID::get)
-    });
-
-    match result {
-        Ok(Some(urid)) => urid,
-        _ => 0, // FIXME: mapper panics should not be silenced
+unsafe impl<'a> Feature for Map<'a> {
+    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+        (feature as *const sys::LV2_URID_Map)
+            .as_ref()
+            .map(|internal| Self { internal })
     }
 }
 
 impl<'a> Map<'a> {
     #[cfg(feature = "host")]
-    pub fn new<T: crate::mapper::URIDMapper>(mapper: &'a T) -> Map<'a> {
-        Map {
-            _mapper_lifetime: PhantomData,
-            internal: crate::sys::LV2_URID_Map {
-                handle: mapper as *const T as *const _ as *mut _,
-                map: Some(urid_map::<T>),
-            },
-        }
+    pub fn new(internal: &'a sys::LV2_URID_Map) -> Self {
+        Self { internal }
     }
 
     /// Return the URID of the given URI.
@@ -55,7 +37,7 @@ impl<'a> Map<'a> {
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
     ///     # use lv2_core::{Uri, UriBound};
-    ///     # use lv2_urid::URID;
+    ///     # use lv2_urid::{URID, mapper::{HashURIDMapper, URIDMapper}};
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
@@ -66,8 +48,8 @@ impl<'a> Map<'a> {
     ///     let uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
     ///
     ///     // Use the `map` feature provided by the host:
-    ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
-    ///     # let map = lv2_urid::feature::Map::new(&mapper);
+    ///     # let mapper = HashURIDMapper::new().make_map_interface();
+    ///     # let map = lv2_urid::feature::Map::new(&mapper.map);
     ///     let urid: URID = map.map_uri(uri).unwrap();
     ///     assert_eq!(1, urid);
     pub fn map_uri(&self, uri: &Uri) -> Option<URID> {
@@ -83,7 +65,7 @@ impl<'a> Map<'a> {
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
     ///     # use lv2_core::UriBound;
-    ///     # use lv2_urid::URID;
+    ///     # use lv2_urid::{URID, mapper::{HashURIDMapper, URIDMapper}};
     ///     # use std::ffi::CStr;
     ///     struct MyUriBound;
     ///
@@ -92,8 +74,8 @@ impl<'a> Map<'a> {
     ///     }
     ///
     ///     // Use the `map` feature provided by the host:
-    ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
-    ///     # let map = lv2_urid::feature::Map::new(&mapper);
+    ///     # let mapper = HashURIDMapper::new().make_map_interface();
+    ///     # let map = lv2_urid::feature::Map::new(&mapper.map);
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     assert_eq!(1, urid);
     pub fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
@@ -117,44 +99,25 @@ impl<'a> Map<'a> {
 
 /// Host feature to revert the URI -> URID mapping.
 pub struct Unmap<'a> {
-    internal: sys::LV2_URID_Unmap,
-    _mapper_lifetime: PhantomData<&'a ()>,
+    internal: &'a sys::LV2_URID_Unmap,
 }
 
 unsafe impl<'a> UriBound for Unmap<'a> {
     const URI: &'static [u8] = sys::LV2_URID_UNMAP_URI;
 }
 
-unsafe impl<'a> Feature<'a> for Unmap<'a> {}
-
-#[cfg(feature = "host")]
-unsafe extern "C" fn urid_unmap<T: crate::mapper::URIDMapper>(
-    handle: crate::sys::LV2_URID_Map_Handle,
-    urid: crate::sys::LV2_URID,
-) -> *const c_char {
-    let urid = match URID::new(urid) {
-        None => return ::std::ptr::null(),
-        Some(urid) => urid,
-    };
-
-    let result = ::std::panic::catch_unwind(|| (&*(handle as *const T)).unmap(urid));
-
-    match result {
-        Ok(Some(uri)) => uri.as_ptr(),
-        _ => ::std::ptr::null(), // FIXME: mapper panics should not be silenced
+unsafe impl<'a> Feature for Unmap<'a> {
+    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+        (feature as *const sys::LV2_URID_Unmap)
+            .as_ref()
+            .map(|internal| Self { internal })
     }
 }
 
 impl<'a> Unmap<'a> {
     #[cfg(feature = "host")]
-    pub fn new<T: crate::mapper::URIDMapper>(mapper: &'a T) -> Unmap<'a> {
-        Unmap {
-            _mapper_lifetime: PhantomData,
-            internal: crate::sys::LV2_URID_Unmap {
-                handle: mapper as *const T as *const _ as *mut _,
-                unmap: Some(urid_unmap::<T>),
-            },
-        }
+    pub fn new(internal: &'a sys::LV2_URID_Unmap) -> Self {
+        Self { internal }
     }
 
     /// Return the URI of the given URID.
@@ -164,7 +127,7 @@ impl<'a> Unmap<'a> {
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
     ///     # use lv2_core::{Uri, UriBound};
-    ///     # use lv2_urid::URID;
+    ///     # use lv2_urid::{URID, mapper::*};
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
@@ -172,9 +135,11 @@ impl<'a> Unmap<'a> {
     ///     }
     ///
     ///     // Using the `map` and `unmap` features provided by the host:
-    ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
-    ///     # let map = lv2_urid::feature::Map::new(&mapper);
-    ///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
+    ///     # let mapper = HashURIDMapper::new();
+    ///     # let host_map = mapper.make_map_interface();
+    ///     # let host_unmap = mapper.make_unmap_interface();
+    ///     # let map = lv2_urid::feature::Map::new(&host_map.map);
+    ///     # let unmap = lv2_urid::feature::Unmap::new(&host_unmap.unmap);
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     let uri: &Uri = unmap.unmap(urid).unwrap();
     ///     assert_eq!(MyUriBound::uri(), uri);

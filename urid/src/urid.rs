@@ -24,7 +24,7 @@ where
 ///
 ///     # #![cfg(feature = "host")]
 ///     # use lv2_core::UriBound;
-///     # use lv2_urid::{URID, URIDCache};
+///     # use lv2_urid::{URID, URIDCache, mapper::{HashURIDMapper, URIDMapper}};
 ///     # use std::ffi::CStr;
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
@@ -46,9 +46,11 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
-///     # let map = lv2_urid::feature::Map::new(&mapper);
-///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
+///     # let mapper = HashURIDMapper::new();
+///     # let host_map = mapper.make_map_interface();
+///     # let host_unmap = mapper.make_unmap_interface();
+///     # let map = lv2_urid::feature::Map::new(&host_map.map);
+///     # let unmap = lv2_urid::feature::Unmap::new(&host_unmap.unmap);
 ///     // Populating the cache, Using the `map` and `unmap` features provided by the host:
 ///     let cache = MyCache::from_map(&map).unwrap();
 ///

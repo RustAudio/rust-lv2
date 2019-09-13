@@ -16,14 +16,14 @@ struct AmpPorts {
 }
 
 #[derive(FeatureCollection)]
-struct Features<'a> {
-    rt_capable: &'a HardRTCapable,
-    is_live: Option<&'a IsLive>,
+struct Features {
+    _rt_capable: HardRTCapable,
+    is_live: Option<IsLive>,
 }
 
 impl Plugin for Amp {
     type Ports = AmpPorts;
-    type Features = Features<'static>;
+    type Features = Features;
 
     #[inline]
     fn new(plugin_info: &PluginInfo, features: Features) -> Self {
@@ -39,7 +39,6 @@ impl Plugin for Amp {
         assert_eq!(plugin_info.sample_rate(), 44100.0);
 
         // Finding and verifying all features.
-        assert_ne!(features.rt_capable as *const _, std::ptr::null());
         assert!(features.is_live.is_none());
 
         Amp { activated: false }

@@ -30,25 +30,24 @@ impl<'a> FeatureContainer<'a> {
     }
 
     /// Evaluate whether this object contains the requested feature.
-    pub fn contains<T: Feature<'a>>(&self) -> bool {
+    pub fn contains<T: Feature>(&self) -> bool {
         self.internal.contains_key(T::uri())
     }
 
     /// Try to retrieve a feature.
     ///
     /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
-    pub fn retrieve_feature<F: Feature<'a>, T: FromResolvedFeature<'a, F>>(
+    pub fn retrieve_feature<F: Feature, T: FromResolvedFeature<F>>(
         &mut self,
     ) -> Result<T, MissingFeatureError> {
         T::from_resolved_feature(
             self.internal
                 .remove(F::uri())
-                .and_then(|ptr| unsafe { cast_feature_ref(ptr) }),
+                .and_then(|ptr| unsafe { F::from_feature_ptr(ptr) }),
         )
     }
 }
 
-use crate::feature::descriptor::cast_feature_ref;
 use crate::feature::{Feature, FeatureCollection, FeatureDescriptor, MissingFeatureError};
 use std::collections::{hash_map, HashMap};
 use std::ffi::{c_void, CStr};
@@ -78,7 +77,7 @@ impl<'a> FeatureCollection<'a> for FeatureContainer<'a> {
     }
 }
 
-/// A trait to allow arbitrary types to be potentially created from feature resolution.
+/// A trait to allow arbitrary types to be potentially created from a feature resolution.
 ///
 /// Any type present in a `FeatureCollection` must implement this trait.
 ///
@@ -86,19 +85,19 @@ impl<'a> FeatureCollection<'a> for FeatureContainer<'a> {
 ///
 /// For now this only covers `&T` and `Option<&T>` (where T is a `Feature`), but this may be
 /// extended in the future.
-pub trait FromResolvedFeature<'a, F: Feature<'a>>: Sized {
-    fn from_resolved_feature(feature: Option<&'a F>) -> Result<Self, MissingFeatureError>;
+pub trait FromResolvedFeature<F: Feature>: Sized {
+    fn from_resolved_feature(feature: Option<F>) -> Result<Self, MissingFeatureError>;
 }
 
-impl<'a, F: Feature<'a>> FromResolvedFeature<'a, F> for &'a F {
-    fn from_resolved_feature(feature: Option<&'a F>) -> Result<Self, MissingFeatureError> {
-        feature.ok_or(MissingFeatureError { uri: F::uri() })
+impl<F: Feature> FromResolvedFeature<F> for F {
+    fn from_resolved_feature(feature: Option<F>) -> Result<Self, MissingFeatureError> {
+        feature.ok_or_else(|| MissingFeatureError { uri: F::uri() })
     }
 }
 
-impl<'a, F: Feature<'a>> FromResolvedFeature<'a, F> for Option<&'a F> {
+impl<F: Feature> FromResolvedFeature<F> for Option<F> {
     #[inline]
-    fn from_resolved_feature(feature: Option<&'a F>) -> Result<Self, MissingFeatureError> {
+    fn from_resolved_feature(feature: Option<F>) -> Result<Self, MissingFeatureError> {
         Ok(feature)
     }
 }
