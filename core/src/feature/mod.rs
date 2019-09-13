@@ -75,6 +75,7 @@ impl<'a> FeatureCollection<'a> for () {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use crate::feature::FeatureContainer;
     use crate::{feature::*, plugin::*, UriBound};

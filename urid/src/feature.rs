@@ -8,6 +8,7 @@ use std::ffi::c_void;
 use std::os::raw::c_char;
 
 /// Host feature to map URIs to integers
+#[repr(transparent)]
 pub struct Map<'a> {
     internal: &'a sys::LV2_URID_Map,
 }
@@ -98,6 +99,7 @@ impl<'a> Map<'a> {
 }
 
 /// Host feature to revert the URI -> URID mapping.
+#[repr(transparent)]
 pub struct Unmap<'a> {
     internal: &'a sys::LV2_URID_Unmap,
 }

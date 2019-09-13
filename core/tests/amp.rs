@@ -36,7 +36,7 @@ impl Plugin for Amp {
             plugin_info.bundle_path().to_str().unwrap(),
             "/home/lv2/amp.lv2/"
         );
-        assert_eq!(plugin_info.sample_rate(), 44100.0);
+        assert_eq!(plugin_info.sample_rate() as u32, 44100);
 
         // Finding and verifying all features.
         assert!(features.is_live.is_none());
@@ -147,6 +147,6 @@ fn test_plugin() {
 
     // Verifying the data.
     for i in 0..128 {
-        assert_eq!(input[i] * gain, output[i]);
+        assert!((input[i] * gain - output[i]).abs() < std::f32::EPSILON);
     }
 }

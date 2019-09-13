@@ -53,7 +53,7 @@ impl<'a> FeatureCollectionStruct<'a> {
             .lifetimes()
             .next()
             .map(|l| l.lifetime.clone())
-            .unwrap_or(Lifetime::new("'static", Span::call_site()));
+            .unwrap_or_else(|| Lifetime::new("'static", Span::call_site()));
 
         (quote! {
             impl#generics FeatureCollection<#lifetime> for #struct_name#generics {
