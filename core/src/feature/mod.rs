@@ -81,6 +81,7 @@ mod tests {
     use crate::{feature::*, plugin::*, UriBound};
     use std::ffi::c_void;
     use std::os::raw::c_char;
+    use std::pin::Pin;
 
     struct FeatureA<'a> {
         number: &'a i32,
@@ -118,33 +119,41 @@ mod tests {
     struct Collection<'a> {
         a: FeatureA<'a>,
         b: FeatureB<'a>,
+        _c: crate::feature::IsLive,
     }
 
     struct FeatureTestSetting<'a> {
-        pub data_a: Box<i32>,
-        pub feature_a_sys: Box<::sys::LV2_Feature>,
-        pub data_b: Box<f32>,
-        pub feature_b_sys: Box<::sys::LV2_Feature>,
+        pub data_a: Pin<Box<i32>>,
+        pub feature_a_sys: Pin<Box<::sys::LV2_Feature>>,
+        pub data_b: Pin<Box<f32>>,
+        pub feature_b_sys: Pin<Box<::sys::LV2_Feature>>,
+        pub feature_c_sys: Pin<Box<::sys::LV2_Feature>>,
         pub features_container: FeatureContainer<'a>,
     }
 
     impl<'a> FeatureTestSetting<'a> {
         fn new() -> Self {
-            let mut data_a: Box<i32> = Box::new(42);
-            let feature_a_sys = Box::new(::sys::LV2_Feature {
+            let mut data_a: Pin<Box<i32>> = Box::pin(42);
+            let feature_a_sys = Box::pin(::sys::LV2_Feature {
                 URI: FeatureA::URI.as_ptr() as *const c_char,
-                data: data_a.as_mut() as *mut i32 as *mut c_void,
+                data: data_a.as_mut().get_mut() as *mut i32 as *mut c_void,
             });
 
-            let mut data_b: Box<f32> = Box::new(17.0);
-            let feature_b_sys = Box::new(::sys::LV2_Feature {
+            let mut data_b: Pin<Box<f32>> = Box::pin(17.0);
+            let feature_b_sys = Box::pin(::sys::LV2_Feature {
                 URI: FeatureB::URI.as_ptr() as *const c_char,
-                data: data_b.as_mut() as *mut f32 as *mut c_void,
+                data: data_b.as_mut().get_mut() as *mut f32 as *mut c_void,
+            });
+
+            let feature_c_sys = Box::pin(::sys::LV2_Feature {
+                URI: crate::feature::IsLive::URI.as_ptr() as *const c_char,
+                data: std::ptr::null_mut(),
             });
 
             let features_list: &[*const sys::LV2_Feature] = &[
-                feature_a_sys.as_ref(),
-                feature_b_sys.as_ref(),
+                feature_a_sys.as_ref().get_ref(),
+                feature_b_sys.as_ref().get_ref(),
+                feature_c_sys.as_ref().get_ref(),
                 std::ptr::null(),
             ];
 
@@ -156,6 +165,7 @@ mod tests {
                 feature_a_sys,
                 data_b,
                 feature_b_sys,
+                feature_c_sys,
                 features_container,
             }
         }
@@ -188,7 +198,7 @@ mod tests {
         let feature_descriptors: Vec<FeatureDescriptor> = features_container.into_iter().collect();
 
         // Test the collected items.
-        assert_eq!(feature_descriptors.len(), 2);
+        assert_eq!(feature_descriptors.len(), 3);
 
         let mut feature_a_found = false;
         let mut feature_b_found = false;
@@ -207,6 +217,10 @@ mod tests {
                     panic!("Feature interpretation failed!");
                 }
                 feature_b_found = true;
+            } else if descriptor.is_feature::<crate::feature::IsLive>() {
+                if descriptor.into_feature::<IsLive>().is_err() {
+                    panic!("Feature interpretation failed!");
+                }
             } else {
                 panic!("Invalid feature in feature iterator!");
             }
