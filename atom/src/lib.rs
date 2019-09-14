@@ -7,10 +7,10 @@ extern crate lv2_urid as urid;
 pub mod chunk;
 pub mod object;
 pub mod scalar;
-pub mod string;
-pub mod vector;
-
 pub mod space;
+pub mod string;
+pub mod tuple;
+pub mod vector;
 
 use urid::{URIDCache, URID};
 
@@ -29,4 +29,5 @@ pub struct AtomURIDCache {
     pub object: URID<object::Object>,
     pub property: URID<object::Property>,
     pub string: URID<string::String>,
+    pub tuple: URID<tuple::Tuple>,
 }
