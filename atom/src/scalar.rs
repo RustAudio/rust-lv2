@@ -1,5 +1,5 @@
 use crate::space::*;
-use crate::AtomURIDCache;
+use crate::*;
 use core::UriBound;
 use std::marker::Unpin;
 use std::os::raw::*;
@@ -17,7 +17,7 @@ pub trait ScalarAtom: URIDBound {
     /// Try to read the atom from a space.
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
-    fn read<'a>(
+    fn read_scalar<'a>(
         space: Space<'a>,
         urids: &Self::CacheType,
     ) -> Option<(Self::InternalType, Space<'a>)> {
@@ -28,7 +28,7 @@ pub trait ScalarAtom: URIDBound {
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write<'a>(
+    fn write_scalar<'a>(
         space: &mut dyn MutSpace<'a>,
         value: Self::InternalType,
         urids: &Self::CacheType,
@@ -36,6 +36,27 @@ pub trait ScalarAtom: URIDBound {
         space
             .create_atom_frame(Self::urid(urids))
             .and_then(|mut frame| (&mut frame as &mut dyn MutSpace).write(&value, true))
+    }
+}
+
+impl<'a, 'b, A: ScalarAtom> Atom<'a, 'b> for A
+where
+    'a: 'b,
+{
+    type ReadHandle = A::InternalType;
+    type WriteParameter = A::InternalType;
+    type WriteHandle = &'a mut A::InternalType;
+
+    fn read(space: Space<'a>, urids: &A::CacheType) -> Option<(A::InternalType, Space<'a>)> {
+        <A as ScalarAtom>::read_scalar(space, urids)
+    }
+
+    fn write(
+        space: &'b mut dyn MutSpace<'a>,
+        value: A::InternalType,
+        urids: &A::CacheType,
+    ) -> Option<&'a mut A::InternalType> {
+        <A as ScalarAtom>::write_scalar(space, value, urids)
     }
 }
 

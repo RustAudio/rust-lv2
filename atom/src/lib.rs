@@ -12,7 +12,8 @@ pub mod string;
 pub mod tuple;
 pub mod vector;
 
-use urid::{URIDCache, URID};
+use space::*;
+use urid::{URIDBound, URIDCache, URID};
 
 #[derive(Clone, URIDCache)]
 /// Container for the URIDs of all `UriBound`s in this crate.
@@ -30,4 +31,18 @@ pub struct AtomURIDCache {
     pub property: URID<object::Property>,
     pub string: URID<string::String>,
     pub tuple: URID<tuple::Tuple>,
+}
+
+pub trait Atom<'a, 'b>: URIDBound {
+    type ReadHandle: 'a;
+    type WriteParameter;
+    type WriteHandle: 'b;
+
+    fn read(space: Space<'a>, urids: &Self::CacheType) -> Option<(Self::ReadHandle, Space<'a>)>;
+
+    fn write(
+        space: &'b mut dyn MutSpace<'a>,
+        parameter: Self::WriteParameter,
+        urids: &Self::CacheType,
+    ) -> Option<Self::WriteHandle>;
 }

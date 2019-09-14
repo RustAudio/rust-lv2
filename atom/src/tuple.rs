@@ -68,6 +68,7 @@ mod tests {
     use crate::scalar::*;
     use crate::tuple::*;
     use crate::vector::Vector;
+    use crate::*;
     use std::mem::size_of;
     use std::os::raw::*;
     use urid::feature::Map;

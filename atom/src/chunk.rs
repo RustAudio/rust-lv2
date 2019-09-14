@@ -1,5 +1,5 @@
 use crate::space::*;
-use crate::AtomURIDCache;
+use crate::{Atom, AtomURIDCache};
 use core::UriBound;
 use urid::{URIDBound, URID};
 
@@ -20,20 +20,22 @@ impl URIDBound for Chunk {
     }
 }
 
-impl Chunk {
-    /// Read a chunk of bytes.
-    ///
-    /// The returned slice is the body of the atom and the space is the space behind the atom.
-    pub fn read<'a>(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
+impl<'a, 'b> Atom<'a, 'b> for Chunk
+where
+    'a: 'b,
+{
+    type ReadHandle = &'a [u8];
+    type WriteParameter = ();
+    type WriteHandle = FramedMutSpace<'a, 'b>;
+
+    fn read(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.chunk)?;
         Some((body.data()?, space))
     }
 
-    /// Initialize a chunk atom.
-    ///
-    /// This method creates an empty chunk and returns a writer to add more data to the chunk.
-    pub fn write<'a, 'b>(
+    fn write(
         space: &'b mut dyn MutSpace<'a>,
+        _: (),
         urids: &AtomURIDCache,
     ) -> Option<FramedMutSpace<'a, 'b>> {
         space.create_atom_frame(urids.chunk)
@@ -63,7 +65,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Chunk::write(&mut space, &urids).unwrap();
+            let mut writer = Chunk::write(&mut space, (), &urids).unwrap();
 
             for (i, value) in (&mut writer as &mut dyn MutSpace)
                 .allocate(SLICE_LENGTH - 1, false)

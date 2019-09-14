@@ -1,5 +1,5 @@
 use crate::space::*;
-use crate::AtomURIDCache;
+use crate::*;
 use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
@@ -32,14 +32,18 @@ pub struct ObjectHeader {
     pub otype: URID,
 }
 
-impl Object {
-    /// Read an object from a space.
-    ///
-    /// This method assumes that the space contains an object atom and returns the header of the atom as well as an iterator over all properties of the object. Lastly, it also returns the space behind the atom.
-    pub fn read<'a>(
+impl<'a, 'b> Atom<'a, 'b> for Object
+where
+    'a: 'b,
+{
+    type ReadHandle = (ObjectHeader, ObjectReader<'a>);
+    type WriteParameter = ObjectHeader;
+    type WriteHandle = ObjectWriter<'a, 'b>;
+
+    fn read(
         space: Space<'a>,
         urids: &AtomURIDCache,
-    ) -> Option<(ObjectHeader, ObjectReader<'a>, Space<'a>)> {
+    ) -> Option<((ObjectHeader, ObjectReader<'a>), Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.object)?;
         let (header, body) = body.split_type::<sys::LV2_Atom_Object_Body>()?;
         let header = ObjectHeader {
@@ -49,16 +53,12 @@ impl Object {
 
         let reader = ObjectReader { space: body };
 
-        Some((header, reader, space))
+        Some(((header, reader), space))
     }
 
-    /// Initialize an object atom.
-    ///
-    /// This method creates an atom frame, writes out the header and returns a writer. With the writer, you can add properties.
-    pub fn write<'a, 'b>(
+    fn write(
         space: &'b mut dyn MutSpace<'a>,
-        id: Option<URID>,
-        otype: URID,
+        header: ObjectHeader,
         urids: &AtomURIDCache,
     ) -> Option<ObjectWriter<'a, 'b>> {
         let mut frame = space.create_atom_frame(urids.object)?;
@@ -66,8 +66,8 @@ impl Object {
             let frame = &mut frame as &mut dyn MutSpace;
             frame.write(
                 &sys::LV2_Atom_Object_Body {
-                    id: id.map(|urid| urid.get()).unwrap_or(0),
-                    otype: otype.get(),
+                    id: header.id.map(|urid| urid.get()).unwrap_or(0),
+                    otype: header.otype.get(),
                 },
                 true,
             );
@@ -245,7 +245,15 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Object::write(&mut space, None, object_type, &urids).unwrap();
+            let mut writer = Object::write(
+                &mut space,
+                ObjectHeader {
+                    id: None,
+                    otype: object_type,
+                },
+                &urids,
+            )
+            .unwrap();
             {
                 let space = writer.write_property(first_key, None).unwrap();
                 Int::write(space, first_value, &urids).unwrap();
@@ -307,7 +315,7 @@ mod tests {
         {
             let space = Space::from_slice(raw_space.as_ref());
 
-            let (header, iter, _) = Object::read(space, &urids).unwrap();
+            let ((header, iter), _) = Object::read(space, &urids).unwrap();
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
