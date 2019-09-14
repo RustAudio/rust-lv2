@@ -5,35 +5,13 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::os::raw::*;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-
-/// Interface container for the map feature.
-///
-/// Since the `map` and `feature` fields contain raw pointers to the `mapper` and `map` fields, respectively, these have to be pinned in memory.
-pub struct MapInterface<T: URIDMapper> {
-    pub mapper: Pin<Box<T>>,
-    pub map: Pin<Box<sys::LV2_URID_Map>>,
-    pub feature: Pin<Box<core::sys::LV2_Feature>>,
-}
-
-/// Interface container for the unmap feature.
-///
-/// Since the `map` and `feature` fields contain raw pointers to the `mapper` and `map` fields, respectively, these have to be pinned in memory.
-pub struct UnmapInterface<T: URIDMapper> {
-    pub mapper: Pin<Box<T>>,
-    pub unmap: Pin<Box<sys::LV2_URID_Unmap>>,
-    pub feature: Pin<Box<core::sys::LV2_Feature>>,
-}
+use std::sync::Mutex;
 
 /// A trait to represent an implementation of an URI <-> URID mapper, i.e. that can map an URI
 /// (or any C string) to an URID, and vice-versa.
 ///
 /// This trait allows the `Map` and `Unmap` features to be agnostic to the underlying
 /// implementation, both on the plugin-side and the host-side.
-///
-/// # Cloning
-///
-/// Implementors of this trait have to be clonable, since every instance of a [`MapInterface`](struct.MapInterface.html) or [`UnmapInterface`](struct.UnmapInterface.html) has to own it's own clone of the mapper. This means that, although cloned, the different clones of the mapper have to be consistent: If one clone maps the URI `https://rustup.rs/` to the URID 42, then all of the other clones have to do that too! One way of doing that is to have a common map store contained in a Mutex and shared pointer. See the [`HashURIDMapper`](struct.HashURIDMapper.html) for an example.
 ///
 /// # Realtime usage
 /// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
@@ -43,7 +21,7 @@ pub struct UnmapInterface<T: URIDMapper> {
 /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
 /// they might need at initialization time. See the `URIDCache` for more information on how to
 /// achieve this.
-pub trait URIDMapper: Clone + Unpin + Sized {
+pub trait URIDMapper: Unpin + Sized {
     /// Maps an URI to an `URID` that corresponds to it.
     ///
     /// If the URI has not been mapped before, a new URID will be assigned.
@@ -81,23 +59,11 @@ pub trait URIDMapper: Clone + Unpin + Sized {
         }
     }
 
-    /// Create a map interface.
-    ///
-    /// This method clones the mapper and creates a self-contained `MapInterface`.
-    fn make_map_interface(&self) -> MapInterface<Self> {
-        let mut mapper = Box::pin(self.clone());
-        let mut map = Box::pin(sys::LV2_URID_Map {
-            handle: mapper.as_mut().get_mut() as *mut Self as *mut c_void,
+    /// Create a raw map interface.
+    fn make_map_interface(self: Pin<&mut Self>) -> sys::LV2_URID_Map {
+        sys::LV2_URID_Map {
+            handle: self.get_mut() as *mut Self as *mut c_void,
             map: Some(Self::extern_map),
-        });
-        let feature = Box::pin(core::sys::LV2_Feature {
-            URI: sys::LV2_URID__map.as_ptr() as *const c_char,
-            data: map.as_mut().get_mut() as *mut sys::LV2_URID_Map as *mut c_void,
-        });
-        MapInterface {
-            mapper,
-            map,
-            feature,
         }
     }
 
@@ -136,28 +102,18 @@ pub trait URIDMapper: Clone + Unpin + Sized {
     /// Create an unmap interface.
     ///
     /// This method clones the mapper and creates a self-contained `UnmapInterface`.
-    fn make_unmap_interface(&self) -> UnmapInterface<Self> {
-        let mut mapper = Box::pin(self.clone());
-        let mut unmap = Box::pin(sys::LV2_URID_Unmap {
-            handle: mapper.as_mut().get_mut() as *mut Self as *mut c_void,
+    fn make_unmap_interface(self: Pin<&mut Self>) -> sys::LV2_URID_Unmap {
+        sys::LV2_URID_Unmap {
+            handle: self.get_mut() as *mut Self as *mut c_void,
             unmap: Some(Self::extern_unmap),
-        });
-        let feature = Box::pin(core::sys::LV2_Feature {
-            URI: sys::LV2_URID__unmap.as_ptr() as *const c_char,
-            data: unmap.as_mut().get_mut() as *mut sys::LV2_URID_Unmap as *mut c_void,
-        });
-        UnmapInterface {
-            mapper,
-            unmap,
-            feature,
         }
     }
 }
 
 /// A simple URI → URID mapper, backed by a standard `HashMap` and a `Mutex` for multi-thread
 /// access.
-#[derive(Default, Clone)]
-pub struct HashURIDMapper(Arc<Mutex<HashMap<UriBuf, URID>>>);
+#[derive(Default)]
+pub struct HashURIDMapper(Mutex<HashMap<UriBuf, URID>>);
 
 impl URIDMapper for HashURIDMapper {
     fn map(&self, uri: &Uri) -> Option<URID<()>> {

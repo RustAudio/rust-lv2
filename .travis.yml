@@ -23,7 +23,7 @@ jobs:
         - rustup component add clippy
         - cargo install --force cargo-audit
       script:
-        - cargo build --all --all-targets --all-features --verbose
+        - cargo build --all --all-features --verbose
         - cargo audit
         - cargo clippy --all --all-targets --all-features -- -D warnings
         - cargo fmt --all -- --check
@@ -34,6 +34,6 @@ matrix:
   fast_finish: true
 
 script:
-  - cargo build --all --all-targets --all-features --verbose
+  - cargo build --all --all-features --verbose
   - cargo build --examples --verbose
-  - cargo test --all --all-targets --all-features --verbose
+  - cargo test --all --all-features --verbose

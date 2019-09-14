@@ -77,7 +77,7 @@ impl<'a> FeatureCollection<'a> for FeatureContainer<'a> {
     }
 }
 
-/// A trait to allow arbitrary types to be potentially created from a feature resolution.
+/// A trait to allow arbitrary types to be potentially created from feature resolution.
 ///
 /// Any type present in a `FeatureCollection` must implement this trait.
 ///

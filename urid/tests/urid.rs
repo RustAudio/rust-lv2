@@ -22,9 +22,9 @@ unsafe impl UriBound for MyTypeB {
 
 #[test]
 fn test_map() {
-    let mapper = HashURIDMapper::new();
-    let host_map = mapper.make_map_interface();
-    let map_feature = Map::new(&host_map.map);
+    let mut mapper = Box::pin(HashURIDMapper::new());
+    let host_map = mapper.as_mut().make_map_interface();
+    let map_feature = Map::new(&host_map);
 
     assert_eq!(1, map_feature.map_uri(MyTypeA::uri()).unwrap());
     assert_eq!(1, map_feature.map_type::<MyTypeA>().unwrap());
@@ -38,11 +38,11 @@ fn test_map() {
 
 #[test]
 fn test_unmap() {
-    let mapper = HashURIDMapper::new();
-    let host_map = mapper.make_map_interface();
-    let host_unmap = mapper.make_unmap_interface();
-    let map_feature = Map::new(&host_map.map);
-    let unmap_feature = Unmap::new(&host_unmap.unmap);
+    let mut mapper = Box::pin(HashURIDMapper::new());
+    let host_map = mapper.as_mut().make_map_interface();
+    let host_unmap = mapper.as_mut().make_unmap_interface();
+    let map_feature = Map::new(&host_map);
+    let unmap_feature = Unmap::new(&host_unmap);
 
     let (type_a, type_b) = {
         (
@@ -63,9 +63,9 @@ struct MyURIDCache {
 
 #[test]
 fn test_cache() {
-    let mapper = HashURIDMapper::new();
-    let host_map = mapper.make_map_interface();
-    let map_feature = Map::new(&host_map.map);
+    let mut mapper = Box::pin(HashURIDMapper::new());
+    let host_map = mapper.as_mut().make_map_interface();
+    let map_feature = Map::new(&host_map);
     let cache = MyURIDCache::from_map(&map_feature).unwrap();
 
     assert_eq!(1, cache.type_a);
