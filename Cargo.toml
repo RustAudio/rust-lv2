@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lv2-core = { path = "core" }
+lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
 
 [workspace]
@@ -14,6 +15,8 @@ members = [
     "core",
     "core/sys",
     "core/derive",
+    "units",
+    "units/sys",
     "urid",
     "urid/sys",
     "urid/derive",
@@ -21,4 +24,4 @@ members = [
 
 [features]
 default = []
-host = ["lv2-core/host", "lv2-urid/host"]
+host = ["lv2-core/host", "lv2-units/host", "lv2-urid/host"]
