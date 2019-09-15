@@ -2,11 +2,13 @@
 //! you need to have clang installed on your machine.
 pub extern crate lv2_atom_sys as sys;
 extern crate lv2_core as core;
+extern crate lv2_units as units;
 extern crate lv2_urid as urid;
 
 pub mod chunk;
 pub mod object;
 pub mod scalar;
+pub mod sequence;
 pub mod space;
 pub mod string;
 pub mod tuple;
@@ -32,6 +34,7 @@ pub struct AtomURIDCache {
     pub property: URID<object::Property>,
     pub string: URID<string::String>,
     pub tuple: URID<tuple::Tuple>,
+    pub sequence: URID<sequence::Sequence>,
 }
 
 pub trait Atom<'a, 'b>: URIDBound {

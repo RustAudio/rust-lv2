@@ -299,10 +299,7 @@ mod tests {
             assert_eq!(atom.read::<Int>(urids.int, ()).unwrap(), first_value);
             let (header, atom) = properties[1];
             assert_eq!(header.key, second_key);
-            assert_eq!(
-                atom.read::<Float>(urids.float, ()).unwrap(),
-                second_value
-            );
+            assert_eq!(atom.read::<Float>(urids.float, ()).unwrap(), second_value);
         }
     }
 }
