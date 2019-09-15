@@ -36,12 +36,14 @@ impl<'a, 'b> Atom<'a, 'b> for Object
 where
     'a: 'b,
 {
+    type ReadParameter = ();
     type ReadHandle = (ObjectHeader, ObjectReader<'a>);
     type WriteParameter = ObjectHeader;
     type WriteHandle = ObjectWriter<'a, 'b>;
 
     fn read(
         space: Space<'a>,
+        _: (),
         urids: &AtomURIDCache,
     ) -> Option<((ObjectHeader, ObjectReader<'a>), Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.object)?;
@@ -315,16 +317,16 @@ mod tests {
         {
             let space = Space::from_slice(raw_space.as_ref());
 
-            let ((header, iter), _) = Object::read(space, &urids).unwrap();
+            let ((header, iter), _) = Object::read(space, (), &urids).unwrap();
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
             let properties: Vec<(PropertyHeader, Space)> = iter.collect();
             assert_eq!(properties[0].0.key, first_key);
-            assert_eq!(Int::read(properties[0].1, &urids).unwrap().0, first_value);
+            assert_eq!(Int::read(properties[0].1, (), &urids).unwrap().0, first_value);
             assert_eq!(properties[1].0.key, second_key);
             assert_eq!(
-                Float::read(properties[1].1, &urids).unwrap().0,
+                Float::read(properties[1].1, (), &urids).unwrap().0,
                 second_value
             );
         }
@@ -375,7 +377,7 @@ mod tests {
             let (header, atom, _) = Property::read(space, &urids).unwrap();
             assert_eq!(header.key, key);
             assert_eq!(header.context, None);
-            let (read_value, _) = Int::read(atom, &urids).unwrap();
+            let (read_value, _) = Int::read(atom, (), &urids).unwrap();
             assert_eq!(read_value, value);
         }
     }

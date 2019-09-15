@@ -43,11 +43,12 @@ impl<'a, 'b, A: ScalarAtom> Atom<'a, 'b> for A
 where
     'a: 'b,
 {
+    type ReadParameter = ();
     type ReadHandle = A::InternalType;
     type WriteParameter = A::InternalType;
     type WriteHandle = &'a mut A::InternalType;
 
-    fn read(space: Space<'a>, urids: &A::CacheType) -> Option<(A::InternalType, Space<'a>)> {
+    fn read(space: Space<'a>, _: (), urids: &A::CacheType) -> Option<(A::InternalType, Space<'a>)> {
         <A as ScalarAtom>::read_scalar(space, urids)
     }
 
@@ -185,7 +186,7 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            assert_eq!(A::read(space, &urids).unwrap().0, value);
+            assert_eq!(A::read(space, (), &urids).unwrap().0, value);
         }
     }
 

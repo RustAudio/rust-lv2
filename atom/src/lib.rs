@@ -24,9 +24,10 @@ pub struct AtomURIDCache {
     pub long: URID<scalar::Long>,
     pub urid: URID<scalar::AtomURID>,
     pub bool: URID<scalar::Bool>,
-    pub vector: URID<vector::Vector>,
+    pub vector: URID<vector::Vector<scalar::Int>>,
     pub chunk: URID<chunk::Chunk>,
-    pub literal: URID<string::Literal>,
+    pub string_literal: URID<string::StringLiteral>,
+    pub data_literal: URID<string::DataLiteral>,
     pub object: URID<object::Object>,
     pub property: URID<object::Property>,
     pub string: URID<string::String>,
@@ -34,11 +35,12 @@ pub struct AtomURIDCache {
 }
 
 pub trait Atom<'a, 'b>: URIDBound {
+    type ReadParameter;
     type ReadHandle: 'a;
     type WriteParameter;
     type WriteHandle: 'b;
 
-    fn read(space: Space<'a>, urids: &Self::CacheType) -> Option<(Self::ReadHandle, Space<'a>)>;
+    fn read(space: Space<'a>, parameter: Self::ReadParameter, urids: &Self::CacheType) -> Option<(Self::ReadHandle, Space<'a>)>;
 
     fn write(
         space: &'b mut dyn MutSpace<'a>,

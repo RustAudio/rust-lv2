@@ -1,5 +1,5 @@
 use crate::space::*;
-use crate::AtomURIDCache;
+use crate::*;
 use core::UriBound;
 use urid::{URIDBound, URID};
 
@@ -20,14 +20,15 @@ impl URIDBound for Tuple {
     }
 }
 
-impl Tuple {
-    /// Create an iterator over all atoms in this tuple.
-    ///
-    /// The item of the returned iterator simply is a space that contains a complete atom. The other return value is the space behind the tuple atom.
-    ///
-    /// The method returns `None` if the passed space does not contain a tuple or the space does not have the right size.
-    pub fn read<'a>(
+impl<'a, 'b> Atom<'a, 'b> for Tuple where 'a: 'b {
+    type ReadParameter = ();
+    type ReadHandle = TupleIterator<'a>;
+    type WriteParameter = ();
+    type WriteHandle = FramedMutSpace<'a, 'b>;
+
+    fn read(
         space: Space<'a>,
+        _: (),
         urids: &AtomURIDCache,
     ) -> Option<(TupleIterator<'a>, Space<'a>)> {
         space
@@ -35,11 +36,9 @@ impl Tuple {
             .map(|(body, space)| (TupleIterator { space: body }, space))
     }
 
-    /// Create a frame for contained atoms.
-    ///
-    /// The way you write atoms to the tuple is quite simply: Create the frame and write your desired atoms to it, one by another.
-    pub fn write<'a, 'b>(
+    fn write(
         space: &'b mut dyn MutSpace<'a>,
+        _: (),
         urids: &AtomURIDCache,
     ) -> Option<FramedMutSpace<'a, 'b>> {
         space.create_atom_frame(urids.tuple)
@@ -68,7 +67,6 @@ mod tests {
     use crate::scalar::*;
     use crate::tuple::*;
     use crate::vector::Vector;
-    use crate::*;
     use std::mem::size_of;
     use std::os::raw::*;
     use urid::feature::Map;
@@ -86,10 +84,10 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut tuple_frame = Tuple::write(&mut space, &urids).unwrap();
+            let mut tuple_frame = Tuple::write(&mut space, (), &urids).unwrap();
             {
                 let mut vector_writer =
-                    Vector::write::<Int>(&mut tuple_frame, &urids, &urids).unwrap();
+                    Vector::<Int>::write(&mut tuple_frame, urids.int, &urids).unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
             Int::write(&mut tuple_frame, 42, &urids).unwrap();
@@ -134,12 +132,12 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let items: Vec<Space> = Tuple::read(space, &urids).unwrap().0.collect();
+            let items: Vec<Space> = Tuple::read(space, (), &urids).unwrap().0.collect();
             assert_eq!(
-                Vector::read::<Int>(items[0], &urids, &urids).unwrap().0,
+                Vector::<Int>::read(items[0], urids.int, &urids).unwrap().0,
                 [17; 9]
             );
-            assert_eq!(Int::read(items[1], &urids).unwrap().0, 42);
+            assert_eq!(Int::read(items[1], (), &urids).unwrap().0, 42);
         }
     }
 }

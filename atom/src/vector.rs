@@ -1,6 +1,6 @@
 use crate::scalar::ScalarAtom;
 use crate::space::*;
-use crate::AtomURIDCache;
+use crate::*;
 use core::UriBound;
 use std::marker::PhantomData;
 use std::mem::size_of;
@@ -9,35 +9,37 @@ use urid::{URIDBound, URID};
 /// An atom containing a slice of scalar atoms.
 ///
 /// This atom is specified [here](http://lv2plug.in/ns/ext/atom/atom.html#Vector).
-pub struct Vector;
+pub struct Vector<C: ScalarAtom> {
+    child: PhantomData<C>,
+}
 
-unsafe impl UriBound for Vector {
+unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl URIDBound for Vector {
+impl<C: ScalarAtom> URIDBound for Vector<C> {
     type CacheType = AtomURIDCache;
 
     fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.vector
+        unsafe {URID::new_unchecked(urids.vector.get())}
     }
 }
 
-impl Vector {
-    /// Try to read the content of a vector containing `C` atoms.
-    ///
-    /// If successful, the method returns the content of the atom, a slice of `C::InternalType`, and the space behind the atom.
-    ///
-    /// If the space is not big enough or does not contain a vector with the given content type, the method returns `None`.
-    pub fn read<'a, C: ScalarAtom>(
+impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where 'a: 'b {
+    type ReadParameter = URID<C>;
+    type ReadHandle = &'a [C::InternalType];
+    type WriteParameter = URID<C>;
+    type WriteHandle = VectorWriter<'a, 'b, C::InternalType>;
+    
+    fn read(
         space: Space<'a>,
+        child_urid: URID<C>,
         urids: &AtomURIDCache,
-        child_urids: &C::CacheType,
     ) -> Option<(&'a [C::InternalType], Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.vector)?;
         let (header, body) = body.split_type::<sys::LV2_Atom_Vector_Body>()?;
 
-        if header.child_type != C::urid(child_urids)
+        if header.child_type != child_urid
             || header.child_size as usize != size_of::<C::InternalType>()
         {
             return None;
@@ -54,18 +56,15 @@ impl Vector {
         Some((children, space))
     }
 
-    /// Initialize a vector containing `C` atoms.
-    ///
-    /// This method initializes an empty vector and returns a writer to add `C` to the vector. If the space is not big enough, the method returns `None`.
-    pub fn write<'a, 'b, C: ScalarAtom>(
+    fn write(
         space: &'b mut dyn MutSpace<'a>,
+        child_urid: URID<C>,
         urids: &AtomURIDCache,
-        child_urids: &C::CacheType,
     ) -> Option<VectorWriter<'a, 'b, C::InternalType>> {
         let mut frame = space.create_atom_frame(urids.vector)?;
 
         let body = sys::LV2_Atom_Vector_Body {
-            child_type: C::urid(child_urids).get(),
+            child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
         (&mut frame as &mut dyn MutSpace).write(&body, false)?;
@@ -146,7 +145,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Vector::write::<Int>(&mut space, &urids, &urids).unwrap();
+            let mut writer = Vector::<Int>::write(&mut space, urids.int, &urids).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }
@@ -175,7 +174,7 @@ mod tests {
         // reading
         {
             let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let children: &[i32] = Vector::read::<Int>(space, &urids, &urids).unwrap().0;
+            let children: &[i32] = Vector::<Int>::read(space, urids.int, &urids).unwrap().0;
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {

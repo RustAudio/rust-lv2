@@ -24,11 +24,12 @@ impl<'a, 'b> Atom<'a, 'b> for Chunk
 where
     'a: 'b,
 {
+    type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
     type WriteHandle = FramedMutSpace<'a, 'b>;
 
-    fn read(space: Space<'a>, urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
+    fn read(space: Space<'a>, _: (), urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
         let (body, space) = space.split_atom_body(urids.chunk)?;
         Some((body.data()?, space))
     }
@@ -105,7 +106,7 @@ mod tests {
         {
             let space = Space::from_reference(raw_space.as_ref());
 
-            let data = Chunk::read(space, &urids).unwrap().0;
+            let data = Chunk::read(space, (), &urids).unwrap().0;
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {
