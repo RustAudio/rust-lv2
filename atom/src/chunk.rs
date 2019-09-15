@@ -27,14 +27,39 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+    type WriteHandle = ByteWriter<'a, 'b>;
 
     fn read(space: Space<'a>, _: ()) -> Option<&'a [u8]> {
         space.data()
     }
 
-    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
-        Some(frame)
+    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<ByteWriter<'a, 'b>> {
+        Some(ByteWriter::new(frame))
+    }
+}
+
+pub struct ByteWriter<'a, 'b> {
+    frame: FramedMutSpace<'a, 'b>,
+}
+
+impl<'a, 'b> ByteWriter<'a, 'b> {
+    pub fn new(frame: FramedMutSpace<'a, 'b>) -> Self {
+        Self { frame }
+    }
+
+    pub fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
+        self.frame.allocate(size, false).map(|(_, bytes)| bytes)
+    }
+
+    pub fn write_raw(&mut self, bytes: &[u8]) -> Option<&'a mut [u8]> {
+        self.frame.write_raw(bytes, false)
+    }
+
+    pub fn write<T>(&mut self, instance: &T) -> Option<&'a mut T>
+    where
+        T: Unpin + Copy + Send + Sync + Sized + 'static,
+    {
+        (&mut self.frame as &mut dyn MutSpace).write(instance, false)
     }
 }
 
@@ -64,20 +89,17 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.chunk)
                 .unwrap();
-            let mut frame = Chunk::write(frame, ()).unwrap();
+            let mut writer = Chunk::write(frame, ()).unwrap();
 
-            for (i, value) in (&mut frame as &mut dyn MutSpace)
-                .allocate(SLICE_LENGTH - 1, false)
+            for (i, value) in writer
+                .allocate(SLICE_LENGTH - 1)
                 .unwrap()
-                .1
                 .into_iter()
                 .enumerate()
             {
                 *value = i as u8;
             }
-            (&mut frame as &mut dyn MutSpace)
-                .write(&41u8, false)
-                .unwrap();
+            writer.write(&41u8).unwrap();
         }
 
         // verifying

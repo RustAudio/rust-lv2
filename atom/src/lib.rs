@@ -53,3 +53,25 @@ pub trait Atom<'a, 'b>: URIDBound {
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle>;
 }
+
+#[derive(Clone, Copy)]
+pub struct UnidentifiedAtom<'a> {
+    space: Space<'a>,
+}
+
+impl<'a> UnidentifiedAtom<'a> {
+    pub fn new(space: Space<'a>) -> Self {
+        Self { space }
+    }
+
+    pub fn read<'b, A: Atom<'a, 'b>>(
+        self,
+        urid: URID<A>,
+        parameter: A::ReadParameter,
+    ) -> Option<A::ReadHandle> {
+        self.space
+            .split_atom_body(urid)
+            .map(|(body, _)| body)
+            .and_then(|body| A::read(body, parameter))
+    }
+}

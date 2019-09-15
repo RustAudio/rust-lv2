@@ -1,7 +1,7 @@
+use crate::chunk::ByteWriter;
 use crate::space::*;
 use crate::*;
 use core::UriBound;
-use std::convert::TryFrom;
 use urid::{URIDBound, URID};
 
 pub struct StringLiteral;
@@ -29,12 +29,13 @@ where
 
     fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a str)> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
-        if let Ok(LiteralType::Language(urid)) = LiteralType::try_from(header) {
+        if header.lang != 0 && header.datatype == 0 {
             let data = body.data()?;
+            let lang = URID::new(header.lang)?;
             std::str::from_utf8(&data[0..data.len() - 1])
                 .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
                 .ok()
-                .map(|string| (urid, string))
+                .map(|string| (lang, string))
         } else {
             None
         }
@@ -73,19 +74,20 @@ where
     type ReadParameter = ();
     type ReadHandle = (URID, &'a [u8]);
     type WriteParameter = URID;
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+    type WriteHandle = ByteWriter<'a, 'b>;
 
     fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a [u8])> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
-        if let Ok(LiteralType::Datatype(urid)) = LiteralType::try_from(header) {
+        if header.lang == 0 && header.datatype != 0 {
             let data = body.data()?;
+            let urid = unsafe { URID::new_unchecked(header.datatype) };
             Some((urid, data))
         } else {
             None
         }
     }
 
-    fn write(mut frame: FramedMutSpace<'a, 'b>, datatype: URID) -> Option<FramedMutSpace<'a, 'b>> {
+    fn write(mut frame: FramedMutSpace<'a, 'b>, datatype: URID) -> Option<ByteWriter<'a, 'b>> {
         (&mut frame as &mut dyn MutSpace).write(
             &sys::LV2_Atom_Literal_Body {
                 lang: 0,
@@ -93,41 +95,7 @@ where
             },
             true,
         )?;
-        Some(frame)
-    }
-}
-
-/// Either the language or the datatype of a literal.
-///
-/// A literal is either a UTF8 string or another type. If it's a string, it has a language, and if it's a value of another type, the exact type has to be known. This enum covers these options.
-#[derive(Clone, Copy)]
-pub enum LiteralType {
-    Language(URID),
-    Datatype(URID),
-}
-
-impl TryFrom<&sys::LV2_Atom_Literal_Body> for LiteralType {
-    type Error = ();
-
-    fn try_from(body: &sys::LV2_Atom_Literal_Body) -> Result<Self, ()> {
-        let lang = URID::try_from(body.lang).map(Self::Language);
-        let datatype = URID::try_from(body.datatype).map(Self::Datatype);
-        lang.or(datatype)
-    }
-}
-
-impl From<LiteralType> for sys::LV2_Atom_Literal_Body {
-    fn from(literal_type: LiteralType) -> Self {
-        match literal_type {
-            LiteralType::Language(urid) => sys::LV2_Atom_Literal_Body {
-                lang: urid.get(),
-                datatype: 0,
-            },
-            LiteralType::Datatype(urid) => sys::LV2_Atom_Literal_Body {
-                lang: 0,
-                datatype: urid.get(),
-            },
-        }
+        Some(ByteWriter::new(frame))
     }
 }
 
@@ -161,7 +129,6 @@ where
         body.data()
             .and_then(|data| std::str::from_utf8(data).ok())
             .map(|string| &string[..string.len() - 1]) // removing the null-terminator
-            .map(|string| string)
     }
 
     fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
@@ -287,10 +254,8 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.atom.data_literal)
                 .unwrap();
-            let mut frame = DataLiteral::write(frame, urids.atom.int.into_general()).unwrap();
-            (&mut frame as &mut dyn MutSpace)
-                .write::<i32>(&42, true)
-                .unwrap();
+            let mut writer = DataLiteral::write(frame, urids.atom.int.into_general()).unwrap();
+            writer.write::<i32>(&42).unwrap();
         }
 
         // verifying

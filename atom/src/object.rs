@@ -3,7 +3,6 @@ use crate::*;
 use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
-use std::marker::PhantomData;
 use urid::{URIDBound, URID};
 
 /// An atom containing multiple key-value pairs.
@@ -80,12 +79,12 @@ pub struct ObjectReader<'a> {
 }
 
 impl<'a> Iterator for ObjectReader<'a> {
-    type Item = (PropertyHeader, Space<'a>);
+    type Item = (PropertyHeader, UnidentifiedAtom<'a>);
 
-    fn next(&mut self) -> Option<(PropertyHeader, Space<'a>)> {
-        let (header, value, space) = Property::<()>::read_body(self.space)?;
+    fn next(&mut self) -> Option<(PropertyHeader, UnidentifiedAtom<'a>)> {
+        let (header, value, space) = Property::read_body(self.space)?;
         self.space = space;
-        Some((header, value))
+        Some((header, UnidentifiedAtom::new(value)))
     }
 }
 
@@ -107,7 +106,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
         child_urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        Property::<()>::write_header(&mut self.frame, key, context)?;
+        Property::write_header(&mut self.frame, key, context)?;
         let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
         A::write(child_frame, parameter)
     }
@@ -118,15 +117,13 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
 /// A property represents a single URID -> atom mapping. Additionally and optionally, you may also define a context in which the property is valid. For more information, visit the [specification](http://lv2plug.in/ns/ext/atom/atom.html#Property).
 ///
 /// Most of the time, properties are a part of an [`Object`](struct.Object.html) atom and therefore, you don't need to read or write them directly. However, they could in theory appear on their own too, which is why reading and writing methods are still provided.
-pub struct Property<A = ()> {
-    phantom: PhantomData<A>,
-}
+pub struct Property;
 
-unsafe impl<A> UriBound for Property<A> {
+unsafe impl UriBound for Property {
     const URI: &'static [u8] = sys::LV2_ATOM__Property;
 }
 
-impl<A> URIDBound for Property<A> {
+impl URIDBound for Property {
     type CacheType = AtomURIDCache;
 
     fn urid(urids: &AtomURIDCache) -> URID<Self> {
@@ -143,7 +140,7 @@ pub struct PropertyHeader {
     pub context: Option<URID>,
 }
 
-impl<A> Property<A> {
+impl Property {
     /// Read the body of a property atom from a space.
     ///
     /// This method assumes that the space actually contains the body of a property atom, without the header. It returns the property header, containing the key and optional context of the property, the body of the actual atom, and the space behind the atom.
@@ -296,15 +293,14 @@ mod tests {
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
-            let properties: Vec<(PropertyHeader, Space)> = iter.collect();
-            assert_eq!(properties[0].0.key, first_key);
+            let properties: Vec<(PropertyHeader, UnidentifiedAtom)> = iter.collect();
+            let (header, atom) = properties[0];
+            assert_eq!(header.key, first_key);
+            assert_eq!(atom.read::<Int>(urids.int, ()).unwrap(), first_value);
+            let (header, atom) = properties[1];
+            assert_eq!(header.key, second_key);
             assert_eq!(
-                Int::read(properties[0].1.split_atom_body(urids.int).unwrap().0, ()).unwrap(),
-                first_value
-            );
-            assert_eq!(properties[1].0.key, second_key);
-            assert_eq!(
-                Float::read(properties[1].1.split_atom_body(urids.float).unwrap().0, ()).unwrap(),
+                atom.read::<Float>(urids.float, ()).unwrap(),
                 second_value
             );
         }
