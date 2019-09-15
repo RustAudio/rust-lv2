@@ -8,4 +8,4 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.51.0"
+bindgen = { version = "0.51.0", default-features = false }
