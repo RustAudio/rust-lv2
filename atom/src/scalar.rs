@@ -17,25 +17,19 @@ pub trait ScalarAtom: URIDBound {
     /// Try to read the atom from a space.
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
-    fn read_scalar<'a>(
-        space: Space<'a>,
-        urids: &Self::CacheType,
-    ) -> Option<(Self::InternalType, Space<'a>)> {
-        let (body, space) = space.split_atom_body(Self::urid(urids))?;
-        Some((*body.split_type::<Self::InternalType>()?.0, space))
+    fn read_scalar(body: Space) -> Option<Self::InternalType> {
+        body.split_type::<Self::InternalType>()
+            .map(|(value, _)| *value)
     }
 
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar<'a>(
-        space: &mut dyn MutSpace<'a>,
+    fn write_scalar<'a, 'b>(
+        mut frame: FramedMutSpace<'a, 'b>,
         value: Self::InternalType,
-        urids: &Self::CacheType,
     ) -> Option<&'a mut Self::InternalType> {
-        space
-            .create_atom_frame(Self::urid(urids))
-            .and_then(|mut frame| (&mut frame as &mut dyn MutSpace).write(&value, true))
+        (&mut frame as &mut dyn MutSpace).write(&value, true)
     }
 }
 
@@ -48,16 +42,15 @@ where
     type WriteParameter = A::InternalType;
     type WriteHandle = &'a mut A::InternalType;
 
-    fn read(space: Space<'a>, _: (), urids: &A::CacheType) -> Option<(A::InternalType, Space<'a>)> {
-        <A as ScalarAtom>::read_scalar(space, urids)
+    fn read(body: Space<'a>, _: ()) -> Option<A::InternalType> {
+        <A as ScalarAtom>::read_scalar(body)
     }
 
     fn write(
-        space: &'b mut dyn MutSpace<'a>,
+        frame: FramedMutSpace<'a, 'b>,
         value: A::InternalType,
-        urids: &A::CacheType,
     ) -> Option<&'a mut A::InternalType> {
-        <A as ScalarAtom>::write_scalar(space, value, urids)
+        <A as ScalarAtom>::write_scalar(frame, value)
     }
 }
 
@@ -163,7 +156,10 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            A::write(&mut space, value, &urids).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(A::urid(&urids))
+                .unwrap();
+            A::write(frame, value).unwrap();
         }
 
         // verifying
@@ -185,8 +181,9 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            assert_eq!(A::read(space, (), &urids).unwrap().0, value);
+            let space = Space::from_slice(raw_space.as_ref());
+            let (body, _) = space.split_atom_body(A::urid(&urids)).unwrap();
+            assert_eq!(A::read(body, ()).unwrap(), value);
         }
     }
 

@@ -40,11 +40,16 @@ pub trait Atom<'a, 'b>: URIDBound {
     type WriteParameter;
     type WriteHandle: 'b;
 
-    fn read(space: Space<'a>, parameter: Self::ReadParameter, urids: &Self::CacheType) -> Option<(Self::ReadHandle, Space<'a>)>;
+    /// Read the body of the atom.
+    ///
+    /// The passed space exactly covers the body of the atom.
+    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
 
+    /// Write the body of the atom.
+    ///
+    /// The passed frame contains the header of the atom.
     fn write(
-        space: &'b mut dyn MutSpace<'a>,
+        frame: FramedMutSpace<'a, 'b>,
         parameter: Self::WriteParameter,
-        urids: &Self::CacheType,
     ) -> Option<Self::WriteHandle>;
 }

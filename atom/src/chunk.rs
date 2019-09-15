@@ -29,17 +29,12 @@ where
     type WriteParameter = ();
     type WriteHandle = FramedMutSpace<'a, 'b>;
 
-    fn read(space: Space<'a>, _: (), urids: &AtomURIDCache) -> Option<(&'a [u8], Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.chunk)?;
-        Some((body.data()?, space))
+    fn read(space: Space<'a>, _: ()) -> Option<&'a [u8]> {
+        space.data()
     }
 
-    fn write(
-        space: &'b mut dyn MutSpace<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<FramedMutSpace<'a, 'b>> {
-        space.create_atom_frame(urids.chunk)
+    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
+        Some(frame)
     }
 }
 
@@ -66,9 +61,12 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Chunk::write(&mut space, (), &urids).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.chunk)
+                .unwrap();
+            let mut frame = Chunk::write(frame, ()).unwrap();
 
-            for (i, value) in (&mut writer as &mut dyn MutSpace)
+            for (i, value) in (&mut frame as &mut dyn MutSpace)
                 .allocate(SLICE_LENGTH - 1, false)
                 .unwrap()
                 .1
@@ -77,7 +75,7 @@ mod tests {
             {
                 *value = i as u8;
             }
-            (&mut writer as &mut dyn MutSpace)
+            (&mut frame as &mut dyn MutSpace)
                 .write(&41u8, false)
                 .unwrap();
         }
@@ -106,7 +104,7 @@ mod tests {
         {
             let space = Space::from_reference(raw_space.as_ref());
 
-            let data = Chunk::read(space, (), &urids).unwrap().0;
+            let data = Chunk::read(space.split_atom_body(urids.chunk).unwrap().0, ()).unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {

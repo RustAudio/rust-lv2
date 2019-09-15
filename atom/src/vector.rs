@@ -21,22 +21,20 @@ impl<C: ScalarAtom> URIDBound for Vector<C> {
     type CacheType = AtomURIDCache;
 
     fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        unsafe {URID::new_unchecked(urids.vector.get())}
+        unsafe { URID::new_unchecked(urids.vector.get()) }
     }
 }
 
-impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where 'a: 'b {
+impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C>
+where
+    'a: 'b,
+{
     type ReadParameter = URID<C>;
     type ReadHandle = &'a [C::InternalType];
     type WriteParameter = URID<C>;
     type WriteHandle = VectorWriter<'a, 'b, C::InternalType>;
-    
-    fn read(
-        space: Space<'a>,
-        child_urid: URID<C>,
-        urids: &AtomURIDCache,
-    ) -> Option<(&'a [C::InternalType], Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.vector)?;
+
+    fn read(body: Space<'a>, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Vector_Body>()?;
 
         if header.child_type != child_urid
@@ -53,16 +51,13 @@ impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where 'a: 'b {
         let children = unsafe {
             std::slice::from_raw_parts(data.as_ptr() as *const C::InternalType, children_count)
         };
-        Some((children, space))
+        Some(children)
     }
 
     fn write(
-        space: &'b mut dyn MutSpace<'a>,
+        mut frame: FramedMutSpace<'a, 'b>,
         child_urid: URID<C>,
-        urids: &AtomURIDCache,
     ) -> Option<VectorWriter<'a, 'b, C::InternalType>> {
-        let mut frame = space.create_atom_frame(urids.vector)?;
-
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -145,7 +140,10 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = Vector::<Int>::write(&mut space, urids.int, &urids).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.vector)
+                .unwrap();
+            let mut writer = Vector::<Int>::write(frame, urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }
@@ -173,8 +171,9 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let children: &[i32] = Vector::<Int>::read(space, urids.int, &urids).unwrap().0;
+            let space = Space::from_slice(raw_space.as_ref());
+            let (body, _) = space.split_atom_body(urids.vector).unwrap();
+            let children: &[i32] = Vector::<Int>::read(body, urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {

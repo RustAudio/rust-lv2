@@ -3,6 +3,7 @@ use crate::*;
 use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
+use std::marker::PhantomData;
 use urid::{URIDBound, URID};
 
 /// An atom containing multiple key-value pairs.
@@ -41,12 +42,7 @@ where
     type WriteParameter = ObjectHeader;
     type WriteHandle = ObjectWriter<'a, 'b>;
 
-    fn read(
-        space: Space<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<((ObjectHeader, ObjectReader<'a>), Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.object)?;
+    fn read(body: Space<'a>, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Object_Body>()?;
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
@@ -55,15 +51,13 @@ where
 
         let reader = ObjectReader { space: body };
 
-        Some(((header, reader), space))
+        Some((header, reader))
     }
 
     fn write(
-        space: &'b mut dyn MutSpace<'a>,
+        mut frame: FramedMutSpace<'a, 'b>,
         header: ObjectHeader,
-        urids: &AtomURIDCache,
     ) -> Option<ObjectWriter<'a, 'b>> {
-        let mut frame = space.create_atom_frame(urids.object)?;
         {
             let frame = &mut frame as &mut dyn MutSpace;
             frame.write(
@@ -89,7 +83,7 @@ impl<'a> Iterator for ObjectReader<'a> {
     type Item = (PropertyHeader, Space<'a>);
 
     fn next(&mut self) -> Option<(PropertyHeader, Space<'a>)> {
-        let (header, value, space) = Property::read_body(self.space)?;
+        let (header, value, space) = Property::<()>::read_body(self.space)?;
         self.space = space;
         Some((header, value))
     }
@@ -106,13 +100,16 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
     /// Initialize a new property.
     ///
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
-    pub fn write_property<'c>(
+    pub fn write_property<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         key: URID,
         context: Option<URID>,
-    ) -> Option<&'c mut dyn MutSpace<'a>> {
-        Property::write_header(&mut self.frame, key, context)?;
-        Some(&mut self.frame)
+        child_urid: URID<A>,
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        Property::<()>::write_header(&mut self.frame, key, context)?;
+        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
+        A::write(child_frame, parameter)
     }
 }
 
@@ -121,17 +118,19 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
 /// A property represents a single URID -> atom mapping. Additionally and optionally, you may also define a context in which the property is valid. For more information, visit the [specification](http://lv2plug.in/ns/ext/atom/atom.html#Property).
 ///
 /// Most of the time, properties are a part of an [`Object`](struct.Object.html) atom and therefore, you don't need to read or write them directly. However, they could in theory appear on their own too, which is why reading and writing methods are still provided.
-pub struct Property;
+pub struct Property<A = ()> {
+    phantom: PhantomData<A>,
+}
 
-unsafe impl UriBound for Property {
+unsafe impl<A> UriBound for Property<A> {
     const URI: &'static [u8] = sys::LV2_ATOM__Property;
 }
 
-impl URIDBound for Property {
+impl<A> URIDBound for Property<A> {
     type CacheType = AtomURIDCache;
 
     fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.property
+        unsafe { URID::new_unchecked(urids.property.get()) }
     }
 }
 
@@ -144,7 +143,7 @@ pub struct PropertyHeader {
     pub context: Option<URID>,
 }
 
-impl Property {
+impl<A> Property<A> {
     /// Read the body of a property atom from a space.
     ///
     /// This method assumes that the space actually contains the body of a property atom, without the header. It returns the property header, containing the key and optional context of the property, the body of the actual atom, and the space behind the atom.
@@ -170,18 +169,6 @@ impl Property {
         Some((header, atom, space))
     }
 
-    /// Read a property atom from a space.
-    ///
-    /// This method assumes that the space contains a property atom, including the header, and returns the information header of the property, the space with the contained atom and the space behind the property.
-    pub fn read<'a>(
-        space: Space<'a>,
-        urids: &AtomURIDCache,
-    ) -> Option<(PropertyHeader, Space<'a>, Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.property)?;
-        let (header, atom, _) = Self::read_body(body)?;
-        Some((header, atom, space))
-    }
-
     /// Write out the header of a property atom.
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
@@ -189,23 +176,6 @@ impl Property {
         space.write(&key.get(), true)?;
         space.write(&context.map(|urid| urid.get()).unwrap_or(0), false)?;
         Some(())
-    }
-
-    /// Initialize a property atom.
-    ///
-    /// This method initializes a property atom by creating an atom frame and writing out the property header. However, it does not not initialize the value atom. You have to do that yourselves and if you don't, the propertry is invalid.
-    pub fn write<'a, 'b>(
-        space: &'b mut dyn MutSpace<'a>,
-        key: URID,
-        context: Option<URID>,
-        urids: &AtomURIDCache,
-    ) -> Option<FramedMutSpace<'a, 'b>> {
-        let mut frame = space.create_atom_frame(urids.property)?;
-        if Self::write_header(&mut frame, key, context).is_some() {
-            Some(frame)
-        } else {
-            None
-        }
     }
 }
 
@@ -247,22 +217,26 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.object)
+                .unwrap();
             let mut writer = Object::write(
-                &mut space,
+                frame,
                 ObjectHeader {
                     id: None,
                     otype: object_type,
                 },
-                &urids,
             )
             .unwrap();
             {
-                let space = writer.write_property(first_key, None).unwrap();
-                Int::write(space, first_value, &urids).unwrap();
+                writer
+                    .write_property::<Int>(first_key, None, urids.int, first_value)
+                    .unwrap();
             }
             {
-                let space = writer.write_property(second_key, None).unwrap();
-                Float::write(space, second_value, &urids).unwrap();
+                writer
+                    .write_property::<Float>(second_key, None, urids.float, second_value)
+                    .unwrap();
             }
         }
 
@@ -316,69 +290,23 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
+            let (body, _) = space.split_atom_body(urids.object).unwrap();
 
-            let ((header, iter), _) = Object::read(space, (), &urids).unwrap();
+            let (header, iter) = Object::read(body, ()).unwrap();
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
             let properties: Vec<(PropertyHeader, Space)> = iter.collect();
             assert_eq!(properties[0].0.key, first_key);
-            assert_eq!(Int::read(properties[0].1, (), &urids).unwrap().0, first_value);
+            assert_eq!(
+                Int::read(properties[0].1.split_atom_body(urids.int).unwrap().0, ()).unwrap(),
+                first_value
+            );
             assert_eq!(properties[1].0.key, second_key);
             assert_eq!(
-                Float::read(properties[1].1, (), &urids).unwrap().0,
+                Float::read(properties[1].1.split_atom_body(urids.float).unwrap().0, ()).unwrap(),
                 second_value
             );
-        }
-    }
-
-    #[test]
-    fn test_property() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
-        let urids = AtomURIDCache::from_map(&map).unwrap();
-
-        let key = map
-            .map_uri(Uri::from_bytes_with_nul(b"urn:myvalue\0").unwrap())
-            .unwrap();
-        let value: c_int = 42;
-
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
-
-        // writing
-        {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut frame = Property::write(&mut space, key, None, &urids).unwrap();
-            Int::write(&mut frame, value, &urids).unwrap();
-        }
-
-        // verifying
-        {
-            let (property, space) = raw_space.split_at(size_of::<sys::LV2_Atom_Property>());
-
-            let property = unsafe { &*(property.as_ptr() as *const sys::LV2_Atom_Property) };
-            assert_eq!(
-                property.atom.size as usize,
-                size_of::<sys::LV2_Atom_Property_Body>() + size_of::<c_int>()
-            );
-            assert_eq!(property.atom.type_, urids.property);
-            assert_eq!(property.body.key, key);
-            assert_eq!(property.body.context, 0);
-            assert_eq!(property.body.value.size as usize, size_of::<c_int>());
-            assert_eq!(property.body.value.type_, urids.int);
-
-            let read_value = unsafe { *(space.as_ptr() as *const c_int) };
-            assert_eq!(read_value, value);
-        }
-
-        // reading
-        {
-            let space = Space::from_reference(raw_space.as_ref());
-            let (header, atom, _) = Property::read(space, &urids).unwrap();
-            assert_eq!(header.key, key);
-            assert_eq!(header.context, None);
-            let (read_value, _) = Int::read(atom, (), &urids).unwrap();
-            assert_eq!(read_value, value);
         }
     }
 }

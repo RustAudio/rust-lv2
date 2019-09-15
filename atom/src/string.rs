@@ -18,40 +18,36 @@ impl URIDBound for StringLiteral {
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for StringLiteral where 'a: 'b {
+impl<'a, 'b> Atom<'a, 'b> for StringLiteral
+where
+    'a: 'b,
+{
     type ReadParameter = ();
     type ReadHandle = (URID, &'a str);
     type WriteParameter = URID;
     type WriteHandle = StringWriter<'a, 'b>;
 
-    fn read(
-        space: Space<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<((URID, &'a str), Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.string_literal)?;
+    fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a str)> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
         if let Ok(LiteralType::Language(urid)) = LiteralType::try_from(header) {
             let data = body.data()?;
             std::str::from_utf8(&data[0..data.len() - 1])
                 .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
                 .ok()
-                .map(|string| ((urid, string), space))
+                .map(|string| (urid, string))
         } else {
             None
         }
     }
 
-    fn write(
-        space: &'b mut dyn MutSpace<'a>,
-        lang: URID,
-        urids: &AtomURIDCache,
-    ) -> Option<StringWriter<'a, 'b>> {
-        let mut frame = space.create_atom_frame(urids.string_literal)?;
-        (&mut frame as &mut dyn MutSpace).write(&sys::LV2_Atom_Literal_Body {
-            lang: lang.get(),
-            datatype: 0
-        }, true)?;
+    fn write(mut frame: FramedMutSpace<'a, 'b>, lang: URID) -> Option<StringWriter<'a, 'b>> {
+        (&mut frame as &mut dyn MutSpace).write(
+            &sys::LV2_Atom_Literal_Body {
+                lang: lang.get(),
+                datatype: 0,
+            },
+            true,
+        )?;
         Some(StringWriter { frame })
     }
 }
@@ -70,37 +66,33 @@ impl URIDBound for DataLiteral {
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for DataLiteral where 'a: 'b {
+impl<'a, 'b> Atom<'a, 'b> for DataLiteral
+where
+    'a: 'b,
+{
     type ReadParameter = ();
     type ReadHandle = (URID, &'a [u8]);
     type WriteParameter = URID;
     type WriteHandle = FramedMutSpace<'a, 'b>;
 
-    fn read(
-        space: Space<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<((URID, &'a [u8]), Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.data_literal)?;
+    fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a [u8])> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
         if let Ok(LiteralType::Datatype(urid)) = LiteralType::try_from(header) {
             let data = body.data()?;
-            Some(((urid, data), space))
+            Some((urid, data))
         } else {
             None
         }
     }
 
-    fn write(
-        space: &'b mut dyn MutSpace<'a>,
-        datatype: URID,
-        urids: &AtomURIDCache,
-    ) -> Option<FramedMutSpace<'a, 'b>> {
-        let mut frame = space.create_atom_frame(urids.string_literal)?;
-        (&mut frame as &mut dyn MutSpace).write(&sys::LV2_Atom_Literal_Body {
-            lang: 0,
-            datatype: datatype.get(),
-        }, true)?;
+    fn write(mut frame: FramedMutSpace<'a, 'b>, datatype: URID) -> Option<FramedMutSpace<'a, 'b>> {
+        (&mut frame as &mut dyn MutSpace).write(
+            &sys::LV2_Atom_Literal_Body {
+                lang: 0,
+                datatype: datatype.get(),
+            },
+            true,
+        )?;
         Some(frame)
     }
 }
@@ -156,28 +148,24 @@ impl URIDBound for String {
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for String where 'a: 'b {
+impl<'a, 'b> Atom<'a, 'b> for String
+where
+    'a: 'b,
+{
     type ReadParameter = ();
     type ReadHandle = &'a str;
     type WriteParameter = ();
     type WriteHandle = StringWriter<'a, 'b>;
-    
-    fn read(space: Space<'a>, _: (), urids: &AtomURIDCache) -> Option<(&'a str, Space<'a>)> {
-        let (body, space) = space.split_atom_body(urids.string)?;
+
+    fn read(body: Space<'a>, _: ()) -> Option<&'a str> {
         body.data()
             .and_then(|data| std::str::from_utf8(data).ok())
             .map(|string| &string[..string.len() - 1]) // removing the null-terminator
-            .map(|string| (string, space))
+            .map(|string| string)
     }
 
-    fn write(
-        space: &'b mut dyn MutSpace<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<StringWriter<'a, 'b>> {
-        space
-            .create_atom_frame(urids.string)
-            .map(|frame| StringWriter { frame })
+    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
+        Some(StringWriter { frame })
     }
 }
 
@@ -242,8 +230,10 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer =
-                StringLiteral::write(&mut space, urids.german.into_general(), &urids.atom).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.atom.string_literal)
+                .unwrap();
+            let mut writer = StringLiteral::write(frame, urids.german.into_general()).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -254,7 +244,13 @@ mod tests {
 
             let literal = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom_Literal) };
             assert_eq!(literal.atom.type_, urids.atom.string_literal.get());
-            assert_eq!(literal.atom.size as usize, size_of::<sys::LV2_Atom_Literal_Body>() + size_of_val(SAMPLE0) + size_of_val(SAMPLE1) + 1);
+            assert_eq!(
+                literal.atom.size as usize,
+                size_of::<sys::LV2_Atom_Literal_Body>()
+                    + size_of_val(SAMPLE0)
+                    + size_of_val(SAMPLE1)
+                    + 1
+            );
             assert_eq!(literal.body.lang, urids.german.get());
             assert_eq!(literal.body.datatype, 0);
 
@@ -268,8 +264,9 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let ((lang, text), _) = StringLiteral::read(space, (), &urids.atom).unwrap();
+            let space = Space::from_slice(raw_space.as_ref());
+            let (body, _) = space.split_atom_body(urids.atom.string_literal).unwrap();
+            let (lang, text) = StringLiteral::read(body, ()).unwrap();
 
             assert_eq!(lang, urids.german);
             assert_eq!(text, SAMPLE0.to_owned() + SAMPLE1);
@@ -287,9 +284,13 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut frame =
-                DataLiteral::write(&mut space, urids.atom.int.into_general(), &urids.atom).unwrap();
-            (&mut frame as &mut dyn MutSpace).write::<i32>(&42, true).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.atom.data_literal)
+                .unwrap();
+            let mut frame = DataLiteral::write(frame, urids.atom.int.into_general()).unwrap();
+            (&mut frame as &mut dyn MutSpace)
+                .write::<i32>(&42, true)
+                .unwrap();
         }
 
         // verifying
@@ -298,21 +299,25 @@ mod tests {
 
             let literal = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom_Literal) };
             assert_eq!(literal.atom.type_, urids.atom.string_literal.get());
-            assert_eq!(literal.atom.size as usize, size_of::<sys::LV2_Atom_Literal_Body>() + size_of::<i32>());
+            assert_eq!(
+                literal.atom.size as usize,
+                size_of::<sys::LV2_Atom_Literal_Body>() + size_of::<i32>()
+            );
             assert_eq!(literal.body.lang, 0);
             assert_eq!(literal.body.datatype, urids.atom.int);
 
-            let int = unsafe {*(space.as_ptr() as *const i32)};
+            let int = unsafe { *(space.as_ptr() as *const i32) };
             assert_eq!(int, 42);
         }
 
         // reading
         {
-            let space = unsafe { Space::from_atom(&*(raw_space.as_ptr() as *const sys::LV2_Atom)) };
-            let ((datatype, value), _) = DataLiteral::read(space, (), &urids.atom).unwrap();
+            let space = Space::from_slice(raw_space.as_ref());
+            let (body, _) = space.split_atom_body(urids.atom.data_literal).unwrap();
+            let (datatype, value) = DataLiteral::read(body, ()).unwrap();
 
             assert_eq!(datatype, urids.atom.int);
-            assert_eq!(unsafe {*(value.as_ptr() as *const i32)}, 42);
+            assert_eq!(unsafe { *(value.as_ptr() as *const i32) }, 42);
         }
     }
 
@@ -327,7 +332,10 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = String::write(&mut space, (), &urids).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.string)
+                .unwrap();
+            let mut writer = String::write(frame, ()).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -347,7 +355,8 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let string = String::read(space, (), &urids).unwrap().0;
+            let (body, _) = space.split_atom_body(urids.string).unwrap();
+            let string = String::read(body, ()).unwrap();
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);
         }
     }

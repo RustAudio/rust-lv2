@@ -20,28 +20,21 @@ impl URIDBound for Tuple {
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Tuple where 'a: 'b {
+impl<'a, 'b> Atom<'a, 'b> for Tuple
+where
+    'a: 'b,
+{
     type ReadParameter = ();
     type ReadHandle = TupleIterator<'a>;
     type WriteParameter = ();
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+    type WriteHandle = TupleWriter<'a, 'b>;
 
-    fn read(
-        space: Space<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<(TupleIterator<'a>, Space<'a>)> {
-        space
-            .split_atom_body(urids.tuple)
-            .map(|(body, space)| (TupleIterator { space: body }, space))
+    fn read(body: Space<'a>, _: ()) -> Option<TupleIterator<'a>> {
+        Some(TupleIterator { space: body })
     }
 
-    fn write(
-        space: &'b mut dyn MutSpace<'a>,
-        _: (),
-        urids: &AtomURIDCache,
-    ) -> Option<FramedMutSpace<'a, 'b>> {
-        space.create_atom_frame(urids.tuple)
+    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<TupleWriter<'a, 'b>> {
+        Some(TupleWriter { frame })
     }
 }
 
@@ -59,6 +52,21 @@ impl<'a> Iterator for TupleIterator<'a> {
         let (atom, space) = self.space.split_atom()?;
         self.space = space;
         Some(atom)
+    }
+}
+
+pub struct TupleWriter<'a, 'b> {
+    frame: FramedMutSpace<'a, 'b>,
+}
+
+impl<'a, 'b> TupleWriter<'a, 'b> {
+    pub fn write<'c, A: Atom<'a, 'c>>(
+        &'c mut self,
+        child_urid: URID<A>,
+        child_parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
+        A::write(child_frame, child_parameter)
     }
 }
 
@@ -84,13 +92,17 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut tuple_frame = Tuple::write(&mut space, (), &urids).unwrap();
+            let frame = (&mut space as &mut dyn MutSpace)
+                .create_atom_frame(urids.tuple)
+                .unwrap();
+            let mut writer = Tuple::write(frame, ()).unwrap();
             {
-                let mut vector_writer =
-                    Vector::<Int>::write(&mut tuple_frame, urids.int, &urids).unwrap();
+                let mut vector_writer = writer
+                    .write::<Vector<Int>>(urids.vector, urids.int)
+                    .unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            Int::write(&mut tuple_frame, 42, &urids).unwrap();
+            writer.write::<Int>(urids.int, 42).unwrap();
         }
 
         // verifying
@@ -132,12 +144,17 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let items: Vec<Space> = Tuple::read(space, (), &urids).unwrap().0.collect();
+            let (body, _) = space.split_atom_body(urids.tuple).unwrap();
+            let items: Vec<Space> = Tuple::read(body, ()).unwrap().collect();
             assert_eq!(
-                Vector::<Int>::read(items[0], urids.int, &urids).unwrap().0,
+                Vector::<Int>::read(items[0].split_atom_body(urids.vector).unwrap().0, urids.int)
+                    .unwrap(),
                 [17; 9]
             );
-            assert_eq!(Int::read(items[1], (), &urids).unwrap().0, 42);
+            assert_eq!(
+                Int::read(items[1].split_atom_body(urids.int).unwrap().0, ()).unwrap(),
+                42
+            );
         }
     }
 }
