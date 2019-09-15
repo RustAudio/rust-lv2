@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 
 [build-dependencies]
-bindgen = "0.51.0"
+bindgen = { version = "0.51.0", default-features = false }
