@@ -7,6 +7,7 @@ extern crate lv2_urid as urid;
 
 pub mod chunk;
 pub mod object;
+pub mod port;
 pub mod scalar;
 pub mod sequence;
 pub mod space;

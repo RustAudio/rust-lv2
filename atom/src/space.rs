@@ -15,7 +15,7 @@ pub struct Space<'a> {
 impl<'a> Space<'a> {
     /// Create a new space from an atom pointer.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method as to assume that it is valid memory and therefore is unsafe.
+    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
         let size = atom.size as usize;
@@ -168,6 +168,17 @@ pub struct RootMutSpace<'a> {
 }
 
 impl<'a> RootMutSpace<'a> {
+    /// Create new space from an atom.
+    ///
+    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
+    pub unsafe fn from_atom(atom: &mut sys::LV2_Atom) -> Self {
+        let space = std::slice::from_raw_parts_mut(
+            atom as *mut _ as *mut u8,
+            atom.size as usize + size_of::<sys::LV2_Atom>(),
+        );
+        Self::new(space)
+    }
+
     /// Create a new instance.
     ///
     /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`). This way, you can, for example, create a mutable space from a slice of `u64`s and therefore guarantee that the space is 64-bit aligned.
@@ -367,6 +378,16 @@ mod tests {
             .unwrap();
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
+
+        let created_space = unsafe { RootMutSpace::from_atom(written_atom) }
+            .space
+            .take()
+            .unwrap();
+        assert_eq!(
+            created_space.as_ptr() as usize,
+            written_atom as *mut _ as usize
+        );
+        assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
     }
 
     #[test]
