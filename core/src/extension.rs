@@ -70,10 +70,10 @@ use std::any::Any;
 ///         type Ports = ();
 ///         type Features = ();
 ///
-///         fn new(_: &PluginInfo, _features: ()) -> Self {
-///             MyPlugin {
+///         fn new(_: &PluginInfo, _features: ()) -> Option<Self> {
+///             Some(MyPlugin {
 ///                 data: 42.0
-///             }
+///             })
 ///         }
 ///
 ///         fn run(&mut self, _: &mut ()) {}
