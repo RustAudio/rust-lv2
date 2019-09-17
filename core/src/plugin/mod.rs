@@ -27,7 +27,7 @@ pub trait Plugin: Sized + Send + Sync + 'static {
     /// Create a new plugin instance.
     ///
     /// This method only creates an instance of the plugin, it does not reset or set up it's internal state. This is done by the `activate` method.
-    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Self;
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Option<Self>;
 
     /// Run a processing step.
     ///
@@ -104,14 +104,17 @@ impl<T: Plugin> PluginInstance<T> {
             }
         };
 
-        let instance = T::new(&plugin_info, features);
-
         // Instantiate the plugin.
-        let instance = Box::new(Self {
-            instance,
-            connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
-        });
-        Box::leak(instance) as *mut Self as LV2_Handle
+        match T::new(&plugin_info, features) {
+            Some(instance) => {
+                let instance = Box::new(Self {
+                    instance,
+                    connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
+                });
+                Box::leak(instance) as *mut Self as LV2_Handle
+            }
+            None => std::ptr::null_mut(),
+        }
     }
 
     /// Clean the plugin.
