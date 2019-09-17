@@ -26,7 +26,7 @@ where
 {
     type ReadParameter = URID<BeatPerMinute>;
     type ReadHandle = SequenceIterator<'a>;
-    type WriteParameter = (TimeStampUnit, URID<BeatPerMinute>, URID<Frame>);
+    type WriteParameter = TimeStampURID;
     type WriteHandle = SequenceWriter<'a, 'b>;
 
     fn read(body: Space, bpm_urid: URID<BeatPerMinute>) -> Option<SequenceIterator> {
@@ -41,21 +41,23 @@ where
 
     fn write(
         mut frame: FramedMutSpace<'a, 'b>,
-        parameter: Self::WriteParameter,
+        unit: TimeStampURID,
     ) -> Option<SequenceWriter<'a, 'b>> {
-        let (unit, bpm_urid, frame_urid) = parameter;
         {
             let frame = &mut frame as &mut dyn MutSpace;
             let header = sys::LV2_Atom_Sequence_Body {
                 unit: match unit {
-                    TimeStampUnit::BeatsPerMinute => bpm_urid.get(),
-                    TimeStampUnit::Frames => frame_urid.get(),
+                    TimeStampURID::BeatsPerMinute(urid) => urid.get(),
+                    TimeStampURID::Frames(urid) => urid.get(),
                 },
                 pad: 0,
             };
             frame.write(&header, true)?;
         }
-        Some(SequenceWriter { frame, unit })
+        Some(SequenceWriter {
+            frame,
+            unit: unit.into(),
+        })
     }
 }
 
@@ -69,6 +71,21 @@ pub enum TimeStampUnit {
 pub enum TimeStamp {
     Frames(i64),
     BeatsPerMinute(c_double),
+}
+
+#[derive(Clone, Copy)]
+pub enum TimeStampURID {
+    Frames(URID<Frame>),
+    BeatsPerMinute(URID<BeatPerMinute>),
+}
+
+impl From<TimeStampURID> for TimeStampUnit {
+    fn from(urid: TimeStampURID) -> TimeStampUnit {
+        match urid {
+            TimeStampURID::Frames(_) => TimeStampUnit::Frames,
+            TimeStampURID::BeatsPerMinute(_) => TimeStampUnit::BeatsPerMinute,
+        }
+    }
 }
 
 impl TimeStamp {
@@ -119,12 +136,7 @@ pub struct SequenceWriter<'a, 'b> {
 }
 
 impl<'a, 'b> SequenceWriter<'a, 'b> {
-    pub fn write<'c, A: Atom<'a, 'c>>(
-        &'c mut self,
-        stamp: TimeStamp,
-        urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
+    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Option<()> {
         let raw_stamp = match stamp {
             TimeStamp::Frames(frames) => {
                 if self.unit == TimeStampUnit::Frames {
@@ -141,10 +153,26 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
                 }
             }
         };
-        let frame = &mut self.frame as &mut dyn MutSpace;
-        frame.write(&raw_stamp, true)?;
-        let child_frame = frame.create_atom_frame(urid)?;
+        (&mut self.frame as &mut dyn MutSpace)
+            .write(&raw_stamp, true)
+            .map(|_| ())
+    }
+
+    pub fn write<'c, A: Atom<'a, 'c>>(
+        &'c mut self,
+        stamp: TimeStamp,
+        urid: URID<A>,
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        self.write_time_stamp(stamp)?;
+        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(urid)?;
         A::write(child_frame, parameter)
+    }
+
+    pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
+        let data = atom.space.data()?;
+        self.write_time_stamp(stamp)?;
+        self.frame.write_raw(data, true).map(|_| ())
     }
 }
 
@@ -178,11 +206,8 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.atom.sequence)
                 .unwrap();
-            let mut writer = Sequence::write(
-                frame,
-                (TimeStampUnit::Frames, urids.units.bpm, urids.units.frame),
-            )
-            .unwrap();
+            let mut writer =
+                Sequence::write(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
 
             writer
                 .write::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)

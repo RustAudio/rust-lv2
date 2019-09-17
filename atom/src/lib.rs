@@ -15,6 +15,19 @@ pub mod string;
 pub mod tuple;
 pub mod vector;
 
+pub mod prelude {
+    pub use crate::AtomURIDCache;
+    use crate::*;
+    pub use chunk::Chunk;
+    pub use object::Object;
+    pub use port::AtomPort;
+    pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
+    pub use sequence::{Sequence, TimeStampURID};
+    pub use string::{DataLiteral, String, StringLiteral};
+    pub use tuple::Tuple;
+    pub use vector::Vector;
+}
+
 use space::*;
 use urid::{URIDBound, URIDCache, URID};
 
