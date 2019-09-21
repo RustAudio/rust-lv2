@@ -109,7 +109,7 @@ fn main() {
             .write(TimeStamp::Frames(2), urids.atom.int, 3)
             .unwrap();
     }
-    
+
     // preparing the output atom.
     let mut output_atom_space: Box<[u8]> = Box::new([0; 256]);
     {
