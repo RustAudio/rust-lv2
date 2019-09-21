@@ -16,13 +16,14 @@ pub mod tuple;
 pub mod vector;
 
 pub mod prelude {
-    pub use crate::AtomURIDCache;
     use crate::*;
+
+    pub use crate::{Atom, AtomURIDCache, UnidentifiedAtom};
     pub use chunk::Chunk;
     pub use object::Object;
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
-    pub use sequence::{Sequence, TimeStampURID};
+    pub use sequence::{Sequence, TimeStamp, TimeStampURID};
     pub use string::{DataLiteral, String, StringLiteral};
     pub use tuple::Tuple;
     pub use vector::Vector;
