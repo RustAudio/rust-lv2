@@ -4,11 +4,7 @@ extern crate lv2_units as units;
 extern crate lv2_urid as urid;
 
 use atom::prelude::*;
-use atom::space::*;
 use core::prelude::*;
-use core::UriBound;
-use std::ffi::{c_void, CStr};
-use std::mem::size_of;
 use units::UnitURIDCache;
 use urid::feature::Map;
 use urid::URIDCache;
@@ -78,6 +74,11 @@ lv2_descriptors! {
 
 #[test]
 fn main() {
+    use atom::space::*;
+    use std::ffi::{c_void, CStr};
+    use std::mem::size_of;
+    use urid::feature::Map;
+
     // Instantiating all features.
     let mapper = Box::pin(urid::mapper::HashURIDMapper::new());
     let mut map = Box::pin(urid::feature::Map::new(mapper.as_ref().get_ref()));
