@@ -1,4 +1,12 @@
 //! Smart pointers with safe atom reading and writing methods.
+//!
+//! # Safety
+//!
+//! The only unsafe things that happen in this module is when either space is created from a reference to a `sys::LV2_Atom` and when space is re-interpreted as typed data.
+//!
+//! In the first case, we have to trust that the space behind the atom header is accessible since we have no way to check whether it is or not. Therefore, we have to assume that it is sound.
+//!
+//! The second case is sound since a) the data is contained in a slice and therefore is accessible, b) generic type parameter bounds assure that the type is plain-old-data and c) 64-bit padding is assured.
 use std::cell::Cell;
 use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
@@ -15,7 +23,7 @@ pub struct Space<'a> {
 impl<'a> Space<'a> {
     /// Create a new space from an atom pointer.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
+    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
         let size = atom.size as usize;
@@ -45,6 +53,7 @@ impl<'a> Space<'a> {
         }
         let (lower_space, upper_space) = data.split_at(size);
 
+        // Apply padding.
         let padding = if size % 8 == 0 { 0 } else { 8 - size % 8 };
         let upper_space = if padding <= upper_space.len() {
             let upper_space = upper_space.split_at(padding).1;

@@ -1,3 +1,77 @@
+//! An atom containing multiple key-value pairs.
+//!
+//! This module is centered on the [`Object`](struct.Object.html) atom type. An object is the atomized form of an RDF instance: It has an (optional) id, a type and multiple properties declared as URID/Atom pairs. Both the id and the type are URIDs too.
+//!
+//! # Example
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::chunk::*;
+//! use lv2_urid::{URID, URIDCache};
+//!
+//! struct ObjectClass;
+//! unsafe impl UriBound for ObjectClass {
+//!     const URI: &'static [u8] = b"urn:object-class\0";
+//! }
+//!
+//! struct PropertyA;
+//! unsafe impl UriBound for PropertyA {
+//!     const URI: &'static [u8] = b"urn:property-a\0";
+//! }
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! #[derive(URIDCache)]
+//! struct MyURIDs {
+//!     atom: AtomURIDCache,
+//!     object_class: URID<ObjectClass>,
+//!     property_a: URID<PropertyA>,
+//! }
+//!
+//! fn run(mut ports: MyPorts, urids: &MyURIDs) {
+//!     // Create the reading handle.
+//!     // We don't need the header now.
+//!     let (_header, object_reader) = ports.input.read(urids.atom.object, ()).unwrap();
+//!
+//!     /// Iterate through all properties of the object.
+//!     for (property_header, atom) in object_reader {
+//!         // If the property is an integer...
+//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!             // Print it!
+//!             println!(
+//!                 "Property No. {} has integer value {}",
+//!                 property_header.key.get(),
+//!                 integer
+//!             );
+//!         } else {
+//!             // Print that is not an integer.
+//!             println!(
+//!                 "Property No. {} is not an integer",
+//!                 property_header.key.get()
+//!             );
+//!         }
+//!     }
+//!
+//!     // Initialize the object.
+//!     let mut object_writer = ports.output.write(
+//!         urids.atom.object,
+//!         ObjectHeader {
+//!             id: None,
+//!             otype: urids.object_class.into_general(),
+//!         }
+//!     ).unwrap();
+//!
+//!     // Write a property to the object.
+//!     object_writer.write(urids.property_a, None, urids.atom.int, 42).unwrap();
+//! }
+//! ```
+//!
+//! # Specification
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
 use crate::space::*;
 use crate::*;
 use core::UriBound;
@@ -7,7 +81,7 @@ use urid::{URIDBound, URID};
 
 /// An atom containing multiple key-value pairs.
 ///
-/// As [specified](http://lv2plug.in/ns/ext/atom/atom.html#Object), the object is the atom representation of an RDF resource, which you can think of as a URID -> atom map.
+/// [See also the module documentation.](index.html)
 pub struct Object;
 
 unsafe impl UriBound for Object {
@@ -99,14 +173,14 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
     /// Initialize a new property.
     ///
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
-    pub fn write_property<'c, A: Atom<'a, 'c>>(
+    pub fn write<'c, G: ?Sized, A: Atom<'a, 'c>>(
         &'c mut self,
-        key: URID,
+        key: URID<G>,
         context: Option<URID>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        Property::write_header(&mut self.frame, key, context)?;
+        Property::write_header(&mut self.frame, key.into_general(), context)?;
         let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
         A::write(child_frame, parameter)
     }
@@ -227,12 +301,12 @@ mod tests {
             .unwrap();
             {
                 writer
-                    .write_property::<Int>(first_key, None, urids.int, first_value)
+                    .write(first_key, None, urids.int, first_value)
                     .unwrap();
             }
             {
                 writer
-                    .write_property::<Float>(second_key, None, urids.float, second_value)
+                    .write(second_key, None, urids.float, second_value)
                     .unwrap();
             }
         }

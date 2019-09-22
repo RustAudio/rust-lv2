@@ -1,11 +1,39 @@
+//! An atom containing memory of undefined type.
+//!
+//! This contents of this atom is considered as a simple blob of data. It used, for example, by the host to transmit the size of a writable atom port. Since it is so simple, it does not need a reading or writing parameter.
+//!
+//! # Example
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::chunk::*;
+//! use lv2_urid::URID;
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! fn run(mut ports: MyPorts, urids: &AtomURIDCache) {
+//!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
+//!     let mut out_chunk: ByteWriter = ports.output.write(urids.chunk, ()).unwrap();
+//!
+//!     out_chunk.write_raw(in_chunk).unwrap();
+//! }
+//! ```
+//!
+//! # Specification
+//!
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::*;
 use crate::{Atom, AtomURIDCache};
 use core::UriBound;
 use urid::{URIDBound, URID};
 
-/// An atom containing a chunk of memory with undefined contents.
+/// An atom containing memory of undefined type.
 ///
-/// This atom is specified [here](http://lv2plug.in/ns/ext/atom/atom.html#Chunk).
+/// [See also the module documentation.](index.html)
 pub struct Chunk;
 
 unsafe impl UriBound for Chunk {
@@ -38,23 +66,30 @@ where
     }
 }
 
+/// A blob writer.
+///
+/// This struct is able to copy data into an atom. It basically wraps a `FramedMutSpace`.
 pub struct ByteWriter<'a, 'b> {
     frame: FramedMutSpace<'a, 'b>,
 }
 
 impl<'a, 'b> ByteWriter<'a, 'b> {
+    /// Create a new byte writer.
     pub fn new(frame: FramedMutSpace<'a, 'b>) -> Self {
         Self { frame }
     }
 
+    /// Allocate memory in the atom, but don't write anything to it.
     pub fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
         self.frame.allocate(size, false).map(|(_, bytes)| bytes)
     }
 
+    /// Copy data from the given slice to the atom.
     pub fn write_raw(&mut self, bytes: &[u8]) -> Option<&'a mut [u8]> {
         self.frame.write_raw(bytes, false)
     }
 
+    /// Copy a struct instance to the atom.
     pub fn write<T>(&mut self, instance: &T) -> Option<&'a mut T>
     where
         T: Unpin + Copy + Send + Sync + Sized + 'static,
