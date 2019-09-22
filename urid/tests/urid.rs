@@ -3,10 +3,9 @@
 extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
-use core::UriBound;
-use urid::feature::*;
+use core::prelude::*;
 use urid::mapper::HashURIDMapper;
-use urid::*;
+use urid::prelude::*;
 
 struct MyTypeA;
 

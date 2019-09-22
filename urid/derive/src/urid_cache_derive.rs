@@ -19,7 +19,7 @@ pub fn urid_cache_derive_impl(input: TokenStream) -> TokenStream {
 
     let implementation = quote! {
         impl ::lv2_urid::URIDCache for #struct_name {
-            fn from_map(map: &::lv2_urid::feature::Map) -> Option<Self> {
+            fn from_map(map: &::lv2_urid::Map) -> Option<Self> {
                 Some(Self {
                     #(#field_inits)*
                 })
