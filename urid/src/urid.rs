@@ -23,8 +23,8 @@ where
 /// # Usage example:
 ///
 ///     # #![cfg(feature = "host")]
-///     # use lv2_core::UriBound;
-///     # use lv2_urid::{URID, URIDCache};
+///     # use lv2_core::prelude::*;
+///     # use lv2_urid::prelude::*;
 ///     # use std::ffi::CStr;
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
@@ -47,8 +47,8 @@ where
 ///     }
 ///
 ///     # let mapper = lv2_urid::mapper::HashURIDMapper::new();
-///     # let map = lv2_urid::feature::Map::new(&mapper);
-///     # let unmap = lv2_urid::feature::Unmap::new(&mapper);
+///     # let map = lv2_urid::Map::new(&mapper);
+///     # let unmap = lv2_urid::Unmap::new(&mapper);
 ///     // Populating the cache, Using the `map` and `unmap` features provided by the host:
 ///     let cache = MyCache::from_map(&map).unwrap();
 ///
