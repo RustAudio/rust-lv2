@@ -15,7 +15,7 @@
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! fn run(mut ports: MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
 //!     let mut out_chunk: ByteWriter = ports.output.write(urids.chunk, ()).unwrap();
 //!

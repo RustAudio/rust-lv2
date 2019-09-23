@@ -164,7 +164,7 @@ fn main() {
         .split_atom_body(urids.atom.sequence)
         .unwrap();
     for (stamp, atom) in Sequence::read(sequence, urids.units.bpm).unwrap() {
-        let stamp = stamp.unwrap_frames();
+        let stamp = stamp.as_frames().unwrap();
         match stamp {
             0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),
             1 => assert_eq!(atom.read(urids.atom.long, ()).unwrap(), 17),

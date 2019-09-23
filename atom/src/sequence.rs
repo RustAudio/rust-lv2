@@ -1,3 +1,70 @@
+//! An atom containing a sequence of time-stamped events.
+//! 
+//! These events are atoms again. Atoms passed in a sequence can be handled with frame-perfect timing and therefore is the prefered way to transmit events like MIDI messages. However, MIDI messages are implemented in separate crate.
+//! 
+//! # Example
+//! 
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_urid::prelude::*;
+//! use lv2_units::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::sequence::*;
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! #[derive(URIDCache)]
+//! struct MyURIDs {
+//!     atom: AtomURIDCache,
+//!     units: UnitURIDCache,
+//! }
+//!
+//! /// Something like a plugin's run method.
+//! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
+//!     // Get the read handle to the sequence.
+//!     // The reading method needs the URID of the BPM unit to tell if the time stamp
+//!     // is measured in beats or in frames. If the atom doesn't says that it's measured
+//!     // in beats, it is assumed that it is measured in frames.
+//!     let input_sequence: SequenceIterator = ports.input.read(
+//!         urids.atom.sequence,
+//!         urids.units.bpm
+//!     ).unwrap();
+//!
+//!     // Get the write handle to the sequence.
+//!     // You have to provide the unit of the time stamps.
+//!     let mut output_sequence: SequenceWriter = ports.output.write(
+//!         urids.atom.sequence,
+//!         TimeStampURID::Frames(urids.units.frame)
+//!     ).unwrap();
+//!
+//!     // Iterate through all events in the input sequence.
+//!     //
+//!     // The specifications don't require the time stamps to be monotonic, your algorithms should
+//!     // be able to handle older events written after younger events.
+//!     //
+//!     // The sequence writer, however, assures that the written time stamps are monotonic.
+//!     for event in input_sequence {
+//!         // An event contains a timestamp and an atom.
+//!         let (timestamp, atom): (TimeStamp, UnidentifiedAtom) = event;
+//!         // If the read atom is a 32-bit integer...
+//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!             // Multiply it by two and write it to the sequence.
+//!             output_sequence.write(timestamp, urids.atom.int, integer * 2).unwrap();
+//!         } else {
+//!             // Forward the atom to the sequence without a change.
+//!             output_sequence.forward(timestamp, atom).unwrap();
+//!         }
+//!     }
+//! }
+//! ```
+//! 
+//! # Specification
+//! 
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::*;
 use crate::*;
 use core::prelude::*;
@@ -6,6 +73,9 @@ use sys::LV2_Atom_Event_Timestamp as RawTimeStamp;
 use units::prelude::*;
 use urid::prelude::*;
 
+/// An atom containing a sequence of time-stamped events.
+///
+/// [See also the module documentation.](index.html)
 pub struct Sequence;
 
 unsafe impl UriBound for Sequence {
@@ -57,22 +127,26 @@ where
         Some(SequenceWriter {
             frame,
             unit: unit.into(),
+            last_stamp: None,
         })
     }
 }
 
+/// The measuring units of time stamps.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TimeStampUnit {
     Frames,
     BeatsPerMinute,
 }
 
+/// An event time stamp.
 #[derive(Clone, Copy, Debug)]
 pub enum TimeStamp {
     Frames(i64),
     BeatsPerMinute(c_double),
 }
 
+/// The measuring units of time stamps, with their URIDs.
 #[derive(Clone, Copy)]
 pub enum TimeStampURID {
     Frames(URID<Frame>),
@@ -89,21 +163,22 @@ impl From<TimeStampURID> for TimeStampUnit {
 }
 
 impl TimeStamp {
-    pub fn unwrap_frames(self) -> i64 {
+    pub fn as_frames(self) -> Option<i64> {
         match self {
-            Self::Frames(frame) => frame,
-            _ => panic!("unwrap_frames called on {:?}", self),
+            Self::Frames(frame) => Some(frame),
+            _ => None,
         }
     }
 
-    pub fn unwrap_bpm(self) -> c_double {
+    pub fn as_bpm(self) -> Option<c_double> {
         match self {
-            Self::BeatsPerMinute(bpm) => bpm,
-            _ => panic!("unwrap_bpm called on {:?}", self),
+            Self::BeatsPerMinute(bpm) => Some(bpm),
+            _ => None,
         }
     }
 }
 
+/// An iterator over all events in a sequence.
 pub struct SequenceIterator<'a> {
     space: Space<'a>,
     unit: TimeStampUnit,
@@ -130,34 +205,50 @@ impl<'a> Iterator for SequenceIterator<'a> {
     }
 }
 
+/// The writing handle for sequences.
 pub struct SequenceWriter<'a, 'b> {
     frame: FramedMutSpace<'a, 'b>,
     unit: TimeStampUnit,
+    last_stamp: Option<TimeStamp>,
 }
 
 impl<'a, 'b> SequenceWriter<'a, 'b> {
+    /// Write out the time stamp and update `last_stamp`.
+    /// 
+    /// This method returns `Ǹone` if:
+    /// * The time stamp is not measured in our unit.
+    /// * The last time stamp is younger than the time stamp.
+    /// * Space is insufficient.
     fn write_time_stamp(&mut self, stamp: TimeStamp) -> Option<()> {
-        let raw_stamp = match stamp {
-            TimeStamp::Frames(frames) => {
-                if self.unit == TimeStampUnit::Frames {
-                    RawTimeStamp { frames }
-                } else {
-                    return None;
+        let raw_stamp = match self.unit {
+            TimeStampUnit::Frames => {
+                let frames = stamp.as_frames()?;
+                if let Some(last_stamp) = self.last_stamp {
+                    if last_stamp.as_frames().unwrap() > frames {
+                        return None;
+                    }
                 }
-            }
-            TimeStamp::BeatsPerMinute(beats) => {
-                if self.unit == TimeStampUnit::BeatsPerMinute {
-                    RawTimeStamp { beats }
-                } else {
-                    return None;
+                RawTimeStamp { frames }
+            },
+            TimeStampUnit::BeatsPerMinute => {
+                let beats = stamp.as_bpm()?;
+                if let Some(last_stamp) = self.last_stamp {
+                    if last_stamp.as_bpm().unwrap() > beats {
+                        return None;
+                    }
                 }
+                RawTimeStamp { beats }
             }
         };
+        self.last_stamp = Some(stamp);
         (&mut self.frame as &mut dyn MutSpace)
             .write(&raw_stamp, true)
             .map(|_| ())
     }
 
+    /// Write an event to the sequence.
+    /// 
+    /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn write<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         stamp: TimeStamp,
@@ -169,6 +260,11 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
         A::write(child_frame, parameter)
     }
 
+    /// Forward an unidentified atom to the sequence.
+    /// 
+    /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
+    /// 
+    /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
         let data = atom.space.data()?;
         self.write_time_stamp(stamp)?;

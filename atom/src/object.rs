@@ -31,7 +31,7 @@
 //!     property_a: URID<PropertyA>,
 //! }
 //!
-//! fn run(mut ports: MyPorts, urids: &MyURIDs) {
+//! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
 //!     // Create the reading handle.
 //!     // We don't need the header now.
 //!     let (_header, object_reader) = ports.input.read(urids.atom.object, ()).unwrap();

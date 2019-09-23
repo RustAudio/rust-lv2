@@ -13,8 +13,8 @@
 //! ```
 //! use lv2_atom::prelude::*;
 //! use lv2_core::prelude::*;
-//! use lv2_urid::{URID, URIDCache};
-//! use lv2_units::UnitURIDCache;
+//! use lv2_urid::prelude::*;
+//! use lv2_units::prelude::*;
 //!
 //! #[derive(PortContainer)]
 //! struct MyPorts {
@@ -29,7 +29,7 @@
 //! }
 //!
 //! /// Something like a plugin's run method.
-//! fn run(mut ports: MyPorts, urids: &MyURIDs) {
+//! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
 //!     // Get the read handle to the sequence.
 //!     let input_sequence = ports.input.read(
 //!         urids.atom.sequence,

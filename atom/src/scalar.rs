@@ -1,3 +1,35 @@
+//! Scalar, single-value atoms.
+//! 
+//! These atoms are the simplest of them all: They are simply represented by an internal type and their values can simply be copied. Due to this common behaviour, there is another trait called [`ScalarAtom`](trait.ScalarAtom.html) which provides this behaviour. Every type that implements `ScalarAtom` also implements `Atom`.
+//! 
+//! # Example
+//! 
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_urid::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use std::os::raw::c_float;
+//! 
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//! 
+//! /// Something like a plugin's run method.
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//!     // Scalar atoms don't need a reading parameter.
+//!     let read_value: c_float = ports.input.read(urids.float, ()).unwrap();
+//! 
+//!     // Writing is done with the value of the atom.
+//!     // You can modify it afterwards.
+//!     let written_value: &mut c_float = ports.output.write(urids.float, 17.0).unwrap();
+//! }
+//! ```
+//! 
+//! # Specification
+//! 
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
 use crate::space::*;
 use crate::*;
 use core::UriBound;
