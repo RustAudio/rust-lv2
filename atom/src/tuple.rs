@@ -1,7 +1,7 @@
 use crate::space::*;
 use crate::*;
-use core::UriBound;
-use urid::{URIDBound, URID};
+use core::prelude::*;
+use urid::prelude::*;
 
 /// An atom of variable length, containing a series of other atoms.
 ///
@@ -72,14 +72,12 @@ impl<'a, 'b> TupleWriter<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use crate::scalar::*;
-    use crate::tuple::*;
-    use crate::vector::Vector;
+    use crate::prelude::*;
+    use crate::space::*;
     use std::mem::size_of;
     use std::os::raw::*;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_tuple() {

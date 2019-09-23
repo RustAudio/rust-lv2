@@ -5,9 +5,8 @@ extern crate lv2_urid as urid;
 
 use atom::prelude::*;
 use core::prelude::*;
-use units::UnitURIDCache;
-use urid::feature::Map;
-use urid::URIDCache;
+use units::prelude::*;
+use urid::prelude::*;
 
 #[derive(PortContainer)]
 struct Ports {
@@ -77,11 +76,10 @@ fn main() {
     use atom::space::*;
     use std::ffi::{c_void, CStr};
     use std::mem::size_of;
-    use urid::feature::Map;
 
     // Instantiating all features.
     let mapper = Box::pin(urid::mapper::HashURIDMapper::new());
-    let mut map = Box::pin(urid::feature::Map::new(mapper.as_ref().get_ref()));
+    let mut map = Box::pin(Map::new(mapper.as_ref().get_ref()));
     let map_interface = Box::pin(core::sys::LV2_Feature {
         URI: Map::URI.as_ptr() as *const i8,
         data: map.as_mut().get_mut() as *mut _ as *mut c_void,

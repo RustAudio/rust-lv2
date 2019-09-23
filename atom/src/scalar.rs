@@ -135,12 +135,13 @@ make_scalar_atom!(
 #[cfg(test)]
 #[cfg(feature = "host")]
 mod tests {
-    use crate::scalar::*;
+    use crate::prelude::*;
+    use crate::scalar::ScalarAtom;
+    use crate::space::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
     where

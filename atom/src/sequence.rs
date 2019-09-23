@@ -1,10 +1,10 @@
 use crate::space::*;
 use crate::*;
-use core::UriBound;
+use core::prelude::*;
 use std::os::raw::*;
 use sys::LV2_Atom_Event_Timestamp as RawTimeStamp;
-use units::units::{BeatPerMinute, Frame};
-use urid::{URIDBound, URID};
+use units::prelude::*;
+use urid::prelude::*;
 
 pub struct Sequence;
 
@@ -178,13 +178,10 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use crate::scalar::*;
+    use crate::prelude::*;
     use crate::sequence::*;
     use std::mem::size_of;
-    use units::UnitURIDCache;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
 
     #[derive(URIDCache)]
     struct TestURIDCache {

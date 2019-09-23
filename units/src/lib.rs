@@ -1,11 +1,11 @@
 //! LV2 specification for measuring unit definitions.
 //!
 //! The original [specification](http://lv2plug.in/ns/extensions/units/units.html) contains means to describe units for LV2 values in RDF files. This implementation is focused on the stock units defined by the specification by binding them to marker types.
-pub extern crate lv2_core as core;
-pub extern crate lv2_units_sys as sys;
-pub extern crate lv2_urid as urid;
+extern crate lv2_core as core;
+extern crate lv2_units_sys as sys;
+extern crate lv2_urid as urid;
 
-use urid::*;
+use urid::prelude::*;
 
 /// All unit URI bounds.
 pub mod units {
@@ -161,4 +161,10 @@ pub struct UnitURIDCache {
     pub percent: URID<Percent>,
     pub s: URID<Second>,
     pub semitone: URID<Semitone>,
+}
+
+/// Prelude of `lv2_units` for wildcard usage.
+pub mod prelude {
+    pub use crate::units::*;
+    pub use crate::UnitURIDCache;
 }

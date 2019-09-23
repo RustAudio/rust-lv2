@@ -6,8 +6,8 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_atom::chunk::*;
-//! use lv2_urid::URID;
+//! use lv2_atom::chunk::ByteWriter;
+//! use lv2_urid::prelude::*;
 //!
 //! #[derive(PortContainer)]
 //! struct MyPorts {
@@ -104,9 +104,8 @@ mod tests {
     use crate::chunk::*;
     use crate::*;
     use std::mem::{size_of, size_of_val};
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_chunk_and_slice_writer() {

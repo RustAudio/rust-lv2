@@ -287,9 +287,8 @@ mod tests {
     use crate::space::*;
     use std::mem::{size_of, size_of_val};
     use std::os::raw::c_int;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_space() {

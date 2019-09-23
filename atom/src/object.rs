@@ -6,8 +6,7 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_atom::chunk::*;
-//! use lv2_urid::{URID, URIDCache};
+//! use lv2_urid::prelude::*;
 //!
 //! struct ObjectClass;
 //! unsafe impl UriBound for ObjectClass {
@@ -253,15 +252,13 @@ impl Property {
 #[cfg(test)]
 #[cfg(feature = "host")]
 mod tests {
-    use crate::object::*;
-    use crate::scalar::*;
-    use crate::AtomURIDCache;
-    use core::Uri;
+    use crate::prelude::*;
+    use crate::space::*;
+    use core::prelude::*;
     use std::mem::size_of;
     use std::os::raw::*;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_object() {

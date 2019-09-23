@@ -106,14 +106,13 @@ impl PortType for AtomPort {
 
 #[cfg(test)]
 mod tests {
-    use crate::chunk::*;
-    use crate::port::*;
-    use crate::scalar::*;
-    use crate::*;
+    use crate::prelude::*;
+    use crate::space::*;
+    use core::prelude::*;
     use std::mem::size_of;
-    use urid::feature::Map;
+    use std::ptr::NonNull;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_atom_port() {

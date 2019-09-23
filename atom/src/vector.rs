@@ -1,10 +1,10 @@
 use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::*;
-use core::UriBound;
+use core::prelude::*;
 use std::marker::PhantomData;
 use std::mem::size_of;
-use urid::{URIDBound, URID};
+use urid::prelude::*;
 
 /// An atom containing a slice of scalar atoms.
 ///
@@ -119,13 +119,11 @@ where
 #[cfg(test)]
 #[cfg(feature = "host")]
 mod tests {
-    use crate::scalar::Int;
+    use crate::prelude::*;
     use crate::space::*;
-    use crate::vector::*;
     use std::mem::size_of;
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     #[test]
     fn test_vector() {

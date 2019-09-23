@@ -1,8 +1,8 @@
 use crate::chunk::ByteWriter;
+use crate::prelude::*;
 use crate::space::*;
-use crate::*;
-use core::UriBound;
-use urid::{URIDBound, URID};
+use core::prelude::*;
+use urid::prelude::*;
 
 pub struct StringLiteral;
 
@@ -164,13 +164,13 @@ impl<'a, 'b> Drop for StringWriter<'a, 'b> {
 #[cfg(test)]
 #[cfg(feature = "host")]
 mod tests {
-    use crate::string::*;
-    use core::UriBound;
+    use crate::prelude::*;
+    use crate::space::*;
+    use core::prelude::*;
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
-    use urid::feature::Map;
     use urid::mapper::HashURIDMapper;
-    use urid::URIDCache;
+    use urid::prelude::*;
 
     struct German;
     unsafe impl UriBound for German {
