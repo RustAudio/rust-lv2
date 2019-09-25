@@ -1,11 +1,44 @@
+//! An atom containg a series of other atoms.
+//!
+//! This atom is just like a [sequence](../sequence/index.html), only without time stamps: It contains multiple arbitrary atoms which you can either iterate through or write in sequence.
+//!
+//! # Example
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_urid::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::tuple::{TupleIterator, TupleWriter};
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//!     let input: TupleIterator = ports.input.read(urids.tuple, ()).unwrap();
+//!     let mut output: TupleWriter = ports.output.write(urids.tuple, ()).unwrap();
+//!     for atom in input {
+//!         if let Some(integer) = atom.read(urids.int, ()) {
+//!             output.write(urids.int, integer * 2).unwrap();
+//!         } else {
+//!             output.write(urids.int, -1).unwrap();
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! # Specification
+//!
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
 use crate::space::*;
 use crate::*;
 use core::prelude::*;
 use urid::prelude::*;
 
-/// An atom of variable length, containing a series of other atoms.
+/// An atom  containing a series of other atoms.
 ///
-/// The body of this atom is simply a series of complete atoms, as [specified](http://lv2plug.in/ns/ext/atom/atom.html#Tuple).
+/// [See also the module documentation.](index.html)
 pub struct Tuple;
 
 unsafe impl UriBound for Tuple {
@@ -46,20 +79,22 @@ pub struct TupleIterator<'a> {
 }
 
 impl<'a> Iterator for TupleIterator<'a> {
-    type Item = Space<'a>;
+    type Item = UnidentifiedAtom<'a>;
 
-    fn next(&mut self) -> Option<Space<'a>> {
+    fn next(&mut self) -> Option<UnidentifiedAtom<'a>> {
         let (atom, space) = self.space.split_atom()?;
         self.space = space;
-        Some(atom)
+        Some(UnidentifiedAtom::new(atom))
     }
 }
 
+/// The writing handle to add atoms to a tuple.
 pub struct TupleWriter<'a, 'b> {
     frame: FramedMutSpace<'a, 'b>,
 }
 
 impl<'a, 'b> TupleWriter<'a, 'b> {
+    /// Write an atom to the tuple.
     pub fn write<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         child_urid: URID<A>,
@@ -143,16 +178,9 @@ mod tests {
         {
             let space = Space::from_slice(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.tuple).unwrap();
-            let items: Vec<Space> = Tuple::read(body, ()).unwrap().collect();
-            assert_eq!(
-                Vector::<Int>::read(items[0].split_atom_body(urids.vector).unwrap().0, urids.int)
-                    .unwrap(),
-                [17; 9]
-            );
-            assert_eq!(
-                Int::read(items[1].split_atom_body(urids.int).unwrap().0, ()).unwrap(),
-                42
-            );
+            let items: Vec<UnidentifiedAtom> = Tuple::read(body, ()).unwrap().collect();
+            assert_eq!(items[0].read(urids.vector, urids.int).unwrap(), [17; 9]);
+            assert_eq!(items[1].read(urids.int, ()).unwrap(), 42);
         }
     }
 }

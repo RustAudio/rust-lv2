@@ -1,9 +1,9 @@
 //! An atom containing a sequence of time-stamped events.
-//! 
+//!
 //! These events are atoms again. Atoms passed in a sequence can be handled with frame-perfect timing and therefore is the prefered way to transmit events like MIDI messages. However, MIDI messages are implemented in separate crate.
-//! 
+//!
 //! # Example
-//! 
+//!
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_urid::prelude::*;
@@ -61,9 +61,9 @@
 //!     }
 //! }
 //! ```
-//! 
+//!
 //! # Specification
-//! 
+//!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::*;
 use crate::*;
@@ -214,7 +214,7 @@ pub struct SequenceWriter<'a, 'b> {
 
 impl<'a, 'b> SequenceWriter<'a, 'b> {
     /// Write out the time stamp and update `last_stamp`.
-    /// 
+    ///
     /// This method returns `Ǹone` if:
     /// * The time stamp is not measured in our unit.
     /// * The last time stamp is younger than the time stamp.
@@ -229,7 +229,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
                     }
                 }
                 RawTimeStamp { frames }
-            },
+            }
             TimeStampUnit::BeatsPerMinute => {
                 let beats = stamp.as_bpm()?;
                 if let Some(last_stamp) = self.last_stamp {
@@ -247,7 +247,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
     }
 
     /// Write an event to the sequence.
-    /// 
+    ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn write<'c, A: Atom<'a, 'c>>(
         &'c mut self,
@@ -261,9 +261,9 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
     }
 
     /// Forward an unidentified atom to the sequence.
-    /// 
+    ///
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
-    /// 
+    ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
         let data = atom.space.data()?;

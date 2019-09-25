@@ -1,3 +1,35 @@
+//! An atom containg an array of scalar atom bodies.
+//!
+//! This atom is able to handle arrays (aka slices) of the internal types of scalar atoms.
+//!
+//! Reading a vector requires the URID fo the scalar that's been used and the reading process fails if the vector does not contain the requested scalar atom. The return value of the reading process is a slice of the internal type.
+//!
+//! Writing a vector is done with a writer that appends slices to the atom.
+//!
+//! # Example
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_urid::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::vector::VectorWriter;
+//! use std::os::raw::c_int;
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//!     let input: &[c_int] = ports.input.read(urids.vector, urids.int).unwrap();
+//!     let mut output: VectorWriter<Int> = ports.output.write(urids.vector, urids.int).unwrap();
+//!     output.append(input).unwrap();
+//! }
+//! ```
+//!
+//! # Specification
+//!
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Vector](http://lv2plug.in/ns/ext/atom/atom.html#Vector)
 use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::*;
@@ -6,9 +38,9 @@ use std::marker::PhantomData;
 use std::mem::size_of;
 use urid::prelude::*;
 
-/// An atom containing a slice of scalar atoms.
+/// An atom containg an array of scalar atom bodies.
 ///
-/// This atom is specified [here](http://lv2plug.in/ns/ext/atom/atom.html#Vector).
+/// [See also the module documentation.](index.html)
 pub struct Vector<C: ScalarAtom> {
     child: PhantomData<C>,
 }
@@ -28,11 +60,12 @@ impl<C: ScalarAtom> URIDBound for Vector<C> {
 impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C>
 where
     'a: 'b,
+    C: 'b,
 {
     type ReadParameter = URID<C>;
     type ReadHandle = &'a [C::InternalType];
     type WriteParameter = URID<C>;
-    type WriteHandle = VectorWriter<'a, 'b, C::InternalType>;
+    type WriteHandle = VectorWriter<'a, 'b, C>;
 
     fn read(body: Space<'a>, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Vector_Body>()?;
@@ -57,7 +90,7 @@ where
     fn write(
         mut frame: FramedMutSpace<'a, 'b>,
         child_urid: URID<C>,
-    ) -> Option<VectorWriter<'a, 'b, C::InternalType>> {
+    ) -> Option<VectorWriter<'a, 'b, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -74,36 +107,30 @@ where
 /// Handle to append elements to a vector.
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
-pub struct VectorWriter<'a, 'b, T>
-where
-    T: Unpin + Copy + Send + Sync + Sized + 'static,
-{
+pub struct VectorWriter<'a, 'b, A: ScalarAtom> {
     frame: FramedMutSpace<'a, 'b>,
-    type_: PhantomData<T>,
+    type_: PhantomData<A>,
 }
 
-impl<'a, 'b, T> VectorWriter<'a, 'b, T>
-where
-    T: Unpin + Copy + Send + Sync + Sized + 'static,
-{
+impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
     /// Push a single value to the vector.
-    pub fn push(&mut self, child: T) -> Option<&mut T> {
+    pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
         (&mut self.frame as &mut dyn MutSpace).write(&child, false)
     }
 
     /// Append a slice of undefined memory to the vector.
     ///
     /// Using this method, you don't need to have the elements in memory before you can write them.
-    pub fn allocate(&mut self, size: usize) -> Option<&mut [T]> {
+    pub fn allocate(&mut self, size: usize) -> Option<&mut [A::InternalType]> {
         self.frame
-            .allocate(size_of::<T>() * size, false)
+            .allocate(size_of::<A::InternalType>() * size, false)
             .map(|(_, data)| unsafe {
-                std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut T, size)
+                std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut A::InternalType, size)
             })
     }
 
     /// Append multiple elements to the vector.
-    pub fn append(&mut self, data: &[T]) -> Option<&mut [T]> {
+    pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
         let raw_data = unsafe {
             std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data))
         };
@@ -111,7 +138,10 @@ where
             .allocate(raw_data.len(), false)
             .map(|(_, space)| unsafe {
                 space.copy_from_slice(raw_data);
-                std::slice::from_raw_parts_mut(space.as_mut_ptr() as *mut T, data.len())
+                std::slice::from_raw_parts_mut(
+                    space.as_mut_ptr() as *mut A::InternalType,
+                    data.len(),
+                )
             })
     }
 }

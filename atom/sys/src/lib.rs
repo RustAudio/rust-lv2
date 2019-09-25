@@ -1,3 +1,5 @@
+//! Binding of the C API for the [Atom specification of LV2](http://lv2plug.in/ns/ext/atom/atom.html).
+//!
 //! Since this crate uses `bindgen` to create the C API bindings, you need to have clang installed on your machine.
 #[allow(non_upper_case_globals)]
 #[allow(non_camel_case_types)]

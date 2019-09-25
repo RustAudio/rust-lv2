@@ -1,51 +1,98 @@
-use crate::chunk::ByteWriter;
+//! String handling atoms.
+//!
+//! This module contains two different atoms: The [`String`](struct.String.html) and the [`Literal`](struct.Literal.html). The former is for simple, non-localized UTF-8 strings, like URIs or paths, and the later is either for localized text, e.g. descriptions in the user interface, or RDF literals.
+//!
+//! Reading and writing these atoms is pretty simple: They don't require a parameter and return a either a `&str` or the literal info and a `&str`. Writing is done with a writing handle which can append strings to the string/literal. When dropped, the handle will append the null character, you therefore don't have to handle it on your own.
+//!
+//! # Example
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_atom::string::StringWriter;
+//! use lv2_urid::prelude::*;
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//!     let input: &str = ports.input.read(urids.string, ()).unwrap();
+//!     let mut writer: StringWriter = ports.output.write(urids.string, ()).unwrap();
+//!     writer.append(input).unwrap();
+//! }
+//! ```
+//!
+//! # Specifications
+//!
+//! [http://lv2plug.in/ns/ext/atom/atom.html#String](http://lv2plug.in/ns/ext/atom/atom.html#String)
+//! [http://lv2plug.in/ns/ext/atom/atom.html#Literal](http://lv2plug.in/ns/ext/atom/atom.html#Literal)
 use crate::prelude::*;
 use crate::space::*;
 use core::prelude::*;
 use urid::prelude::*;
 
-pub struct StringLiteral;
+/// An atom containing either a localized string or an RDF literal.
+///
+/// [See also the module documentation.](index.html)
+pub struct Literal;
 
-unsafe impl UriBound for StringLiteral {
+unsafe impl UriBound for Literal {
     const URI: &'static [u8] = sys::LV2_ATOM__Literal;
 }
 
-impl URIDBound for StringLiteral {
+impl URIDBound for Literal {
     type CacheType = AtomURIDCache;
 
     fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.string_literal
+        urids.literal
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for StringLiteral
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// The type or language URID of a literal.
+pub enum LiteralInfo {
+    Language(URID),
+    Datatype(URID),
+}
+
+impl<'a, 'b> Atom<'a, 'b> for Literal
 where
     'a: 'b,
 {
     type ReadParameter = ();
-    type ReadHandle = (URID, &'a str);
-    type WriteParameter = URID;
+    type ReadHandle = (LiteralInfo, &'a str);
+    type WriteParameter = LiteralInfo;
     type WriteHandle = StringWriter<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a str)> {
+    fn read(body: Space<'a>, _: ()) -> Option<(LiteralInfo, &'a str)> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
-        if header.lang != 0 && header.datatype == 0 {
-            let data = body.data()?;
-            let lang = URID::new(header.lang)?;
-            std::str::from_utf8(&data[0..data.len() - 1])
-                .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
-                .ok()
-                .map(|string| (lang, string))
+        let info = if header.lang != 0 && header.datatype == 0 {
+            LiteralInfo::Language(URID::new(header.lang)?)
+        } else if header.lang == 0 && header.datatype != 0 {
+            LiteralInfo::Datatype(URID::new(header.datatype)?)
         } else {
-            None
-        }
+            return None;
+        };
+        let data = body.data()?;
+        std::str::from_utf8(&data[0..data.len() - 1])
+            .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
+            .ok()
+            .map(|string| (info, string))
     }
 
-    fn write(mut frame: FramedMutSpace<'a, 'b>, lang: URID) -> Option<StringWriter<'a, 'b>> {
+    fn write(mut frame: FramedMutSpace<'a, 'b>, info: LiteralInfo) -> Option<StringWriter<'a, 'b>> {
         (&mut frame as &mut dyn MutSpace).write(
-            &sys::LV2_Atom_Literal_Body {
-                lang: lang.get(),
-                datatype: 0,
+            &match info {
+                LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
+                    lang: lang.get(),
+                    datatype: 0,
+                },
+                LiteralInfo::Datatype(datatype) => sys::LV2_Atom_Literal_Body {
+                    lang: 0,
+                    datatype: datatype.get(),
+                },
             },
             true,
         )?;
@@ -53,55 +100,9 @@ where
     }
 }
 
-pub struct DataLiteral;
-
-unsafe impl UriBound for DataLiteral {
-    const URI: &'static [u8] = sys::LV2_ATOM__Literal;
-}
-
-impl URIDBound for DataLiteral {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.data_literal
-    }
-}
-
-impl<'a, 'b> Atom<'a, 'b> for DataLiteral
-where
-    'a: 'b,
-{
-    type ReadParameter = ();
-    type ReadHandle = (URID, &'a [u8]);
-    type WriteParameter = URID;
-    type WriteHandle = ByteWriter<'a, 'b>;
-
-    fn read(body: Space<'a>, _: ()) -> Option<(URID, &'a [u8])> {
-        let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
-        if header.lang == 0 && header.datatype != 0 {
-            let data = body.data()?;
-            let urid = unsafe { URID::new_unchecked(header.datatype) };
-            Some((urid, data))
-        } else {
-            None
-        }
-    }
-
-    fn write(mut frame: FramedMutSpace<'a, 'b>, datatype: URID) -> Option<ByteWriter<'a, 'b>> {
-        (&mut frame as &mut dyn MutSpace).write(
-            &sys::LV2_Atom_Literal_Body {
-                lang: 0,
-                datatype: datatype.get(),
-            },
-            true,
-        )?;
-        Some(ByteWriter::new(frame))
-    }
-}
-
 /// An atom containing a UTF-8 encoded string.
 ///
-/// This string type is for technical, free-form strings, for example URIs. If you want to transfer localizable display text, you should use the [`Literal`](struct.Literal.html) type, as described in the [specification](http://lv2plug.in/ns/ext/atom/atom.html#String).
+/// [See also the module documentation.](index.html)
 pub struct String;
 
 unsafe impl UriBound for String {
@@ -187,7 +188,7 @@ mod tests {
     const SAMPLE1: &str = "Und bin so klug als wie zuvor;";
 
     #[test]
-    fn test_string_literal() {
+    fn test_literal() {
         let mapper = HashURIDMapper::new();
         let map = Map::new(&mapper);
         let urids = TestURIDs::from_map(&map).unwrap();
@@ -198,9 +199,10 @@ mod tests {
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
             let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.atom.string_literal)
+                .create_atom_frame(urids.atom.literal)
                 .unwrap();
-            let mut writer = StringLiteral::write(frame, urids.german.into_general()).unwrap();
+            let mut writer =
+                Literal::write(frame, LiteralInfo::Language(urids.german.into_general())).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -210,7 +212,7 @@ mod tests {
             let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom_Literal>());
 
             let literal = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom_Literal) };
-            assert_eq!(literal.atom.type_, urids.atom.string_literal.get());
+            assert_eq!(literal.atom.type_, urids.atom.literal.get());
             assert_eq!(
                 literal.atom.size as usize,
                 size_of::<sys::LV2_Atom_Literal_Body>()
@@ -232,57 +234,11 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.atom.string_literal).unwrap();
-            let (lang, text) = StringLiteral::read(body, ()).unwrap();
+            let (body, _) = space.split_atom_body(urids.atom.literal).unwrap();
+            let (info, text) = Literal::read(body, ()).unwrap();
 
-            assert_eq!(lang, urids.german);
+            assert_eq!(info, LiteralInfo::Language(urids.german.into_general()));
             assert_eq!(text, SAMPLE0.to_owned() + SAMPLE1);
-        }
-    }
-
-    #[test]
-    fn test_data_literal() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
-        let urids = TestURIDs::from_map(&map).unwrap();
-
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
-
-        // writing
-        {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.atom.data_literal)
-                .unwrap();
-            let mut writer = DataLiteral::write(frame, urids.atom.int.into_general()).unwrap();
-            writer.write::<i32>(&42).unwrap();
-        }
-
-        // verifying
-        {
-            let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom_Literal>());
-
-            let literal = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom_Literal) };
-            assert_eq!(literal.atom.type_, urids.atom.string_literal.get());
-            assert_eq!(
-                literal.atom.size as usize,
-                size_of::<sys::LV2_Atom_Literal_Body>() + size_of::<i32>()
-            );
-            assert_eq!(literal.body.lang, 0);
-            assert_eq!(literal.body.datatype, urids.atom.int);
-
-            let int = unsafe { *(space.as_ptr() as *const i32) };
-            assert_eq!(int, 42);
-        }
-
-        // reading
-        {
-            let space = Space::from_slice(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.atom.data_literal).unwrap();
-            let (datatype, value) = DataLiteral::read(body, ()).unwrap();
-
-            assert_eq!(datatype, urids.atom.int);
-            assert_eq!(unsafe { *(value.as_ptr() as *const i32) }, 42);
         }
     }
 

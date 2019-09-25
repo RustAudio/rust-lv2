@@ -91,7 +91,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use string::{DataLiteral, String, StringLiteral};
+    pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
 }
@@ -110,8 +110,7 @@ pub struct AtomURIDCache {
     pub bool: URID<scalar::Bool>,
     pub vector: URID<vector::Vector<scalar::Int>>,
     pub chunk: URID<chunk::Chunk>,
-    pub string_literal: URID<string::StringLiteral>,
-    pub data_literal: URID<string::DataLiteral>,
+    pub literal: URID<string::Literal>,
     pub object: URID<object::Object>,
     pub property: URID<object::Property>,
     pub string: URID<string::String>,

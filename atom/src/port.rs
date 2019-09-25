@@ -1,21 +1,21 @@
 //! Integration for plugin ports.
-//! 
+//!
 //! This module contains a `PortType` for plugin ports that supports atom IO. This will most common
 //! way to use atoms and is also used in most examples.
-//! 
+//!
 //! # Example
-//! 
+//!
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
-//! 
+//!
 //! #[derive(PortContainer)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,
 //! }
-//! 
+//!
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     // Read an integer from the port and print it.
@@ -99,7 +99,7 @@ impl<'a> PortWriter<'a> {
 /// The port type for Atom IO.
 ///
 /// Port types should not include `Port`, but in this case it is needed since it would collide with the `Atom` trait. Therefore, this port type is named `AtomPort`.
-/// 
+///
 /// [See also the module documentation.](index.html)
 pub struct AtomPort;
 
