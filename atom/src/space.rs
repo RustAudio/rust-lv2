@@ -286,7 +286,6 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 mod tests {
     use crate::space::*;
     use std::mem::{size_of, size_of_val};
-    use std::os::raw::c_int;
     use urid::mapper::HashURIDMapper;
     use urid::prelude::*;
 
@@ -320,7 +319,7 @@ mod tests {
         unsafe {
             *(data.as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
                 atom: sys::LV2_Atom {
-                    size: size_of::<c_int>() as u32,
+                    size: size_of::<i32>() as u32,
                     type_: urid.get(),
                 },
                 body: 42,
@@ -332,8 +331,8 @@ mod tests {
         let (body, _) = atom.split_atom_body(urid).unwrap();
         let body = body.data().unwrap();
 
-        assert_eq!(size_of::<c_int>(), size_of_val(body));
-        assert_eq!(42, unsafe { *(body.as_ptr() as *const c_int) });
+        assert_eq!(size_of::<i32>(), size_of_val(body));
+        assert_eq!(42, unsafe { *(body.as_ptr() as *const i32) });
     }
 
     #[test]

@@ -8,7 +8,6 @@
 //! use lv2_core::prelude::*;
 //! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use std::os::raw::c_float;
 //!
 //! #[derive(PortContainer)]
 //! struct MyPorts {
@@ -19,11 +18,11 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     // Scalar atoms don't need a reading parameter.
-//!     let read_value: c_float = ports.input.read(urids.float, ()).unwrap();
+//!     let read_value: f32 = ports.input.read(urids.float, ()).unwrap();
 //!
 //!     // Writing is done with the value of the atom.
 //!     // You can modify it afterwards.
-//!     let written_value: &mut c_float = ports.output.write(urids.float, 17.0).unwrap();
+//!     let written_value: &mut f32 = ports.output.write(urids.float, 17.0).unwrap();
 //! }
 //! ```
 //!
@@ -34,7 +33,6 @@ use crate::space::*;
 use crate::*;
 use core::UriBound;
 use std::marker::Unpin;
-use std::os::raw::*;
 use urid::{URIDBound, URID};
 
 /// An atom that only contains a single, scalar value.
@@ -43,7 +41,7 @@ use urid::{URIDBound, URID};
 pub trait ScalarAtom: URIDBound {
     /// The internal representation of the atom.
     ///
-    /// For example, the `Int` atom has the internal type of `c_int`, which is `i32` on most platforms.
+    /// For example, the `Int` atom has the internal type of `i32`, which is `i32` on most platforms.
     type InternalType: Unpin + Copy + Send + Sync + Sized + 'static;
 
     /// Try to read the atom from a space.
@@ -108,49 +106,43 @@ macro_rules! make_scalar_atom {
     };
 }
 
-/// A scalar atom containing a `c_double` (`f64` on most platforms).
+/// A scalar atom containing a `f64` (`f64` on most platforms).
 pub struct Double;
 
 make_scalar_atom!(
     Double,
-    c_double,
+    f64,
     sys::LV2_ATOM__Double,
     |urids: &AtomURIDCache| urids.double
 );
 
-/// A scalar atom containing a `c_float` (`f32` on most platforms).
+/// A scalar atom containing a `f32` (`f32` on most platforms).
 pub struct Float;
 
-make_scalar_atom!(
-    Float,
-    c_float,
-    sys::LV2_ATOM__Float,
-    |urids: &AtomURIDCache| urids.float
-);
+make_scalar_atom!(Float, f32, sys::LV2_ATOM__Float, |urids: &AtomURIDCache| {
+    urids.float
+});
 
-/// A scalar atom containing a `c_long` (`i64` on most platforms).
+/// A scalar atom containing a `i64` (`i64` on most platforms).
 pub struct Long;
 
-make_scalar_atom!(
-    Long,
-    c_long,
-    sys::LV2_ATOM__Long,
-    |urids: &AtomURIDCache| urids.long
-);
+make_scalar_atom!(Long, i64, sys::LV2_ATOM__Long, |urids: &AtomURIDCache| {
+    urids.long
+});
 
-/// A scalar atom containing a `c_int` (`i32` on most platforms).
+/// A scalar atom containing a `i32` (`i32` on most platforms).
 pub struct Int;
 
-make_scalar_atom!(Int, c_int, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
+make_scalar_atom!(Int, i32, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
     urids.int
 });
 
 /// A scalar atom representing a boolean.
 ///
-/// Internally, this atom is represented by a `c_int`, which is `==0` for `false` and `>= 1` for `true`
+/// Internally, this atom is represented by a `i32`, which is `==0` for `false` and `>= 1` for `true`
 pub struct Bool;
 
-make_scalar_atom!(Bool, c_int, sys::LV2_ATOM__Bool, |urids: &AtomURIDCache| {
+make_scalar_atom!(Bool, i32, sys::LV2_ATOM__Bool, |urids: &AtomURIDCache| {
     urids.bool
 });
 

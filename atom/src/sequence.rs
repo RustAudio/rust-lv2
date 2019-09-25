@@ -68,7 +68,6 @@
 use crate::space::*;
 use crate::*;
 use core::prelude::*;
-use std::os::raw::*;
 use sys::LV2_Atom_Event_Timestamp as RawTimeStamp;
 use units::prelude::*;
 use urid::prelude::*;
@@ -143,7 +142,7 @@ pub enum TimeStampUnit {
 #[derive(Clone, Copy, Debug)]
 pub enum TimeStamp {
     Frames(i64),
-    BeatsPerMinute(c_double),
+    BeatsPerMinute(f64),
 }
 
 /// The measuring units of time stamps, with their URIDs.
@@ -170,7 +169,7 @@ impl TimeStamp {
         }
     }
 
-    pub fn as_bpm(self) -> Option<c_double> {
+    pub fn as_bpm(self) -> Option<f64> {
         match self {
             Self::BeatsPerMinute(bpm) => Some(bpm),
             _ => None,
@@ -333,7 +332,7 @@ mod tests {
             let (int, space) = space.split_at(size_of::<sys::LV2_Atom_Int>());
             let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Int) };
             assert_eq!(int.atom.type_, urids.atom.int);
-            assert_eq!(int.atom.size as usize, size_of::<c_int>());
+            assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);
             let (_, space) = space.split_at(4);
 
@@ -344,7 +343,7 @@ mod tests {
             let (int, _) = space.split_at(size_of::<sys::LV2_Atom_Long>());
             let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Long) };
             assert_eq!(int.atom.type_, urids.atom.long);
-            assert_eq!(int.atom.size as usize, size_of::<c_long>());
+            assert_eq!(int.atom.size as usize, size_of::<i64>());
             assert_eq!(int.body, 17);
         }
 

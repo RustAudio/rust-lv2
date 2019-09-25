@@ -256,7 +256,6 @@ mod tests {
     use crate::space::*;
     use core::prelude::*;
     use std::mem::size_of;
-    use std::os::raw::*;
     use urid::mapper::HashURIDMapper;
     use urid::prelude::*;
 
@@ -273,12 +272,12 @@ mod tests {
         let first_key = map
             .map_uri(Uri::from_bytes_with_nul(b"urn:value-a\0").unwrap())
             .unwrap();
-        let first_value: c_int = 17;
+        let first_value: i32 = 17;
 
         let second_key = map
             .map_uri(Uri::from_bytes_with_nul(b"urn:value-b\0").unwrap())
             .unwrap();
-        let second_value: c_float = 42.0;
+        let second_value: f32 = 42.0;
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 
@@ -318,9 +317,9 @@ mod tests {
                 atom.size as usize,
                 size_of::<sys::LV2_Atom_Object_Body>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
-                    + 2 * size_of::<c_int>()
+                    + 2 * size_of::<i32>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
-                    + size_of::<c_float>()
+                    + size_of::<f32>()
             );
 
             // Object.
@@ -335,12 +334,12 @@ mod tests {
             assert_eq!(property.key, first_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.int);
-            assert_eq!(property.value.size as usize, size_of::<c_int>());
+            assert_eq!(property.value.size as usize, size_of::<i32>());
 
-            let (value, space) = space.split_at(size_of::<c_int>());
-            let value = unsafe { *(value.as_ptr() as *const c_int) };
+            let (value, space) = space.split_at(size_of::<i32>());
+            let value = unsafe { *(value.as_ptr() as *const i32) };
             assert_eq!(value, first_value);
-            let (_, space) = space.split_at(size_of::<c_int>());
+            let (_, space) = space.split_at(size_of::<i32>());
 
             // Second property.
             let (property, space) = space.split_at(size_of::<sys::LV2_Atom_Property_Body>());
@@ -348,10 +347,10 @@ mod tests {
             assert_eq!(property.key, second_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.float);
-            assert_eq!(property.value.size as usize, size_of::<c_float>());
+            assert_eq!(property.value.size as usize, size_of::<f32>());
 
-            let (value, _) = space.split_at(size_of::<c_float>());
-            let value = unsafe { *(value.as_ptr() as *const c_float) };
+            let (value, _) = space.split_at(size_of::<f32>());
+            let value = unsafe { *(value.as_ptr() as *const f32) };
             assert_eq!(value, second_value);
         }
 

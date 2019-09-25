@@ -110,7 +110,6 @@ mod tests {
     use crate::prelude::*;
     use crate::space::*;
     use std::mem::size_of;
-    use std::os::raw::*;
     use urid::mapper::HashURIDMapper;
     use urid::prelude::*;
 
@@ -146,7 +145,7 @@ mod tests {
             assert_eq!(
                 atom.size as usize,
                 size_of::<sys::LV2_Atom_Vector>()
-                    + size_of::<c_int>() * 9
+                    + size_of::<i32>() * 9
                     + 4
                     + size_of::<sys::LV2_Atom_Int>()
             );
@@ -156,21 +155,21 @@ mod tests {
             assert_eq!(vector.atom.type_, urids.vector);
             assert_eq!(
                 vector.atom.size as usize,
-                size_of::<sys::LV2_Atom_Vector_Body>() + size_of::<c_int>() * 9
+                size_of::<sys::LV2_Atom_Vector_Body>() + size_of::<i32>() * 9
             );
-            assert_eq!(vector.body.child_size as usize, size_of::<c_int>());
+            assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int);
 
-            let (vector_items, space) = space.split_at(size_of::<c_int>() * 9);
+            let (vector_items, space) = space.split_at(size_of::<i32>() * 9);
             let vector_items =
-                unsafe { std::slice::from_raw_parts(vector_items.as_ptr() as *const c_int, 9) };
+                unsafe { std::slice::from_raw_parts(vector_items.as_ptr() as *const i32, 9) };
             assert_eq!(vector_items, &[17; 9]);
             let (_, space) = space.split_at(4);
 
             let (int, _) = space.split_at(size_of::<sys::LV2_Atom_Int>());
             let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Int) };
             assert_eq!(int.atom.type_, urids.int);
-            assert_eq!(int.atom.size as usize, size_of::<c_int>());
+            assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);
         }
 

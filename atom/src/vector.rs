@@ -12,7 +12,6 @@
 //! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::vector::VectorWriter;
-//! use std::os::raw::c_int;
 //!
 //! #[derive(PortContainer)]
 //! struct MyPorts {
@@ -21,7 +20,7 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
-//!     let input: &[c_int] = ports.input.read(urids.vector, urids.int).unwrap();
+//!     let input: &[i32] = ports.input.read(urids.vector, urids.int).unwrap();
 //!     let mut output: VectorWriter<Int> = ports.output.write(urids.vector, urids.int).unwrap();
 //!     output.append(input).unwrap();
 //! }
