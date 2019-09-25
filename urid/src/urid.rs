@@ -23,8 +23,8 @@ where
 /// # Usage example:
 ///
 ///     # #![cfg(feature = "host")]
-///     # use lv2_core::UriBound;
-///     # use lv2_urid::{URID, URIDCache, mapper::{HashURIDMapper, URIDMapper}};
+///     # use lv2_core::prelude::*;
+///     # use lv2_urid::prelude::*;
 ///     # use std::ffi::CStr;
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
@@ -101,9 +101,7 @@ impl<T: ?Sized> URID<T> {
     pub fn get(self) -> u32 {
         self.0.get()
     }
-}
 
-impl<T: UriBound + ?Sized> URID<T> {
     /// Transform the type-specific URID into a generalized one.
     pub fn into_general(self) -> URID<()> {
         unsafe { URID::new_unchecked(self.get()) }

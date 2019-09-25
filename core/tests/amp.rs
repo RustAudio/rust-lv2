@@ -26,7 +26,7 @@ impl Plugin for Amp {
     type Features = Features;
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: Features) -> Self {
+    fn new(plugin_info: &PluginInfo, features: Features) -> Option<Self> {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -41,7 +41,7 @@ impl Plugin for Amp {
         // Finding and verifying all features.
         assert!(features.is_live.is_none());
 
-        Amp { activated: false }
+        Some(Amp { activated: false })
     }
 
     fn activate(&mut self) {

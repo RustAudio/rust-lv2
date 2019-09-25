@@ -37,8 +37,8 @@ impl<'a> Map<'a> {
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
-    ///     # use lv2_core::{Uri, UriBound};
-    ///     # use lv2_urid::{URID, mapper::{HashURIDMapper, URIDMapper}};
+    ///     # use lv2_core::prelude::*;
+    ///     # use lv2_urid::prelude::*;
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
@@ -66,8 +66,8 @@ impl<'a> Map<'a> {
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
-    ///     # use lv2_core::UriBound;
-    ///     # use lv2_urid::{URID, mapper::{HashURIDMapper, URIDMapper}};
+    ///     # use lv2_core::prelude::*;
+    ///     # use lv2_urid::prelude::*;
     ///     # use std::ffi::CStr;
     ///     struct MyUriBound;
     ///
@@ -130,8 +130,8 @@ impl<'a> Unmap<'a> {
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
-    ///     # use lv2_core::{Uri, UriBound};
-    ///     # use lv2_urid::{URID, mapper::*};
+    ///     # use lv2_core::prelude::*;
+    ///     # use lv2_urid::prelude::*;
     ///     struct MyUriBound;
     ///
     ///     unsafe impl UriBound for MyUriBound {
