@@ -320,7 +320,7 @@ mod tests {
                 size_of::<sys::LV2_Atom_Sequence_Body>()
                     + size_of::<sys::LV2_Atom_Event_Timestamp>()
                     + size_of::<sys::LV2_Atom_Int>()
-                    + 4
+                    + (8 - (size_of::<sys::LV2_Atom_Int>() % 8))
                     + size_of::<sys::LV2_Atom_Event_Timestamp>()
                     + size_of::<sys::LV2_Atom_Long>()
             );
