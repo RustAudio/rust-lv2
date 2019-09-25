@@ -4,7 +4,7 @@ extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
 use core::prelude::*;
-use urid::mapper::HashURIDMapper;
+use urid::mapper::{HashURIDMapper, URIDMapper};
 use urid::prelude::*;
 
 struct MyTypeA;

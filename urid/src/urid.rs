@@ -25,6 +25,7 @@ where
 ///     # #![cfg(feature = "host")]
 ///     # use lv2_core::prelude::*;
 ///     # use lv2_urid::prelude::*;
+///     # use lv2_urid::mapper::*;
 ///     # use std::ffi::CStr;
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
@@ -49,8 +50,8 @@ where
 ///     # let mut mapper = Box::pin(HashURIDMapper::new());
 ///     # let host_map = mapper.as_mut().make_map_interface();
 ///     # let host_unmap = mapper.as_mut().make_unmap_interface();
-///     # let map = lv2_urid::feature::Map::new(&host_map);
-///     # let unmap = lv2_urid::feature::Unmap::new(&host_unmap);
+///     # let map = Map::new(&host_map);
+///     # let unmap = Unmap::new(&host_unmap);
 ///     // Populating the cache, Using the `map` and `unmap` features provided by the host:
 ///     let cache = MyCache::from_map(&map).unwrap();
 ///
