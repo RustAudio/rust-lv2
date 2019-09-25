@@ -143,11 +143,12 @@ mod tests {
             let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
             let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
             assert_eq!(atom.type_, urids.tuple);
-            let vector_size = size_of::<sys::LV2_Atom_Vector>() + size_of::<c_int>() * 9;
-            let padding = 8 - (vector_size % 8);
             assert_eq!(
                 atom.size as usize,
-                vector_size + padding + size_of::<sys::LV2_Atom_Int>()
+                size_of::<sys::LV2_Atom_Vector>()
+                    + size_of::<c_int>() * 9
+                    + 4
+                    + size_of::<sys::LV2_Atom_Int>()
             );
 
             let (vector, space) = space.split_at(size_of::<sys::LV2_Atom_Vector>());

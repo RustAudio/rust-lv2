@@ -318,8 +318,7 @@ mod tests {
                 atom.size as usize,
                 size_of::<sys::LV2_Atom_Object_Body>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
-                    + size_of::<c_int>()
-                    + (8 - (size_of::<c_int>() % 8))
+                    + 2 * size_of::<c_int>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
                     + size_of::<c_float>()
             );
