@@ -6,7 +6,7 @@ pub use lv2_core_derive::*;
 
 use crate::feature::*;
 use crate::port::*;
-use crate::Uri;
+use crate::{Uri, UriBound};
 use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
@@ -17,7 +17,7 @@ use sys::LV2_Handle;
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
 ///
 /// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods.
-pub trait Plugin: Sized + Send + Sync + 'static {
+pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// The type of the port container.
     type Ports: PortContainer;
 
@@ -164,6 +164,5 @@ impl<T: Plugin> PluginInstance<T> {
 
 #[doc(hidden)]
 pub unsafe trait PluginInstanceDescriptor: Plugin {
-    const URI: &'static [u8];
     const DESCRIPTOR: sys::LV2_Descriptor;
 }

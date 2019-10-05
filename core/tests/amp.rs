@@ -8,6 +8,10 @@ struct Amp {
     activated: bool,
 }
 
+unsafe impl UriBound for Amp {
+    const URI: &'static [u8] = b"http://lv2plug.in/plugins.rs/example_amp\0";
+}
+
 #[derive(PortContainer)]
 struct AmpPorts {
     gain: InputPort<Control>,
@@ -77,7 +81,7 @@ impl Drop for Amp {
 }
 
 lv2_descriptors! {
-    Amp: "http://lv2plug.in/plugins.rs/example_amp"
+    Amp
 }
 
 #[test]

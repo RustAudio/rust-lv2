@@ -29,6 +29,10 @@ struct AtomPlugin {
     urids: URIDs,
 }
 
+unsafe impl UriBound for AtomPlugin {
+    const URI: &'static [u8] = b"urn:rust-lv2:atom-plugin\0";
+}
+
 impl Plugin for AtomPlugin {
     type Ports = Ports;
     type Features = Features<'static>;
@@ -67,9 +71,7 @@ impl Plugin for AtomPlugin {
     }
 }
 
-lv2_descriptors! {
-    AtomPlugin: "urn:rust-lv2:atom-plugin"
-}
+lv2_descriptors![AtomPlugin];
 
 #[test]
 fn main() {

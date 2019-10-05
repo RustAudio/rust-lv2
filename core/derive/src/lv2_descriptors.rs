@@ -1,22 +1,19 @@
 use proc_macro::TokenStream;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, LitStr, Result, Token, Type};
+use syn::{parse_macro_input, Result, Token, Type};
 
 /// An instance descriptor that should be exported.
 ///
-/// The instance descriptor is defined by the plugin type and the URI of the instance.
+/// The instance descriptor is defined by the plugin type.
 struct Lv2InstanceDescriptor {
     plugin_type: Type,
-    uri: LitStr,
 }
 
 impl Parse for Lv2InstanceDescriptor {
     fn parse(input: ParseStream) -> Result<Self> {
         let plugin_type = input.parse()?;
-        input.parse::<Token![:]>()?;
-        let uri = input.parse()?;
-        Ok(Lv2InstanceDescriptor { plugin_type, uri })
+        Ok(Lv2InstanceDescriptor { plugin_type })
     }
 }
 
@@ -28,15 +25,10 @@ impl Lv2InstanceDescriptor {
     /// basic functions; Like `instantiate` or `run`.
     pub fn make_instance_descriptor_impl(&self) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
-        let uri = &self.uri;
         quote! {
             unsafe impl ::lv2_core::plugin::PluginInstanceDescriptor for #plugin_type {
-                const URI: &'static [u8] = unsafe {
-                    union Slices<'a> { str: &'a str, slice: &'a [u8] }
-                    Slices { str: concat!(#uri, "\0") }.slice
-                };
                 const DESCRIPTOR: ::lv2_core::sys::LV2_Descriptor = ::lv2_core::sys::LV2_Descriptor {
-                    URI: (&Self::URI[0]) as *const u8 as *const ::std::os::raw::c_char,
+                    URI: Self::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
                     instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instantiate),
                     connect_port: Some(::lv2_core::plugin::PluginInstance::<Self>::connect_port),
                     activate: Some(::lv2_core::plugin::PluginInstance::<Self>::activate),
