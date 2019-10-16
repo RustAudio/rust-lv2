@@ -1,6 +1,8 @@
 //! Scalar, single-value atoms.
 //!
 //! These atoms are the simplest of them all: They are simply represented by an internal type and their values can simply be copied. Due to this common behaviour, there is another trait called [`ScalarAtom`](trait.ScalarAtom.html) which provides this behaviour. Every type that implements `ScalarAtom` also implements `Atom`.
+//! 
+//! Unlike other atoms, scalars do not need to be written after the initialization. However, you still can modify the scalar after it was initialized.
 //!
 //! # Example
 //!
@@ -22,7 +24,7 @@
 //!
 //!     // Writing is done with the value of the atom.
 //!     // You can modify it afterwards.
-//!     let written_value: &mut f32 = ports.output.write(urids.float, 17.0).unwrap();
+//!     let written_value: &mut f32 = ports.output.init(urids.float, 17.0).unwrap();
 //! }
 //! ```
 //!
@@ -76,7 +78,7 @@ where
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn write(
+    fn init(
         frame: FramedMutSpace<'a, 'b>,
         value: A::InternalType,
     ) -> Option<&'a mut A::InternalType> {
@@ -184,7 +186,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(A::urid(&urids))
                 .unwrap();
-            A::write(frame, value).unwrap();
+            A::init(frame, value).unwrap();
         }
 
         // verifying

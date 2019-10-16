@@ -17,12 +17,12 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     let input: TupleIterator = ports.input.read(urids.tuple, ()).unwrap();
-//!     let mut output: TupleWriter = ports.output.write(urids.tuple, ()).unwrap();
+//!     let mut output: TupleWriter = ports.output.init(urids.tuple, ()).unwrap();
 //!     for atom in input {
 //!         if let Some(integer) = atom.read(urids.int, ()) {
-//!             output.write(urids.int, integer * 2).unwrap();
+//!             output.init(urids.int, integer * 2).unwrap();
 //!         } else {
-//!             output.write(urids.int, -1).unwrap();
+//!             output.init(urids.int, -1).unwrap();
 //!         }
 //!     }
 //! }
@@ -66,7 +66,7 @@ where
         Some(TupleIterator { space: body })
     }
 
-    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<TupleWriter<'a, 'b>> {
+    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<TupleWriter<'a, 'b>> {
         Some(TupleWriter { frame })
     }
 }
@@ -90,18 +90,18 @@ impl<'a> Iterator for TupleIterator<'a> {
 
 /// The writing handle to add atoms to a tuple.
 pub struct TupleWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+    frame: FramedMutSpace<'a, 'bwrite>,
 }
 
 impl<'a, 'b> TupleWriter<'a, 'b> {
-    /// Write an atom to the tuple.
-    pub fn write<'c, A: Atom<'a, 'c>>(
+    /// Initialize a new tuple element.
+    pub fn init<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
-        A::write(child_frame, child_parameter)
+        A::init(child_frame, child_parameter)
     }
 }
 
@@ -127,14 +127,14 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.tuple)
                 .unwrap();
-            let mut writer = Tuple::write(frame, ()).unwrap();
+            let mut writer = Tuple::init(frame, ()).unwrap();
             {
                 let mut vector_writer = writer
-                    .write::<Vector<Int>>(urids.vector, urids.int)
+                    .init::<Vector<Int>>(urids.vector, urids.int)
                     .unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            writer.write::<Int>(urids.int, 42).unwrap();
+            writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // verifying

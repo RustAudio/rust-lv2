@@ -36,7 +36,7 @@
 //!
 //!     // Get the write handle to the sequence.
 //!     // You have to provide the unit of the time stamps.
-//!     let mut output_sequence: SequenceWriter = ports.output.write(
+//!     let mut output_sequence: SequenceWriter = ports.output.init(
 //!         urids.atom.sequence,
 //!         TimeStampURID::Frames(urids.units.frame)
 //!     ).unwrap();
@@ -53,7 +53,7 @@
 //!         // If the read atom is a 32-bit integer...
 //!         if let Some(integer) = atom.read(urids.atom.int, ()) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.write(timestamp, urids.atom.int, integer * 2).unwrap();
+//!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -108,7 +108,7 @@ where
         Some(SequenceIterator { space: body, unit })
     }
 
-    fn write(
+    fn init(
         mut frame: FramedMutSpace<'a, 'b>,
         unit: TimeStampURID,
     ) -> Option<SequenceWriter<'a, 'b>> {
@@ -245,10 +245,10 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
             .map(|_| ())
     }
 
-    /// Write an event to the sequence.
+    /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn write<'c, A: Atom<'a, 'c>>(
+    pub fn init<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         stamp: TimeStamp,
         urid: URID<A>,
@@ -256,7 +256,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
         let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(urid)?;
-        A::write(child_frame, parameter)
+        A::init(child_frame, parameter)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -299,13 +299,13 @@ mod tests {
                 .create_atom_frame(urids.atom.sequence)
                 .unwrap();
             let mut writer =
-                Sequence::write(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
+                Sequence::init(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
 
             writer
-                .write::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
+                .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
                 .unwrap();
             writer
-                .write::<Long>(TimeStamp::Frames(1), urids.atom.long, 17)
+                .init::<Long>(TimeStamp::Frames(1), urids.atom.long, 17)
                 .unwrap();
         }
 

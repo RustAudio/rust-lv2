@@ -21,7 +21,7 @@
 //!     // Read an integer from the port and print it.
 //!     println!("My input is: {}", ports.input.read(urids.int, ()).unwrap());
 //!     // Write the integer `42` to the port.
-//!     ports.output.write(urids.int, 42).unwrap();
+//!     ports.output.init(urids.int, 42).unwrap();
 //! }
 //! ```
 use crate::space::*;
@@ -81,7 +81,7 @@ impl<'a> PortWriter<'a> {
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
     /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn write<'b, A: crate::Atom<'a, 'b>>(
+    pub fn init<'b, A: crate::Atom<'a, 'b>>(
         &'b mut self,
         urid: URID<A>,
         parameter: A::WriteParameter,
@@ -89,7 +89,7 @@ impl<'a> PortWriter<'a> {
         if !self.has_been_written {
             self.has_been_written = true;
             let frame = (&mut self.space as &mut dyn MutSpace).create_atom_frame(urid)?;
-            A::write(frame, parameter)
+            A::init(frame, parameter)
         } else {
             None
         }
@@ -142,7 +142,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.chunk)
                 .unwrap();
-            let mut writer = Chunk::write(frame, ()).unwrap();
+            let mut writer = Chunk::init(frame, ()).unwrap();
             writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 
@@ -150,7 +150,7 @@ mod tests {
         {
             let mut writer =
                 unsafe { AtomPort::output_from_raw(NonNull::from(raw_space.as_mut()).cast(), 0) };
-            writer.write::<Int>(urids.int, 42).unwrap();
+            writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // Reading

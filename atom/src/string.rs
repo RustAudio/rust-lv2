@@ -19,7 +19,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     let input: &str = ports.input.read(urids.string, ()).unwrap();
-//!     let mut writer: StringWriter = ports.output.write(urids.string, ()).unwrap();
+//!     let mut writer: StringWriter = ports.output.init(urids.string, ()).unwrap();
 //!     writer.append(input).unwrap();
 //! }
 //! ```
@@ -82,7 +82,7 @@ where
             .map(|string| (info, string))
     }
 
-    fn write(mut frame: FramedMutSpace<'a, 'b>, info: LiteralInfo) -> Option<StringWriter<'a, 'b>> {
+    fn init(mut frame: FramedMutSpace<'a, 'b>, info: LiteralInfo) -> Option<StringWriter<'a, 'b>> {
         (&mut frame as &mut dyn MutSpace).write(
             &match info {
                 LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
@@ -132,7 +132,7 @@ where
             .map(|string| &string[..string.len() - 1]) // removing the null-terminator
     }
 
-    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
+    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
         Some(StringWriter { frame })
     }
 }
@@ -202,7 +202,7 @@ mod tests {
                 .create_atom_frame(urids.atom.literal)
                 .unwrap();
             let mut writer =
-                Literal::write(frame, LiteralInfo::Language(urids.german.into_general())).unwrap();
+                Literal::init(frame, LiteralInfo::Language(urids.german.into_general())).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -256,7 +256,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.string)
                 .unwrap();
-            let mut writer = String::write(frame, ()).unwrap();
+            let mut writer = String::init(frame, ()).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

@@ -37,7 +37,7 @@
 //!     ).unwrap();
 //!
 //!     // Get the write handle to the sequence.
-//!     let mut output_sequence = ports.output.write(
+//!     let mut output_sequence = ports.output.init(
 //!         urids.atom.sequence,
 //!         TimeStampURID::Frames(urids.units.frame)
 //!     ).unwrap();
@@ -49,7 +49,7 @@
 //!         // If the read atom is a 32-bit integer...
 //!         if let Some(integer) = atom.read(urids.atom.int, ()) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.write(timestamp, urids.atom.int, integer * 2).unwrap();
+//!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -154,12 +154,15 @@ where
     /// If the atom is malformed, you may not panic and return `None` instead.
     fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
 
-    /// Write the body of the atom.
+    /// Initialize the body of the atom.
     ///
-    /// The frame was already initialized for your atom, containing your URID.
+    /// In this method, the atom is prepared for the writing handle. Usually, the atom will not be
+    /// valid when initializied; Users have to use the write handle to make it valid.
+    /// 
+    /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn write(
+    fn init(
         frame: FramedMutSpace<'a, 'b>,
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle>;

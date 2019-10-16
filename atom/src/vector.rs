@@ -21,7 +21,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     let input: &[i32] = ports.input.read(urids.vector, urids.int).unwrap();
-//!     let mut output: VectorWriter<Int> = ports.output.write(urids.vector, urids.int).unwrap();
+//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector, urids.int).unwrap();
 //!     output.append(input).unwrap();
 //! }
 //! ```
@@ -86,7 +86,7 @@ where
         Some(children)
     }
 
-    fn write(
+    fn init(
         mut frame: FramedMutSpace<'a, 'b>,
         child_urid: URID<C>,
     ) -> Option<VectorWriter<'a, 'b, C>> {
@@ -170,7 +170,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.vector)
                 .unwrap();
-            let mut writer = Vector::<Int>::write(frame, urids.int).unwrap();
+            let mut writer = Vector::<Int>::init(frame, urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }

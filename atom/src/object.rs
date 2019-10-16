@@ -56,7 +56,7 @@
 //!     }
 //!
 //!     // Initialize the object.
-//!     let mut object_writer = ports.output.write(
+//!     let mut object_writer = ports.output.init(
 //!         urids.atom.object,
 //!         ObjectHeader {
 //!             id: None,
@@ -126,7 +126,7 @@ where
         Some((header, reader))
     }
 
-    fn write(
+    fn init(
         mut frame: FramedMutSpace<'a, 'b>,
         header: ObjectHeader,
     ) -> Option<ObjectWriter<'a, 'b>> {
@@ -181,7 +181,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), context)?;
         let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
-        A::write(child_frame, parameter)
+        A::init(child_frame, parameter)
     }
 }
 
@@ -287,7 +287,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.object)
                 .unwrap();
-            let mut writer = Object::write(
+            let mut writer = Object::init(
                 frame,
                 ObjectHeader {
                     id: None,

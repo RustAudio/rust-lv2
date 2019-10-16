@@ -17,7 +17,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
-//!     let mut out_chunk: ByteWriter = ports.output.write(urids.chunk, ()).unwrap();
+//!     let mut out_chunk: ByteWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
 //!     out_chunk.write_raw(in_chunk).unwrap();
 //! }
@@ -61,7 +61,7 @@ where
         space.data()
     }
 
-    fn write(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<ByteWriter<'a, 'b>> {
+    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<ByteWriter<'a, 'b>> {
         Some(ByteWriter::new(frame))
     }
 }
@@ -123,7 +123,7 @@ mod tests {
             let frame = (&mut space as &mut dyn MutSpace)
                 .create_atom_frame(urids.chunk)
                 .unwrap();
-            let mut writer = Chunk::write(frame, ()).unwrap();
+            let mut writer = Chunk::init(frame, ()).unwrap();
 
             for (i, value) in writer
                 .allocate(SLICE_LENGTH - 1)

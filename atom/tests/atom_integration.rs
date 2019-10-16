@@ -50,7 +50,7 @@ impl Plugin for AtomPlugin {
             .unwrap();
         let mut sequence_writer = ports
             .output
-            .write::<Sequence>(
+            .init::<Sequence>(
                 self.urids.atom.sequence,
                 TimeStampURID::Frames(self.urids.units.frame),
             )
@@ -60,7 +60,7 @@ impl Plugin for AtomPlugin {
             match atom.read(self.urids.atom.int, ()) {
                 Some(number) => {
                     sequence_writer
-                        .write::<Int>(time_stamp, self.urids.atom.int, number * 2)
+                        .init::<Int>(time_stamp, self.urids.atom.int, number * 2)
                         .unwrap();
                 }
                 None => {
@@ -99,15 +99,15 @@ fn main() {
         let frame = (&mut space as &mut dyn MutSpace)
             .create_atom_frame(urids.atom.sequence)
             .unwrap();
-        let mut writer = Sequence::write(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
+        let mut writer = Sequence::init(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
         writer
-            .write(TimeStamp::Frames(0), urids.atom.int, 42)
+            .init(TimeStamp::Frames(0), urids.atom.int, 42)
             .unwrap();
         writer
-            .write(TimeStamp::Frames(1), urids.atom.long, 17)
+            .init(TimeStamp::Frames(1), urids.atom.long, 17)
             .unwrap();
         writer
-            .write(TimeStamp::Frames(2), urids.atom.int, 3)
+            .init(TimeStamp::Frames(2), urids.atom.int, 3)
             .unwrap();
     }
 
@@ -118,7 +118,7 @@ fn main() {
         let frame = (&mut space as &mut dyn MutSpace)
             .create_atom_frame(urids.atom.chunk)
             .unwrap();
-        Chunk::write(frame, ())
+        Chunk::init(frame, ())
             .unwrap()
             .allocate(256 - size_of::<atom::sys::LV2_Atom>())
             .unwrap();
