@@ -1,8 +1,9 @@
+use crate::lib_name;
 use proc_macro::TokenStream;
 use syn::export::Span;
-use syn::DeriveInput;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
+use syn::{DeriveInput, Path};
 
 /// A field in the struct we implement `PortContainer` for.
 struct PortContainerField<'a> {
@@ -20,12 +21,12 @@ impl<'a> PortContainerField<'a> {
     }
 
     /// Create the field initialization line for the implementing struct.
-    fn make_connection_from_raw(&self) -> impl ::quote::ToTokens {
+    fn make_connection_from_raw(&self, crate_name: &Path) -> impl ::quote::ToTokens {
         let identifier = self.identifier;
         let port_type = self.port_type;
         quote! {
             #identifier: {
-                let connection = <#port_type as ::lv2_core::port::PortHandle>::from_raw(connections.#identifier, sample_count);
+                let connection = <#port_type as #crate_name::port::PortHandle>::from_raw(connections.#identifier, sample_count);
                 if let Some(connection) = connection {
                     connection
                 } else {
@@ -96,13 +97,14 @@ impl<'a> PortContainerStruct<'a> {
 
     /// Implement `PortContainer` for the struct.
     fn make_derived_contents(&self) -> TokenStream {
+        let crate_name = lib_name();
         let struct_name = self.struct_name;
         let internal_mod_name = self.internal_mod_name();
 
         let connections_from_raw = self
             .fields
             .iter()
-            .map(PortContainerField::make_connection_from_raw);
+            .map(|p| p.make_connection_from_raw(&crate_name));
         let raw_field_declarations = self
             .fields
             .iter()
@@ -118,11 +120,11 @@ impl<'a> PortContainerStruct<'a> {
             .map(|(i, f)| f.make_connect_matcher(i as u32));
 
         (quote! {
-            impl PortContainer for #struct_name {
+            impl #crate_name::port::PortContainer for #struct_name {
                 type Cache = #internal_mod_name::DerivedPortPointerCache;
 
                 #[inline]
-                unsafe fn from_connections(connections: &<Self as PortContainer>::Cache, sample_count: u32) -> Option<Self> {
+                unsafe fn from_connections(connections: &<Self as #crate_name::port::PortContainer>::Cache, sample_count: u32) -> Option<Self> {
                     Some(
                         Self {
                             #(#connections_from_raw)*
@@ -147,7 +149,7 @@ impl<'a> PortContainerStruct<'a> {
                     }
                 }
 
-                impl ::lv2_core::port::PortPointerCache for DerivedPortPointerCache {
+                impl #crate_name::port::PortPointerCache for DerivedPortPointerCache {
                     fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
                         match index {
                             #(#connect_matchers)*

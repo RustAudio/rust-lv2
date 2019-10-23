@@ -52,8 +52,8 @@ impl std::fmt::Display for MissingFeatureError {
 ///
 /// An example using the few built-in features:
 ///
-///     use lv2_core::plugin::*;
-///     use lv2_core::feature::*;
+///     use lv2_core::plugin::FeatureCollection;
+///     use lv2_core::feature::{IsLive, HardRTCapable};
 ///
 ///     #[derive(FeatureCollection)]
 ///     struct MyCollection<'a> {
@@ -74,6 +74,7 @@ impl<'a> FeatureCollection<'a> for () {
 
 #[cfg(test)]
 mod tests {
+    use crate as lv2_core;
     use crate::feature::FeatureContainer;
     use crate::{feature::*, plugin::*, UriBound};
     use std::ffi::c_void;

@@ -1,9 +1,11 @@
+use crate::lib_name;
 use proc_macro::TokenStream;
 use syn::DeriveInput;
 use syn::{parse_macro_input, Data, DataStruct};
 
 pub fn urid_cache_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
+    let crate_name = lib_name();
 
     let struct_name = input.ident;
 
@@ -18,8 +20,8 @@ pub fn urid_cache_derive_impl(input: TokenStream) -> TokenStream {
         .map(|ident| quote! {#ident: map.populate_cache()?,});
 
     let implementation = quote! {
-        impl ::lv2_urid::URIDCache for #struct_name {
-            fn from_map(map: &::lv2_urid::Map) -> Option<Self> {
+        impl #crate_name::URIDCache for #struct_name {
+            fn from_map(map: &#crate_name::Map) -> Option<Self> {
                 Some(Self {
                     #(#field_inits)*
                 })

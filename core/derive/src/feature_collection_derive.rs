@@ -3,6 +3,8 @@ use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident};
 use syn::{DeriveInput, Generics};
 
+use crate::lib_name;
+
 struct FeatureCollectionField<'a> {
     identifier: &'a Ident,
 }
@@ -47,11 +49,12 @@ impl<'a> FeatureCollectionStruct<'a> {
         let generics = self.generics;
         let first_generic = self.generics.lifetimes().next().map(|l| &l.lifetime);
         let retrievals = self.fields.iter().map(|field| field.make_retrieval());
+        let crate_name = lib_name();
         (quote! {
-            impl#generics FeatureCollection<#first_generic> for #struct_name#generics {
+            impl#generics #crate_name::feature::FeatureCollection<#first_generic> for #struct_name#generics {
                 fn from_container(
-                    container: &mut FeatureContainer<#first_generic>
-                ) -> Result<Self, MissingFeatureError> {
+                    container: &mut #crate_name::feature::FeatureContainer<#first_generic>
+                ) -> Result<Self, #crate_name::feature::MissingFeatureError> {
                     Ok(Self {
                         #(#retrievals)*
                     })

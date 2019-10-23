@@ -12,6 +12,24 @@ mod port_container_derive;
 
 use proc_macro::TokenStream;
 
+use syn::export::Span;
+use syn::{Ident, Path};
+
+pub(crate) fn lib_name() -> Path {
+    match proc_macro_crate::crate_name("lv2") {
+        Err(_) => match proc_macro_crate::crate_name("lv2_core") {
+            Err(_) => Ident::new("lv2_core", Span::call_site()).into(),
+            Ok(name) => {
+                let mut p: Path = Ident::new(&name, Span::call_site()).into();
+                p.segments
+                    .push(Ident::new("core", Span::call_site()).into());
+                p
+            }
+        },
+        Ok(name) => Ident::new(&name, Span::call_site()).into(),
+    }
+}
+
 /// Generate external symbols for LV2 plugins.
 #[proc_macro]
 pub fn lv2_descriptors(input: TokenStream) -> TokenStream {

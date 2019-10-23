@@ -25,7 +25,6 @@ where
 ///     # #![cfg(feature = "host")]
 ///     # use lv2_core::prelude::*;
 ///     # use lv2_urid::prelude::*;
-///     # use std::ffi::CStr;
 ///     // Defining all URI bounds.
 ///     struct MyTypeA;
 ///     

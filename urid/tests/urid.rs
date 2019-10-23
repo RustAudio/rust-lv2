@@ -1,11 +1,8 @@
 #![cfg(feature = "host")]
 
-extern crate lv2_core as core;
-extern crate lv2_urid as urid;
-
-use core::prelude::*;
-use urid::mapper::HashURIDMapper;
-use urid::prelude::*;
+use lv2_core::UriBound;
+use lv2_urid::mapper::HashURIDMapper;
+use lv2_urid::*;
 
 struct MyTypeA;
 
