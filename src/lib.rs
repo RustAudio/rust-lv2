@@ -38,6 +38,7 @@
 
 #![deny(missing_docs)]
 
+pub extern crate lv2_atom as atom;
 pub extern crate lv2_core as core;
 pub extern crate lv2_units as units;
 pub extern crate lv2_urid as urid;
