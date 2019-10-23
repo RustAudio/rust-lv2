@@ -7,5 +7,5 @@ authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adr
 proc-macro = true
 
 [dependencies]
-syn = "0.15.22"
-quote = "0.6.10"
+syn = "1.0.5"
+quote = "1.0.2"
