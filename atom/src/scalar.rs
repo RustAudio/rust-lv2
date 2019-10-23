@@ -1,7 +1,7 @@
 //! Scalar, single-value atoms.
 //!
 //! These atoms are the simplest of them all: They are simply represented by an internal type and their values can simply be copied. Due to this common behaviour, there is another trait called [`ScalarAtom`](trait.ScalarAtom.html) which provides this behaviour. Every type that implements `ScalarAtom` also implements `Atom`.
-//! 
+//!
 //! Unlike other atoms, scalars do not need to be written after the initialization. However, you still can modify the scalar after it was initialized.
 //!
 //! # Example

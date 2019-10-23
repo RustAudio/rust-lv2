@@ -31,7 +31,7 @@
 //!     // in beats, it is assumed that it is measured in frames.
 //!     let input_sequence: SequenceIterator = ports.input.read(
 //!         urids.atom.sequence,
-//!         urids.units.bpm
+//!         urids.units.beat
 //!     ).unwrap();
 //!
 //!     // Get the write handle to the sequence.
@@ -93,12 +93,12 @@ impl<'a, 'b> Atom<'a, 'b> for Sequence
 where
     'a: 'b,
 {
-    type ReadParameter = URID<BeatPerMinute>;
+    type ReadParameter = URID<Beat>;
     type ReadHandle = SequenceIterator<'a>;
     type WriteParameter = TimeStampURID;
     type WriteHandle = SequenceWriter<'a, 'b>;
 
-    fn read(body: Space, bpm_urid: URID<BeatPerMinute>) -> Option<SequenceIterator> {
+    fn read(body: Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
         let (header, body) = body.split_type::<sys::LV2_Atom_Sequence_Body>()?;
         let unit = if header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
@@ -149,7 +149,7 @@ pub enum TimeStamp {
 #[derive(Clone, Copy)]
 pub enum TimeStampURID {
     Frames(URID<Frame>),
-    BeatsPerMinute(URID<BeatPerMinute>),
+    BeatsPerMinute(URID<Beat>),
 }
 
 impl From<TimeStampURID> for TimeStampUnit {
@@ -351,7 +351,7 @@ mod tests {
         {
             let space = Space::from_slice(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.atom.sequence).unwrap();
-            let mut reader = Sequence::read(body, urids.units.bpm).unwrap();
+            let mut reader = Sequence::read(body, urids.units.beat).unwrap();
 
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 

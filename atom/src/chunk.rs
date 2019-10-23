@@ -103,7 +103,7 @@ impl<'a, 'b> ByteWriter<'a, 'b> {
 mod tests {
     use crate::chunk::*;
     use crate::*;
-    use std::mem::{size_of, size_of_val};
+    use std::mem::size_of;
     use urid::mapper::HashURIDMapper;
     use urid::prelude::*;
 
@@ -138,12 +138,7 @@ mod tests {
 
         // verifying
         {
-            let raw_space = unsafe {
-                std::slice::from_raw_parts(
-                    raw_space.as_ptr() as *const u8,
-                    size_of_val(raw_space.as_ref()),
-                )
-            };
+            let raw_space = raw_space.as_ref();
             let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>());
 
             let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };

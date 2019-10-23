@@ -33,7 +33,7 @@
 //!     // Get the read handle to the sequence.
 //!     let input_sequence = ports.input.read(
 //!         urids.atom.sequence,
-//!         urids.units.bpm
+//!         urids.units.beat
 //!     ).unwrap();
 //!
 //!     // Get the write handle to the sequence.
@@ -158,7 +158,7 @@ where
     ///
     /// In this method, the atom is prepared for the writing handle. Usually, the atom will not be
     /// valid when initializied; Users have to use the write handle to make it valid.
-    /// 
+    ///
     /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.

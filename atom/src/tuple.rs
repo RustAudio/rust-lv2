@@ -90,7 +90,7 @@ impl<'a> Iterator for TupleIterator<'a> {
 
 /// The writing handle to add atoms to a tuple.
 pub struct TupleWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'bwrite>,
+    frame: FramedMutSpace<'a, 'b>,
 }
 
 impl<'a, 'b> TupleWriter<'a, 'b> {
@@ -129,9 +129,8 @@ mod tests {
                 .unwrap();
             let mut writer = Tuple::init(frame, ()).unwrap();
             {
-                let mut vector_writer = writer
-                    .init::<Vector<Int>>(urids.vector, urids.int)
-                    .unwrap();
+                let mut vector_writer =
+                    writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
             writer.init::<Int>(urids.int, 42).unwrap();

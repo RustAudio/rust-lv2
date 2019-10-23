@@ -46,7 +46,7 @@ impl Plugin for AtomPlugin {
     fn run(&mut self, ports: &mut Ports) {
         let sequence_reader = ports
             .input
-            .read::<Sequence>(self.urids.atom.sequence, self.urids.units.bpm)
+            .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)
             .unwrap();
         let mut sequence_writer = ports
             .output
@@ -165,7 +165,7 @@ fn main() {
     let (sequence, _) = Space::from_slice(output_atom_space.as_ref())
         .split_atom_body(urids.atom.sequence)
         .unwrap();
-    for (stamp, atom) in Sequence::read(sequence, urids.units.bpm).unwrap() {
+    for (stamp, atom) in Sequence::read(sequence, urids.units.beat).unwrap() {
         let stamp = stamp.as_frames().unwrap();
         match stamp {
             0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),
