@@ -31,3 +31,4 @@ members = [
 [features]
 default = []
 host = ["lv2-core/host", "lv2-units/host", "lv2-urid/host", "lv2-atom/host"]
+wmidi = ["lv2-midi/wmidi"]
