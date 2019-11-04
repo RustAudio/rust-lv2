@@ -1,8 +1,9 @@
 [package]
 name = "lv2-midi-sys"
 version = "0.1.0"
-authors = ["Janonard <jan.opdenhoevel@protonmail.com>"]
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
