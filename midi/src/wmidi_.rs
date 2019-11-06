@@ -7,7 +7,7 @@ use urid::prelude::*;
 /// Container with the URIDs of all `UriBound`s in this crate.
 #[derive(URIDCache)]
 pub struct MidiURIDCache {
-    event: URID<MidiEvent>,
+    pub event: URID<MidiEvent>,
 }
 
 /// Midi event.
