@@ -5,7 +5,7 @@ use core::prelude::*;
 use urid::prelude::*;
 
 /// Midi Event.
-/// 
+///
 /// This low-level implementation is basically the same as a chunk atom: It reads a slice of bytes and writes with a `ByteWriter`.
 pub struct MidiEvent;
 
