@@ -38,7 +38,6 @@ impl<'a> Space<'a> {
     ///
     /// Since everything regarding atoms is 64-bit-aligned, this method panics if the data slice is not 64-bit-aligned.
     pub fn from_slice(data: &'a [u8]) -> Self {
-        assert_eq!(data.as_ptr() as usize % 8, 0);
         Space { data: Some(data) }
     }
 
