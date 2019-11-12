@@ -93,14 +93,14 @@ impl Lv2InstanceDescriptorList {
 
         quote! {
             /// Return a raw pointer to the plugin descriptor with the given index.
-            /// 
+            ///
             /// This function is used by the host to discover plugins in the library. The host calls it with an ascending index and stores every returned descriptor,
             /// until a null pointer is returned.
-            /// 
-            /// # Safety 
-            /// 
+            ///
+            /// # Safety
+            ///
             /// This function is primarily unsafe because it's a method that's directly called by the host. It doesn't actually do anything that unsafe.
-            /// 
+            ///
             /// The returned pointer references a constant and there is valid as long as the library is loaded.
             #[no_mangle]
             pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2_core::sys::LV2_Descriptor {
