@@ -189,11 +189,8 @@ impl<'a> RootMutSpace<'a> {
 
     /// Create a new instance.
     ///
-    /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`). This way, you can, for example, create a mutable space from a slice of `u64`s and therefore guarantee that the space is 64-bit aligned.
+    /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`).
     pub fn new(space: &'a mut [u8]) -> Self {
-        if space.as_ptr() as usize % 8 != 0 {
-            panic!("Trying to create an unaligned atom space");
-        }
         RootMutSpace {
             space: Cell::new(Some(space)),
         }
