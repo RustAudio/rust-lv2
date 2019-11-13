@@ -173,6 +173,7 @@ pub trait MutSpace<'a> {
 /// A `MutSpace` that directly manages it's own internal data slice.
 pub struct RootMutSpace<'a> {
     space: Cell<Option<&'a mut [u8]>>,
+    allocated_bytes: usize,
 }
 
 impl<'a> RootMutSpace<'a> {
@@ -193,6 +194,7 @@ impl<'a> RootMutSpace<'a> {
     pub fn new(space: &'a mut [u8]) -> Self {
         RootMutSpace {
             space: Cell::new(Some(space)),
+            allocated_bytes: 0,
         }
     }
 }
@@ -205,12 +207,13 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
         let mut space = self.space.replace(None).unwrap();
 
         let padding = if apply_padding {
-            let alignment = space.as_ptr() as usize % 8;
+            let alignment = self.allocated_bytes % 8;
             let padding = if alignment == 0 { 0 } else { 8 - alignment };
             if padding > space.len() {
                 return None;
             }
             space = space.split_at_mut(padding).1;
+            self.allocated_bytes += padding;
             padding
         } else {
             0
@@ -220,6 +223,7 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
             return None;
         }
         let (lower_slice, upper_slice) = space.split_at_mut(size);
+        self.allocated_bytes += size;
 
         self.space.set(Some(upper_slice));
         Some((padding, lower_slice))
@@ -472,5 +476,18 @@ mod tests {
             let value = unsafe { *(value.as_ptr() as *const u32) };
             assert_eq!(value, 17);
         }
+    }
+
+    #[test]
+    fn unaligned_root_write() {
+        let mut raw_space = Box::new([0u8; 8]);
+
+        {
+            let mut root_space = RootMutSpace::new(&mut raw_space[3..]);
+            (&mut root_space as &mut dyn MutSpace).write(&42u8, true).unwrap();
+        }
+
+        assert_eq!(&[0, 0, 0, 42, 0, 0, 0, 0], raw_space.as_ref());
+
     }
 }
