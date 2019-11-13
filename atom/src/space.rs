@@ -484,10 +484,11 @@ mod tests {
 
         {
             let mut root_space = RootMutSpace::new(&mut raw_space[3..]);
-            (&mut root_space as &mut dyn MutSpace).write(&42u8, true).unwrap();
+            (&mut root_space as &mut dyn MutSpace)
+                .write(&42u8, true)
+                .unwrap();
         }
 
         assert_eq!(&[0, 0, 0, 42, 0, 0, 0, 0], raw_space.as_ref());
-
     }
 }
