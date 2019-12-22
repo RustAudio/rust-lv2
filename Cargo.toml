@@ -10,6 +10,7 @@ lv2-atom = { path = "atom" }
 lv2-core = { path = "core" }
 lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
+lv2-midi = { path = "midi" }
 
 [workspace]
 members = [
@@ -23,8 +24,11 @@ members = [
     "urid",
     "urid/sys",
     "urid/derive",
+    "midi",
+    "midi/sys"
 ]
 
 [features]
 default = []
 host = ["lv2-core/host", "lv2-units/host", "lv2-urid/host", "lv2-atom/host"]
+wmidi = ["lv2-midi/wmidi"]
