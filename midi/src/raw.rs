@@ -1,3 +1,8 @@
+/// Atom types to give raw access to MIDI messages.
+///
+/// This implementation is very low-level; Basically an alias for a chunk. It should only be used by those who don't want additional dependencies or want to modify messages directly.
+///
+/// If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
 use atom::chunk::ByteWriter;
 use atom::prelude::*;
 use atom::space::*;
@@ -14,10 +19,10 @@ unsafe impl UriBound for MidiEvent {
 }
 
 impl URIDBound for MidiEvent {
-    type CacheType = URID<MidiEvent>;
+    type CacheType = crate::MidiURIDCache;
 
-    fn urid(cache: &URID<MidiEvent>) -> URID<MidiEvent> {
-        *cache
+    fn urid(cache: &Self::CacheType) -> URID<MidiEvent> {
+        cache.raw
     }
 }
 

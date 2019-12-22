@@ -13,6 +13,13 @@ lv2-urid = { path = "../urid" }
 lv2-atom = { path = "../atom" }
 lv2-midi-sys = { path = "sys" }
 
+[dev-dependencies]
+lv2-units = { path = "../units" }
+
 [dependencies.wmidi]
 version = "3.1.0"
 optional = true
+
+[features]
+default = []
+host = ["lv2-core/host", "lv2-urid/host", "lv2-atom/host"]

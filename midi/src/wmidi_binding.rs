@@ -1,14 +1,68 @@
+//! Atom types to make direct usage of the `wmidi` crate.
+//!
+//! # Example
+//!
+//! This example showcases a MIDI event processor that modulates every played note up a forth.
+//!
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_urid::prelude::*;
+//! use lv2_atom::prelude::*;
+//! use lv2_midi::prelude::*;
+//! use lv2_units::prelude::*;
+//! use wmidi::*;
+//!
+//! #[derive(URIDCache)]
+//! struct MyURIDs {
+//!     atom: AtomURIDCache,
+//!     midi: MidiURIDCache,
+//!     units: UnitURIDCache,
+//! }
+//!
+//! #[derive(PortContainer)]
+//! struct MyPorts {
+//!     input: InputPort<AtomPort>,
+//!     output: OutputPort<AtomPort>,
+//! }
+//!
+//! /// Something like a plugin's run method.
+//! fn run(ports: &mut MyPorts, urids: MyURIDs) {
+//!     // Retrieving the input and output sequence.
+//!     let input_sequence = ports.input.read(urids.atom.sequence, urids.units.beat).unwrap();
+//!     let mut output_sequence = ports.output.init(
+//!         urids.atom.sequence,
+//!         TimeStampURID::Frames(urids.units.frame)
+//!     ).unwrap();
+//!
+//!     for (timestamp, atom) in input_sequence {
+//!         // If the atom encodes a message...
+//!         if let Some(message) = atom.read(urids.midi.wmidi, ()) {
+//!             // Calculate the message to send.
+//!             let message_to_send = match message {
+//!                 MidiMessage::NoteOn(channel, note, velocity) => {
+//!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
+//!                     MidiMessage::NoteOn(channel, note, velocity)
+//!                 },
+//!                 MidiMessage::NoteOff(channel, note, velocity) => {
+//!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
+//!                     MidiMessage::NoteOff(channel, note, velocity)
+//!                 }
+//!                 _ => message,
+//!             };
+//!             // Write the modulated message or forward it.
+//!             output_sequence.init(timestamp, urids.midi.wmidi, message_to_send);
+//!         } else {
+//!             // Forward the other, uninterpreted message.
+//!             output_sequence.forward(timestamp, atom);
+//!         }
+//!     }
+//! }
+//! ```
 use atom::prelude::*;
 use atom::space::*;
 use core::prelude::*;
 use std::convert::TryFrom;
 use urid::prelude::*;
-
-/// Container with the URIDs of all `UriBound`s in this crate.
-#[derive(URIDCache)]
-pub struct MidiURIDCache {
-    pub event: URID<MidiEvent>,
-}
 
 /// Midi event.
 ///
@@ -16,22 +70,22 @@ pub struct MidiURIDCache {
 ///
 /// This means that the message has to be fully constructed before it can be written as an atom. For most messages this isn't a problem since they have a static size, but system exclusive messages have a dynamic size.
 ///
-/// If you want to write system exclusive messages, you should use the [`SystemExclusiveMidiEvent`](struct.SystemExclusiveMidiEvent.html). It can read any message, but specializes on writing system exclusive messages with a custom writer.
-pub struct MidiEvent;
+/// If you want to write system exclusive messages, you should use the [`SystemExclusiveWMidiEvent`](struct.SystemExclusiveWMidiEvent.html). It can read any message, but specializes on writing system exclusive messages with a custom writer.
+pub struct WMidiEvent;
 
-unsafe impl UriBound for MidiEvent {
+unsafe impl UriBound for WMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl URIDBound for MidiEvent {
-    type CacheType = MidiURIDCache;
+impl URIDBound for WMidiEvent {
+    type CacheType = crate::MidiURIDCache;
 
-    fn urid(cache: &MidiURIDCache) -> URID<MidiEvent> {
-        cache.event
+    fn urid(cache: &Self::CacheType) -> URID<WMidiEvent> {
+        cache.wmidi
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for MidiEvent
+impl<'a, 'b> Atom<'a, 'b> for WMidiEvent
 where
     'a: 'b,
 {
@@ -56,24 +110,24 @@ where
 
 /// System exclusive MIDI event.
 ///
-/// This atom is an alternative to [`MidiEvent`](struct.MidiEvent.html): It can only write system exclusive messages, but doesn't require the message to be already constructed in memory. Instead, it uses a writing handle similar to a chunk's writing handle.
+/// This atom is an alternative to [`WMidiEvent`](struct.WMidiEvent.html): It can only write system exclusive messages, but doesn't require the message to be already constructed in memory. Instead, it uses a writing handle similar to a chunk's writing handle.
 ///
 /// Although it can only write system exclusive message, it can read any other message too.
-pub struct SystemExclusiveMidiEvent;
+pub struct SystemExclusiveWMidiEvent;
 
-unsafe impl UriBound for SystemExclusiveMidiEvent {
+unsafe impl UriBound for SystemExclusiveWMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl URIDBound for SystemExclusiveMidiEvent {
-    type CacheType = MidiURIDCache;
+impl URIDBound for SystemExclusiveWMidiEvent {
+    type CacheType = crate::MidiURIDCache;
 
-    fn urid(cache: &MidiURIDCache) -> URID<SystemExclusiveMidiEvent> {
-        unsafe { URID::new_unchecked(cache.event.get()) }
+    fn urid(cache: &Self::CacheType) -> URID<SystemExclusiveWMidiEvent> {
+        cache.sysex_wmidi
     }
 }
 
-impl<'a, 'b> Atom<'a, 'b> for SystemExclusiveMidiEvent
+impl<'a, 'b> Atom<'a, 'b> for SystemExclusiveWMidiEvent
 where
     'a: 'b,
 {
@@ -83,7 +137,7 @@ where
     type WriteHandle = Writer<'a, 'b>;
 
     fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
-        MidiEvent::read(space, ())
+        WMidiEvent::read(space, ())
     }
 
     fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<Writer<'a, 'b>> {
@@ -97,7 +151,7 @@ where
 ///
 /// This writing handle is similar to a chunk's `ByteWriter`: You can allocate space, write raw bytes and generic values.
 ///
-/// The "start of system exclusive" status byte is written by [`SystemExclusiveMidiEvent::init`](struct.SystemExclusiveMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
+/// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
 pub struct Writer<'a, 'b> {
     frame: FramedMutSpace<'a, 'b>,
 }
@@ -127,20 +181,17 @@ impl<'a, 'b> Drop for Writer<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use atom::prelude::*;
-    use atom::space::*;
+    use crate::wmidi_binding::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::HashURIDMapper;
-    use urid::prelude::*;
     use wmidi::*;
 
     #[test]
     fn test_midi_event() {
         let mapper = HashURIDMapper::new();
         let map = Map::new(&mapper);
-        let urid = map.map_type::<MidiEvent>().unwrap();
+        let urid = map.map_type::<WMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
         let reference_message =
@@ -153,7 +204,7 @@ mod tests {
                 .create_atom_frame(urid)
                 .unwrap();
 
-            MidiEvent::init(frame, reference_message.clone()).unwrap();
+            WMidiEvent::init(frame, reference_message.clone()).unwrap();
         }
 
         // verifying
@@ -172,7 +223,7 @@ mod tests {
         {
             let space = Space::from_reference(raw_space.as_ref());
 
-            let message = MidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
+            let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
             assert_eq!(message, reference_message);
         }
     }
@@ -181,7 +232,7 @@ mod tests {
     fn test_sysex_event() {
         let mapper = HashURIDMapper::new();
         let map = Map::new(&mapper);
-        let urid = map.map_type::<SystemExclusiveMidiEvent>().unwrap();
+        let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 
@@ -192,7 +243,7 @@ mod tests {
                 .create_atom_frame(urid)
                 .unwrap();
 
-            let mut writer = SystemExclusiveMidiEvent::init(frame, ()).unwrap();
+            let mut writer = SystemExclusiveWMidiEvent::init(frame, ()).unwrap();
             writer.write_raw(&[1, 2, 3, 4]);
         }
 
@@ -211,7 +262,7 @@ mod tests {
         {
             let space = Space::from_reference(raw_space.as_ref());
 
-            let message = MidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
+            let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
             assert_eq!(
                 message,
                 MidiMessage::SysEx(unsafe { U7::from_bytes_unchecked(&[1, 2, 3, 4]) })
