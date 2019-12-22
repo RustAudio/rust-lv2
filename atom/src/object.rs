@@ -256,13 +256,14 @@ mod tests {
     use crate::space::*;
     use core::prelude::*;
     use std::mem::size_of;
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
     use urid::prelude::*;
 
     #[test]
     fn test_object() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = AtomURIDCache::from_map(&map).unwrap();
 
         let object_type = map

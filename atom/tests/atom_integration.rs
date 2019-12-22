@@ -16,7 +16,7 @@ struct Ports {
 
 #[derive(FeatureCollection)]
 struct Features<'a> {
-    map: &'a Map<'a>,
+    map: Map<'a>,
 }
 
 #[derive(URIDCache)]
@@ -78,16 +78,20 @@ fn main() {
     use atom::space::*;
     use std::ffi::{c_void, CStr};
     use std::mem::size_of;
+    use urid::mapper::*;
 
     // Instantiating all features.
-    let mapper = Box::pin(urid::mapper::HashURIDMapper::new());
-    let mut map = Box::pin(Map::new(mapper.as_ref().get_ref()));
-    let map_interface = Box::pin(core::sys::LV2_Feature {
+    let mut mapper = Box::pin(HashURIDMapper::new());
+    let map_interface = Box::pin(mapper.as_mut().make_map_interface());
+    let map = Map::new(map_interface.as_ref().get_ref());
+
+    let mut map_feature_interface = Box::pin(mapper.as_mut().make_map_interface());
+    let map_feature = Box::pin(core::sys::LV2_Feature {
         URI: Map::URI.as_ptr() as *const i8,
-        data: map.as_mut().get_mut() as *mut _ as *mut c_void,
+        data: map_feature_interface.as_mut().get_mut() as *mut _ as *mut c_void,
     });
     let features_list: &[*const core::sys::LV2_Feature] =
-        &[map_interface.as_ref().get_ref(), std::ptr::null()];
+        &[map_feature.as_ref().get_ref(), std::ptr::null()];
 
     // Retrieving URIDs.
     let urids: URIDs = map.populate_cache().unwrap();

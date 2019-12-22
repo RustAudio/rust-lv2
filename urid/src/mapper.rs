@@ -3,6 +3,9 @@ use crate::URID;
 use core::{Uri, UriBuf};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::os::raw::*;
+use std::pin::Pin;
+use std::ptr::null;
 use std::sync::Mutex;
 
 /// A trait to represent an implementation of an URI <-> URID mapper, i.e. that can map an URI
@@ -19,7 +22,7 @@ use std::sync::Mutex;
 /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
 /// they might need at initialization time. See the `URIDCache` for more information on how to
 /// achieve this.
-pub trait URIDMapper {
+pub trait URIDMapper: Unpin + Sized {
     /// Maps an URI to an `URID` that corresponds to it.
     ///
     /// If the URI has not been mapped before, a new URID will be assigned.
@@ -40,6 +43,31 @@ pub trait URIDMapper {
     /// achieve this.
     fn map(&self, uri: &Uri) -> Option<URID>;
 
+    /// Unsafe wrapper of the `map` method, used by the feature interface.
+    ///
+    /// If the `map` method returns `None`, this method will return `0`.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it has to dereference a raw pointer and since it's part of the C interface.
+    unsafe extern "C" fn extern_map(
+        handle: crate::sys::LV2_URID_Map_Handle,
+        uri: *const c_char,
+    ) -> crate::sys::LV2_URID {
+        match (*(handle as *const Self)).map(Uri::from_ptr(uri)) {
+            Some(urid) => urid.get(),
+            _ => 0,
+        }
+    }
+
+    /// Create a raw map interface.
+    fn make_map_interface(self: Pin<&mut Self>) -> sys::LV2_URID_Map {
+        sys::LV2_URID_Map {
+            handle: self.get_mut() as *mut Self as *mut c_void,
+            map: Some(Self::extern_map),
+        }
+    }
+
     /// Gets the URId for a previously mapped `URID`.
     ///
     /// This method may return `None` if the given `urid` is not yet mapped.
@@ -53,6 +81,36 @@ pub trait URIDMapper {
     /// they might need at initialization time. See the `URIDCache` for more information on how to
     /// achieve this.
     fn unmap(&self, urid: URID) -> Option<&Uri>;
+
+    /// Unsafe wrapper of the `unmap` method, used by the feature interface.
+    ///
+    /// If the given URID is invalid or `unmap` returns `None`, this method returns a null pointer.
+    ///
+    /// # Safety
+    ///
+    /// The method is unsafe since it has to dereference raw pointers and it is part of the C interface.
+    unsafe extern "C" fn extern_unmap(
+        handle: crate::sys::LV2_URID_Map_Handle,
+        urid: crate::sys::LV2_URID,
+    ) -> *const c_char {
+        match URID::new(urid) {
+            Some(urid) => match (*(handle as *const Self)).unmap(urid) {
+                Some(uri) => uri.as_ptr(),
+                None => null(),
+            },
+            None => null(),
+        }
+    }
+
+    /// Create an unmap interface.
+    ///
+    /// This method clones the mapper and creates a self-contained `UnmapInterface`.
+    fn make_unmap_interface(self: Pin<&mut Self>) -> sys::LV2_URID_Unmap {
+        sys::LV2_URID_Unmap {
+            handle: self.get_mut() as *mut Self as *mut c_void,
+            unmap: Some(Self::extern_unmap),
+        }
+    }
 }
 
 /// A simple URI → URID mapper, backed by a standard `HashMap` and a `Mutex` for multi-thread

@@ -294,7 +294,7 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 mod tests {
     use crate::space::*;
     use std::mem::{size_of, size_of_val};
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
     use urid::prelude::*;
 
     #[test]
@@ -416,8 +416,9 @@ mod tests {
             )
         });
 
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)

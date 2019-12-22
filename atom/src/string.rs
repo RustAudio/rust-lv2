@@ -170,7 +170,7 @@ mod tests {
     use core::prelude::*;
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
     use urid::prelude::*;
 
     struct German;
@@ -189,8 +189,9 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = TestURIDs::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -244,8 +245,9 @@ mod tests {
 
     #[test]
     fn test_string() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

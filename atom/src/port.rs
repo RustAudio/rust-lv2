@@ -125,13 +125,14 @@ mod tests {
     use core::prelude::*;
     use std::mem::size_of;
     use std::ptr::NonNull;
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
     use urid::prelude::*;
 
     #[test]
     fn test_atom_port() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = AtomURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

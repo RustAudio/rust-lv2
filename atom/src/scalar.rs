@@ -166,7 +166,7 @@ mod tests {
     use crate::space::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
     use urid::prelude::*;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
@@ -174,8 +174,9 @@ mod tests {
         A::InternalType: PartialEq<A::InternalType>,
         A::InternalType: std::fmt::Debug,
     {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = A::CacheType::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

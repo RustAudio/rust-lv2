@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
+use syn::export::Span;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident};
-use syn::{DeriveInput, Generics};
+use syn::{DeriveInput, Generics, Lifetime};
 
 struct FeatureCollectionField<'a> {
     identifier: &'a Ident,
@@ -45,12 +46,19 @@ impl<'a> FeatureCollectionStruct<'a> {
     fn make_implementation(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let generics = self.generics;
-        let first_generic = self.generics.lifetimes().next().map(|l| &l.lifetime);
         let retrievals = self.fields.iter().map(|field| field.make_retrieval());
+        // retrieve the first lifetime of the struct, or set it to `'static` if there is none.
+        let lifetime = self
+            .generics
+            .lifetimes()
+            .next()
+            .map(|l| l.lifetime.clone())
+            .unwrap_or_else(|| Lifetime::new("'static", Span::call_site()));
+
         (quote! {
-            impl#generics FeatureCollection<#first_generic> for #struct_name#generics {
+            impl#generics FeatureCollection<#lifetime> for #struct_name#generics {
                 fn from_container(
-                    container: &mut FeatureContainer<#first_generic>
+                    container: &mut FeatureContainer<#lifetime>
                 ) -> Result<Self, MissingFeatureError> {
                     Ok(Self {
                         #(#retrievals)*
