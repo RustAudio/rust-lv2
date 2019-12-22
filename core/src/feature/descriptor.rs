@@ -20,6 +20,12 @@ static DUMMY_FEATURE_POINTER: () = ();
 /// C LV2 hosts legitimately do this because they have literally nowhere to point to, but in Rust
 /// creating a null reference is instant Undefined Behavior even if the reference itself is never
 /// read and/or zero-sized (e.g. because of `Option`).
+///
+/// # Safety
+///
+/// This function may create an reference to a value that isn't of type `T`. Therefore, you should be cautious when you use it.
+///
+/// The validity of this method currently under debate and may be replaced soon.
 #[inline]
 pub unsafe fn cast_feature_ref<'a, T: Feature<'a>>(feature: *const c_void) -> Option<&'a T> {
     if ::std::mem::size_of::<T>() == 0 && feature.is_null() {

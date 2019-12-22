@@ -90,6 +90,10 @@ impl<T: ?Sized> URID<T> {
     /// Additionally, the value of 0 is reserved for a failed URI mapping process and therefore, is not a valid URID. If `T` is a URI bound, the URID may only be the one the host maps the bounded URI.
     ///
     /// Since all of these constraints are not checked by this method, it is unsafe.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it assumes that `raw_urid` is not zero. Using this method is sound as long as `raw_urid` is not zero.
     pub unsafe fn new_unchecked(raw_urid: u32) -> Self {
         Self(NonZeroU32::new_unchecked(raw_urid), PhantomData)
     }
