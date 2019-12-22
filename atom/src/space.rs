@@ -23,7 +23,11 @@ pub struct Space<'a> {
 impl<'a> Space<'a> {
     /// Create a new space from an atom pointer.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
+    /// The method creates a space that contains the atom as well as it's body.
+    ///
+    /// # Safety
+    ///
+    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
         let size = atom.size as usize;
@@ -179,7 +183,11 @@ pub struct RootMutSpace<'a> {
 impl<'a> RootMutSpace<'a> {
     /// Create new space from an atom.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
+    /// The method creates a space that contains the atom as well as it's body.
+    ///
+    /// # Safety
+    ///
+    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
     pub unsafe fn from_atom(atom: &mut sys::LV2_Atom) -> Self {
         let space = std::slice::from_raw_parts_mut(
             atom as *mut _ as *mut u8,

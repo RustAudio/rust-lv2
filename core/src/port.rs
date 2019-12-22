@@ -21,7 +21,7 @@ pub trait PortType {
     ///
     /// If the resulting data is a slice, `sample_count` is the length of the slice.
     ///
-    /// # unsafety
+    /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
     unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType;
@@ -30,7 +30,7 @@ pub trait PortType {
     ///
     /// If the data is a slice, `sample_count` is the length of the slice.
     ///
-    /// # unsafety
+    /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
@@ -115,7 +115,7 @@ pub trait PortHandle: Sized {
     ///
     /// If the pointer is null, this method will return `None`.
     ///
-    /// # unsafety
+    /// # Safety
     ///
     /// Implementing this method requires a de-referentation of a raw pointer and therefore, it is unsafe.
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self>;
@@ -222,7 +222,7 @@ pub trait PortContainer: Sized {
     ///
     /// If one of the port connection pointers is null, this method will return `None`, because a `PortContainer` can not be constructed.
     ///
-    /// # unsafety
+    /// # Safety
     ///
     /// Since the pointer cache is only storing the pointers, implementing this method requires the de-referencation of raw pointers and therefore, this method is unsafe.
     unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self>;
