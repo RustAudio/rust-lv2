@@ -66,6 +66,12 @@ pub struct PluginInstance<T: Plugin> {
 
 impl<T: Plugin> PluginInstance<T> {
     /// Instantiate the plugin.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2_Descriptor,
         sample_rate: f64,
@@ -118,30 +124,60 @@ impl<T: Plugin> PluginInstance<T> {
     }
 
     /// Clean the plugin.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn cleanup(instance: *mut c_void) {
         let instance = instance as *mut Self;
         Box::from_raw(instance);
     }
 
     /// Call `activate`.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn activate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
         instance.instance.activate()
     }
 
-    /// Call `deactivate`
+    /// Call `deactivate`.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn deactivate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
         instance.instance.deactivate()
     }
 
     /// Update a port pointer.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn connect_port(instance: *mut c_void, port: u32, data: *mut c_void) {
         let instance = instance as *mut Self;
         (*instance).connections.connect(port, data)
     }
 
     /// Construct a port container and call the `run` method.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = &mut *(instance as *mut Self);
         let ports =
@@ -152,6 +188,12 @@ impl<T: Plugin> PluginInstance<T> {
     }
 
     /// Dereference the URI, call the `extension_data` function and return the pointer.
+    ///
+    /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
         let uri = Uri::from_ptr(uri);
         if let Some(data) = T::extension_data(uri) {

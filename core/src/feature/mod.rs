@@ -160,7 +160,7 @@ mod tests {
         assert_eq!(retrieved_feature_a.number, *(setting.data_a));
 
         let retrieved_feature_b: &FeatureB = features_container.retrieve_feature().unwrap();
-        assert_eq!(retrieved_feature_b.number, *(setting.data_b));
+        assert!(retrieved_feature_b.number - *(setting.data_b) < std::f32::EPSILON);
     }
 
     #[test]

@@ -23,7 +23,11 @@ pub struct Space<'a> {
 impl<'a> Space<'a> {
     /// Create a new space from an atom pointer.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
+    /// The method creates a space that contains the atom as well as it's body.
+    ///
+    /// # Safety
+    ///
+    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
         let size = atom.size as usize;
@@ -173,12 +177,17 @@ pub trait MutSpace<'a> {
 /// A `MutSpace` that directly manages it's own internal data slice.
 pub struct RootMutSpace<'a> {
     space: Cell<Option<&'a mut [u8]>>,
+    allocated_bytes: usize,
 }
 
 impl<'a> RootMutSpace<'a> {
     /// Create new space from an atom.
     ///
-    /// The method creates a space that contains the atom as well as it's body. Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
+    /// The method creates a space that contains the atom as well as it's body.
+    ///
+    /// # Safety
+    ///
+    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe.
     pub unsafe fn from_atom(atom: &mut sys::LV2_Atom) -> Self {
         let space = std::slice::from_raw_parts_mut(
             atom as *mut _ as *mut u8,
@@ -189,13 +198,11 @@ impl<'a> RootMutSpace<'a> {
 
     /// Create a new instance.
     ///
-    /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`). This way, you can, for example, create a mutable space from a slice of `u64`s and therefore guarantee that the space is 64-bit aligned.
+    /// This method takes the space reserved for the value and interprets it as a slice of bytes (`&mut [u8]`).
     pub fn new(space: &'a mut [u8]) -> Self {
-        if space.as_ptr() as usize % 8 != 0 {
-            panic!("Trying to create an unaligned atom space");
-        }
         RootMutSpace {
             space: Cell::new(Some(space)),
+            allocated_bytes: 0,
         }
     }
 }
@@ -208,12 +215,13 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
         let mut space = self.space.replace(None).unwrap();
 
         let padding = if apply_padding {
-            let alignment = space.as_ptr() as usize % 8;
+            let alignment = self.allocated_bytes % 8;
             let padding = if alignment == 0 { 0 } else { 8 - alignment };
             if padding > space.len() {
                 return None;
             }
             space = space.split_at_mut(padding).1;
+            self.allocated_bytes += padding;
             padding
         } else {
             0
@@ -223,6 +231,7 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
             return None;
         }
         let (lower_slice, upper_slice) = space.split_at_mut(size);
+        self.allocated_bytes += size;
 
         self.space.set(Some(upper_slice));
         Some((padding, lower_slice))
@@ -475,5 +484,19 @@ mod tests {
             let value = unsafe { *(value.as_ptr() as *const u32) };
             assert_eq!(value, 17);
         }
+    }
+
+    #[test]
+    fn unaligned_root_write() {
+        let mut raw_space = Box::new([0u8; 8]);
+
+        {
+            let mut root_space = RootMutSpace::new(&mut raw_space[3..]);
+            (&mut root_space as &mut dyn MutSpace)
+                .write(&42u8, true)
+                .unwrap();
+        }
+
+        assert_eq!(&[0, 0, 0, 42, 0, 0, 0, 0], raw_space.as_ref());
     }
 }
