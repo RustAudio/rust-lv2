@@ -276,7 +276,7 @@ mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
     use std::mem::size_of;
-    use urid::mapper::HashURIDMapper;
+    use urid::mapper::*;
 
     #[derive(URIDCache)]
     struct TestURIDCache {
@@ -286,8 +286,9 @@ mod tests {
 
     #[test]
     fn test_sequence() {
-        let mapper = HashURIDMapper::new();
-        let map = Map::new(&mapper);
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
         let urids = TestURIDCache::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

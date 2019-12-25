@@ -19,9 +19,9 @@ It provides the following features, through the [LV2 Core specification](http://
 Through the [LV2 official additional specifications](http://lv2plug.in/ns/), this library also provide many
 additional features, including:
 
-* MIDI processing **(Not yet implemented)**
+* MIDI processing
 * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
-* Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation **(Not yet implemented)**
+* Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
 * Presets handling and State management **(Not yet implemented)**
 * Asynchronous work processing **(Not yet implemented)**
 * … and more! (Not yet implemented either)

@@ -19,14 +19,14 @@ struct AmpPorts {
 }
 
 #[derive(FeatureCollection)]
-struct Features<'a> {
-    rt_capable: &'a HardRTCapable,
-    is_live: Option<&'a IsLive>,
+struct Features {
+    _rt_capable: HardRTCapable,
+    is_live: Option<IsLive>,
 }
 
 impl Plugin for Amp {
     type Ports = AmpPorts;
-    type Features = Features<'static>;
+    type Features = Features;
 
     #[inline]
     fn new(plugin_info: &PluginInfo, features: Features) -> Option<Self> {
@@ -39,10 +39,9 @@ impl Plugin for Amp {
             plugin_info.bundle_path().to_str().unwrap(),
             "/home/lv2/amp.lv2/"
         );
-        assert_eq!(plugin_info.sample_rate(), 44100.0);
+        assert_eq!(plugin_info.sample_rate() as u32, 44100);
 
         // Finding and verifying all features.
-        assert_ne!(features.rt_capable as *const _, std::ptr::null());
         assert!(features.is_live.is_none());
 
         Some(Amp { activated: false })
@@ -151,6 +150,6 @@ fn test_plugin() {
 
     // Verifying the data.
     for i in 0..128 {
-        assert_eq!(input[i] * gain, output[i]);
+        assert!((input[i] * gain - output[i]).abs() < std::f32::EPSILON);
     }
 }

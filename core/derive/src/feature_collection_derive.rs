@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
+use syn::export::Span;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident};
-use syn::{DeriveInput, Generics};
+use syn::{DeriveInput, Generics, Lifetime};
 
 use crate::lib_name;
 
@@ -47,13 +48,20 @@ impl<'a> FeatureCollectionStruct<'a> {
     fn make_implementation(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let generics = self.generics;
-        let first_generic = self.generics.lifetimes().next().map(|l| &l.lifetime);
         let retrievals = self.fields.iter().map(|field| field.make_retrieval());
+        // retrieve the first lifetime of the struct, or set it to `'static` if there is none.
+        let lifetime = self
+            .generics
+            .lifetimes()
+            .next()
+            .map(|l| l.lifetime.clone())
+            .unwrap_or_else(|| Lifetime::new("'static", Span::call_site()));
         let crate_name = lib_name();
+
         (quote! {
-            impl#generics #crate_name::feature::FeatureCollection<#first_generic> for #struct_name#generics {
+            impl#generics #crate_name::feature::FeatureCollection<#lifetime> for #struct_name#generics {
                 fn from_container(
-                    container: &mut #crate_name::feature::FeatureContainer<#first_generic>
+                    container: &mut #crate_name::feature::FeatureContainer<#lifetime>
                 ) -> Result<Self, #crate_name::feature::MissingFeatureError> {
                     Ok(Self {
                         #(#retrievals)*
