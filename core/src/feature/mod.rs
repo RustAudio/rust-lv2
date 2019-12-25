@@ -82,8 +82,8 @@ impl<'a> FeatureCollection<'a> for () {
 #[allow(clippy::float_cmp)]
 mod tests {
     use crate as lv2_core;
-    use crate::feature::FeatureContainer;
-    use crate::{feature::*, plugin::*, UriBound};
+    use lv2_core::feature::FeatureContainer;
+    use lv2_core::{feature::*, plugin::*, UriBound};
     use std::ffi::c_void;
     use std::os::raw::c_char;
     use std::pin::Pin;

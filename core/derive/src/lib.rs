@@ -17,16 +17,20 @@ use syn::{Ident, Path};
 
 pub(crate) fn lib_name() -> Path {
     match proc_macro_crate::crate_name("lv2") {
+        Ok(name) => {
+            // The `lv2` crate is used. The core crate is found in `lv2::core`.
+            let mut p: Path = Ident::new(&name, Span::call_site()).into();
+            p.segments
+                .push(Ident::new("core", Span::call_site()).into());
+            p
+        }
         Err(_) => match proc_macro_crate::crate_name("lv2_core") {
+            // The `lv2_core` crate is used directly.
+            Ok(name) => Ident::new(&name, Span::call_site()).into(),
+            // None of the crates is used. Therefore, we need to fall back to `lv2_core`.
+            // If the macro is called from `lv2_core` itself, `crate` will be aliased to `lv2_core`.
             Err(_) => Ident::new("lv2_core", Span::call_site()).into(),
-            Ok(name) => {
-                let mut p: Path = Ident::new(&name, Span::call_site()).into();
-                p.segments
-                    .push(Ident::new("core", Span::call_site()).into());
-                p
-            }
         },
-        Ok(name) => Ident::new(&name, Span::call_site()).into(),
     }
 }
 
