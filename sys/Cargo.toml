@@ -1,0 +1,9 @@
+[package]
+name = "lv2-sys"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[build-dependencies]
+bindgen = { version = "0.51.1", default-features = false }
