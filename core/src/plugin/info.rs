@@ -18,7 +18,7 @@ pub struct PluginInfo<'a> {
 
 impl<'a> PluginInfo<'a> {
     pub(crate) unsafe fn from_raw(
-        plugin_descriptor: *const crate::sys::_LV2_Descriptor,
+        plugin_descriptor: *const crate::sys::LV2_Descriptor,
         bundle_path: *const c_char,
         sample_rate: f64,
     ) -> Result<Self, PluginInfoError> {

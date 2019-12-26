@@ -10,7 +10,7 @@ use std::ffi::c_void;
 pub struct HardRTCapable;
 
 unsafe impl UriBound for HardRTCapable {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__hardRTCapable;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__hardRTCapable;
 }
 
 unsafe impl Feature for HardRTCapable {
@@ -25,7 +25,7 @@ unsafe impl Feature for HardRTCapable {
 pub struct InPlaceBroken;
 
 unsafe impl UriBound for InPlaceBroken {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__inPlaceBroken;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__inPlaceBroken;
 }
 
 unsafe impl<'a> Feature for InPlaceBroken {
@@ -38,7 +38,7 @@ unsafe impl<'a> Feature for InPlaceBroken {
 pub struct IsLive;
 
 unsafe impl UriBound for IsLive {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__isLive;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__isLive;
 }
 
 unsafe impl<'a> Feature for IsLive {

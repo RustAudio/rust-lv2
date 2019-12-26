@@ -16,17 +16,12 @@ lv2-midi = { path = "midi" }
 members = [
     "sys",
     "atom",
-    "atom/sys",
     "core",
-    "core/sys",
     "core/derive",
     "units",
-    "units/sys",
     "urid",
-    "urid/sys",
     "urid/derive",
     "midi",
-    "midi/sys"
 ]
 
 [features]

@@ -5,7 +5,7 @@
 //! If compiled with the optional `wmidi` dependency, the crate also has an additional module containing the `WMidiEvent`. This atom uses the `MidiMessage` type defined in by `wmidi` instead of byte slices.
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
-pub extern crate lv2_midi_sys as sys;
+extern crate lv2_sys as sys;
 extern crate lv2_urid as urid;
 
 use urid::prelude::*;
