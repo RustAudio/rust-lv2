@@ -27,7 +27,7 @@ impl Lv2InstanceDescriptor {
         let plugin_type = &self.plugin_type;
         quote! {
             unsafe impl ::lv2_core::plugin::PluginInstanceDescriptor for #plugin_type {
-                const DESCRIPTOR: ::lv2_core::sys::LV2_Descriptor = ::lv2_core::sys::LV2_Descriptor {
+                const DESCRIPTOR: ::lv2_core::prelude::LV2_Descriptor = ::lv2_core::prelude::LV2_Descriptor {
                     URI: Self::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
                     instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instantiate),
                     connect_port: Some(::lv2_core::plugin::PluginInstance::<Self>::connect_port),
@@ -103,7 +103,7 @@ impl Lv2InstanceDescriptorList {
             ///
             /// The returned pointer references a constant and there is valid as long as the library is loaded.
             #[no_mangle]
-            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2_core::sys::LV2_Descriptor {
+            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2_core::prelude::LV2_Descriptor {
                 match index {
                     #(#index_matchers)*
                     _ => ::std::ptr::null()

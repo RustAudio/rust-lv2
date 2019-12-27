@@ -1,5 +1,6 @@
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
+extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 extern crate lv2_urid as urid;
 
@@ -86,11 +87,11 @@ fn main() {
     let map = Map::new(map_interface.as_ref().get_ref());
 
     let mut map_feature_interface = Box::pin(mapper.as_mut().make_map_interface());
-    let map_feature = Box::pin(core::sys::LV2_Feature {
+    let map_feature = Box::pin(sys::LV2_Feature {
         URI: Map::URI.as_ptr() as *const i8,
         data: map_feature_interface.as_mut().get_mut() as *mut _ as *mut c_void,
     });
-    let features_list: &[*const core::sys::LV2_Feature] =
+    let features_list: &[*const sys::LV2_Feature] =
         &[map_feature.as_ref().get_ref(), std::ptr::null()];
 
     // Retrieving URIDs.
@@ -124,7 +125,7 @@ fn main() {
             .unwrap();
         Chunk::init(frame, ())
             .unwrap()
-            .allocate(256 - size_of::<atom::sys::LV2_Atom>())
+            .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
     }
 
