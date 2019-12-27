@@ -42,7 +42,7 @@ pub trait PortType {
 pub struct Audio;
 
 unsafe impl UriBound for Audio {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__AudioPort;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__AudioPort;
 }
 
 impl PortType for Audio {
@@ -68,7 +68,7 @@ impl PortType for Audio {
 pub struct Control;
 
 unsafe impl UriBound for Control {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__ControlPort;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
 }
 
 impl PortType for Control {
@@ -91,7 +91,7 @@ impl PortType for Control {
 pub struct CV;
 
 unsafe impl UriBound for CV {
-    const URI: &'static [u8] = ::lv2_core_sys::LV2_CORE__CVPort;
+    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__CVPort;
 }
 
 impl PortType for CV {

@@ -210,8 +210,8 @@ mod tests {
 
         // verifying
         {
-            let (header, raw_space) = raw_space.split_at(size_of::<atom::sys::LV2_Atom>());
-            let header = unsafe { &*(header.as_ptr() as *const atom::sys::LV2_Atom) };
+            let (header, raw_space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let header = unsafe { &*(header.as_ptr() as *const sys::LV2_Atom) };
             assert_eq!(header.type_, urid);
             assert_eq!(header.size as usize, 3);
 
@@ -251,8 +251,8 @@ mod tests {
 
         // verifying
         {
-            let (header, raw_space) = raw_space.split_at(size_of::<atom::sys::LV2_Atom>());
-            let header = unsafe { &*(header.as_ptr() as *const atom::sys::LV2_Atom) };
+            let (header, raw_space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let header = unsafe { &*(header.as_ptr() as *const sys::LV2_Atom) };
             assert_eq!(header.type_, urid);
             assert_eq!(header.size as usize, 6);
 

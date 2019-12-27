@@ -1,7 +1,0 @@
-[package]
-name = "lv2-core-sys"
-version = "0.1.0"
-authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
-
-[build-dependencies]
-bindgen = { version = "0.51.1", default-features = false }

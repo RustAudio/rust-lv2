@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lv2-core = { path = "../core" }
-lv2-urid-sys = { path = "sys" }
+lv2-sys = { path = "../sys" }
 lv2-urid-derive = { path = "derive" }
 
 [features]

@@ -85,7 +85,7 @@ lv2_descriptors! {
 
 #[test]
 fn test_discovery() {
-    use lv2_core_sys::*;
+    use lv2_sys::*;
 
     unsafe {
         let descriptor: &LV2_Descriptor = lv2_descriptor(0).as_ref().unwrap();
@@ -100,7 +100,7 @@ fn test_discovery() {
 #[test]
 fn test_plugin() {
     use lv2_core::UriBound;
-    use lv2_core_sys::*;
+    use lv2_sys::*;
 
     // Creating the ports.
     let mut gain: f32 = 2.0;

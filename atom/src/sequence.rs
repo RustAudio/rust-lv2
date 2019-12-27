@@ -68,7 +68,7 @@
 use crate::space::*;
 use crate::*;
 use core::prelude::*;
-use sys::LV2_Atom_Event_Timestamp as RawTimeStamp;
+use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
 use urid::prelude::*;
 
@@ -276,6 +276,7 @@ mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
     use std::mem::size_of;
+    use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
     use urid::mapper::*;
 
     #[derive(URIDCache)]
@@ -318,16 +319,16 @@ mod tests {
             assert_eq!(
                 sequence.atom.size as usize,
                 size_of::<sys::LV2_Atom_Sequence_Body>()
-                    + size_of::<sys::LV2_Atom_Event_Timestamp>()
+                    + size_of::<RawTimeStamp>()
                     + size_of::<sys::LV2_Atom_Int>()
                     + 4
-                    + size_of::<sys::LV2_Atom_Event_Timestamp>()
+                    + size_of::<RawTimeStamp>()
                     + size_of::<sys::LV2_Atom_Long>()
             );
             assert_eq!(sequence.body.unit, urids.units.frame);
 
-            let (stamp, space) = space.split_at(size_of::<sys::LV2_Atom_Event_Timestamp>());
-            let stamp = unsafe { *(stamp.as_ptr() as *const sys::LV2_Atom_Event_Timestamp) };
+            let (stamp, space) = space.split_at(size_of::<RawTimeStamp>());
+            let stamp = unsafe { *(stamp.as_ptr() as *const RawTimeStamp) };
             assert_eq!(unsafe { stamp.frames }, 0);
 
             let (int, space) = space.split_at(size_of::<sys::LV2_Atom_Int>());
@@ -337,8 +338,8 @@ mod tests {
             assert_eq!(int.body, 42);
             let (_, space) = space.split_at(4);
 
-            let (stamp, space) = space.split_at(size_of::<sys::LV2_Atom_Event_Timestamp>());
-            let stamp = unsafe { *(stamp.as_ptr() as *const sys::LV2_Atom_Event_Timestamp) };
+            let (stamp, space) = space.split_at(size_of::<RawTimeStamp>());
+            let stamp = unsafe { *(stamp.as_ptr() as *const RawTimeStamp) };
             assert_eq!(unsafe { stamp.frames }, 1);
 
             let (int, _) = space.split_at(size_of::<sys::LV2_Atom_Long>());

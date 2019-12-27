@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 lv2-core = { path = "../core" }
 lv2-urid = { path = "../urid" }
 lv2-atom = { path = "../atom" }
-lv2-midi-sys = { path = "sys" }
+lv2-sys = { path = "../sys" }
 
 [dev-dependencies]
 lv2-units = { path = "../units" }
