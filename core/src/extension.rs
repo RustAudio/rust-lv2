@@ -1,132 +1,156 @@
 //! Means to extend the interface of a plugin.
-use crate::plugin::Plugin;
+//!
+//! This module is relatively thin: It only contains a trait and a macro. Instead, most of the extension handling is a convention:
+//!
+//! An extension is a trait a plugin can implement and every extension has a descriptor: This is a marker struct that implements the [`ExtensionDescriptor`](trait.ExtensionDescriptor.html) trait for every plugin that implements the extension. This descriptor is then used by the [`match_extensions`](../macro.match_extensions.html) macro to generate the body of a plugin's `extension_data` method.
+//!
+//! # Example
+//!
+//! This is a complete example on how to create an extension and implement it for a plugin:
+//!
+//! ```
+//! use lv2_core::extension::ExtensionDescriptor;
+//! use lv2_core::prelude::*;
+//! use std::any::Any;
+//! use std::ffi::c_void;
+//! use std::marker::PhantomData;
+//! use std::path::Path;
+//!
+//! // ######################
+//! // Defining the extension
+//! // ######################
+//!
+//! /// The trait that actually extends the plugin.
+//! pub trait MyExtension: Plugin {
+//!     fn add_number(&mut self, number: u32);
+//! }
+//!
+//! /// A descriptor for the plugin. This is just a marker type to associate constants and methods with.
+//! pub struct MyExtensionDescriptor<P: MyExtension> {
+//!     plugin: PhantomData<P>,
+//! }
+//!
+//! #[repr(C)]
+//! /// This struct would be part of a sys crate.
+//! pub struct MyExtensionInterface {
+//!     add_number: unsafe extern "C" fn(*mut c_void, number: u32),
+//! }
+//!
+//! unsafe impl<P: MyExtension> UriBound for MyExtensionDescriptor<P> {
+//!     const URI: &'static [u8] = b"urn:my-project:my-extension\0";
+//! }
+//!
+//! impl<P: MyExtension> MyExtensionDescriptor<P> {
+//!     /// The extern, unsafe version of the extending method.
+//!     ///
+//!     /// This is actually called by the host.
+//!     unsafe extern "C" fn extern_add_number(handle: *mut c_void, number: u32) {
+//!         let plugin = (handle as *mut P).as_mut().unwrap();
+//!         plugin.add_number(number);
+//!     }
+//! }
+//!
+//! // Implementing the trait that contains the interface.
+//! impl<P: MyExtension> ExtensionDescriptor for MyExtensionDescriptor<P> {
+//!     type ExtensionInterface = MyExtensionInterface;
+//!
+//!     const INTERFACE: &'static MyExtensionInterface = &MyExtensionInterface {
+//!         add_number: Self::extern_add_number,
+//!     };
+//! }
+//!
+//! // ##########
+//! // The plugin
+//! // ##########
+//!
+//! /// This plugin actually isn't a plugin, it only has a counter.
+//! pub struct MyPlugin {
+//!     internal: u32,
+//! }
+//!
+//! unsafe impl UriBound for MyPlugin {
+//!     const URI: &'static [u8] = b"urn:my-project:my-plugin\0";
+//! }
+//!
+//! impl Plugin for MyPlugin {
+//!     type Ports = ();
+//!     type Features = ();
+//!
+//!     fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+//!         Some(Self { internal: 0 })
+//!     }
+//!
+//!     fn run(&mut self, _: &mut ()) {
+//!         self.internal += 1;
+//!     }
+//!
+//!     fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
+//!         // This macro use matches the given URI with the URIs of the given extension descriptors.
+//!         // If one of them matches, it's interface is returned.
+//!         //
+//!         // Note that you have to add the type parameter. Otherwise, bad things may happen!
+//!         match_extensions![uri, MyExtensionDescriptor<Self>]
+//!     }
+//! }
+//!
+//! // Actually implementing the extension.
+//! impl MyExtension for MyPlugin {
+//!     fn add_number(&mut self, number: u32) {
+//!         self.internal += number;
+//!     }
+//! }
+//!
+//! // ########
+//! // The host
+//! // ########
+//!
+//! let plugin_uri: &Uri = MyPlugin::uri();
+//! let bundle_path = Path::new("");
+//! let sample_rate = 44100.0;
+//! let plugin_info = PluginInfo::new(plugin_uri, bundle_path, sample_rate);
+//!
+//! let mut plugin = MyPlugin::new(&plugin_info, ()).unwrap();
+//!
+//! let extension = MyPlugin::extension_data(MyExtensionDescriptor::<MyPlugin>::uri())
+//!     .and_then(|interface| interface.downcast_ref::<MyExtensionInterface>())
+//!     .unwrap();
+//!
+//! unsafe { (extension.add_number)(&mut plugin as *mut _ as *mut c_void, 42) };
+//!
+//! assert_eq!(42, plugin.internal);
+//! ```
 use crate::UriBound;
 use std::any::Any;
 
-/// A trait for marking a type as an LV2 plugin extension.
+/// A descriptor for a plugin extension.
 ///
-/// # Unsafety
+/// This trait is very minimal: It only contains a constant, static reference to the extension interface.
 ///
-/// This trait is unsafe since the [`RAW_DATA`](#associatedconstant.RAW_DATA) constant has special requirements that can not be enforced with Rust's type system. Not complying to these requirements may induce undefined behaviour.
-///
-/// # Usage
-///
-/// This trait itself is only important to extension developers/implementers. However, it induces some interesting details for all users:
-///
-/// First of all, extension traits must be object-safe, since at one point, extended struct references must be turned into trait objects. This means, for example, that trait method may not return `Self` or must always take `self` as their first argument. You can read more about object-safety [in the book](https://doc.rust-lang.org/book/ch17-02-trait-objects.html?highlight=trait,object#object-safety-is-required-for-trait-objects).
-///
-/// To plugin developers, handling extensions is relatively easy: You simply implement the extension trait for your plugin and generate a body for the [`extension_data`](../plugin/trait.Plugin.html#method.extension_data) method using the [`match_extensions`](../macro.match_extensions.html) macro.
-///
-///  An example on how to put it all together:
-///
-///     use lv2_core::prelude::*;
-///     use lv2_core::feature::FeatureContainer;
-///     use lv2_core::extension::Extension;
-///     use lv2_core::{UriBound, match_extensions};
-///
-///     use std::any::Any;
-///
-///     // ######################
-///     // Defining the extension
-///     // ######################
-///
-///     trait MyExtension {
-///         fn foo(&self) -> f32;
-///     }
-///         
-///     #[doc(hidden)]
-///     unsafe extern "C" fn extern_foo<P: MyExtension>(handle: *const P) -> f32 {
-///         handle.as_ref().unwrap().foo()
-///     }
-///
-///     #[repr(C)]
-///     struct MyExtensionInterface<P: MyExtension> {
-///         pub foo: unsafe extern "C" fn(input: *const P) -> f32,
-///     }
-///
-///     unsafe impl UriBound for dyn MyExtension {
-///         const URI: &'static [u8] = b"urn:my-extension\0";
-///     }
-///
-///     unsafe impl<P: Plugin + MyExtension> Extension<P> for dyn MyExtension {
-///         const RAW_DATA: &'static dyn Any = &MyExtensionInterface {
-///             foo: extern_foo::<P>,
-///         };
-///     }
-///
-///     // ###################
-///     // Defining the plugin
-///     // ###################
-///
-///     struct MyPlugin {
-///         data: f32,    
-///     }
-///
-///     unsafe impl UriBound for MyPlugin {
-///         const URI: &'static [u8] = b"urn:my-plugin\0";
-///     }
-///
-///     impl Plugin for MyPlugin {
-///         type Ports = ();
-///         type Features = ();
-///
-///         fn new(_: &PluginInfo, _features: ()) -> Option<Self> {
-///             Some(MyPlugin {
-///                 data: 42.0
-///             })
-///         }
-///
-///         fn run(&mut self, _: &mut ()) {}
-///
-///         fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
-///             match_extensions![uri, dyn MyExtension]
-///         }
-///     }
-///
-///     impl MyExtension for MyPlugin {
-///         fn foo(&self) -> f32 {
-///             self.data
-///         }
-///     }
-///
-///     // #########################################
-///     // Simulated host code that tests everything
-///     // #########################################
-///
-///     let my_plugin = MyPlugin {
-///         data: 17.0,  
-///     };
-///     let interface: &MyExtensionInterface<MyPlugin> = MyPlugin
-///         ::extension_data(<dyn MyExtension as UriBound>::uri())
-///         .unwrap()
-///         .downcast_ref()
-///         .unwrap();
-///     unsafe { assert_eq!((interface.foo)(&my_plugin), 17.0) }
-///
-pub unsafe trait Extension<P: Plugin>: UriBound {
-    /// The raw data structure defined by the extension, as returned by the plugin's `extension_data()` method.
-    ///
-    /// It can be set to any static value, it is up to the implementer of the
-    /// extension to set it correctly:
-    ///
-    /// * The struct being pointed to must be `#[repr(C)]` and have exactly the same fields as the one defined by the LV2 Extension specification.
-    /// * The struct being pointed to must be correctly initialized, as defined by the LV2 Extension specification;
-    /// * The URI associated to this extension must be exactly the same as the one defined in the LV2 Extension specification, and must also be the one tied to the struct being pointed to by `RAW_DATA`.
-    const RAW_DATA: &'static (dyn Any + 'static);
+/// [For a usage example, see the module documentation.](index.html)
+pub trait ExtensionDescriptor: UriBound {
+    type ExtensionInterface: 'static + Any;
+
+    const INTERFACE: &'static Self::ExtensionInterface;
 }
 
-/// Generate a method body for a plugin's `extension_data` method.
+/// Generate the body of a plugin's `extension_data` function.
 ///
-/// This macros is designed to be used inside the [`Plugin::extension_data`](plugin/trait.Plugin.html#method.extension_data) method. It takes the expression of the uri as the first argument, followed by a list of extensions. Please take a look at the [`Extension` trait](extension/trait.Extension.html) for a usage example.
+/// This macro takes a URI as it's first argument, followed by a list of extension descriptors. This will
+/// create a match expression that matches the given URI with the URIs of the extension descriptors. If one of the extension URIs matches, the statement returns the interface of the descriptor.
+///
+/// The generated statement returns a value of `Option<&'static dyn std::any::Any>`.
+///
+/// See the documentation of the `extension` module for more information on how to use this macro.
 #[macro_export]
 macro_rules! match_extensions {
-    ($uri:expr, $($extension:ty),*) => {
+    ($uri:expr, $($descriptor:ty),*) => {
         match ($uri).to_bytes_with_nul() {
             $(
-                <$ extension as ::lv2_core::UriBound>::URI => Some(<$extension
-                 as ::lv2_core::extension::Extension<Self>>::RAW_DATA),
+                <$descriptor as ::lv2_core::UriBound>::URI => Some(<$descriptor as ::lv2_core::extension::ExtensionDescriptor>::INTERFACE as &'static dyn std::any::Any),
             )*
             _ => None,
         }
     };
 }
+
+pub use crate::match_extensions;

@@ -4,8 +4,7 @@ use std::path::Path;
 use std::str::Utf8Error;
 
 #[derive(Debug)]
-#[doc(hidden)]
-pub(crate) enum PluginInfoError {
+pub enum PluginInfoError {
     InvalidBundlePathUtf8(Utf8Error),
 }
 
@@ -17,34 +16,36 @@ pub struct PluginInfo<'a> {
 }
 
 impl<'a> PluginInfo<'a> {
-    pub(crate) unsafe fn from_raw(
+    /// Create a new plugin info instance from raw information.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it dereferences raw pointers. It panics when one of the pointers is null,
+    /// but does not check the pointers for other validity.
+    pub unsafe fn from_raw(
         plugin_descriptor: *const crate::sys::LV2_Descriptor,
         bundle_path: *const c_char,
         sample_rate: f64,
     ) -> Result<Self, PluginInfoError> {
-        Self::new(
-            Uri::from_ptr((*plugin_descriptor).URI),
-            Uri::from_ptr(bundle_path),
-            sample_rate,
-        )
-    }
-
-    pub(crate) fn new(
-        plugin_uri: &'a Uri,
-        bundle_path: &'a Uri,
-        sample_rate: f64,
-    ) -> Result<Self, PluginInfoError> {
         let bundle_path = Path::new(
-            bundle_path
+            Uri::from_ptr(bundle_path)
                 .to_str()
                 .map_err(PluginInfoError::InvalidBundlePathUtf8)?,
         );
+        Ok(Self::new(
+            Uri::from_ptr((*plugin_descriptor).URI),
+            bundle_path,
+            sample_rate,
+        ))
+    }
 
-        Ok(Self {
+    /// Create a new plugin info instance.
+    pub fn new(plugin_uri: &'a Uri, bundle_path: &'a Path, sample_rate: f64) -> Self {
+        Self {
             sample_rate,
             plugin_uri,
             bundle_path,
-        })
+        }
     }
 
     /// The URI of the plugin that is being instantiated.
