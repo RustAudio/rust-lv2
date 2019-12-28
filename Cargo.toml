@@ -11,6 +11,7 @@ lv2-core = { path = "core" }
 lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
 lv2-midi = { path = "midi" }
+lv2-state = { path = "state" }
 
 [workspace]
 members = [
@@ -22,6 +23,7 @@ members = [
     "urid",
     "urid/derive",
     "midi",
+    "state",
 ]
 
 [features]
