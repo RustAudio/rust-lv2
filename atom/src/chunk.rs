@@ -80,17 +80,17 @@ impl<'a, 'b> ByteWriter<'a, 'b> {
     }
 
     /// Allocate memory in the atom, but don't write anything to it.
-    pub fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
+    pub fn allocate(&mut self, size: usize) -> Option<&mut [u8]> {
         self.frame.allocate(size, false).map(|(_, bytes)| bytes)
     }
 
     /// Copy data from the given slice to the atom.
-    pub fn write_raw(&mut self, bytes: &[u8]) -> Option<&'a mut [u8]> {
+    pub fn write_raw(&mut self, bytes: &[u8]) -> Option<&mut [u8]> {
         self.frame.write_raw(bytes, false)
     }
 
     /// Copy a struct instance to the atom.
-    pub fn write<T>(&mut self, instance: &T) -> Option<&'a mut T>
+    pub fn write<T>(&mut self, instance: &T) -> Option<&mut T>
     where
         T: Unpin + Copy + Send + Sync + Sized + 'static,
     {

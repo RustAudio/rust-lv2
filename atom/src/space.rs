@@ -8,8 +8,10 @@
 //!
 //! The second case is sound since a) the data is contained in a slice and therefore is accessible, b) generic type parameter bounds assure that the type is plain-old-data and c) 64-bit padding is assured.
 use std::cell::Cell;
+use std::iter::Extend;
 use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
+use std::ops::{Deref, DerefMut};
 use urid::URID;
 
 /// Specialized smart pointer to retrieve struct instances from a slice of memory.
@@ -155,18 +157,18 @@ impl<'a> Space<'a> {
 /// A smart pointer that writes atom data to an internal slice.
 ///
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
-pub trait MutSpace<'a> {
+pub trait MutSpace {
     /// Try to allocate memory on the internal data slice.
     ///
     /// If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned. The first return value is the number of padding bytes that has been used and the second return value is a mutable slice referencing the allocated data.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])>;
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &mut [u8])>;
 
     /// Try to write data to the internal data slice.
     ///
     /// The method allocates a slice with the [`allocate`](#tymethod.allocate) method and copies the data to the slice.
-    fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
+    fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&mut [u8]> {
         self.allocate(data.len(), apply_padding).map(|(_, space)| {
             space.copy_from_slice(data);
             space
@@ -207,8 +209,8 @@ impl<'a> RootMutSpace<'a> {
     }
 }
 
-impl<'a> MutSpace<'a> for RootMutSpace<'a> {
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
+impl<'a> MutSpace for RootMutSpace<'a> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &mut [u8])> {
         if self.space.get_mut().is_none() {
             return None;
         }
@@ -241,21 +243,61 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
 /// A `MutSpace` that notes the amount of allocated space in an atom header.
 pub struct FramedMutSpace<'a, 'b> {
     atom: &'a mut sys::LV2_Atom,
-    parent: &'b mut dyn MutSpace<'a>,
+    parent: &'b mut dyn MutSpace,
 }
 
-impl<'a, 'b> MutSpace<'a> for FramedMutSpace<'a, 'b> {
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
-        self.parent
-            .allocate(size, apply_padding)
-            .map(|(padding, data)| {
-                self.atom.size += (size + padding) as u32;
-                (padding, data)
-            })
+impl<'a, 'b> MutSpace for FramedMutSpace<'a, 'b> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &mut [u8])> {
+        let (padding, data) = self.parent.allocate(size, apply_padding)?;
+        self.atom.size += (size + padding) as u32;
+        Some((padding, data))
     }
 }
 
-impl<'a, 'b> dyn MutSpace<'a> + 'b {
+/// A `MutSpace` that uses a vector to store the data.
+#[derive(Clone)]
+pub struct BufferedMutSpace {
+    buffer: Vec<u8>,
+}
+
+impl Default for BufferedMutSpace {
+    fn default() -> Self {
+        Self { buffer: Vec::new() }
+    }
+}
+
+impl Deref for BufferedMutSpace {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        self.buffer.as_ref()
+    }
+}
+
+impl DerefMut for BufferedMutSpace {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        self.buffer.as_mut()
+    }
+}
+
+impl MutSpace for BufferedMutSpace {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &mut [u8])> {
+        if apply_padding {
+            let padding = 8 - self.buffer.len() % 8;
+            self.buffer.reserve(size + padding);
+            self.buffer.extend((0..padding).map(|_| 0));
+        } else {
+            self.buffer.reserve(size);
+        }
+
+        let i_first = self.buffer.len() - 1;
+        self.buffer.extend((0..size).map(|_| 0));
+        let data = &mut self.buffer[i_first..i_first + size];
+        Some((size, data))
+    }
+}
+
+impl<'a, 'b> dyn MutSpace + 'b {
     /// Write a sized object to the space.
     ///
     /// If `apply_padding` is `true`, the method will assure that the written instance is 64-bit-aligned.
@@ -365,30 +407,19 @@ mod tests {
             concated_space.data().unwrap().len()
         );
     }
-
-    #[test]
-    fn test_root_mut_space() {
-        const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let mut frame: RootMutSpace = RootMutSpace::new(unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        });
-
+    fn test_mut_space<S: MutSpace>(mut space: S) {
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
             test_data[i] = i as u8;
         }
 
-        match frame.write_raw(test_data.as_slice(), true) {
+        match space.write_raw(test_data.as_slice(), true) {
             Some(written_data) => assert_eq!(test_data.as_slice(), written_data),
             None => panic!("Writing failed!"),
         }
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = (&mut frame as &mut dyn MutSpace)
+        let written_atom = (&mut space as &mut dyn MutSpace)
             .write(&test_atom, true)
             .unwrap();
         assert_eq!(written_atom.size, test_atom.size);
@@ -403,6 +434,27 @@ mod tests {
             written_atom as *mut _ as usize
         );
         assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
+    }
+
+    #[test]
+    fn test_buffer_mut_space() {
+        let space = BufferedMutSpace::default();
+
+        test_mut_space(space);
+    }
+
+    #[test]
+    fn test_root_mut_space() {
+        const MEMORY_SIZE: usize = 256;
+        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
+        let frame: RootMutSpace = RootMutSpace::new(unsafe {
+            std::slice::from_raw_parts_mut(
+                (&mut memory).as_mut_ptr() as *mut u8,
+                MEMORY_SIZE * size_of::<u64>(),
+            )
+        });
+
+        test_mut_space(frame);
     }
 
     #[test]
