@@ -157,11 +157,11 @@ pub struct Writer<'a, 'b> {
 }
 
 impl<'a, 'b> Writer<'a, 'b> {
-    pub fn allocate(&mut self, size: usize) -> Option<&mut [u8]> {
+    pub fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
         self.frame.allocate(size, false).map(|(_, slice)| slice)
     }
 
-    pub fn write_raw(&mut self, data: &[u8]) -> Option<&mut [u8]> {
+    pub fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
         self.frame.write_raw(data, false)
     }
 
