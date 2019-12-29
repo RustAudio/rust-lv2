@@ -11,3 +11,7 @@ lv2-sys = { path = "../sys" }
 lv2-core = { path = "../core" }
 lv2-urid = { path = "../urid" }
 lv2-atom = { path = "../atom" }
+
+[features]
+default = []
+host = ["lv2-core/host", "lv2-urid/host", "lv2-atom/host"]

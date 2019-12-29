@@ -8,8 +8,10 @@
 //!
 //! The second case is sound since a) the data is contained in a slice and therefore is accessible, b) generic type parameter bounds assure that the type is plain-old-data and c) 64-bit padding is assured.
 use std::cell::Cell;
+use std::iter::FromIterator;
 use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
+use std::pin::Pin;
 use urid::URID;
 
 /// Specialized smart pointer to retrieve struct instances from a slice of memory.
@@ -238,6 +240,54 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
     }
 }
 
+/// A mutable space that owns its data and dynamically allocates more memory when needed.
+pub struct BufferedMutSpace {
+    blocks: Vec<Pin<Box<[u8]>>>,
+    allocated_bytes: usize,
+}
+
+impl Into<Vec<u8>> for BufferedMutSpace {
+    fn into(self) -> Vec<u8> {
+        let mut vector = Vec::new();
+        vector.extend(self.blocks.iter().map(|chunk| chunk.iter()).flatten());
+        assert_eq!(vector.len(), self.allocated_bytes);
+        vector
+    }
+}
+
+impl Default for BufferedMutSpace {
+    fn default() -> Self {
+        Self {
+            blocks: Vec::new(),
+            allocated_bytes: 0,
+        }
+    }
+}
+
+impl<'a> MutSpace<'a> for BufferedMutSpace {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
+        let padding = if apply_padding {
+            8 - self.allocated_bytes % 8
+        } else {
+            0
+        } % 8;
+
+        if padding != 0 {
+            self.blocks
+                .push(Pin::new(Box::from_iter((0..padding).map(|_| 0))));
+        }
+
+        self.blocks
+            .push(Pin::new(Box::from_iter((0..size).map(|_| 0))));
+        let data = self.blocks.last_mut().unwrap().as_mut().get_mut();
+        assert_eq!(size, data.len());
+
+        let data = unsafe { std::slice::from_raw_parts_mut(data as *mut _ as *mut u8, size) };
+        self.allocated_bytes += padding + size;
+        Some((padding, data))
+    }
+}
+
 /// A `MutSpace` that notes the amount of allocated space in an atom header.
 pub struct FramedMutSpace<'a, 'b> {
     atom: &'a mut sys::LV2_Atom,
@@ -366,29 +416,24 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_root_mut_space() {
-        const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let mut frame: RootMutSpace = RootMutSpace::new(unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        });
+    fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
+        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
             test_data[i] = i as u8;
         }
 
-        match frame.write_raw(test_data.as_slice(), true) {
+        match space.write_raw(test_data.as_slice(), true) {
             Some(written_data) => assert_eq!(test_data.as_slice(), written_data),
             None => panic!("Writing failed!"),
         }
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = (&mut frame as &mut dyn MutSpace)
+        let written_atom = (&mut space as &mut dyn MutSpace)
             .write(&test_atom, true)
             .unwrap();
         assert_eq!(written_atom.size, test_atom.size);
@@ -403,25 +448,8 @@ mod tests {
             written_atom as *mut _ as usize
         );
         assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
-    }
 
-    #[test]
-    fn test_framed_mut_space() {
-        const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let mut root: RootMutSpace = RootMutSpace::new(unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        });
-
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
-
-        let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)
+        let mut atom_frame: FramedMutSpace = (&mut space as &mut dyn MutSpace)
             .create_atom_frame(urids.chunk)
             .unwrap();
 
@@ -443,6 +471,26 @@ mod tests {
             atom_frame.atom.size as usize,
             test_data.len() + size_of_val(&test_atom)
         );
+    }
+
+    #[test]
+    fn test_root_mut_space() {
+        const MEMORY_SIZE: usize = 256;
+        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
+        let frame: RootMutSpace = RootMutSpace::new(unsafe {
+            std::slice::from_raw_parts_mut(
+                (&mut memory).as_mut_ptr() as *mut u8,
+                MEMORY_SIZE * size_of::<u64>(),
+            )
+        });
+
+        test_mut_space(frame);
+    }
+
+    #[test]
+    fn test_buffered_mut_space() {
+        let space = BufferedMutSpace::default();
+        test_mut_space(space);
     }
 
     #[test]
