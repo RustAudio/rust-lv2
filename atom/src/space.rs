@@ -239,7 +239,7 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
 }
 
 /// Linked list element for dynamic atom writing.
-/// 
+///
 /// This struct works in conjunction with [`SpaceHead`](struct.SpaceHead.html) to provide a way to write atoms to dynamically allocated memory.
 pub struct SpaceElement {
     next: Option<(Box<Self>, Box<[u8]>)>,
@@ -253,14 +253,14 @@ impl Default for SpaceElement {
 
 impl SpaceElement {
     /// Append an element to the list.
-    /// 
+    ///
     /// If this is the last element of the list, allocate a slice of the required length and append a new element to the list. If not, do nothing and return `None`.
     pub fn allocate(&mut self, size: usize) -> Option<(&mut Self, &mut [u8])> {
         if self.next.is_some() {
             return None;
         }
 
-        let new_data = vec![0u8; size].into_boxed_slice().into();
+        let new_data = vec![0u8; size].into_boxed_slice();
         let new_element = Box::new(Self::default());
         self.next = Some((new_element, new_data));
         self.next
@@ -272,7 +272,11 @@ impl SpaceElement {
 
     /// Create a vector containing the data from all elements following this one.
     pub fn to_vec(&self) -> Vec<u8> {
-        self.iter().map(|slice| slice.iter()).flatten().map(|byte| *byte).collect()
+        self.iter()
+            .map(|slice| slice.iter())
+            .flatten()
+            .cloned()
+            .collect()
     }
 
     /// Return an iterator over the chunks of all elements following this one.
@@ -283,13 +287,13 @@ impl SpaceElement {
 }
 
 /// A mutable space that dynamically allocates memory.
-/// 
+///
 /// This space uses a linked list of [`SpaceElement`s](struct.SpaceElement.html) to allocate memory. Every time `allocate` is called, a new element is appended to the list and a new byte slice is created.
-/// 
+///
 /// In order to use this space and retrieve the written data once it was written, you create a `SpaceElement` and create a new head with it. Then, you use the head like any other `MutSpace` and when you're done, you retrieve the written data by either calling [`to_vec`](struct.SpaceElement.html#method.to_vec) or [`iter`](struct.SpaceElement.html#iter).
-/// 
+///
 /// # Usage example
-/// 
+///
 /// ```
 /// # use lv2_core::prelude::*;
 /// # use lv2_urid::prelude::*;
@@ -301,15 +305,15 @@ impl SpaceElement {
 /// # let map = Map::new(&interface);
 /// // URID cache creation is omitted.
 /// let urids: AtomURIDCache = map.populate_cache().unwrap();
-/// 
+///
 /// // Creating the first element in the list and the writing head.
 /// let mut element = SpaceElement::default();
 /// let mut head = SpaceHead::new(&mut element);
-/// 
+///
 /// // Writing an integer.
 /// let mut frame = (&mut head as &mut dyn MutSpace).create_atom_frame(urids.int).unwrap();
 /// Int::init(frame, 42).unwrap();
-/// 
+///
 /// // Retrieving a continuos vector with the written data and verifying it's contents.
 /// let written_data: Vec<u8> = element.to_vec();
 /// let atom = UnidentifiedAtom::new(Space::from_slice(written_data.as_ref()));
