@@ -1,6 +1,6 @@
 use crate::StateErr;
 use atom::prelude::*;
-use atom::space::{BufferedMutSpace, MutSpace, Space};
+use atom::space::*;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use urid::prelude::*;
@@ -9,7 +9,7 @@ use urid::prelude::*;
 ///
 /// This handle buffers the written properties and flushes them at once. Create new properties by calling [`init`](#method.init) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when dropped.
 pub struct StoreHandle {
-    properties: HashMap<URID, BufferedMutSpace>,
+    properties: HashMap<URID, SpaceElement>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
 }
@@ -24,20 +24,12 @@ impl StoreHandle {
         }
     }
 
-    /// Create a new property to store.
-    ///
-    /// This will create the required writing handle, which can be used to write the property. Please note that this does not properly store the property: It only creates it and marks it for storage. You can store properties with the [`commit`](#method.commit) or [`commit_all`](#method.commit_all) method.
-    pub fn init<'a, A: Atom<'a, 'a>>(
-        &'a mut self,
-        property_key: URID,
-        property_type: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
+    pub fn draft(&mut self, property_key: URID) -> StateProperty {
         self.properties
-            .insert(property_key, BufferedMutSpace::default());
-        let space = self.properties.get_mut(&property_key).unwrap() as &mut dyn MutSpace;
-        let frame = space.create_atom_frame(property_type)?;
-        A::init(frame, parameter)
+            .insert(property_key, SpaceElement::default());
+        StateProperty {
+            head: SpaceHead::new(self.properties.get_mut(&property_key).unwrap()),
+        }
     }
 
     /// Internal helper function to store one property.
@@ -45,11 +37,11 @@ impl StoreHandle {
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID,
-        space: BufferedMutSpace,
+        space: SpaceElement,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let handle = handle;
-        let space: Vec<u8> = space.into();
+        let space: Vec<u8> = space.to_vec();
         let space = Space::from_slice(space.as_ref());
         let (header, data) = space
             .split_type::<sys::LV2_Atom>()
@@ -87,6 +79,20 @@ impl StoreHandle {
     pub fn commit(&mut self, key: URID) -> Option<Result<(), StateErr>> {
         let space = self.properties.remove(&key)?;
         Some(Self::commit_pair(self.store_fn, self.handle, key, space))
+    }
+}
+
+pub struct StateProperty<'a> {
+    head: SpaceHead<'a>,
+}
+
+impl<'a> StateProperty<'a> {
+    pub fn init<'b, A: Atom<'a, 'b>>(
+        &'b mut self,
+        urid: URID<A>,
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
     }
 }
 
@@ -154,23 +160,25 @@ mod tests {
         let mut store_handle = StoreHandle::new(store_fn, handle);
 
         store_handle
-            .init(URID::new(1).unwrap(), urids.int, 17)
+            .draft(URID::new(1).unwrap())
+            .init(urids.int, 17)
             .unwrap();
         store_handle
-            .init(URID::new(2).unwrap(), urids.float, 1.0)
+            .draft(URID::new(2).unwrap())
+            .init(urids.float, 1.0)
             .unwrap();
 
         store_handle.commit(URID::new(1).unwrap()).unwrap().unwrap();
 
-        let mut vector_writer = store_handle
-            .init(URID::new(3).unwrap(), urids.vector, urids.int)
-            .unwrap();
+        let mut vector_writer = store_handle.draft(URID::new(3).unwrap());
+        let mut vector_writer = vector_writer.init(urids.vector, urids.int).unwrap();
         vector_writer.append(&[1, 2, 3, 4]).unwrap();
 
         store_handle.commit_all().unwrap();
 
         store_handle
-            .init(URID::new(4).unwrap(), urids.int, 0)
+            .draft(URID::new(4).unwrap())
+            .init(urids.int, 0)
             .unwrap();
 
         for (key, (type_, value)) in storage.items.drain() {
