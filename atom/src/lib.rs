@@ -91,6 +91,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
+    pub use space::{FramedMutSpace, MutSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;

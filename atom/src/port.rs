@@ -88,8 +88,7 @@ impl<'a> PortWriter<'a> {
     ) -> Option<A::WriteHandle> {
         if !self.has_been_written {
             self.has_been_written = true;
-            let frame = (&mut self.space as &mut dyn MutSpace).create_atom_frame(urid)?;
-            A::init(frame, parameter)
+            (&mut self.space as &mut dyn MutSpace).init(urid, parameter)
         } else {
             None
         }
@@ -140,11 +139,12 @@ mod tests {
         // writing a chunk to indicate the size of the space.
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.chunk)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(urids.chunk, ())
                 .unwrap();
-            let mut writer = Chunk::init(frame, ()).unwrap();
-            writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
+            writer
+                .allocate(256 - size_of::<sys::LV2_Atom>(), false)
+                .unwrap();
         }
 
         // Getting a writer with the port.

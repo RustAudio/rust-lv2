@@ -100,8 +100,7 @@ impl<'a, 'b> TupleWriter<'a, 'b> {
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
-        A::init(child_frame, child_parameter)
+        (&mut self.frame as &mut dyn MutSpace).init(child_urid, child_parameter)
     }
 }
 
@@ -125,10 +124,9 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.tuple)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(urids.tuple, ())
                 .unwrap();
-            let mut writer = Tuple::init(frame, ()).unwrap();
             {
                 let mut vector_writer =
                     writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();

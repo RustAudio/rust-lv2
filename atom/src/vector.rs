@@ -168,10 +168,9 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.vector)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(urids.vector, urids.int)
                 .unwrap();
-            let mut writer = Vector::<Int>::init(frame, urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }

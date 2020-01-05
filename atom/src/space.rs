@@ -7,6 +7,7 @@
 //! In the first case, we have to trust that the space behind the atom header is accessible since we have no way to check whether it is or not. Therefore, we have to assume that it is sound.
 //!
 //! The second case is sound since a) the data is contained in a slice and therefore is accessible, b) generic type parameter bounds assure that the type is plain-old-data and c) 64-bit padding is assured.
+use crate::Atom;
 use std::cell::Cell;
 use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
@@ -311,8 +312,7 @@ impl SpaceElement {
 /// let mut head = SpaceHead::new(&mut element);
 ///
 /// // Writing an integer.
-/// let mut frame = (&mut head as &mut dyn MutSpace).create_atom_frame(urids.int).unwrap();
-/// Int::init(frame, 42).unwrap();
+/// (&mut head as &mut dyn MutSpace).init(urids.int, 42).unwrap();
 ///
 /// // Retrieving a continuos vector with the written data and verifying it's contents.
 /// let written_data: Vec<u8> = element.to_vec();
@@ -365,6 +365,18 @@ pub struct FramedMutSpace<'a, 'b> {
     parent: &'b mut dyn MutSpace<'a>,
 }
 
+impl<'a, 'b> FramedMutSpace<'a, 'b> {
+    /// Create a new framed space with the given parent and type URID.
+    pub fn new<A: ?Sized>(parent: &'b mut dyn MutSpace<'a>, urid: URID<A>) -> Option<Self> {
+        let atom = sys::LV2_Atom {
+            size: 0,
+            type_: urid.get(),
+        };
+        let atom: &'a mut sys::LV2_Atom = parent.write(&atom, true)?;
+        Some(Self { atom, parent })
+    }
+}
+
 impl<'a, 'b> MutSpace<'a> for FramedMutSpace<'a, 'b> {
     fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
         self.parent
@@ -394,19 +406,14 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
         Some(unsafe { &mut *(output_data.as_mut_ptr() as *mut T) })
     }
 
-    /// Create new `FramedMutSpace` to write an atom.
-    ///
-    /// Simply pass the URID of the atom as an argument.
-    pub fn create_atom_frame<'c, A: ?Sized>(
+    /// Initialize a new atom in the space.
+    pub fn init<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         urid: URID<A>,
-    ) -> Option<FramedMutSpace<'a, 'c>> {
-        let atom = sys::LV2_Atom {
-            size: 0,
-            type_: urid.get(),
-        };
-        let atom: &'a mut sys::LV2_Atom = self.write(&atom, true)?;
-        Some(FramedMutSpace { atom, parent: self })
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        let new_space = FramedMutSpace::new(self, urid)?;
+        A::init(new_space, parameter)
     }
 }
 
@@ -520,9 +527,8 @@ mod tests {
         );
         assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
 
-        let mut atom_frame: FramedMutSpace = (&mut space as &mut dyn MutSpace)
-            .create_atom_frame(urids.chunk)
-            .unwrap();
+        let mut atom_frame =
+            FramedMutSpace::new(&mut space as &mut dyn MutSpace, urids.chunk).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
@@ -579,9 +585,9 @@ mod tests {
         // writing
         {
             let mut root: RootMutSpace = RootMutSpace::new(raw_space);
-            let mut frame = (&mut root as &mut dyn MutSpace)
-                .create_atom_frame(unsafe { URID::<()>::new_unchecked(1) })
-                .unwrap();
+            let mut frame =
+                FramedMutSpace::new(&mut root as &mut dyn MutSpace, URID::<()>::new(1).unwrap())
+                    .unwrap();
             {
                 let frame = &mut frame as &mut dyn MutSpace;
                 frame.write::<u32>(&42, true).unwrap();

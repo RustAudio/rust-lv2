@@ -255,8 +255,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
-        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(urid)?;
-        A::init(child_frame, parameter)
+        (&mut self.frame as &mut dyn MutSpace).init(urid, parameter)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -297,12 +296,12 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.atom.sequence)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(
+                    urids.atom.sequence,
+                    TimeStampURID::Frames(urids.units.frame),
+                )
                 .unwrap();
-            let mut writer =
-                Sequence::init(frame, TimeStampURID::Frames(urids.units.frame)).unwrap();
-
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
                 .unwrap();

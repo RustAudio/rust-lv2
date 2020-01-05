@@ -199,11 +199,12 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.atom.literal)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(
+                    urids.atom.literal,
+                    LiteralInfo::Language(urids.german.into_general()),
+                )
                 .unwrap();
-            let mut writer =
-                Literal::init(frame, LiteralInfo::Language(urids.german.into_general())).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -255,10 +256,9 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.string)
+            let mut writer = (&mut space as &mut dyn MutSpace)
+                .init(urids.string, ())
                 .unwrap();
-            let mut writer = String::init(frame, ()).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

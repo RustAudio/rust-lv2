@@ -59,7 +59,6 @@
 //! }
 //! ```
 use atom::prelude::*;
-use atom::space::*;
 use core::prelude::*;
 use std::convert::TryFrom;
 use urid::prelude::*;
@@ -182,6 +181,7 @@ impl<'a, 'b> Drop for Writer<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
+    use atom::space::RootMutSpace;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::*;
@@ -201,11 +201,9 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urid)
+            (&mut space as &mut dyn MutSpace)
+                .init(urid, reference_message.clone())
                 .unwrap();
-
-            WMidiEvent::init(frame, reference_message.clone()).unwrap();
         }
 
         // verifying
@@ -241,11 +239,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urid)
-                .unwrap();
-
-            let mut writer = SystemExclusiveWMidiEvent::init(frame, ()).unwrap();
+            let mut writer = (&mut space as &mut dyn MutSpace).init(urid, ()).unwrap();
             writer.write_raw(&[1, 2, 3, 4]);
         }
 
