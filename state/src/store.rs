@@ -7,7 +7,7 @@ use urid::prelude::*;
 
 /// A handle to abstract state storage.
 ///
-/// This handle buffers the written properties and flushes them at once. Create new properties by calling [`init`](#method.init) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when dropped.
+/// This handle buffers the written properties and flushes them at once. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle {
     properties: HashMap<URID, SpaceElement>,
     store_fn: sys::LV2_State_Store_Function,
@@ -24,6 +24,11 @@ impl StoreHandle {
         }
     }
 
+    /// Draft a new property.
+    /// 
+    /// This will return a new handle to create a property. Once the property is completely written, you can commit it by calling [`commit`](#method.commit) or [`commit_all`](#method.commit_all). Then, and only then, it will be saved by the host.
+    /// 
+    /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
     pub fn draft(&mut self, property_key: URID) -> StateProperty {
         self.properties
             .insert(property_key, SpaceElement::default());
@@ -40,7 +45,6 @@ impl StoreHandle {
         space: SpaceElement,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
-        let handle = handle;
         let space: Vec<u8> = space.to_vec();
         let space = Space::from_slice(space.as_ref());
         let (header, data) = space
@@ -50,7 +54,6 @@ impl StoreHandle {
             .split_raw(header.size as usize)
             .map(|(data, _)| data)
             .ok_or(StateErr::BadData)?;
-        println!("{}", header.type_);
 
         let key = key.get();
         let data_ptr = data as *const _ as *const c_void;
@@ -65,10 +68,8 @@ impl StoreHandle {
     ///
     /// This will also clear the property buffer.
     pub fn commit_all(&mut self) -> Result<(), StateErr> {
-        let store_fn = self.store_fn;
-        let handle = self.handle;
         for (key, space) in self.properties.drain() {
-            Self::commit_pair(store_fn, handle, key, space)?;
+            Self::commit_pair(self.store_fn, self.handle, key, space)?;
         }
         Ok(())
     }
@@ -80,8 +81,23 @@ impl StoreHandle {
         let space = self.properties.remove(&key)?;
         Some(Self::commit_pair(self.store_fn, self.handle, key, space))
     }
+
+    /// Discard all drafted properties.
+    pub fn discard_all(&mut self) {
+        self.properties.clear();
+    }
+
+    /// Discard a drafted property.
+    /// 
+    /// If no property with the given key was drafted before, this is a no-op.
+    pub fn discard(&mut self, key: URID) {
+        self.properties.remove(&key);
+    }
 }
 
+/// A single property that should be saved by the host.
+/// 
+/// It acts as 
 pub struct StateProperty<'a> {
     head: SpaceHead<'a>,
 }
