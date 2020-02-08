@@ -3,7 +3,7 @@ extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_urid as urid;
 
-pub mod store;
+pub mod access;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateErr {

@@ -25,9 +25,9 @@ impl StoreHandle {
     }
 
     /// Draft a new property.
-    /// 
+    ///
     /// This will return a new handle to create a property. Once the property is completely written, you can commit it by calling [`commit`](#method.commit) or [`commit_all`](#method.commit_all). Then, and only then, it will be saved by the host.
-    /// 
+    ///
     /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
     pub fn draft(&mut self, property_key: URID) -> StateProperty {
         self.properties
@@ -88,7 +88,7 @@ impl StoreHandle {
     }
 
     /// Discard a drafted property.
-    /// 
+    ///
     /// If no property with the given key was drafted before, this is a no-op.
     pub fn discard(&mut self, key: URID) {
         self.properties.remove(&key);
@@ -96,8 +96,8 @@ impl StoreHandle {
 }
 
 /// A single property that should be saved by the host.
-/// 
-/// It acts as 
+///
+/// It acts as
 pub struct StateProperty<'a> {
     head: SpaceHead<'a>,
 }
@@ -112,9 +112,53 @@ impl<'a> StateProperty<'a> {
     }
 }
 
+pub struct RetrieveHandle {
+    retrieve_fn: sys::LV2_State_Retrieve_Function,
+    handle: sys::LV2_State_Handle,
+}
+
+impl RetrieveHandle {
+    pub fn new(
+        retrieve_fn: sys::LV2_State_Retrieve_Function,
+        handle: sys::LV2_State_Handle,
+    ) -> Self {
+        Self {
+            retrieve_fn,
+            handle,
+        }
+    }
+
+    pub fn retrieve<A: Atom<'static, 'static>>(
+        &self,
+        key: URID,
+        type_: URID<A>,
+        parameter: A::ReadParameter,
+    ) -> Option<A::ReadHandle> {
+        let mut size: usize = 0;
+        let mut read_type: u32 = 0;
+        let property_ptr: *const std::ffi::c_void = unsafe {
+            (self.retrieve_fn?)(
+                self.handle,
+                key.get(),
+                &mut size,
+                &mut read_type,
+                std::ptr::null_mut(),
+            )
+        };
+
+        if !property_ptr.is_null() && type_.get() == read_type {
+            let body = unsafe { std::slice::from_raw_parts(property_ptr as *const u8, size) };
+            let body = Space::from_slice(body);
+            A::read(body, parameter)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::store::*;
+    use crate::access::*;
     use atom::space::Space;
     use std::collections::HashMap;
     use std::ffi::c_void;
@@ -150,17 +194,38 @@ mod tests {
             handle.store(key, type_, value);
             sys::LV2_State_Status_LV2_STATE_SUCCESS
         }
+
+        fn retrieve(&self, key: URID) -> Option<(URID, &[u8])> {
+            self.items
+                .get(&key)
+                .map(|(urid, data)| (*urid, data.as_ref()))
+        }
+
+        unsafe extern "C" fn extern_retrieve(
+            handle: sys::LV2_State_Handle,
+            key: u32,
+            size: *mut usize,
+            type_: *mut u32,
+            flags: *mut u32,
+        ) -> *const c_void {
+            if !flags.is_null() {
+                *flags = sys::LV2_State_Flags_LV2_STATE_IS_POD
+                    | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
+            }
+
+            let handle = (handle as *mut Self).as_mut().unwrap();
+            let key = URID::new(key).unwrap();
+            if let Some((type_urid, data)) = handle.retrieve(key) {
+                *size = data.len();
+                *type_ = type_urid.get();
+                data.as_ptr() as *const c_void
+            } else {
+                std::ptr::null()
+            }
+        }
     }
 
-    #[test]
-    fn test_storage() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
-        let urids = AtomURIDCache::from_map(&map).unwrap();
-
-        let mut storage = Storage::new();
-
+    fn store(storage: &mut Storage, urids: &AtomURIDCache) {
         let store_fn = Some(
             Storage::extern_store
                 as unsafe extern "C" fn(
@@ -172,9 +237,9 @@ mod tests {
                     u32,
                 ) -> u32,
         );
-        let handle = &mut storage as *mut _ as *mut c_void;
-        let mut store_handle = StoreHandle::new(store_fn, handle);
 
+        let handle = storage as *mut Storage as *mut c_void;
+        let mut store_handle = StoreHandle::new(store_fn, handle);
         store_handle
             .draft(URID::new(1).unwrap())
             .init(urids.int, 17)
@@ -196,21 +261,68 @@ mod tests {
             .draft(URID::new(4).unwrap())
             .init(urids.int, 0)
             .unwrap();
+    }
 
-        for (key, (type_, value)) in storage.items.drain() {
+    fn retrieve(storage: &mut Storage, urids: &AtomURIDCache) {
+        let retrieve_fn = Some(
+            Storage::extern_retrieve
+                as unsafe extern "C" fn(
+                    handle: sys::LV2_State_Handle,
+                    key: u32,
+                    size: *mut usize,
+                    type_: *mut u32,
+                    flags: *mut u32,
+                ) -> *const c_void,
+        );
+        let handle = storage as *mut Storage as *mut c_void;
+        let retrieve_handle = RetrieveHandle::new(retrieve_fn, handle);
+
+        assert_eq!(
+            17,
+            retrieve_handle
+                .retrieve(URID::new(1).unwrap(), urids.int, ())
+                .unwrap()
+        );
+        assert_eq!(
+            1.0,
+            retrieve_handle
+                .retrieve(URID::new(2).unwrap(), urids.float, ())
+                .unwrap()
+        );
+        assert_eq!(
+            [1, 2, 3, 4],
+            retrieve_handle
+                .retrieve(URID::new(3).unwrap(), urids.vector, urids.int)
+                .unwrap()
+        );
+        assert!(retrieve_handle.retrieve(URID::new(4).unwrap(), urids.int, ()).is_none());
+    }
+
+    #[test]
+    fn test_storage() {
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
+        let urids = AtomURIDCache::from_map(&map).unwrap();
+
+        let mut storage = Storage::new();
+
+        store(&mut storage, &urids);
+
+        for (key, (type_, value)) in storage.items.iter() {
             match key.get() {
                 1 => {
-                    assert_eq!(urids.int, type_);
+                    assert_eq!(urids.int, *type_);
                     assert_eq!(17, unsafe { *(value.as_slice() as *const _ as *const i32) });
                 }
                 2 => {
-                    assert_eq!(urids.float, type_);
+                    assert_eq!(urids.float, *type_);
                     assert_eq!(1.0, unsafe {
                         *(value.as_slice() as *const _ as *const f32)
                     });
                 }
                 3 => {
-                    assert_eq!(urids.vector, type_);
+                    assert_eq!(urids.vector, *type_);
                     let space = Space::from_slice(value.as_slice());
                     let data = Vector::read(space, urids.int).unwrap();
                     assert_eq!([1, 2, 3, 4], data);
@@ -218,5 +330,7 @@ mod tests {
                 _ => panic!("Invalid key!"),
             }
         }
+
+        retrieve(&mut storage, &urids);
     }
 }
