@@ -295,7 +295,9 @@ mod tests {
                 .retrieve(URID::new(3).unwrap(), urids.vector, urids.int)
                 .unwrap()
         );
-        assert!(retrieve_handle.retrieve(URID::new(4).unwrap(), urids.int, ()).is_none());
+        assert!(retrieve_handle
+            .retrieve(URID::new(4).unwrap(), urids.int, ())
+            .is_none());
     }
 
     #[test]
