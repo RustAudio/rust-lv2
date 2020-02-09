@@ -109,7 +109,7 @@ pub struct AtomURIDCache {
     pub long: URID<scalar::Long>,
     pub urid: URID<scalar::AtomURID>,
     pub bool: URID<scalar::Bool>,
-    pub vector: URID<vector::Vector<scalar::Int>>,
+    vector: URID<vector::Vector<scalar::Int>>,
     pub chunk: URID<chunk::Chunk>,
     pub literal: URID<string::Literal>,
     pub object: URID<object::Object>,
@@ -117,6 +117,12 @@ pub struct AtomURIDCache {
     pub string: URID<string::String>,
     pub tuple: URID<tuple::Tuple>,
     pub sequence: URID<sequence::Sequence>,
+}
+
+impl AtomURIDCache {
+    pub fn vector<S: scalar::ScalarAtom>(&self) -> URID<vector::Vector<S>> {
+        unsafe { URID::new_unchecked(self.vector.get()) }
+    }
 }
 
 /// Atom type.

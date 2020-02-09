@@ -20,11 +20,13 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
-//!     let input: &[i32] = ports.input.read(urids.vector, urids.int).unwrap();
-//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector, urids.int).unwrap();
+//!     let input: &[i32] = ports.input.read(urids.vector(), urids.int).unwrap();
+//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector(), urids.int).unwrap();
 //!     output.append(input).unwrap();
 //! }
 //! ```
+//!
+//! You may note that, unlike other atoms, the vector's URID is retrieved by calling the `vector` method. This is because two vectors with a different item type are considered two different types, and therefore would have the different URIDs. In reality, however, all vectors have the same URID and the `vector` method returns it with the fitting type.
 //!
 //! # Specification
 //!
@@ -169,7 +171,7 @@ mod tests {
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
             let mut writer = (&mut space as &mut dyn MutSpace)
-                .init(urids.vector, urids.int)
+                .init(urids.vector(), urids.int)
                 .unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);

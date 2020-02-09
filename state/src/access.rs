@@ -252,7 +252,7 @@ mod tests {
         store_handle.commit(URID::new(1).unwrap()).unwrap().unwrap();
 
         let mut vector_writer = store_handle.draft(URID::new(3).unwrap());
-        let mut vector_writer = vector_writer.init(urids.vector, urids.int).unwrap();
+        let mut vector_writer = vector_writer.init(urids.vector(), urids.int).unwrap();
         vector_writer.append(&[1, 2, 3, 4]).unwrap();
 
         store_handle.commit_all().unwrap();
@@ -292,7 +292,7 @@ mod tests {
         assert_eq!(
             [1, 2, 3, 4],
             retrieve_handle
-                .retrieve(URID::new(3).unwrap(), urids.vector, urids.int)
+                .retrieve(URID::new(3).unwrap(), urids.vector(), urids.int)
                 .unwrap()
         );
         assert!(retrieve_handle
@@ -324,7 +324,7 @@ mod tests {
                     });
                 }
                 3 => {
-                    assert_eq!(urids.vector, *type_);
+                    assert_eq!(urids.vector::<Int>(), *type_);
                     let space = Space::from_slice(value.as_slice());
                     let data = Vector::read(space, urids.int).unwrap();
                     assert_eq!([1, 2, 3, 4], data);
