@@ -136,6 +136,39 @@ where
     }
 }
 
+/// Deprecated alias of `Object`
+/// 
+/// A blank object is an object that isn't an instance of a class. The [specification recommends](https://lv2plug.in/ns/ext/atom/atom.html#Blank) to use an [`Object`](struct.Object.html) with an id of `None`, but some hosts still use it and therefore, it's included in this library.
+#[deprecated]
+pub struct Blank;
+
+#[allow(deprecated)]
+unsafe impl UriBound for Blank {
+    const URI: &'static [u8] = sys::LV2_ATOM__Blank;
+}
+
+#[allow(deprecated)]
+impl<'a, 'b> Atom<'a, 'b> for Blank
+where
+    'a: 'b,
+{
+    type ReadParameter = <Object as Atom<'a, 'b>>::ReadParameter;
+    type ReadHandle = <Object as Atom<'a, 'b>>::ReadHandle;
+    type WriteParameter = <Object as Atom<'a, 'b>>::WriteParameter;
+    type WriteHandle = <Object as Atom<'a, 'b>>::WriteHandle;
+
+    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
+        Object::read(body, parameter)
+    }
+
+    fn init(
+        frame: FramedMutSpace<'a, 'b>,
+        parameter: Self::WriteParameter,
+    ) -> Option<Self::WriteHandle> {
+        Object::init(frame, parameter)
+    }
+}
+
 /// An iterator over all properties in an object.
 ///
 /// Each iteration item is the header of the property, as well as the space occupied by the value atom. You can use normal `read` methods on the returned space.
