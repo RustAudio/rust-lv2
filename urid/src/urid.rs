@@ -73,19 +73,6 @@ impl URID<()> {
     }
 }
 
-/// An extension of `UriBound` to improve URID access.
-///
-/// Types that implement `UriBound` may also implement `URIDBound` to improve their usage in generic methods and types. However, this is not compulsory: Types that implement only `UriBound` and not `URIDBound` can still have URIDs, but their access is a bit less convenient.
-pub trait URIDBound: UriBound {
-    /// A cache that contains the URID.
-    ///
-    /// You could use the trivial URID cache, `URID<Self>`, but if your type is often used together with other types, you may define a custom `URIDCache` that contains these URIDs that are used together and declare it as your cache type.
-    type CacheType: URIDCache;
-
-    /// Retrieve the URID from the cache.
-    fn urid(cache: &Self::CacheType) -> URID<Self>;
-}
-
 impl<T: ?Sized> URID<T> {
     /// Create a URID without checking for type or value validity.
     ///

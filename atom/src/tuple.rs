@@ -45,14 +45,6 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
-impl URIDBound for Tuple {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.tuple
-    }
-}
-
 impl<'a, 'b> Atom<'a, 'b> for Tuple
 where
     'a: 'b,

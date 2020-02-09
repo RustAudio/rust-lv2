@@ -76,7 +76,7 @@ use crate::*;
 use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
-use urid::{URIDBound, URID};
+use urid::URID;
 
 /// An atom containing multiple key-value pairs.
 ///
@@ -85,14 +85,6 @@ pub struct Object;
 
 unsafe impl UriBound for Object {
     const URI: &'static [u8] = sys::LV2_ATOM__Object;
-}
-
-impl URIDBound for Object {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.object
-    }
 }
 
 /// Information about an object atom.
@@ -194,14 +186,6 @@ pub struct Property;
 
 unsafe impl UriBound for Property {
     const URI: &'static [u8] = sys::LV2_ATOM__Property;
-}
-
-impl URIDBound for Property {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        unsafe { URID::new_unchecked(urids.property.get()) }
-    }
 }
 
 /// Information about a property atom.

@@ -35,12 +35,12 @@ use crate::space::*;
 use crate::*;
 use core::UriBound;
 use std::marker::Unpin;
-use urid::{URIDBound, URID};
+use urid::URID;
 
 /// An atom that only contains a single, scalar value.
 ///
 /// Since scalar values are so simple, the reading and writing methods are exactly the same.
-pub trait ScalarAtom: URIDBound {
+pub trait ScalarAtom: UriBound {
     /// The internal representation of the atom.
     ///
     /// For example, the `Int` atom has the internal type of `i32`, which is `i32` on most platforms.
@@ -91,15 +91,6 @@ macro_rules! make_scalar_atom {
     ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {
         unsafe impl UriBound for $atom {
             const URI: &'static [u8] = $uri;
-        }
-
-        impl URIDBound for $atom {
-            type CacheType = AtomURIDCache;
-
-            fn urid(cache: &AtomURIDCache) -> URID<$atom> {
-                #[allow(clippy::redundant_closure_call)]
-                ($urid)(cache)
-            }
         }
 
         impl ScalarAtom for $atom {
@@ -177,7 +168,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = A::CacheType::from_map(&map).unwrap();
+        let urid: URID<A> = map.map_type().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 
@@ -185,7 +176,7 @@ mod tests {
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
             let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(A::urid(&urids))
+                .create_atom_frame(urid)
                 .unwrap();
             A::init(frame, value).unwrap();
         }
@@ -202,7 +193,7 @@ mod tests {
             let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>());
 
             let scalar = unsafe { &*(scalar.as_ptr() as *const Scalar<A::InternalType>) };
-            assert_eq!(scalar.atom.type_, A::urid(&urids));
+            assert_eq!(scalar.atom.type_, urid);
             assert_eq!(scalar.atom.size as usize, size_of::<A::InternalType>());
             assert_eq!(scalar.body, value);
         }
@@ -210,7 +201,7 @@ mod tests {
         // reading
         {
             let space = Space::from_slice(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(A::urid(&urids)).unwrap();
+            let (body, _) = space.split_atom_body(urid).unwrap();
             assert_eq!(A::read(body, ()).unwrap(), value);
         }
     }

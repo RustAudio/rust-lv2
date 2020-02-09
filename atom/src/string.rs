@@ -42,14 +42,6 @@ unsafe impl UriBound for Literal {
     const URI: &'static [u8] = sys::LV2_ATOM__Literal;
 }
 
-impl URIDBound for Literal {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.literal
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 /// The type or language URID of a literal.
 pub enum LiteralInfo {
@@ -107,14 +99,6 @@ pub struct String;
 
 unsafe impl UriBound for String {
     const URI: &'static [u8] = sys::LV2_ATOM__String;
-}
-
-impl URIDBound for String {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.string
-    }
 }
 
 impl<'a, 'b> Atom<'a, 'b> for String

@@ -96,8 +96,9 @@ pub mod prelude {
     pub use vector::Vector;
 }
 
+use core::UriBound;
 use space::*;
-use urid::{URIDBound, URIDCache, URID};
+use urid::{URIDCache, URID};
 
 #[derive(Clone, URIDCache)]
 /// Container with the URIDs of all `UriBound`s in this crate.
@@ -123,7 +124,7 @@ pub struct AtomURIDCache {
 /// This is the foundation of this crate: Types that implement `Atom` define the reading and writing functions for an atom type. However, these types will never be constructed; They are only names to be used for generic type arguments.
 ///
 /// This trait has two lifetime parameters: The first one is the lifetime of the atom in memory. In practice, this will often be `'static`, but it's good to keep it generic for testing purposes. The second parameter is the lifetime of the `MutSpace` borrowed by the `FramedMutSpace` parameter in the `write` method. Since the `WriteParameter` may contain this `FramedMutSpace`, it has to be assured that it lives long enough. Since the referenced `MutSpace` also has to borrow the atom, it may not live longer than the atom.
-pub trait Atom<'a, 'b>: URIDBound
+pub trait Atom<'a, 'b>: UriBound
 where
     'a: 'b,
 {

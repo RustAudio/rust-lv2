@@ -48,14 +48,6 @@ unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<C: ScalarAtom> URIDBound for Vector<C> {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        unsafe { URID::new_unchecked(urids.vector.get()) }
-    }
-}
-
 impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C>
 where
     'a: 'b,
