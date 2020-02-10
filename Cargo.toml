@@ -23,6 +23,7 @@ lv2-time = "0.1.0"
 lv2-units = "0.1.0"
 lv2-urid = "1.0.0"
 lv2-state = "1.0.0"
+lv2-worker = "0.1.0"
 
 [workspace]
 members = [
@@ -49,6 +50,7 @@ lv2-time = { path = "time" }
 lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
 lv2-urid-derive = { path = "urid/derive" }
+lv2-worker = { path = "worker" }
 
 [features]
 default = []
