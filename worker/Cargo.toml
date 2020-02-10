@@ -1,0 +1,14 @@
+[package]
+name = "lv2-worker"
+version = "0.1.0"
+authors = ["Amaury ABRIAL aka Yruama_Lairba <yruama_lairba@hotmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+lv2-sys = { path = "../sys" }
+lv2-core = { path = "../core" }
+
+[features]
+default = []
+host = []

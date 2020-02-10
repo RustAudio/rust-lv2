@@ -23,6 +23,8 @@ lv2-time = "0.1.0"
 lv2-units = "0.1.0"
 lv2-urid = "1.0.0"
 lv2-state = "1.0.0"
+lv2-worker = { path = "worker"}
+
 
 [workspace]
 members = [
@@ -36,6 +38,7 @@ members = [
     "urid/derive",
     "midi",
     "state",
+    "worker",
 ]
 
 [features]
