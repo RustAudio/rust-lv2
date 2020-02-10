@@ -64,7 +64,7 @@ pub mod time {
 
 use time::*;
 
-/// A URID cache containing all units.
+/// A URID cache containing all time properties.
 #[derive(URIDCache)]
 pub struct TimeURIDCache {
     pub bar: URID<Bar>,
@@ -79,7 +79,7 @@ pub struct TimeURIDCache {
     pub speed: URID<Speed>,
 }
 
-/// Prelude of `lv2_units` for wildcard usage.
+/// Prelude of `lv2_time` for wildcard usage.
 pub mod prelude {
     pub use crate::time::*;
     pub use crate::TimeURIDCache;
