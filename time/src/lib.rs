@@ -10,9 +10,31 @@ extern crate lv2_urid as urid;
 
 use urid::prelude::*;
 
-/// All time properties  URI bounds
+/// All time URI bounds
+///
+/// All Struct suffixed by `Class` are time Classes, others are time properties.
 pub mod time {
     use core::UriBound;
+
+    ///A point in time and/or the speed at which time is passing.
+    ///
+    ///A position is both a point and a speed, which precisely defines a time within a timeline.
+    pub struct PositionClass;
+    unsafe impl UriBound for PositionClass {
+        const URI: &'static [u8] = sys::LV2_TIME__Position;
+    }
+
+    ///The rate of passage of time in terms of one unit with respect to another.
+    pub struct RateClass;
+    unsafe impl UriBound for RateClass {
+        const URI: &'static [u8] = sys::LV2_TIME__Rate;
+    }
+
+    ///A point in time in some unit/dimension
+    pub struct TimeClass;
+    unsafe impl UriBound for TimeClass {
+        const URI: &'static [u8] = sys::LV2_TIME__Time;
+    }
 
     pub struct Bar;
     unsafe impl UriBound for Bar {
