@@ -114,6 +114,9 @@ use time::*;
 /// A URID cache containing all time properties.
 #[derive(URIDCache)]
 pub struct TimeURIDCache {
+    pub position_class: URID<PositionClass>,
+    pub rate_class: URID<RateClass>,
+    pub time_class: URID<TimeClass>,
     pub bar: URID<Bar>,
     pub bar_beat: URID<BarBeat>,
     pub beat: URID<Beat>,
