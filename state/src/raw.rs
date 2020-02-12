@@ -4,24 +4,30 @@ use atom::prelude::*;
 use atom::space::*;
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::marker::PhantomData;
 use urid::prelude::*;
 
 /// A handle to abstract state storage.
 ///
 /// This handle buffers the written properties and flushes them at once. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
-pub struct RawStoreHandle {
+pub struct RawStoreHandle<'a> {
     properties: HashMap<URID, SpaceElement>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
+    lifetime: PhantomData<&'a mut c_void>,
 }
 
-impl RawStoreHandle {
+impl<'a> RawStoreHandle<'a> {
     /// Create a new store handle.
-    pub fn new(store_fn: sys::LV2_State_Store_Function, handle: sys::LV2_State_Handle) -> Self {
+    pub unsafe fn new(
+        store_fn: sys::LV2_State_Store_Function,
+        handle: sys::LV2_State_Handle,
+    ) -> Self {
         RawStoreHandle {
             properties: HashMap::new(),
             store_fn,
             handle,
+            lifetime: PhantomData,
         }
     }
 
@@ -53,7 +59,7 @@ impl RawStoreHandle {
     }
 }
 
-impl StoreHandle for RawStoreHandle {
+impl<'a> StoreHandle for RawStoreHandle<'a> {
     fn draft(&mut self, property_key: URID) -> StatePropertyWriter {
         self.properties
             .insert(property_key, SpaceElement::default());
@@ -83,24 +89,26 @@ impl StoreHandle for RawStoreHandle {
     }
 }
 
-impl RawRetrieveHandle {
-    pub fn new(
+pub struct RawRetrieveHandle<'a> {
+    retrieve_fn: sys::LV2_State_Retrieve_Function,
+    handle: sys::LV2_State_Handle,
+    lifetime: PhantomData<&'a mut c_void>,
+}
+
+impl<'a> RawRetrieveHandle<'a> {
+    pub unsafe fn new(
         retrieve_fn: sys::LV2_State_Retrieve_Function,
         handle: sys::LV2_State_Handle,
     ) -> Self {
         RawRetrieveHandle {
             retrieve_fn,
             handle,
+            lifetime: PhantomData,
         }
     }
 }
 
-pub struct RawRetrieveHandle {
-    retrieve_fn: sys::LV2_State_Retrieve_Function,
-    handle: sys::LV2_State_Handle,
-}
-
-impl RetrieveHandle for RawRetrieveHandle {
+impl<'a> RetrieveHandle for RawRetrieveHandle<'a> {
     fn retrieve(&self, key: URID) -> Option<StatePropertyReader> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;
@@ -128,87 +136,13 @@ impl RetrieveHandle for RawRetrieveHandle {
 #[cfg(test)]
 mod tests {
     use crate::raw::*;
+    use crate::storage::Storage;
     use atom::space::Space;
-    use std::collections::HashMap;
-    use std::ffi::c_void;
     use urid::mapper::*;
 
-    struct Storage {
-        items: HashMap<URID, (URID, Vec<u8>)>,
-    }
-
-    impl Storage {
-        fn new() -> Self {
-            Self {
-                items: HashMap::new(),
-            }
-        }
-
-        fn store(&mut self, key: URID, type_: URID, value: &[u8]) {
-            self.items.insert(key, (type_, value.to_owned()));
-        }
-
-        unsafe extern "C" fn extern_store(
-            handle: sys::LV2_State_Handle,
-            key: u32,
-            value: *const c_void,
-            size: usize,
-            type_: u32,
-            _: u32,
-        ) -> sys::LV2_State_Status {
-            let handle = (handle as *mut Self).as_mut().unwrap();
-            let key = URID::new(key).unwrap();
-            let value = std::slice::from_raw_parts(value as *const u8, size);
-            let type_ = URID::new(type_).unwrap();
-            handle.store(key, type_, value);
-            sys::LV2_State_Status_LV2_STATE_SUCCESS
-        }
-
-        fn retrieve(&self, key: URID) -> Option<(URID, &[u8])> {
-            self.items
-                .get(&key)
-                .map(|(urid, data)| (*urid, data.as_ref()))
-        }
-
-        unsafe extern "C" fn extern_retrieve(
-            handle: sys::LV2_State_Handle,
-            key: u32,
-            size: *mut usize,
-            type_: *mut u32,
-            flags: *mut u32,
-        ) -> *const c_void {
-            if !flags.is_null() {
-                *flags = sys::LV2_State_Flags_LV2_STATE_IS_POD
-                    | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
-            }
-
-            let handle = (handle as *mut Self).as_mut().unwrap();
-            let key = URID::new(key).unwrap();
-            if let Some((type_urid, data)) = handle.retrieve(key) {
-                *size = data.len();
-                *type_ = type_urid.get();
-                data.as_ptr() as *const c_void
-            } else {
-                std::ptr::null()
-            }
-        }
-    }
-
     fn store(storage: &mut Storage, urids: &AtomURIDCache) {
-        let store_fn = Some(
-            Storage::extern_store
-                as unsafe extern "C" fn(
-                    *mut std::ffi::c_void,
-                    u32,
-                    *const std::ffi::c_void,
-                    usize,
-                    u32,
-                    u32,
-                ) -> u32,
-        );
+        let mut store_handle = storage.store_handle();
 
-        let handle = storage as *mut Storage as *mut c_void;
-        let mut store_handle = RawStoreHandle::new(store_fn, handle);
         store_handle
             .draft(URID::new(1).unwrap())
             .init(urids.int, 17)
@@ -233,18 +167,7 @@ mod tests {
     }
 
     fn retrieve(storage: &mut Storage, urids: &AtomURIDCache) {
-        let retrieve_fn = Some(
-            Storage::extern_retrieve
-                as unsafe extern "C" fn(
-                    handle: sys::LV2_State_Handle,
-                    key: u32,
-                    size: *mut usize,
-                    type_: *mut u32,
-                    flags: *mut u32,
-                ) -> *const c_void,
-        );
-        let handle = storage as *mut Storage as *mut c_void;
-        let retrieve_handle = RawRetrieveHandle::new(retrieve_fn, handle);
+        let retrieve_handle = storage.retrieve_handle();
 
         assert_eq!(
             17,
@@ -280,11 +203,11 @@ mod tests {
         let map = Map::new(&interface);
         let urids = AtomURIDCache::from_map(&map).unwrap();
 
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
 
         store(&mut storage, &urids);
 
-        for (key, (type_, value)) in storage.items.iter() {
+        for (key, (type_, value)) in storage.iter() {
             match key.get() {
                 1 => {
                     assert_eq!(urids.int, *type_);

@@ -1,5 +1,5 @@
-use crate::StateErr;
 use crate::raw::*;
+use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
 use core::extension::ExtensionDescriptor;

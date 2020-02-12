@@ -3,8 +3,10 @@ extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_urid as urid;
 
-pub mod raw;
 pub mod interface;
+pub mod raw;
+#[cfg(feature = "host")]
+pub mod storage;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateErr {
