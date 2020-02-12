@@ -1,52 +1,8 @@
 use crate::raw::*;
 use crate::StateErr;
-use atom::prelude::*;
-use atom::space::*;
 use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
-use urid::prelude::*;
-
-pub struct StatePropertyWriter<'a> {
-    head: SpaceHead<'a>,
-}
-
-impl<'a> StatePropertyWriter<'a> {
-    pub fn new(head: SpaceHead<'a>) -> Self {
-        Self { head }
-    }
-
-    pub fn init<'b, A: Atom<'a, 'b>>(
-        &'b mut self,
-        urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
-        (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
-    }
-}
-
-pub struct StatePropertyReader<'a> {
-    type_: URID,
-    body: Space<'a>,
-}
-
-impl<'a> StatePropertyReader<'a> {
-    pub fn new(type_: URID, body: Space<'a>) -> Self {
-        Self { type_, body }
-    }
-
-    pub fn read<A: Atom<'a, 'a>>(
-        &self,
-        urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Option<A::ReadHandle> {
-        if urid == self.type_ {
-            A::read(self.body, parameter)
-        } else {
-            None
-        }
-    }
-}
 
 pub trait State: Plugin {
     type StateFeatures: FeatureCollection<'static>;

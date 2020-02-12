@@ -1,10 +1,7 @@
 use lv2_atom::prelude::*;
 use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
 use lv2_core::prelude::*;
-use lv2_state::interface::*;
-use lv2_state::raw::*;
-use lv2_state::storage::Storage;
-use lv2_state::StateErr;
+use lv2_state::prelude::*;
 use lv2_urid::mapper::*;
 use lv2_urid::prelude::*;
 use std::path::Path;
@@ -110,7 +107,7 @@ fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
 #[test]
 fn test_save_n_restore() {
     let mut mapper = Box::pin(HashURIDMapper::new());
-    let mut storage = Storage::default();
+    let mut storage = lv2_state::Storage::default();
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 

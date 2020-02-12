@@ -5,8 +5,11 @@ extern crate lv2_urid as urid;
 
 pub mod interface;
 pub mod raw;
+
 #[cfg(feature = "host")]
-pub mod storage;
+mod storage;
+#[cfg(feature = "host")]
+pub use storage::Storage;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateErr {
@@ -44,4 +47,10 @@ impl StateErr {
             Err(_) => sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN,
         }
     }
+}
+
+pub mod prelude {
+    pub use crate::interface::{State, StateDescriptor};
+    pub use crate::raw::{StoreHandle, RetrieveHandle, StatePropertyReader, StatePropertyWriter};
+    pub use crate::StateErr;
 }
