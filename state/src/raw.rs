@@ -10,20 +10,20 @@ use urid::prelude::*;
 /// A handle to abstract state storage.
 ///
 /// This handle buffers the written properties and flushes them at once. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
-pub struct RawStoreHandle<'a> {
+pub struct StoreHandle<'a> {
     properties: HashMap<URID, SpaceElement>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
 }
 
-impl<'a> RawStoreHandle<'a> {
+impl<'a> StoreHandle<'a> {
     /// Create a new store handle.
     pub unsafe fn new(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
     ) -> Self {
-        RawStoreHandle {
+        StoreHandle {
             properties: HashMap::new(),
             store_fn,
             handle,
@@ -31,8 +31,21 @@ impl<'a> RawStoreHandle<'a> {
         }
     }
 
+    /// Draft a new property.
+    ///
+    /// This will return a new handle to create a property. Once the property is completely written, you can commit it by calling [`commit`](#method.commit) or [`commit_all`](#method.commit_all). Then, and only then, it will be saved by the host.
+    ///
+    /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
+    pub fn draft(&mut self, property_key: URID) -> StatePropertyWriter {
+        self.properties
+            .insert(property_key, SpaceElement::default());
+        StatePropertyWriter::new(SpaceHead::new(
+            self.properties.get_mut(&property_key).unwrap(),
+        ))
+    }
+
     /// Internal helper function to store one property.
-    fn commit_pair(
+    pub fn commit_pair(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID,
@@ -57,59 +70,57 @@ impl<'a> RawStoreHandle<'a> {
             sys::LV2_State_Flags_LV2_STATE_IS_POD | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
         StateErr::from(unsafe { (store_fn)(handle, key, data_ptr, data_size, data_type, flags) })
     }
-}
 
-impl<'a> StoreHandle for RawStoreHandle<'a> {
-    fn draft(&mut self, property_key: URID) -> StatePropertyWriter {
-        self.properties
-            .insert(property_key, SpaceElement::default());
-        StatePropertyWriter::new(SpaceHead::new(
-            self.properties.get_mut(&property_key).unwrap(),
-        ))
-    }
-
-    fn commit_all(&mut self) -> Result<(), StateErr> {
+    /// Commit all created properties.
+    ///
+    /// This will also clear the property buffer.
+    pub fn commit_all(&mut self) -> Result<(), StateErr> {
         for (key, space) in self.properties.drain() {
             Self::commit_pair(self.store_fn, self.handle, key, space)?;
         }
         Ok(())
     }
 
-    fn commit(&mut self, key: URID) -> Option<Result<(), StateErr>> {
+    /// Commit one specific property.
+    ///
+    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occured while storing the property.
+    pub fn commit(&mut self, key: URID) -> Option<Result<(), StateErr>> {
         let space = self.properties.remove(&key)?;
         Some(Self::commit_pair(self.store_fn, self.handle, key, space))
     }
 
-    fn discard_all(&mut self) {
+    /// Discard all drafted properties.
+    pub fn discard_all(&mut self) {
         self.properties.clear();
     }
 
-    fn discard(&mut self, key: URID) {
+    /// Discard a drafted property.
+    ///
+    /// If no property with the given key was drafted before, this is a no-op.
+    pub fn discard(&mut self, key: URID) {
         self.properties.remove(&key);
     }
 }
 
-pub struct RawRetrieveHandle<'a> {
+pub struct RetrieveHandle<'a> {
     retrieve_fn: sys::LV2_State_Retrieve_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
 }
 
-impl<'a> RawRetrieveHandle<'a> {
+impl<'a> RetrieveHandle<'a> {
     pub unsafe fn new(
         retrieve_fn: sys::LV2_State_Retrieve_Function,
         handle: sys::LV2_State_Handle,
     ) -> Self {
-        RawRetrieveHandle {
+        RetrieveHandle {
             retrieve_fn,
             handle,
             lifetime: PhantomData,
         }
     }
-}
-
-impl<'a> RetrieveHandle for RawRetrieveHandle<'a> {
-    fn retrieve(&self, key: URID) -> Option<StatePropertyReader> {
+    
+    pub fn retrieve(&self, key: URID) -> Option<StatePropertyReader> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;
         let property_ptr: *const std::ffi::c_void = unsafe {

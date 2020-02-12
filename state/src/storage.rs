@@ -1,4 +1,4 @@
-use crate::raw::{RawRetrieveHandle, RawStoreHandle};
+use crate::raw::{RetrieveHandle, StoreHandle};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
@@ -37,8 +37,8 @@ impl Storage {
         sys::LV2_State_Status_LV2_STATE_SUCCESS
     }
 
-    pub fn store_handle(&mut self) -> RawStoreHandle {
-        unsafe { RawStoreHandle::new(Some(Self::extern_store), self as *mut Self as *mut c_void) }
+    pub fn store_handle(&mut self) -> StoreHandle {
+        unsafe { StoreHandle::new(Some(Self::extern_store), self as *mut Self as *mut c_void) }
     }
 
     pub fn retrieve(&self, key: URID) -> Option<(URID, &[u8])> {
@@ -70,9 +70,9 @@ impl Storage {
         }
     }
 
-    pub fn retrieve_handle(&mut self) -> RawRetrieveHandle {
+    pub fn retrieve_handle(&mut self) -> RetrieveHandle {
         unsafe {
-            RawRetrieveHandle::new(
+            RetrieveHandle::new(
                 Some(Self::extern_retrieve),
                 self as *mut Self as *mut c_void,
             )

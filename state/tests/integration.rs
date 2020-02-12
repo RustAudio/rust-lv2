@@ -2,6 +2,7 @@ use lv2_atom::prelude::*;
 use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
 use lv2_core::prelude::*;
 use lv2_state::interface::*;
+use lv2_state::raw::*;
 use lv2_urid::prelude::*;
 
 struct Stateful {
@@ -45,7 +46,7 @@ impl Plugin for Stateful {
 impl State for Stateful {
     type StateFeatures = ();
 
-    fn save(&self, store: &mut dyn StoreHandle, _: ()) {
+    fn save(&self, mut store: StoreHandle, _: ()) {
         store
             .draft(URID::new(1000).unwrap())
             .init(self.urids.float, self.internal)
@@ -57,7 +58,7 @@ impl State for Stateful {
             .append(self.audio.as_ref());
     }
 
-    fn restore(&mut self, store: &mut dyn RetrieveHandle, _: ()) {
+    fn restore(&mut self, store: RetrieveHandle, _: ()) {
         self.internal = store
             .retrieve(URID::new(1000).unwrap())
             .unwrap()

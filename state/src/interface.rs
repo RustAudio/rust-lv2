@@ -1,38 +1,10 @@
 use crate::raw::*;
-use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
 use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
 use urid::prelude::*;
-
-pub trait StoreHandle {
-    /// Draft a new property.
-    ///
-    /// This will return a new handle to create a property. Once the property is completely written, you can commit it by calling [`commit`](#method.commit) or [`commit_all`](#method.commit_all). Then, and only then, it will be saved by the host.
-    ///
-    /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
-    fn draft(&mut self, property_key: URID) -> StatePropertyWriter;
-
-    /// Commit all created properties.
-    ///
-    /// This will also clear the property buffer.
-    fn commit_all(&mut self) -> Result<(), StateErr>;
-
-    /// Commit one specific property.
-    ///
-    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occured while storing the property.
-    fn commit(&mut self, key: URID) -> Option<Result<(), StateErr>>;
-
-    /// Discard all drafted properties.
-    fn discard_all(&mut self);
-
-    /// Discard a drafted property.
-    ///
-    /// If no property with the given key was drafted before, this is a no-op.
-    fn discard(&mut self, key: URID);
-}
 
 pub struct StatePropertyWriter<'a> {
     head: SpaceHead<'a>,
@@ -50,10 +22,6 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Option<A::WriteHandle> {
         (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
     }
-}
-
-pub trait RetrieveHandle {
-    fn retrieve(&self, key: URID) -> Option<StatePropertyReader>;
 }
 
 pub struct StatePropertyReader<'a> {
@@ -82,9 +50,9 @@ impl<'a> StatePropertyReader<'a> {
 pub trait State: Plugin {
     type StateFeatures: FeatureCollection<'static>;
 
-    fn save(&self, store: &mut dyn StoreHandle, features: Self::StateFeatures);
+    fn save(&self, store: StoreHandle, features: Self::StateFeatures);
 
-    fn restore(&mut self, store: &mut dyn RetrieveHandle, features: Self::StateFeatures);
+    fn restore(&mut self, store: RetrieveHandle, features: Self::StateFeatures);
 }
 
 pub struct StateDescriptor<P: State> {
@@ -113,7 +81,7 @@ impl<P: State> StateDescriptor<P> {
             return sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN;
         };
 
-        let mut store = RawStoreHandle::new(store, handle);
+        let store = StoreHandle::new(store, handle);
 
         let mut feature_container = core::feature::FeatureContainer::from_raw(features);
         let features =
@@ -123,7 +91,7 @@ impl<P: State> StateDescriptor<P> {
                 return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
             };
 
-        plugin.save(&mut store, features);
+        plugin.save(store, features);
 
         sys::LV2_State_Status_LV2_STATE_SUCCESS
     }
@@ -145,7 +113,7 @@ impl<P: State> StateDescriptor<P> {
             return sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN;
         };
 
-        let mut store = RawRetrieveHandle::new(retrieve, handle);
+        let store = RetrieveHandle::new(retrieve, handle);
 
         let mut feature_container = core::feature::FeatureContainer::from_raw(features);
         let features =
@@ -155,7 +123,7 @@ impl<P: State> StateDescriptor<P> {
                 return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
             };
 
-        plugin.restore(&mut store, features);
+        plugin.restore(store, features);
 
         sys::LV2_State_Status_LV2_STATE_SUCCESS
     }
