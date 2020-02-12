@@ -119,7 +119,7 @@ impl<'a> RetrieveHandle<'a> {
             lifetime: PhantomData,
         }
     }
-    
+
     pub fn retrieve(&self, key: URID) -> Option<StatePropertyReader> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;

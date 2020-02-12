@@ -1,4 +1,5 @@
 use crate::raw::*;
+use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
 use core::extension::ExtensionDescriptor;
@@ -50,7 +51,7 @@ impl<'a> StatePropertyReader<'a> {
 pub trait State: Plugin {
     type StateFeatures: FeatureCollection<'static>;
 
-    fn save(&self, store: StoreHandle, features: Self::StateFeatures);
+    fn save(&self, store: StoreHandle, features: Self::StateFeatures) -> Result<(), StateErr>;
 
     fn restore(&mut self, store: RetrieveHandle, features: Self::StateFeatures);
 }
@@ -91,9 +92,7 @@ impl<P: State> StateDescriptor<P> {
                 return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
             };
 
-        plugin.save(store, features);
-
-        sys::LV2_State_Status_LV2_STATE_SUCCESS
+        StateErr::into(plugin.save(store, features))
     }
 
     unsafe extern "C" fn extern_restore(
