@@ -109,6 +109,17 @@ fn test_save_n_restore() {
     let mut mapper = Box::pin(HashURIDMapper::new());
     let mut storage = lv2_state::Storage::default();
 
+    let (store_fn, restore_fn) = unsafe {
+        let extension_data_fn = lv2_descriptor(0).as_ref().unwrap().extension_data;
+        let uri = lv2_sys::LV2_STATE__interface.as_ptr() as *const i8;
+        let extension = ((extension_data_fn.unwrap())(uri) as *const lv2_sys::LV2_State_Interface)
+            .as_ref()
+            .unwrap();
+        (extension.save.unwrap(), extension.restore.unwrap())
+    };
+    assert!(store_fn == StateDescriptor::<Stateful>::extern_save);
+    assert!(restore_fn == StateDescriptor::<Stateful>::extern_restore);
+
     let mut first_plugin = create_plugin(mapper.as_mut());
 
     first_plugin.run(&mut ());
@@ -116,12 +127,28 @@ fn test_save_n_restore() {
     assert_eq!(17.0, first_plugin.internal);
     assert_eq!(32, first_plugin.audio.len());
 
-    first_plugin.save(storage.store_handle(), ()).unwrap();
+    unsafe {
+        (store_fn)(
+            &mut first_plugin as *mut Stateful as lv2_sys::LV2_Handle,
+            Some(lv2_state::Storage::extern_store),
+            &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
+            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            std::ptr::null_mut(),
+        )
+    };
 
     let mut second_plugin = create_plugin(mapper.as_mut());
 
-    second_plugin.restore(storage.retrieve_handle(), ());
+    unsafe {
+        (restore_fn)(
+            &mut second_plugin as *mut Stateful as lv2_sys::LV2_Handle,
+            Some(lv2_state::Storage::extern_retrieve),
+            &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
+            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            std::ptr::null_mut(),
+        )
+    };
 
-    assert_eq!(17.0, first_plugin.internal);
-    assert_eq!(32, first_plugin.audio.len());
+    assert_eq!(17.0, second_plugin.internal);
+    assert_eq!(32, second_plugin.audio.len());
 }

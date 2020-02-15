@@ -21,7 +21,7 @@ unsafe impl<P: State> UriBound for StateDescriptor<P> {
 }
 
 impl<P: State> StateDescriptor<P> {
-    unsafe extern "C" fn extern_save(
+    pub unsafe extern "C" fn extern_save(
         instance: sys::LV2_Handle,
         store: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
@@ -51,7 +51,7 @@ impl<P: State> StateDescriptor<P> {
         StateErr::into(plugin.save(store, features))
     }
 
-    unsafe extern "C" fn extern_restore(
+    pub unsafe extern "C" fn extern_restore(
         instance: sys::LV2_Handle,
         retrieve: sys::LV2_State_Retrieve_Function,
         handle: sys::LV2_State_Handle,
@@ -91,4 +91,113 @@ impl<P: State> ExtensionDescriptor for StateDescriptor<P> {
         save: Some(Self::extern_save),
         restore: Some(Self::extern_restore),
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+    use lv2_core::prelude::*;
+    use lv2_urid::prelude::*;
+
+    struct Stateful;
+
+    unsafe impl UriBound for Stateful {
+        const URI: &'static [u8] = b"urn:null\0";
+    }
+
+    impl Plugin for Stateful {
+        type Features = ();
+        type Ports = ();
+
+        #[cfg_attr(tarpaulin, skip)]
+        fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+            Some(Self)
+        }
+
+        #[cfg_attr(tarpaulin, skip)]
+        fn run(&mut self, _: &mut ()) {}
+    }
+
+    #[derive(FeatureCollection)]
+    struct Features<'a> {
+        _map: Map<'a>,
+    }
+
+    impl State for Stateful {
+        type StateFeatures = Features<'static>;
+
+        #[cfg_attr(tarpaulin, skip)]
+        fn save(&self, _: StoreHandle, _: Features<'static>) -> Result<(), StateErr> {
+            Ok(())
+        }
+
+        #[cfg_attr(tarpaulin, skip)]
+        fn restore(&mut self, _: RetrieveHandle, _: Features<'static>) {}
+    }
+
+    #[test]
+    fn test_illegal_paths() {
+        type Descriptor = StateDescriptor<Stateful>;
+        let mut plugin = Stateful;
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS, unsafe {
+            Descriptor::extern_save(
+                std::ptr::null_mut(),
+                None,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+            )
+        });
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS, unsafe {
+            Descriptor::extern_restore(
+                std::ptr::null_mut(),
+                None,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+            )
+        });
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN, unsafe {
+            Descriptor::extern_save(
+                std::ptr::null_mut(),
+                None,
+                std::ptr::null_mut(),
+                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                std::ptr::null_mut(),
+            )
+        });
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN, unsafe {
+            Descriptor::extern_restore(
+                std::ptr::null_mut(),
+                None,
+                std::ptr::null_mut(),
+                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                std::ptr::null_mut(),
+            )
+        });
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE, unsafe {
+            Descriptor::extern_save(
+                &mut plugin as *mut Stateful as sys::LV2_Handle,
+                None,
+                std::ptr::null_mut(),
+                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                std::ptr::null_mut(),
+            )
+        });
+
+        assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE, unsafe {
+            Descriptor::extern_restore(
+                &mut plugin as *mut Stateful as sys::LV2_Handle,
+                None,
+                std::ptr::null_mut(),
+                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                std::ptr::null_mut(),
+            )
+        });
+    }
 }

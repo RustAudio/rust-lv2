@@ -54,3 +54,66 @@ pub mod prelude {
     pub use crate::raw::{RetrieveHandle, StatePropertyReader, StatePropertyWriter, StoreHandle};
     pub use crate::StateErr;
 }
+
+#[cfg(test)]
+mod test {
+    use crate::StateErr;
+
+    #[test]
+    fn test_state_conversion() {
+        assert_eq!(
+            Ok(()),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_SUCCESS)
+        );
+        assert_eq!(
+            Err(StateErr::BadType),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE)
+        );
+        assert_eq!(
+            Err(StateErr::BadFlags),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS)
+        );
+        assert_eq!(
+            Err(StateErr::NoFeature),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE)
+        );
+        assert_eq!(
+            Err(StateErr::NoProperty),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_NO_PROPERTY)
+        );
+        assert_eq!(
+            Err(StateErr::NoSpace),
+            StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_NO_SPACE)
+        );
+        assert_eq!(Err(StateErr::Unknown), StateErr::from(std::u32::MAX));
+
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_SUCCESS,
+            StateErr::into(Ok(()))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE,
+            StateErr::into(Err(StateErr::BadType))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS,
+            StateErr::into(Err(StateErr::BadFlags))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE,
+            StateErr::into(Err(StateErr::NoFeature))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_NO_PROPERTY,
+            StateErr::into(Err(StateErr::NoProperty))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_NO_SPACE,
+            StateErr::into(Err(StateErr::NoSpace))
+        );
+        assert_eq!(
+            sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN,
+            StateErr::into(Err(StateErr::Unknown))
+        );
+    }
+}
