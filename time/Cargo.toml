@@ -1,0 +1,17 @@
+[package]
+name = "lv2-time"
+version = "0.1.0"
+authors = ["Yruama_Lairba <yruama_lairba@hotmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lv2-core = { path = "../core" }
+lv2-urid = { path = "../urid" }
+lv2-sys = { path = "../sys" }
+
+[features]
+default = []
+host = ["lv2-urid/host"]

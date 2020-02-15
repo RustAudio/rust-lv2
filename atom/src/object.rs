@@ -76,7 +76,7 @@ use crate::*;
 use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
-use urid::{URIDBound, URID};
+use urid::URID;
 
 /// An atom containing multiple key-value pairs.
 ///
@@ -85,14 +85,6 @@ pub struct Object;
 
 unsafe impl UriBound for Object {
     const URI: &'static [u8] = sys::LV2_ATOM__Object;
-}
-
-impl URIDBound for Object {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.object
-    }
 }
 
 /// Information about an object atom.
@@ -141,6 +133,39 @@ where
             );
         }
         Some(ObjectWriter { frame })
+    }
+}
+
+/// Deprecated alias of `Object`
+///
+/// A blank object is an object that isn't an instance of a class. The [specification recommends](https://lv2plug.in/ns/ext/atom/atom.html#Blank) to use an [`Object`](struct.Object.html) with an id of `None`, but some hosts still use it and therefore, it's included in this library.
+#[deprecated]
+pub struct Blank;
+
+#[allow(deprecated)]
+unsafe impl UriBound for Blank {
+    const URI: &'static [u8] = sys::LV2_ATOM__Blank;
+}
+
+#[allow(deprecated)]
+impl<'a, 'b> Atom<'a, 'b> for Blank
+where
+    'a: 'b,
+{
+    type ReadParameter = <Object as Atom<'a, 'b>>::ReadParameter;
+    type ReadHandle = <Object as Atom<'a, 'b>>::ReadHandle;
+    type WriteParameter = <Object as Atom<'a, 'b>>::WriteParameter;
+    type WriteHandle = <Object as Atom<'a, 'b>>::WriteHandle;
+
+    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
+        Object::read(body, parameter)
+    }
+
+    fn init(
+        frame: FramedMutSpace<'a, 'b>,
+        parameter: Self::WriteParameter,
+    ) -> Option<Self::WriteHandle> {
+        Object::init(frame, parameter)
     }
 }
 
@@ -193,14 +218,6 @@ pub struct Property;
 
 unsafe impl UriBound for Property {
     const URI: &'static [u8] = sys::LV2_ATOM__Property;
-}
-
-impl URIDBound for Property {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        unsafe { URID::new_unchecked(urids.property.get()) }
-    }
 }
 
 /// Information about a property atom.

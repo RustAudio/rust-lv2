@@ -61,7 +61,6 @@
 use atom::prelude::*;
 use core::prelude::*;
 use std::convert::TryFrom;
-use urid::prelude::*;
 
 /// Midi event.
 ///
@@ -74,14 +73,6 @@ pub struct WMidiEvent;
 
 unsafe impl UriBound for WMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
-}
-
-impl URIDBound for WMidiEvent {
-    type CacheType = crate::MidiURIDCache;
-
-    fn urid(cache: &Self::CacheType) -> URID<WMidiEvent> {
-        cache.wmidi
-    }
 }
 
 impl<'a, 'b> Atom<'a, 'b> for WMidiEvent
@@ -116,14 +107,6 @@ pub struct SystemExclusiveWMidiEvent;
 
 unsafe impl UriBound for SystemExclusiveWMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
-}
-
-impl URIDBound for SystemExclusiveWMidiEvent {
-    type CacheType = crate::MidiURIDCache;
-
-    fn urid(cache: &Self::CacheType) -> URID<SystemExclusiveWMidiEvent> {
-        cache.sysex_wmidi
-    }
 }
 
 impl<'a, 'b> Atom<'a, 'b> for SystemExclusiveWMidiEvent
@@ -185,6 +168,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::*;
+    use urid::prelude::*;
     use wmidi::*;
 
     #[test]

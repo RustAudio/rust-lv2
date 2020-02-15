@@ -5,7 +5,6 @@
 /// If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
 use atom::prelude::*;
 use core::prelude::*;
-use urid::prelude::*;
 
 /// Midi Event.
 ///
@@ -14,14 +13,6 @@ pub struct MidiEvent;
 
 unsafe impl UriBound for MidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
-}
-
-impl URIDBound for MidiEvent {
-    type CacheType = crate::MidiURIDCache;
-
-    fn urid(cache: &Self::CacheType) -> URID<MidiEvent> {
-        cache.raw
-    }
 }
 
 impl<'a, 'b> Atom<'a, 'b> for MidiEvent

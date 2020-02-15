@@ -51,6 +51,6 @@ impl StateErr {
 
 pub mod prelude {
     pub use crate::interface::{State, StateDescriptor};
-    pub use crate::raw::{StoreHandle, RetrieveHandle, StatePropertyReader, StatePropertyWriter};
+    pub use crate::raw::{RetrieveHandle, StatePropertyReader, StatePropertyWriter, StoreHandle};
     pub use crate::StateErr;
 }

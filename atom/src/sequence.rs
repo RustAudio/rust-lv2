@@ -81,14 +81,6 @@ unsafe impl UriBound for Sequence {
     const URI: &'static [u8] = sys::LV2_ATOM__Sequence;
 }
 
-impl URIDBound for Sequence {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.sequence
-    }
-}
-
 impl<'a, 'b> Atom<'a, 'b> for Sequence
 where
     'a: 'b,

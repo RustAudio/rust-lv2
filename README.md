@@ -30,6 +30,24 @@ Note that this library will only provide Rust bindings for the official LV2 spec
 with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
 to any other specification that will integrate with this library.
 
+## Documentation
+
+The original LV2 implementation (in the `C` programming language) is documented by ["the LV2 book"](https://lv2plug.in/book/).
+The book is [being translated to Rust](https://janonard.github.io/rust-lv2-book/) ([Repository](https://github.com/Janonard/rust-lv2-book)). 
+This translation describes how to use `rust-lv2`.
+
+API documentation can be built locally with `cargo rustdoc`. This has to be done separately per workspace, see below for an example how it can be done for the `core` workspace.
+```bash
+git clone https://github.com/RustAudio/rust-lv2.git
+cd rust-lv2/
+cd core
+cargo rustdoc
+cd ..
+firefox target/doc/lv2_core/index.html
+```
+
+The list of workspaces can be found in the `Cargo.toml` file.
+
 ## Building
 
 Since the `sys` crates provided by this workspace use `bindgen` to create the C API bindings at compile time, you need to have clang installed on your machine in order to build them.

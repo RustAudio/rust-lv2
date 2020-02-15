@@ -1,13 +1,15 @@
 [package]
 name = "lv2"
 version = "0.1.0"
-authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>",
+ "Yruama_Lairba <yruama_lairba@hotmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
 lv2-atom = { path = "atom" }
 lv2-core = { path = "core" }
+lv2-time = { path = "time" }
 lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
 lv2-midi = { path = "midi" }
@@ -19,6 +21,7 @@ members = [
     "atom",
     "core",
     "core/derive",
+    "time",
     "units",
     "urid",
     "urid/derive",

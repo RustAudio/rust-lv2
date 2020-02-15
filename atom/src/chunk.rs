@@ -26,9 +26,8 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::*;
-use crate::{Atom, AtomURIDCache};
+use crate::Atom;
 use core::UriBound;
-use urid::{URIDBound, URID};
 
 /// An atom containing memory of undefined type.
 ///
@@ -37,14 +36,6 @@ pub struct Chunk;
 
 unsafe impl UriBound for Chunk {
     const URI: &'static [u8] = sys::LV2_ATOM__Chunk;
-}
-
-impl URIDBound for Chunk {
-    type CacheType = AtomURIDCache;
-
-    fn urid(urids: &AtomURIDCache) -> URID<Self> {
-        urids.chunk
-    }
 }
 
 impl<'a, 'b> Atom<'a, 'b> for Chunk
