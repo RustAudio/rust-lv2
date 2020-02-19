@@ -75,7 +75,9 @@ pub trait Worker: Plugin {
     ///
     ///Since work_response() may be called after run() finished, this provides a hook for code that
     ///must run after the cycle is completed.
-    fn end_run(&mut self) -> WorkerStatus {WorkerStatus::Success}
+    fn end_run(&mut self) -> WorkerStatus {
+        WorkerStatus::Success
+    }
 }
 
 // A descriptor for the plugin. This is just a marker type to associate constants and methods with.
@@ -88,9 +90,7 @@ unsafe impl<P: Worker> UriBound for WorkerDescriptor<P> {
 }
 
 impl<P: Worker> WorkerDescriptor<P> {
-    /// The extern, unsafe version of the extending method.
-    ///
-    /// This is actually called by the host.
+    /// Extern unsafe version of `work` method actually called by the host
     unsafe extern "C" fn extern_work(
         handle: lv2_sys::LV2_Handle,
         response_function: lv2_sys::LV2_Worker_Respond_Function,
@@ -106,18 +106,30 @@ impl<P: Worker> WorkerDescriptor<P> {
         }
     }
 
-    //unsafe extern "C" fn extern_work_response(
-    //    handle: LV2_Handle,
-    //    size: u32,
-    //    body: *const c_void
-    //)-> LV2_Worker_Status {
-    //    let plugin = (handle as *mut P).as_mut().unwrap();
-    //    match plugin.work_response(size, body) {
-    //        WorkerStatus::Success => LV2_Worker_Status_LV2_WORKER_SUCCESS,
-    //        WorkerStatus::Unknown => LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-    //        WorkerStatus::NoSpace => LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
-    //    }
-    //}
+    /// Extern unsafe version of `work_response` method actually called by the host
+    unsafe extern "C" fn extern_work_response(
+        handle: lv2_sys::LV2_Handle,
+        size: u32,
+        body: *const c_void,
+    ) -> lv2_sys::LV2_Worker_Status {
+        let plugin = (handle as *mut P).as_mut().unwrap();
+        match plugin.work_response(size, body) {
+            WorkerStatus::Success => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+            WorkerStatus::Unknown => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+            WorkerStatus::NoSpace => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+        }
+    }
+
+    /// Extern unsafe version of `end_run` method actually called by the host
+    // This throw a warning if it's not in `INTERFACE`
+    unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
+        let plugin = (handle as *mut P).as_mut().unwrap();
+        match plugin.end_run() {
+            WorkerStatus::Success => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+            WorkerStatus::Unknown => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+            WorkerStatus::NoSpace => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+        }
+    }
 }
 
 // Implementing the trait that contains the interface.
@@ -126,8 +138,9 @@ impl<P: Worker> ExtensionDescriptor for WorkerDescriptor<P> {
 
     const INTERFACE: &'static lv2_sys::LV2_Worker_Interface = &lv2_sys::LV2_Worker_Interface {
         work: Some(Self::extern_work),
-        work_response: None, //Some(Self::extern_work_response),
-        end_run: None,
+        work_response: Some(Self::extern_work_response),
+        //i want to have `None` here when the plugin doesn't implements the `end_run` trait method
+        end_run: Some(Self::extern_end_run),
     };
 }
 
