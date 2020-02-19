@@ -83,19 +83,6 @@ pub struct WorkerDescriptor<P: Worker> {
     plugin: PhantomData<P>,
 }
 
-#[repr(C)]
-/// This struct would be part of a sys crate.
-//This replace LV2_Worker_Interface for partial implementation
-pub struct WorkerInterface {
-    work: unsafe extern "C" fn(
-        LV2_Handle,
-        LV2_Worker_Respond_Function,
-        LV2_Worker_Respond_Handle,
-        u32,
-        *const c_void,
-    ) -> LV2_Worker_Status,
-}
-
 unsafe impl<P: Worker> UriBound for WorkerDescriptor<P> {
     const URI: &'static [u8] = LV2_WORKER__interface;
 }
