@@ -1,7 +1,7 @@
 use lv2_atom::prelude::*;
 use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
 use lv2_core::prelude::*;
-use lv2_state::prelude::*;
+use lv2_state::*;
 use lv2_urid::mapper::*;
 use lv2_urid::prelude::*;
 use std::path::Path;

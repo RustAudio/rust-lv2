@@ -1,10 +1,14 @@
+/// Extension for LV2 Plugins to store their state.
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_urid as urid;
 
-pub mod interface;
-pub mod raw;
+mod interface;
+pub use interface::*;
+
+mod raw;
+pub use raw::*;
 
 #[cfg(feature = "host")]
 mod storage;
@@ -47,12 +51,6 @@ impl StateErr {
             Err(_) => sys::LV2_State_Status_LV2_STATE_ERR_UNKNOWN,
         }
     }
-}
-
-pub mod prelude {
-    pub use crate::interface::{State, StateDescriptor};
-    pub use crate::raw::{RetrieveHandle, StatePropertyReader, StatePropertyWriter, StoreHandle};
-    pub use crate::StateErr;
 }
 
 #[cfg(test)]

@@ -95,7 +95,7 @@ impl<P: State> ExtensionDescriptor for StateDescriptor<P> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
+    use crate::*;
     use lv2_core::prelude::*;
     use lv2_urid::prelude::*;
 
