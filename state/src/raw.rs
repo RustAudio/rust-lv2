@@ -137,11 +137,11 @@ impl<'a> RetrieveHandle<'a> {
         }
     }
 
-    pub fn retrieve(&self, key: URID) -> Option<StatePropertyReader> {
+    pub fn retrieve(&self, key: URID) -> Result<StatePropertyReader, StateErr> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;
         let property_ptr: *const std::ffi::c_void = unsafe {
-            (self.retrieve_fn?)(
+            (self.retrieve_fn.ok_or(StateErr::BadCallback)?)(
                 self.handle,
                 key.get(),
                 &mut size,
@@ -150,14 +150,14 @@ impl<'a> RetrieveHandle<'a> {
             )
         };
 
-        let type_ = URID::new(type_)?;
+        let type_ = URID::new(type_).ok_or(StateErr::Unknown)?;
         let space = if !property_ptr.is_null() {
             unsafe { std::slice::from_raw_parts(property_ptr as *const u8, size) }
         } else {
-            return None;
+            return Err(StateErr::NoProperty);
         };
 
-        Some(StatePropertyReader::new(type_, Space::from_slice(space)))
+        Ok(StatePropertyReader::new(type_, Space::from_slice(space)))
     }
 }
 
@@ -175,11 +175,11 @@ impl<'a> StatePropertyReader<'a> {
         &self,
         urid: URID<A>,
         parameter: A::ReadParameter,
-    ) -> Option<A::ReadHandle> {
+    ) -> Result<A::ReadHandle, StateErr> {
         if urid == self.type_ {
-            A::read(self.body, parameter)
+            A::read(self.body, parameter).ok_or(StateErr::Unknown)
         } else {
-            None
+            Err(StateErr::BadType)
         }
     }
 }
@@ -244,7 +244,7 @@ mod tests {
                 .read(urids.vector(), urids.int)
                 .unwrap()
         );
-        assert!(retrieve_handle.retrieve(URID::new(4).unwrap()).is_none());
+        assert!(retrieve_handle.retrieve(URID::new(4).unwrap()).is_err());
     }
 
     #[test]

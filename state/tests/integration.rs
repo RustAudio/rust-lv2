@@ -62,19 +62,16 @@ impl State for Stateful {
         store.commit_all()
     }
 
-    fn restore(&mut self, store: RetrieveHandle, _: ()) {
+    fn restore(&mut self, store: RetrieveHandle, _: ()) -> Result<(), StateErr> {
         self.internal = store
-            .retrieve(URID::new(1000).unwrap())
-            .unwrap()
-            .read(self.urids.float, ())
-            .unwrap();
+            .retrieve(URID::new(1000).unwrap())?
+            .read(self.urids.float, ())?;
         self.audio = Vec::from(
             store
-                .retrieve(URID::new(1001).unwrap())
-                .unwrap()
-                .read(self.urids.vector(), self.urids.float)
-                .unwrap(),
+                .retrieve(URID::new(1001).unwrap())?
+                .read(self.urids.vector(), self.urids.float)?,
         );
+        Ok(())
     }
 }
 

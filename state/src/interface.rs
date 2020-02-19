@@ -4,12 +4,17 @@ use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
 
+/// A plugin extension that let's plugins save and restore their state.
 pub trait State: Plugin {
     type StateFeatures: FeatureCollection<'static>;
 
     fn save(&self, store: StoreHandle, features: Self::StateFeatures) -> Result<(), StateErr>;
 
-    fn restore(&mut self, store: RetrieveHandle, features: Self::StateFeatures);
+    fn restore(
+        &mut self,
+        store: RetrieveHandle,
+        features: Self::StateFeatures,
+    ) -> Result<(), StateErr>;
 }
 
 pub struct StateDescriptor<P: State> {
@@ -78,9 +83,7 @@ impl<P: State> StateDescriptor<P> {
                 return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
             };
 
-        plugin.restore(store, features);
-
-        sys::LV2_State_Status_LV2_STATE_SUCCESS
+        StateErr::into(plugin.restore(store, features))
     }
 }
 
@@ -132,7 +135,9 @@ mod tests {
         }
 
         #[cfg_attr(tarpaulin, skip)]
-        fn restore(&mut self, _: RetrieveHandle, _: Features<'static>) {}
+        fn restore(&mut self, _: RetrieveHandle, _: Features<'static>) -> Result<(), StateErr> {
+            Ok(())
+        }
     }
 
     #[test]
