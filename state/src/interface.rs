@@ -4,12 +4,24 @@ use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
 
-/// A plugin extension that let's plugins save and restore their state.
+/// A plugin extension that lets a plugins save and restore it's state.
+/// 
+/// This extension contains two new methods: [`save`](#tymethod.save) and [`restore`](#tymethod.restore). These are called by the host to save and restore the state of the plugin, which is done with a handle.
+/// 
+/// You can also add a feature collection to retrieve host features; It works just like the plugin's feature collection: You create a struct with multiple `Feature`s, derive `FeatureCollection` for it, and set the [`StateFeatures`](#associatedtype.StateFeatures) type to it. Then, the framework will try to populate it with the features supplied by the host and pass it to the method.
 pub trait State: Plugin {
+
+    /// The feature collection to populate for the [`save`](#tymethod.save) and [`restore`](#tymethod.restore) methods.
     type StateFeatures: FeatureCollection<'static>;
 
+    /// Save the state of the plugin.
+    /// 
+    /// The storage is done with the store handle. You draft a property, write it using the property handle, and then commit it to the store.
     fn save(&self, store: StoreHandle, features: Self::StateFeatures) -> Result<(), StateErr>;
 
+    /// Restore the state of the plugin.
+    /// 
+    /// The properties you have previously written can be retrieved with the store handle.
     fn restore(
         &mut self,
         store: RetrieveHandle,
@@ -17,6 +29,7 @@ pub trait State: Plugin {
     ) -> Result<(), StateErr>;
 }
 
+/// Raw wrapper of the [`State`](trait.State.html) extension.
 pub struct StateDescriptor<P: State> {
     plugin: PhantomData<P>,
 }
