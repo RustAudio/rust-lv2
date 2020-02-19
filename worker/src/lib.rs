@@ -47,7 +47,16 @@ pub enum WorkerStatus {
 
 // Worker Traits
 pub trait Worker: Plugin {
-    /// the work to do in a non-real-time thread
+    /// The work to do in a non-real-time thread. The spec require plugins to implment this method.
+    ///
+    /// This is called by the host in a non-realtime context as requested, possibly with an
+    /// arbitrary message to handle.
+    ///
+    /// A response can be sent to run() using respond. The plugin MUST NOT make any assumptions
+    /// about which thread calls this method, except that there are no real-time requirements and
+    /// only one call may be executed at a time. That is, the host MAY call this method from any
+    /// non-real-time thread, but MUST NOT make concurrent calls to this method from several
+    /// threads.
     fn work(
         &mut self,
         response_function: lv2_sys::LV2_Worker_Respond_Function,
@@ -56,11 +65,17 @@ pub trait Worker: Plugin {
         data: *const c_void,
     ) -> WorkerStatus;
 
-    //fn work_response(
-    //    &mut self,
-    //    size: u32,
-    //    body: *const c_void
-    //) -> WorkerStatus;
+    /// Handle a response from the worker. The spec require plugins to implement this method even if
+    /// many host support to not have it.
+    ///
+    /// This is called by the host in the run() context when a response from the worker is ready.
+    fn work_response(&mut self, size: u32, body: *const c_void) -> WorkerStatus;
+
+    ///Called when all responses for this cycle have been delivered. (optional)
+    ///
+    ///Since work_response() may be called after run() finished, this provides a hook for code that
+    ///must run after the cycle is completed.
+    fn end_run(&mut self) -> WorkerStatus {WorkerStatus::Success}
 }
 
 // A descriptor for the plugin. This is just a marker type to associate constants and methods with.
