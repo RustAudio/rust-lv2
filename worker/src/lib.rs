@@ -1,21 +1,8 @@
+use lv2_core::extension::ExtensionDescriptor;
+use lv2_core::feature::*;
 use lv2_core::plugin::Plugin;
 use lv2_core::prelude::*;
-use lv2_core::feature::*;
-use lv2_core::extension::ExtensionDescriptor;
 use lv2_sys;
-use lv2_sys::{
-    LV2_Handle,
-    LV2_WORKER__interface,
-    LV2_Worker_Interface,
-    LV2_Worker_Respond_Function,
-    LV2_Worker_Respond_Handle,
-    LV2_Worker_Schedule,
-    LV2_Worker_Status,
-    LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
-    LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-    LV2_Worker_Status_LV2_WORKER_SUCCESS,
-};
-use lv2_urid::prelude::*;
 use std::marker::PhantomData;
 use std::os::raw::*; //get all common c_type
 
@@ -25,7 +12,6 @@ use std::os::raw::*; //get all common c_type
 /// Plugins can use this interface to safely perform work that is not real-time safe, and receive
 /// the result in the run context. The details of threading are managed by the host, allowing
 /// plugins to be simple and portable while using resources more efficiently.
-
 
 /// Host feature allowing plugins to schedule work that must be performed in another thread.
 /// Plugins can use this interface to safely perform work that is not real-time safe, and receive
@@ -52,7 +38,6 @@ unsafe impl<'a> Feature for Schedule<'a> {
     }
 }
 
-
 //type
 pub enum WorkerStatus {
     Success,
@@ -65,8 +50,8 @@ pub trait Worker: Plugin {
     /// the work to do in a non-real-time thread
     fn work(
         &mut self,
-        response_function: LV2_Worker_Respond_Function,
-        respond_handle: LV2_Worker_Respond_Handle,
+        response_function: lv2_sys::LV2_Worker_Respond_Function,
+        respond_handle: lv2_sys::LV2_Worker_Respond_Handle,
         size: u32,
         data: *const c_void,
     ) -> WorkerStatus;
@@ -84,7 +69,7 @@ pub struct WorkerDescriptor<P: Worker> {
 }
 
 unsafe impl<P: Worker> UriBound for WorkerDescriptor<P> {
-    const URI: &'static [u8] = LV2_WORKER__interface;
+    const URI: &'static [u8] = lv2_sys::LV2_WORKER__interface;
 }
 
 impl<P: Worker> WorkerDescriptor<P> {
@@ -92,17 +77,17 @@ impl<P: Worker> WorkerDescriptor<P> {
     ///
     /// This is actually called by the host.
     unsafe extern "C" fn extern_work(
-        handle: LV2_Handle,
-        response_function: LV2_Worker_Respond_Function,
-        respond_handle: LV2_Worker_Respond_Handle,
+        handle: lv2_sys::LV2_Handle,
+        response_function: lv2_sys::LV2_Worker_Respond_Function,
+        respond_handle: lv2_sys::LV2_Worker_Respond_Handle,
         size: u32,
         data: *const c_void,
-    ) -> LV2_Worker_Status {
+    ) -> lv2_sys::LV2_Worker_Status {
         let plugin = (handle as *mut P).as_mut().unwrap();
         match plugin.work(response_function, respond_handle, size, data) {
-            WorkerStatus::Success => LV2_Worker_Status_LV2_WORKER_SUCCESS,
-            WorkerStatus::Unknown => LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-            WorkerStatus::NoSpace => LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+            WorkerStatus::Success => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+            WorkerStatus::Unknown => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+            WorkerStatus::NoSpace => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
         }
     }
 
@@ -118,21 +103,18 @@ impl<P: Worker> WorkerDescriptor<P> {
     //        WorkerStatus::NoSpace => LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
     //    }
     //}
-
-
 }
 
 // Implementing the trait that contains the interface.
 impl<P: Worker> ExtensionDescriptor for WorkerDescriptor<P> {
-    type ExtensionInterface = LV2_Worker_Interface;
+    type ExtensionInterface = lv2_sys::LV2_Worker_Interface;
 
-    const INTERFACE: &'static LV2_Worker_Interface = &LV2_Worker_Interface {
+    const INTERFACE: &'static lv2_sys::LV2_Worker_Interface = &lv2_sys::LV2_Worker_Interface {
         work: Some(Self::extern_work),
-        work_response: None,//Some(Self::extern_work_response),
+        work_response: None, //Some(Self::extern_work_response),
         end_run: None,
     };
 }
-
 
 #[cfg(test)]
 mod tests {
