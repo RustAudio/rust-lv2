@@ -1,5 +1,10 @@
 language: rust
 
+branches:
+  only:
+  - master
+  - develop
+
 rust:
   - stable
   - beta
