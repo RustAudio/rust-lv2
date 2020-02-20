@@ -192,13 +192,13 @@ impl<T: PortHandle> PortHandle for Option<T> {
     }
 }
 
-/// Collection for port handling.
+/// Collection of IO ports.
 ///
 /// Plugins do not handle port management on their own. Instead, they define a struct with all of the required ports. Then, the plugin instance will collect the port pointers from the host and create a `PortCollection` instance for every `run` call. Using this instance, plugins have access to all of their required ports.
 ///
 /// # Implementing
 ///
-/// The most convenient way to create port collections is to define a struct with port types from the [`port`](index.html) module and then simply derive `PortCollection` for it. An example:
+/// The most convenient way to create a port collections is to define a struct with port types from the [`port`](index.html) module and then simply derive `PortCollection` for it. An example:
 ///
 ///     use lv2_core::port::*;
 ///

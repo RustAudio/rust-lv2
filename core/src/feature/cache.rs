@@ -1,4 +1,4 @@
-/// Cache for host features.
+/// Cache for host features, used in the feature discovery stage.
 ///
 /// At initialization time, a raw LV2 plugin receives a null-terminated array containing all requested host features. Obviously, this is not suited for safe Rust code and therefore, it needs an abstraction layer.
 ///

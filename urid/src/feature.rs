@@ -33,7 +33,7 @@ impl<'a> Map<'a> {
 
     /// Return the URID of the given URI.
     ///
-    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and collection it using a [`URIDCollection`](trait.URIDCollection.html).
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and save it using a [`URIDCollection`](trait.URIDCollection.html).
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]
@@ -128,7 +128,7 @@ impl<'a> Unmap<'a> {
 
     /// Return the URI of the given URID.
     ///
-    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and collection it using a [`URIDCollection`](trait.URIDCollection.html).
+    /// This method capsules the raw mapping method provided by the host. Therefore, it may not be very fast or even capable of running in a real-time environment. Instead of calling this method every time you need a URID, you should call it once and save it using a [`URIDCollection`](trait.URIDCollection.html).
     ///
     /// # Usage example:
     ///     # #![cfg(feature = "host")]

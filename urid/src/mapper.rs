@@ -19,7 +19,7 @@ use std::sync::Mutex;
 /// operations, such as memory allocation or Mutex locking.
 ///
 /// Therefore, these methods should never be called in a realtime context (such as a plugin's
-/// `run()` method). Plugins and other realtime or performance-critical contexts *should* collection IDs
+/// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
 /// they might need at initialization time. See the `URIDCollection` for more information on how to
 /// achieve this.
 pub trait URIDMapper: Unpin + Sized {
@@ -38,7 +38,7 @@ pub trait URIDMapper: Unpin + Sized {
     /// operations, such as memory allocation or Mutex locking.
     ///
     /// Therefore, these methods should never be called in a realtime context (such as a plugin's
-    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* collection IDs
+    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
     /// they might need at initialization time. See the `URIDCollection` for more information on how to
     /// achieve this.
     fn map(&self, uri: &Uri) -> Option<URID>;
