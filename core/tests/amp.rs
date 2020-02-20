@@ -1,4 +1,4 @@
-use lv2_core::feature::{FeatureCollection, FeatureCache, MissingFeatureError};
+use lv2_core::feature::{FeatureCache, FeatureCollection, MissingFeatureError};
 use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
 use std::ops::Drop;

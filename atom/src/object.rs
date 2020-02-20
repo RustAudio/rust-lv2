@@ -137,7 +137,7 @@ where
 }
 
 /// Deprecated alias of `Object`
-/// 
+///
 /// A blank object is an object that isn't an instance of a class. The [specification recommends](https://lv2plug.in/ns/ext/atom/atom.html#Blank) to use an [`Object`](struct.Object.html) with an id of `None`, but some hosts still use it and therefore, it's included in this library.
 #[deprecated]
 pub struct Blank;
@@ -157,6 +157,7 @@ where
     type WriteParameter = <Object as Atom<'a, 'b>>::WriteParameter;
     type WriteHandle = <Object as Atom<'a, 'b>>::WriteHandle;
 
+    #[allow(clippy::unit_arg)]
     fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
         Object::read(body, parameter)
     }

@@ -112,32 +112,44 @@ make_scalar_atom!(
 /// A scalar atom containing a `f32` (`f32` on most platforms).
 pub struct Float;
 
-make_scalar_atom!(Float, f32, sys::LV2_ATOM__Float, |urids: &AtomURIDCollection| {
-    urids.float
-});
+make_scalar_atom!(
+    Float,
+    f32,
+    sys::LV2_ATOM__Float,
+    |urids: &AtomURIDCollection| { urids.float }
+);
 
 /// A scalar atom containing a `i64` (`i64` on most platforms).
 pub struct Long;
 
-make_scalar_atom!(Long, i64, sys::LV2_ATOM__Long, |urids: &AtomURIDCollection| {
-    urids.long
-});
+make_scalar_atom!(
+    Long,
+    i64,
+    sys::LV2_ATOM__Long,
+    |urids: &AtomURIDCollection| { urids.long }
+);
 
 /// A scalar atom containing a `i32` (`i32` on most platforms).
 pub struct Int;
 
-make_scalar_atom!(Int, i32, sys::LV2_ATOM__Int, |urids: &AtomURIDCollection| {
-    urids.int
-});
+make_scalar_atom!(
+    Int,
+    i32,
+    sys::LV2_ATOM__Int,
+    |urids: &AtomURIDCollection| { urids.int }
+);
 
 /// A scalar atom representing a boolean.
 ///
 /// Internally, this atom is represented by a `i32`, which is `==0` for `false` and `>= 1` for `true`
 pub struct Bool;
 
-make_scalar_atom!(Bool, i32, sys::LV2_ATOM__Bool, |urids: &AtomURIDCollection| {
-    urids.bool
-});
+make_scalar_atom!(
+    Bool,
+    i32,
+    sys::LV2_ATOM__Bool,
+    |urids: &AtomURIDCollection| { urids.bool }
+);
 
 /// A scalar atom containing a URID.
 pub struct AtomURID;
