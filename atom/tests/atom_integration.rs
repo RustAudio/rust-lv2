@@ -20,10 +20,10 @@ struct Features<'a> {
     map: Map<'a>,
 }
 
-#[derive(URIDCache)]
+#[derive(URIDCollection)]
 struct URIDs {
-    atom: AtomURIDCache,
-    units: UnitURIDCache,
+    atom: AtomURIDCollection,
+    units: UnitURIDCollection,
 }
 
 struct AtomPlugin {
@@ -40,7 +40,7 @@ impl Plugin for AtomPlugin {
 
     fn new(_plugin_info: &PluginInfo, features: Features) -> Option<Self> {
         Some(Self {
-            urids: features.map.populate_cache()?,
+            urids: features.map.populate_collection()?,
         })
     }
 
@@ -95,7 +95,7 @@ fn main() {
         &[map_feature.as_ref().get_ref(), std::ptr::null()];
 
     // Retrieving URIDs.
-    let urids: URIDs = map.populate_cache().unwrap();
+    let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
     let mut input_atom_space: Box<[u8]> = Box::new([0; 256]);

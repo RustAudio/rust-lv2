@@ -17,10 +17,10 @@
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! #[derive(URIDCache)]
+//! #[derive(URIDCollection)]
 //! struct MyURIDs {
-//!     atom: AtomURIDCache,
-//!     units: UnitURIDCache,
+//!     atom: AtomURIDCollection,
+//!     units: UnitURIDCollection,
 //! }
 //!
 //! /// Something like a plugin's run method.
@@ -271,10 +271,10 @@ mod tests {
     use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
     use urid::mapper::*;
 
-    #[derive(URIDCache)]
-    struct TestURIDCache {
-        atom: AtomURIDCache,
-        units: UnitURIDCache,
+    #[derive(URIDCollection)]
+    struct TestURIDCollection {
+        atom: AtomURIDCollection,
+        units: UnitURIDCollection,
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = TestURIDCache::from_map(&map).unwrap();
+        let urids = TestURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 

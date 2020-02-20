@@ -22,10 +22,10 @@
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! #[derive(URIDCache)]
+//! #[derive(URIDCollection)]
 //! struct MyURIDs {
-//!     atom: AtomURIDCache,
-//!     units: UnitURIDCache,
+//!     atom: AtomURIDCollection,
+//!     units: UnitURIDCollection,
 //! }
 //!
 //! /// Something like a plugin's run method.
@@ -85,7 +85,7 @@ pub mod vector;
 pub mod prelude {
     use crate::*;
 
-    pub use crate::{Atom, AtomURIDCache, UnidentifiedAtom};
+    pub use crate::{Atom, AtomURIDCollection, UnidentifiedAtom};
     pub use chunk::Chunk;
     pub use object::{Object, ObjectHeader, PropertyHeader};
     pub use port::AtomPort;
@@ -98,11 +98,11 @@ pub mod prelude {
 
 use core::UriBound;
 use space::*;
-use urid::{URIDCache, URID};
+use urid::{URIDCollection, URID};
 
-#[derive(Clone, URIDCache)]
+#[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
-pub struct AtomURIDCache {
+pub struct AtomURIDCollection {
     pub double: URID<scalar::Double>,
     pub float: URID<scalar::Float>,
     pub int: URID<scalar::Int>,

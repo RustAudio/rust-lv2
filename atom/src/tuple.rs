@@ -15,7 +15,7 @@
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let input: TupleIterator = ports.input.read(urids.tuple, ()).unwrap();
 //!     let mut output: TupleWriter = ports.output.init(urids.tuple, ()).unwrap();
 //!     for atom in input {
@@ -110,7 +110,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 

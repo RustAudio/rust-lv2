@@ -17,7 +17,7 @@
 //! }
 //!
 //! /// Something like a plugin's run method.
-//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Read an integer from the port and print it.
 //!     println!("My input is: {}", ports.input.read(urids.int, ()).unwrap());
 //!     // Write the integer `42` to the port.
@@ -133,7 +133,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = AtomURIDCache::from_map(&map).unwrap();
+        let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 

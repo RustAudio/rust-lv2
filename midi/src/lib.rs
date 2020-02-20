@@ -16,8 +16,8 @@ pub mod raw;
 pub mod wmidi_binding;
 
 /// Collection with the URIDs of all `UriBound`s in this crate.
-#[derive(URIDCache)]
-pub struct MidiURIDCache {
+#[derive(URIDCollection)]
+pub struct MidiURIDCollection {
     pub raw: URID<raw::MidiEvent>,
     #[cfg(feature = "wmidi")]
     pub wmidi: URID<wmidi_binding::WMidiEvent>,
@@ -31,5 +31,5 @@ pub mod prelude {
     pub use crate::wmidi_binding::SystemExclusiveWMidiEvent;
     #[cfg(feature = "wmidi")]
     pub use crate::wmidi_binding::WMidiEvent;
-    pub use crate::MidiURIDCache;
+    pub use crate::MidiURIDCollection;
 }

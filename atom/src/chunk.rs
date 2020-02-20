@@ -15,7 +15,7 @@
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
 //!     let mut out_chunk: ByteWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
@@ -105,7 +105,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 

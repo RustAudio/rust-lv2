@@ -135,8 +135,8 @@ pub mod units {
 use units::*;
 
 /// A URID cache containing all units.
-#[derive(URIDCache)]
-pub struct UnitURIDCache {
+#[derive(URIDCollection)]
+pub struct UnitURIDCollection {
     pub bar: URID<Bar>,
     pub beat: URID<Beat>,
     pub bpm: URID<BeatPerMinute>,
@@ -166,5 +166,5 @@ pub struct UnitURIDCache {
 /// Prelude of `lv2_units` for wildcard usage.
 pub mod prelude {
     pub use crate::units::*;
-    pub use crate::UnitURIDCache;
+    pub use crate::UnitURIDCollection;
 }

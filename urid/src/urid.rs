@@ -10,7 +10,7 @@ use std::num::NonZeroU32;
 ///
 /// A URID is basically a number which represents a URI, which makes the identification of other features faster and easier. The mapping of URIs to URIDs is handled by the host and plugins can retrieve them using the [`Map`](struct.Map.html) feature. A given URID can also be converted back to a URI with the [`Unmap`](struct.Unmap.html) feature.
 ///
-/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCache`](trait.URIDCache.html), which can be used to build bigger caches.
+/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCollection`](trait.URIDCollection.html), which can be used to build bigger collections.
 #[repr(transparent)]
 pub struct URID<T = ()>(NonZeroU32, PhantomData<T>)
 where
@@ -18,7 +18,7 @@ where
 
 /// Abstraction of types that store URIDs.
 ///
-/// This trait makes the creation of static URID caches easy: You simply define the cache and derive `URIDCache` for it, and you have a single method to create it.
+/// This trait makes the creation of static URID collections easy: You simply define the collection and derive `URIDCollection` for it, and you have a single method to create it.
 ///
 /// # Usage example:
 ///
@@ -40,9 +40,9 @@ where
 ///         const URI: &'static [u8] = b"urn:my-type-b\0";
 ///     }
 ///
-///     // Defining the cache.
-///     #[derive(URIDCache)]
-///     struct MyCache {
+///     // Defining the collection.
+///     #[derive(URIDCollection)]
+///     struct MyCollection {
 ///         my_type_a: URID<MyTypeA>,
 ///         my_type_b: URID<MyTypeB>,
 ///     }
@@ -52,14 +52,14 @@ where
 ///     # let host_unmap = mapper.as_mut().make_unmap_interface();
 ///     # let map = Map::new(&host_map);
 ///     # let unmap = Unmap::new(&host_unmap);
-///     // Populating the cache, Using the `map` and `unmap` features provided by the host:
-///     let cache = MyCache::from_map(&map).unwrap();
+///     // Populating the collection, Using the `map` and `unmap` features provided by the host:
+///     let collection = MyCollection::from_map(&map).unwrap();
 ///
 ///     // Asserting.
-///     assert_eq!(1, cache.my_type_a);
-///     assert_eq!(2, cache.my_type_b);
-pub trait URIDCache: Sized {
-    /// Construct the cache from the mapper.
+///     assert_eq!(1, collection.my_type_a);
+///     assert_eq!(2, collection.my_type_b);
+pub trait URIDCollection: Sized {
+    /// Construct the collection from the mapper.
     fn from_map(map: &Map) -> Option<Self>;
 }
 
@@ -100,7 +100,7 @@ impl<T: ?Sized> URID<T> {
     }
 }
 
-impl<T: UriBound + ?Sized> URIDCache for URID<T> {
+impl<T: UriBound + ?Sized> URIDCollection for URID<T> {
     fn from_map(map: &Map) -> Option<Self> {
         map.map_type()
     }
