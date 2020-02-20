@@ -6,16 +6,6 @@ use lv2_sys;
 use std::marker::PhantomData;
 use std::os::raw::*; //get all common c_type
 
-/// Trait to provide worker extension to LV2 plugins.
-///
-/// The worker extension allows plugins to schedule work that must be performed in another thread.
-/// Plugins can use this interface to safely perform work that is not real-time safe, and receive
-/// the result in the run context. The details of threading are managed by the host, allowing
-/// plugins to be simple and portable while using resources more efficiently.
-
-/// Host feature allowing plugins to schedule work that must be performed in another thread.
-/// Plugins can use this interface to safely perform work that is not real-time safe, and receive
-/// the result in the run context.
 //Marker feature to signal that the plugin use the worker:schedule feature.
 #[repr(transparent)]
 pub struct Schedule<'a> {
@@ -68,7 +58,16 @@ pub enum WorkerError {
     NoSpace,
 }
 
-// Worker Traits
+/// Trait to provide worker extension to LV2 plugins.
+///
+/// The worker extension allows plugins to schedule work that must be performed in another thread.
+/// Plugins can use this interface to safely perform work that is not real-time safe, and receive
+/// the result in the run context. The details of threading are managed by the host, allowing
+/// plugins to be simple and portable while using resources more efficiently.
+
+/// Host feature allowing plugins to schedule work that must be performed in another thread.
+/// Plugins can use this interface to safely perform work that is not real-time safe, and receive
+/// the result in the run context.
 pub trait Worker: Plugin {
     /// The work to do in a non-real-time thread. The spec require plugins to implment this method.
     ///
