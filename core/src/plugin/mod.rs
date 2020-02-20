@@ -100,9 +100,9 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut features = FeatureContainer::from_raw(features);
+        let mut features = FeatureCache::from_raw(features);
 
-        let features = match <T::Features as FeatureCollection>::from_container(&mut features) {
+        let features = match <T::Features as FeatureCollection>::from_cache(&mut features) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
