@@ -5,22 +5,21 @@ use core::prelude::*;
 use std::marker::PhantomData;
 
 /// A plugin extension that lets a plugins save and restore it's state.
-/// 
+///
 /// This extension contains two new methods: [`save`](#tymethod.save) and [`restore`](#tymethod.restore). These are called by the host to save and restore the state of the plugin, which is done with a handle.
-/// 
+///
 /// You can also add a feature collection to retrieve host features; It works just like the plugin's feature collection: You create a struct with multiple `Feature`s, derive `FeatureCollection` for it, and set the [`StateFeatures`](#associatedtype.StateFeatures) type to it. Then, the framework will try to populate it with the features supplied by the host and pass it to the method.
 pub trait State: Plugin {
-
     /// The feature collection to populate for the [`save`](#tymethod.save) and [`restore`](#tymethod.restore) methods.
     type StateFeatures: FeatureCollection<'static>;
 
     /// Save the state of the plugin.
-    /// 
+    ///
     /// The storage is done with the store handle. You draft a property, write it using the property handle, and then commit it to the store.
     fn save(&self, store: StoreHandle, features: Self::StateFeatures) -> Result<(), StateErr>;
 
     /// Restore the state of the plugin.
-    /// 
+    ///
     /// The properties you have previously written can be retrieved with the store handle.
     fn restore(
         &mut self,
@@ -58,13 +57,12 @@ impl<P: State> StateDescriptor<P> {
 
         let store = StoreHandle::new(store, handle);
 
-        let mut feature_container = core::feature::FeatureContainer::from_raw(features);
-        let features =
-            if let Ok(features) = P::StateFeatures::from_container(&mut feature_container) {
-                features
-            } else {
-                return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
-            };
+        let mut feature_container = core::feature::FeatureCache::from_raw(features);
+        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+            features
+        } else {
+            return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
+        };
 
         StateErr::into(plugin.save(store, features))
     }
@@ -88,13 +86,12 @@ impl<P: State> StateDescriptor<P> {
 
         let store = RetrieveHandle::new(retrieve, handle);
 
-        let mut feature_container = core::feature::FeatureContainer::from_raw(features);
-        let features =
-            if let Ok(features) = P::StateFeatures::from_container(&mut feature_container) {
-                features
-            } else {
-                return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
-            };
+        let mut feature_container = core::feature::FeatureCache::from_raw(features);
+        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+            features
+        } else {
+            return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
+        };
 
         StateErr::into(plugin.restore(store, features))
     }

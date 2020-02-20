@@ -3,6 +3,7 @@ language: rust
 branches:
   only:
   - master
+  - develop
 
 rust:
   - stable
@@ -14,27 +15,18 @@ os:
   - windows
   - osx
 
-jobs:
-  include:
-    - stage: style
-      os: linux
-      before_script:
-        - rustup component add rustfmt
-        - rustup component add clippy
-        - cargo install --force cargo-audit
-      script:
-        - cargo build --all --all-features --verbose
-        - cargo audit
-        - cargo clippy --all --all-features -- -D warnings
-        - cargo fmt --all -- --check
-
 matrix:
   allow_failures:
     - rust: nightly
     - os: windows
-  fast_finish: true
+
+before_script:
+  - rustup component add rustfmt
+  - rustup component add clippy
 
 script:
   - cargo build --all --all-features --verbose
-  - cargo build --examples --all-features --verbose
-  - cargo test --all --verbose --all-features
+  - cargo test --all --all-features --verbose
+  - cargo clippy --all --all-features -- -D warnings
+  - cargo fmt --all -- --check
+

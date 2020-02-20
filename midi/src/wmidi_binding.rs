@@ -12,14 +12,14 @@
 //! use lv2_units::prelude::*;
 //! use wmidi::*;
 //!
-//! #[derive(URIDCache)]
+//! #[derive(URIDCollection)]
 //! struct MyURIDs {
-//!     atom: AtomURIDCache,
-//!     midi: MidiURIDCache,
-//!     units: UnitURIDCache,
+//!     atom: AtomURIDCollection,
+//!     midi: MidiURIDCollection,
+//!     units: UnitURIDCollection,
 //! }
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,

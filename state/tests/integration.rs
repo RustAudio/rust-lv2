@@ -1,5 +1,5 @@
 use lv2_atom::prelude::*;
-use lv2_core::feature::{FeatureCollection, FeatureContainer, MissingFeatureError};
+use lv2_core::feature::{FeatureCollection, MissingFeatureError};
 use lv2_core::prelude::*;
 use lv2_state::*;
 use lv2_urid::mapper::*;
@@ -11,7 +11,7 @@ struct Stateful {
     internal: f32,
     audio: Vec<f32>,
 
-    urids: AtomURIDCache,
+    urids: AtomURIDCollection,
 }
 
 #[derive(FeatureCollection)]
@@ -31,7 +31,7 @@ impl Plugin for Stateful {
         Some(Stateful {
             internal: 42.0,
             audio: Vec::new(),
-            urids: features.map.populate_cache()?,
+            urids: features.map.populate_collection()?,
         })
     }
 

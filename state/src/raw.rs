@@ -191,7 +191,7 @@ mod tests {
     use atom::space::Space;
     use urid::mapper::*;
 
-    fn store(storage: &mut Storage, urids: &AtomURIDCache) {
+    fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
         let mut store_handle = storage.store_handle();
 
         store_handle
@@ -217,7 +217,7 @@ mod tests {
             .unwrap();
     }
 
-    fn retrieve(storage: &mut Storage, urids: &AtomURIDCache) {
+    fn retrieve(storage: &mut Storage, urids: &AtomURIDCollection) {
         let retrieve_handle = storage.retrieve_handle();
 
         assert_eq!(
@@ -252,7 +252,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = AtomURIDCache::from_map(&map).unwrap();
+        let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut storage = Storage::default();
 

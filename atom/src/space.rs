@@ -305,7 +305,7 @@ impl SpaceElement {
 /// # let interface = mapper.as_mut().make_map_interface();
 /// # let map = Map::new(&interface);
 /// // URID cache creation is omitted.
-/// let urids: AtomURIDCache = map.populate_cache().unwrap();
+/// let urids: AtomURIDCollection = map.populate_collection().unwrap();
 ///
 /// // Creating the first element in the list and the writing head.
 /// let mut element = SpaceElement::default();
@@ -498,7 +498,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {

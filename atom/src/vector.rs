@@ -13,13 +13,13 @@
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::vector::VectorWriter;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let input: &[i32] = ports.input.read(urids.vector(), urids.int).unwrap();
 //!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector(), urids.int).unwrap();
 //!     output.append(input).unwrap();
@@ -155,7 +155,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
 

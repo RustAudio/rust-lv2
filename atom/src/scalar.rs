@@ -11,14 +11,14 @@
 //! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
 //! /// Something like a plugin's run method.
-//! fn run(ports: &mut MyPorts, urids: &AtomURIDCache) {
+//! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Scalar atoms don't need a reading parameter.
 //!     let read_value: f32 = ports.input.read(urids.float, ()).unwrap();
 //!
@@ -106,38 +106,50 @@ make_scalar_atom!(
     Double,
     f64,
     sys::LV2_ATOM__Double,
-    |urids: &AtomURIDCache| urids.double
+    |urids: &AtomURIDCollection| urids.double
 );
 
 /// A scalar atom containing a `f32` (`f32` on most platforms).
 pub struct Float;
 
-make_scalar_atom!(Float, f32, sys::LV2_ATOM__Float, |urids: &AtomURIDCache| {
-    urids.float
-});
+make_scalar_atom!(
+    Float,
+    f32,
+    sys::LV2_ATOM__Float,
+    |urids: &AtomURIDCollection| { urids.float }
+);
 
 /// A scalar atom containing a `i64` (`i64` on most platforms).
 pub struct Long;
 
-make_scalar_atom!(Long, i64, sys::LV2_ATOM__Long, |urids: &AtomURIDCache| {
-    urids.long
-});
+make_scalar_atom!(
+    Long,
+    i64,
+    sys::LV2_ATOM__Long,
+    |urids: &AtomURIDCollection| { urids.long }
+);
 
 /// A scalar atom containing a `i32` (`i32` on most platforms).
 pub struct Int;
 
-make_scalar_atom!(Int, i32, sys::LV2_ATOM__Int, |urids: &AtomURIDCache| {
-    urids.int
-});
+make_scalar_atom!(
+    Int,
+    i32,
+    sys::LV2_ATOM__Int,
+    |urids: &AtomURIDCollection| { urids.int }
+);
 
 /// A scalar atom representing a boolean.
 ///
 /// Internally, this atom is represented by a `i32`, which is `==0` for `false` and `>= 1` for `true`
 pub struct Bool;
 
-make_scalar_atom!(Bool, i32, sys::LV2_ATOM__Bool, |urids: &AtomURIDCache| {
-    urids.bool
-});
+make_scalar_atom!(
+    Bool,
+    i32,
+    sys::LV2_ATOM__Bool,
+    |urids: &AtomURIDCollection| { urids.bool }
+);
 
 /// A scalar atom containing a URID.
 pub struct AtomURID;
@@ -146,7 +158,7 @@ make_scalar_atom!(
     AtomURID,
     URID,
     sys::LV2_ATOM__URID,
-    |urids: &AtomURIDCache| urids.urid
+    |urids: &AtomURIDCollection| urids.urid
 );
 
 #[cfg(test)]

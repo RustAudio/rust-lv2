@@ -54,7 +54,7 @@ impl Lv2InstanceDescriptor {
     }
 }
 
-/// A container for instance descriptors.
+/// A collection for instance descriptors.
 ///
 /// The contained instance descriptors are used to create the export function `lv2_descriptor` that
 /// tells the host of a library's plugins.

@@ -54,19 +54,19 @@ fn test_unmap() {
     assert_eq!(MyTypeB::uri(), unmap_feature.unmap(type_b).unwrap());
 }
 
-#[derive(URIDCache)]
-struct MyURIDCache {
+#[derive(URIDCollection)]
+struct MyURIDCollection {
     type_a: URID<MyTypeA>,
     type_b: URID<MyTypeB>,
 }
 
 #[test]
-fn test_cache() {
+fn test_collection() {
     let mut mapper = Box::pin(HashURIDMapper::new());
     let host_map = mapper.as_mut().make_map_interface();
     let map_feature = Map::new(&host_map);
-    let cache = MyURIDCache::from_map(&map_feature).unwrap();
+    let collection = MyURIDCollection::from_map(&map_feature).unwrap();
 
-    assert_eq!(1, cache.type_a);
-    assert_eq!(2, cache.type_b);
+    assert_eq!(1, collection.type_a);
+    assert_eq!(2, collection.type_b);
 }
