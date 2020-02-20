@@ -19,7 +19,6 @@ matrix:
   allow_failures:
     - rust: nightly
     - os: windows
-  fast_finish: true
 
 before_script:
   - rustup component add rustfmt
