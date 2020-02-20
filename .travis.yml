@@ -16,6 +16,10 @@ matrix:
     - os: windows
   fast_finish: true
 
+before_script:
+  - rustup component add rustfmt
+  - rustup component add clippy
+
 script:
   - cargo build --all --all-features --verbose
   - cargo test --all --all-features --verbose
