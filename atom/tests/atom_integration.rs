@@ -9,7 +9,7 @@ use core::prelude::*;
 use units::prelude::*;
 use urid::prelude::*;
 
-#[derive(PortContainer)]
+#[derive(PortCollection)]
 struct Ports {
     input: InputPort<AtomPort>,
     output: OutputPort<AtomPort>,

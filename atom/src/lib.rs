@@ -16,7 +16,7 @@
 //! use lv2_urid::prelude::*;
 //! use lv2_units::prelude::*;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,
@@ -101,7 +101,7 @@ use space::*;
 use urid::{URIDCache, URID};
 
 #[derive(Clone, URIDCache)]
-/// Container with the URIDs of all `UriBound`s in this crate.
+/// Collection with the URIDs of all `UriBound`s in this crate.
 pub struct AtomURIDCache {
     pub double: URID<scalar::Double>,
     pub float: URID<scalar::Float>,

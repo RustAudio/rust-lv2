@@ -12,7 +12,7 @@ unsafe impl UriBound for Amp {
     const URI: &'static [u8] = b"http://lv2plug.in/plugins.rs/example_amp\0";
 }
 
-#[derive(PortContainer)]
+#[derive(PortCollection)]
 struct AmpPorts {
     gain: InputPort<Control>,
     input: InputPort<Audio>,

@@ -13,7 +13,7 @@
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::vector::VectorWriter;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,

@@ -18,7 +18,7 @@
 //!     const URI: &'static [u8] = b"urn:property-a\0";
 //! }
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,

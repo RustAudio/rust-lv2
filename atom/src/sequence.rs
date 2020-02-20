@@ -11,7 +11,7 @@
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::sequence::*;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,

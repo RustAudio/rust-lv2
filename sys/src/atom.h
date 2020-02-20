@@ -17,7 +17,7 @@
 /**
    @defgroup atom Atom
 
-   A generic value container and several data types, see
+   A generic value collection and several data types, see
    <http://lv2plug.in/ns/ext/atom> for details.
 
    @{

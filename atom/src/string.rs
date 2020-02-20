@@ -11,7 +11,7 @@
 //! use lv2_atom::string::StringWriter;
 //! use lv2_urid::prelude::*;
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,

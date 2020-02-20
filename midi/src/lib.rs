@@ -15,7 +15,7 @@ pub mod raw;
 #[cfg(feature = "wmidi")]
 pub mod wmidi_binding;
 
-/// Container with the URIDs of all `UriBound`s in this crate.
+/// Collection with the URIDs of all `UriBound`s in this crate.
 #[derive(URIDCache)]
 pub struct MidiURIDCache {
     pub raw: URID<raw::MidiEvent>,
