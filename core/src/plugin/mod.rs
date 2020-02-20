@@ -18,8 +18,8 @@ use sys::LV2_Handle;
 ///
 /// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods.
 pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
-    /// The type of the port container.
-    type Ports: PortContainer;
+    /// The type of the port collection.
+    type Ports: PortCollection;
 
     /// The host features used by this plugin.
     type Features: FeatureCollection<'static>;
@@ -61,7 +61,7 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 /// The host interacts with the plugin via a C API, but the plugin is implemented with ideomatic, safe Rust. To bridge this gap, this wrapper is used to translate and abstract the communcation between the host and the plugin.
 pub struct PluginInstance<T: Plugin> {
     instance: T,
-    connections: <T::Ports as PortContainer>::Cache,
+    connections: <T::Ports as PortCollection>::Cache,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -100,9 +100,9 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut features = FeatureContainer::from_raw(features);
+        let mut features = FeatureCache::from_raw(features);
 
-        let features = match <T::Features as FeatureCollection>::from_container(&mut features) {
+        let features = match <T::Features as FeatureCollection>::from_cache(&mut features) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
@@ -115,7 +115,7 @@ impl<T: Plugin> PluginInstance<T> {
             Some(instance) => {
                 let instance = Box::new(Self {
                     instance,
-                    connections: <<T::Ports as PortContainer>::Cache as Default>::default(),
+                    connections: <<T::Ports as PortCollection>::Cache as Default>::default(),
                 });
                 Box::leak(instance) as *mut Self as LV2_Handle
             }
@@ -171,7 +171,7 @@ impl<T: Plugin> PluginInstance<T> {
         (*instance).connections.connect(port, data)
     }
 
-    /// Construct a port container and call the `run` method.
+    /// Construct a port collection and call the `run` method.
     ///
     /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
     ///
@@ -181,7 +181,7 @@ impl<T: Plugin> PluginInstance<T> {
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = &mut *(instance as *mut Self);
         let ports =
-            <T::Ports as PortContainer>::from_connections(&instance.connections, sample_count);
+            <T::Ports as PortCollection>::from_connections(&instance.connections, sample_count);
         if let Some(mut ports) = ports {
             instance.instance.run(&mut ports);
         }

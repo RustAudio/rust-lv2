@@ -8,7 +8,7 @@ extern crate quote;
 
 mod feature_collection_derive;
 mod lv2_descriptors;
-mod port_container_derive;
+mod port_collection_derive;
 
 use proc_macro::TokenStream;
 
@@ -18,10 +18,10 @@ pub fn lv2_descriptors(input: TokenStream) -> TokenStream {
     lv2_descriptors::lv2_descriptors_impl(input)
 }
 
-/// Implement the `PortContainer` trait for a port struct.
-#[proc_macro_derive(PortContainer)]
-pub fn port_container_derive(input: TokenStream) -> TokenStream {
-    port_container_derive::port_container_derive_impl(input)
+/// Implement the `PortCollection` trait for a port struct.
+#[proc_macro_derive(PortCollection)]
+pub fn port_collection_derive(input: TokenStream) -> TokenStream {
+    port_collection_derive::port_collection_derive_impl(input)
 }
 
 #[proc_macro_derive(FeatureCollection)]

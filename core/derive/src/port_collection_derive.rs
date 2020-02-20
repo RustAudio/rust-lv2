@@ -4,16 +4,16 @@ use syn::DeriveInput;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
 
-/// A field in the struct we implement `PortContainer` for.
-struct PortContainerField<'a> {
+/// A field in the struct we implement `PortCollection` for.
+struct PortCollectionField<'a> {
     identifier: &'a Ident,
     port_type: &'a Type,
 }
 
-impl<'a> PortContainerField<'a> {
+impl<'a> PortCollectionField<'a> {
     /// Create a `Self` instance from a field object.
     fn from_input_field(input: &'a Field) -> Self {
-        PortContainerField {
+        PortCollectionField {
             identifier: input.ident.as_ref().unwrap(),
             port_type: &input.ty,
         }
@@ -60,16 +60,16 @@ impl<'a> PortContainerField<'a> {
     }
 }
 
-/// Representation of a struct we implement `PortContainer` for.
+/// Representation of a struct we implement `PortCollection` for.
 ///
 /// The implementation creates a hidden, mirrored version of the implementing struct that contains  
 /// the raw pointers for the port. Then, the ports object is created from the raw version.
-struct PortContainerStruct<'a> {
+struct PortCollectionStruct<'a> {
     struct_name: &'a Ident,
-    fields: Vec<PortContainerField<'a>>,
+    fields: Vec<PortCollectionField<'a>>,
 }
 
-impl<'a> PortContainerStruct<'a> {
+impl<'a> PortCollectionStruct<'a> {
     /// Return an `Ident` for the internal module name.
     fn internal_mod_name(&self) -> Ident {
         Ident::new(
@@ -82,19 +82,19 @@ impl<'a> PortContainerStruct<'a> {
     fn from_derive_input(input: &'a DeriveInput) -> Self {
         let struct_name = &input.ident;
         let fields = match &input.data {
-            Data::Enum(_) | Data::Union(_) => panic!("Only structs can implement PortContainer"),
+            Data::Enum(_) | Data::Union(_) => panic!("Only structs can implement PortCollection"),
             Data::Struct(DataStruct { fields, .. }) => fields
                 .iter()
-                .map(PortContainerField::from_input_field)
+                .map(PortCollectionField::from_input_field)
                 .collect(),
         };
-        PortContainerStruct {
+        PortCollectionStruct {
             struct_name,
             fields,
         }
     }
 
-    /// Implement `PortContainer` for the struct.
+    /// Implement `PortCollection` for the struct.
     fn make_derived_contents(&self) -> TokenStream {
         let struct_name = self.struct_name;
         let internal_mod_name = self.internal_mod_name();
@@ -102,15 +102,15 @@ impl<'a> PortContainerStruct<'a> {
         let connections_from_raw = self
             .fields
             .iter()
-            .map(PortContainerField::make_connection_from_raw);
+            .map(PortCollectionField::make_connection_from_raw);
         let raw_field_declarations = self
             .fields
             .iter()
-            .map(PortContainerField::make_raw_field_declaration);
+            .map(PortCollectionField::make_raw_field_declaration);
         let raw_field_inits = self
             .fields
             .iter()
-            .map(PortContainerField::make_raw_field_initialization);
+            .map(PortCollectionField::make_raw_field_initialization);
         let connect_matchers = self
             .fields
             .iter()
@@ -118,11 +118,11 @@ impl<'a> PortContainerStruct<'a> {
             .map(|(i, f)| f.make_connect_matcher(i as u32));
 
         (quote! {
-            impl PortContainer for #struct_name {
+            impl PortCollection for #struct_name {
                 type Cache = #internal_mod_name::DerivedPortPointerCache;
 
                 #[inline]
-                unsafe fn from_connections(connections: &<Self as PortContainer>::Cache, sample_count: u32) -> Option<Self> {
+                unsafe fn from_connections(connections: &<Self as PortCollection>::Cache, sample_count: u32) -> Option<Self> {
                     Some(
                         Self {
                             #(#connections_from_raw)*
@@ -160,10 +160,10 @@ impl<'a> PortContainerStruct<'a> {
     }
 }
 
-/// Implement `PortContainer` for a struct.
+/// Implement `PortCollection` for a struct.
 #[inline]
-pub fn port_container_derive_impl(input: TokenStream) -> TokenStream {
+pub fn port_collection_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
-    let list = PortContainerStruct::from_derive_input(&input);
+    let list = PortCollectionStruct::from_derive_input(&input);
     list.make_derived_contents()
 }

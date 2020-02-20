@@ -18,15 +18,15 @@
 //!     const URI: &'static [u8] = b"urn:property-a\0";
 //! }
 //!
-//! #[derive(PortContainer)]
+//! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
 //!     output: OutputPort<AtomPort>,
 //! }
 //!
-//! #[derive(URIDCache)]
+//! #[derive(URIDCollection)]
 //! struct MyURIDs {
-//!     atom: AtomURIDCache,
+//!     atom: AtomURIDCollection,
 //!     object_class: URID<ObjectClass>,
 //!     property_a: URID<PropertyA>,
 //! }
@@ -281,7 +281,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = AtomURIDCache::from_map(&map).unwrap();
+        let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let object_type = map
             .map_uri(Uri::from_bytes_with_nul(b"urn:my-type\0").unwrap())

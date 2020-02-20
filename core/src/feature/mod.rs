@@ -1,11 +1,11 @@
 //! Additional host functionalities.
 use crate::{Uri, UriBound};
 
-mod container;
+mod cache;
 mod core_features;
 mod descriptor;
 
-pub use container::FeatureContainer;
+pub use cache::FeatureCache;
 pub use core_features::*;
 pub use descriptor::FeatureDescriptor;
 
@@ -52,9 +52,9 @@ impl std::fmt::Display for MissingFeatureError {
 
 /// Convenience trait for feature collections.
 ///
-/// The feature container is only for temporary use; Once a feature is retrieved, it is removed from the container. Therefore you need a way to properly store features.
+/// The feature cache is only for temporary use; Once a feature is retrieved, it is removed from the cache. Therefore you need a way to properly store features.
 ///
-/// You can simply create a struct with features as it's fields and derive `FeatureCollection` for it. A procedural macro will then create a method that populates the struct from the container, or returns `None` if one of the required features is not in the container.
+/// You can simply create a struct with features as it's fields and derive `FeatureCollection` for it. A procedural macro will then create a method that populates the struct from the cache, or returns `None` if one of the required features is not in the cache.
 ///
 /// An example using the few built-in features:
 ///
@@ -67,13 +67,13 @@ impl std::fmt::Display for MissingFeatureError {
 ///         hardrt: Option<HardRTCapable>,
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
-    /// Populate a collection with features from the container.
-    fn from_container(container: &mut FeatureContainer<'a>) -> Result<Self, MissingFeatureError>;
+    /// Populate a collection with features from the cache.
+    fn from_cache(cache: &mut FeatureCache<'a>) -> Result<Self, MissingFeatureError>;
 }
 
 impl<'a> FeatureCollection<'a> for () {
     #[inline]
-    fn from_container(_container: &mut FeatureContainer) -> Result<Self, MissingFeatureError> {
+    fn from_cache(_cache: &mut FeatureCache) -> Result<Self, MissingFeatureError> {
         Ok(())
     }
 }
@@ -81,7 +81,7 @@ impl<'a> FeatureCollection<'a> for () {
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
 mod tests {
-    use crate::feature::FeatureContainer;
+    use crate::feature::FeatureCache;
     use crate::{feature::*, plugin::*, UriBound};
     use std::ffi::c_void;
     use std::os::raw::c_char;
@@ -132,7 +132,7 @@ mod tests {
         pub data_b: Pin<Box<f32>>,
         pub feature_b_sys: Pin<Box<::sys::LV2_Feature>>,
         pub feature_c_sys: Pin<Box<::sys::LV2_Feature>>,
-        pub features_container: FeatureContainer<'a>,
+        pub features_cache: FeatureCache<'a>,
     }
 
     impl<'a> FeatureTestSetting<'a> {
@@ -161,8 +161,8 @@ mod tests {
                 std::ptr::null(),
             ];
 
-            // Constructing the container.
-            let features_container = unsafe { FeatureContainer::from_raw(features_list.as_ptr()) };
+            // Constructing the cache.
+            let features_cache = unsafe { FeatureCache::from_raw(features_list.as_ptr()) };
 
             Self {
                 data_a,
@@ -170,25 +170,25 @@ mod tests {
                 data_b,
                 feature_b_sys,
                 feature_c_sys,
-                features_container,
+                features_cache,
             }
         }
     }
 
     #[test]
-    fn test_feature_container() {
+    fn test_feature_cache() {
         // Constructing the test case.
         let setting = FeatureTestSetting::new();
-        let mut features_container = setting.features_container;
+        let mut features_cache = setting.features_cache;
 
-        // Testing the container.
-        assert!(features_container.contains::<FeatureA>());
-        assert!(features_container.contains::<FeatureB>());
+        // Testing the cache.
+        assert!(features_cache.contains::<FeatureA>());
+        assert!(features_cache.contains::<FeatureB>());
 
-        let retrieved_feature_a: FeatureA = features_container.retrieve_feature().unwrap();
+        let retrieved_feature_a: FeatureA = features_cache.retrieve_feature().unwrap();
         assert_eq!(*retrieved_feature_a.number, *(setting.data_a));
 
-        let retrieved_feature_b: FeatureB = features_container.retrieve_feature().unwrap();
+        let retrieved_feature_b: FeatureB = features_cache.retrieve_feature().unwrap();
         assert!(retrieved_feature_b.number - *(setting.data_b) < std::f32::EPSILON);
     }
 
@@ -196,10 +196,10 @@ mod tests {
     fn test_feature_descriptor() {
         // Constructing the test case.
         let setting = FeatureTestSetting::new();
-        let features_container = setting.features_container;
+        let features_cache = setting.features_cache;
 
         // Collect all items from the feature iterator.
-        let feature_descriptors: Vec<FeatureDescriptor> = features_container.into_iter().collect();
+        let feature_descriptors: Vec<FeatureDescriptor> = features_cache.into_iter().collect();
 
         // Test the collected items.
         assert_eq!(feature_descriptors.len(), 3);
@@ -236,10 +236,10 @@ mod tests {
     fn test_feature_collection() {
         // Construct the setting.
         let setting = FeatureTestSetting::new();
-        let mut features_container = setting.features_container;
+        let mut features_cache = setting.features_cache;
 
-        let container = Collection::from_container(&mut features_container).unwrap();
-        assert_eq!(*container.a.number, *setting.data_a);
-        assert_eq!(*container.b.number, *setting.data_b);
+        let cache = Collection::from_cache(&mut features_cache).unwrap();
+        assert_eq!(*cache.a.number, *setting.data_a);
+        assert_eq!(*cache.b.number, *setting.data_b);
     }
 }

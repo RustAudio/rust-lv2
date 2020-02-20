@@ -1,16 +1,16 @@
-/// Container for host features.
+/// Cache for host features, used in the feature discovery stage.
 ///
 /// At initialization time, a raw LV2 plugin receives a null-terminated array containing all requested host features. Obviously, this is not suited for safe Rust code and therefore, it needs an abstraction layer.
 ///
 /// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify and retrieve features.
-pub struct FeatureContainer<'a> {
+pub struct FeatureCache<'a> {
     internal: HashMap<&'a CStr, *const c_void>,
 }
 
-impl<'a> FeatureContainer<'a> {
-    /// Construct a container from the raw features array.
+impl<'a> FeatureCache<'a> {
+    /// Construct a cache from the raw features array.
     ///
-    /// It basically populates a hash map by walking through the array and then creates a `FeatureContainer` with it. However, this method is unsafe since it dereferences a C string to a URI. Also, this method should only be used with the features list supplied by the host since the soundness of the whole module depends on that assumption.
+    /// It basically populates a hash map by walking through the array and then creates a `FeatureCache` with it. However, this method is unsafe since it dereferences a C string to a URI. Also, this method should only be used with the features list supplied by the host since the soundness of the whole module depends on that assumption.
     pub(crate) unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Self {
         let mut internal_map = HashMap::new();
         let mut feature_ptr = raw;
@@ -36,7 +36,7 @@ impl<'a> FeatureContainer<'a> {
 
     /// Try to retrieve a feature.
     ///
-    /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the container to avoid the existence of two feature objects with writing access.
+    /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the cache to avoid the existence of two feature objects with writing access.
     pub fn retrieve_feature<F: Feature, T: FromResolvedFeature<F>>(
         &mut self,
     ) -> Result<T, MissingFeatureError> {
@@ -56,7 +56,7 @@ use std::iter::Map;
 type HashMapIterator<'a> = hash_map::IntoIter<&'a CStr, *const c_void>;
 type DescriptorBuildFn<'a> = fn((&'a CStr, *const c_void)) -> FeatureDescriptor<'a>;
 
-impl<'a> std::iter::IntoIterator for FeatureContainer<'a> {
+impl<'a> std::iter::IntoIterator for FeatureCache<'a> {
     type Item = FeatureDescriptor<'a>;
     type IntoIter = Map<HashMapIterator<'a>, DescriptorBuildFn<'a>>;
 
@@ -69,10 +69,10 @@ impl<'a> std::iter::IntoIterator for FeatureContainer<'a> {
     }
 }
 
-impl<'a> FeatureCollection<'a> for FeatureContainer<'a> {
-    fn from_container(container: &mut FeatureContainer<'a>) -> Result<Self, MissingFeatureError> {
-        Ok(FeatureContainer {
-            internal: container.internal.clone(),
+impl<'a> FeatureCollection<'a> for FeatureCache<'a> {
+    fn from_cache(cache: &mut FeatureCache<'a>) -> Result<Self, MissingFeatureError> {
+        Ok(FeatureCache {
+            internal: cache.internal.clone(),
         })
     }
 }

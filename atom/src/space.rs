@@ -419,7 +419,7 @@ mod tests {
         let mut mapper = Box::pin(HashURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
-        let urids = crate::AtomURIDCache::from_map(&map).unwrap();
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)
             .create_atom_frame(urids.chunk)

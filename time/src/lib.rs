@@ -112,8 +112,8 @@ pub mod time {
 use time::*;
 
 /// A URID cache containing all time properties.
-#[derive(URIDCache)]
-pub struct TimeURIDCache {
+#[derive(URIDCollection)]
+pub struct TimeURIDCollection {
     pub position_class: URID<PositionClass>,
     pub rate_class: URID<RateClass>,
     pub time_class: URID<TimeClass>,
@@ -132,5 +132,5 @@ pub struct TimeURIDCache {
 /// Prelude of `lv2_time` for wildcard usage.
 pub mod prelude {
     pub use crate::time::*;
-    pub use crate::TimeURIDCache;
+    pub use crate::TimeURIDCollection;
 }
