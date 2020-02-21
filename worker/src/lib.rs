@@ -1,6 +1,6 @@
 use lv2_core::extension::ExtensionDescriptor;
 use lv2_core::feature::*;
-use lv2_core::plugin::Plugin;
+use lv2_core::plugin::{Plugin, PluginInstance};
 use lv2_core::prelude::*;
 use lv2_sys;
 use std::marker::PhantomData;
@@ -119,17 +119,19 @@ impl<P: Worker> WorkerDescriptor<P> {
         size: u32,
         data: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
-        //this is wrong, P is a Plugin but LV2_Handle point to PluginInstance
-        let plugin = (handle as *mut P).as_mut().unwrap();
-        let response_handler = ResponseHandler {
-            response_function,
-            respond_handle,
-        };
-
-        match plugin.work(&response_handler, size, data) {
-            Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
-            Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-            Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+        if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+            let plugin = plugin_instance.instance_mut();
+            let response_handler = ResponseHandler {
+                response_function,
+                respond_handle,
+            };
+            match plugin.work(&response_handler, size, data) {
+                Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+                Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+                Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+            }
+        } else {
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN
         }
     }
 
@@ -139,24 +141,30 @@ impl<P: Worker> WorkerDescriptor<P> {
         size: u32,
         body: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
-        //this is wrong, P is a Plugin but LV2_Handle point to PluginInstance
-        let plugin = (handle as *mut P).as_mut().unwrap();
-        match plugin.work_response(size, body) {
-            Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
-            Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-            Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+        if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+            let plugin = plugin_instance.instance_mut();
+            match plugin.work_response(size, body) {
+                Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+                Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+                Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+            }
+        } else {
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN
         }
     }
 
     /// Extern unsafe version of `end_run` method actually called by the host
     // This throw a warning if it's not in `INTERFACE`
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
-        //this is wrong, P is a Plugin but LV2_Handle point to PluginInstance
-        let plugin = (handle as *mut P).as_mut().unwrap();
-        match plugin.end_run() {
-            Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
-            Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-            Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+        if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+            let plugin = plugin_instance.instance_mut();
+            match plugin.end_run() {
+                Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+                Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+                Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
+            }
+        } else {
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN
         }
     }
 }
