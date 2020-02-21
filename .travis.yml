@@ -25,8 +25,7 @@ before_script:
   - rustup component add clippy
 
 script:
-  - cargo build --all --all-features --verbose
-  - cargo test --all --all-features --verbose
-  - cargo clippy --all --all-features -- -D warnings
   - cargo fmt --all -- --check
+  - cargo clippy --all --all-features -- -D warnings
+  - cargo test --all --all-features --verbose
 
