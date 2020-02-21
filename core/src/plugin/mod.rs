@@ -68,6 +68,13 @@ pub struct PluginInstance<T: Plugin> {
 }
 
 impl<T: Plugin> PluginInstance<T> {
+    /// Return instance of a plugin.
+    ///
+    /// This method allow wrapper of LV2 extension to get mutably a plugin instance from the PluginInstance
+    /// reference provided by the host
+    pub fn instance_mut(&mut self) -> &mut T {
+        &mut self.instance
+    }
     /// Instantiate the plugin.
     ///
     /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
