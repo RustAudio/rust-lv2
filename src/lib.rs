@@ -41,6 +41,7 @@
 pub extern crate lv2_atom as atom;
 pub extern crate lv2_core as core;
 pub extern crate lv2_midi as midi;
+pub extern crate lv2_state as state;
 pub extern crate lv2_time as time;
 pub extern crate lv2_units as units;
 pub extern crate lv2_urid as urid;

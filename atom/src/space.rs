@@ -7,6 +7,7 @@
 //! In the first case, we have to trust that the space behind the atom header is accessible since we have no way to check whether it is or not. Therefore, we have to assume that it is sound.
 //!
 //! The second case is sound since a) the data is contained in a slice and therefore is accessible, b) generic type parameter bounds assure that the type is plain-old-data and c) 64-bit padding is assured.
+use crate::Atom;
 use std::cell::Cell;
 use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
@@ -238,10 +239,142 @@ impl<'a> MutSpace<'a> for RootMutSpace<'a> {
     }
 }
 
+/// Linked list element for dynamic atom writing.
+///
+/// This struct works in conjunction with [`SpaceHead`](struct.SpaceHead.html) to provide a way to write atoms to dynamically allocated memory.
+pub struct SpaceElement {
+    next: Option<(Box<Self>, Box<[u8]>)>,
+}
+
+impl Default for SpaceElement {
+    fn default() -> Self {
+        Self { next: None }
+    }
+}
+
+impl SpaceElement {
+    /// Append an element to the list.
+    ///
+    /// If this is the last element of the list, allocate a slice of the required length and append a new element to the list. If not, do nothing and return `None`.
+    pub fn allocate(&mut self, size: usize) -> Option<(&mut Self, &mut [u8])> {
+        if self.next.is_some() {
+            return None;
+        }
+
+        let new_data = vec![0u8; size].into_boxed_slice();
+        let new_element = Box::new(Self::default());
+        self.next = Some((new_element, new_data));
+        self.next
+            .as_mut()
+            .map(|(new_element, new_data): &mut (Box<Self>, Box<[u8]>)| {
+                (new_element.as_mut(), new_data.as_mut())
+            })
+    }
+
+    /// Create a vector containing the data from all elements following this one.
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.iter()
+            .map(|slice| slice.iter())
+            .flatten()
+            .cloned()
+            .collect()
+    }
+
+    /// Return an iterator over the chunks of all elements following this one.
+    pub fn iter(&self) -> impl Iterator<Item = &[u8]> {
+        std::iter::successors(self.next.as_ref(), |element| element.0.next.as_ref())
+            .map(|(_, data)| data.as_ref())
+    }
+}
+
+/// A mutable space that dynamically allocates memory.
+///
+/// This space uses a linked list of [`SpaceElement`s](struct.SpaceElement.html) to allocate memory. Every time `allocate` is called, a new element is appended to the list and a new byte slice is created.
+///
+/// In order to use this space and retrieve the written data once it was written, you create a `SpaceElement` and create a new head with it. Then, you use the head like any other `MutSpace` and when you're done, you retrieve the written data by either calling [`to_vec`](struct.SpaceElement.html#method.to_vec) or [`iter`](struct.SpaceElement.html#iter).
+///
+/// # Usage example
+///
+/// ```
+/// # use lv2_core::prelude::*;
+/// # use lv2_urid::prelude::*;
+/// # use lv2_urid::mapper::*;
+/// # use lv2_atom::prelude::*;
+/// # use lv2_atom::space::*;
+/// # let mut mapper = Box::pin(HashURIDMapper::new());
+/// # let interface = mapper.as_mut().make_map_interface();
+/// # let map = Map::new(&interface);
+/// // URID cache creation is omitted.
+/// let urids: AtomURIDCollection = map.populate_collection().unwrap();
+///
+/// // Creating the first element in the list and the writing head.
+/// let mut element = SpaceElement::default();
+/// let mut head = SpaceHead::new(&mut element);
+///
+/// // Writing an integer.
+/// (&mut head as &mut dyn MutSpace).init(urids.int, 42).unwrap();
+///
+/// // Retrieving a continuos vector with the written data and verifying it's contents.
+/// let written_data: Vec<u8> = element.to_vec();
+/// let atom = UnidentifiedAtom::new(Space::from_slice(written_data.as_ref()));
+/// assert_eq!(42, atom.read(urids.int, ()).unwrap());
+/// ```
+pub struct SpaceHead<'a> {
+    element: Option<&'a mut SpaceElement>,
+    allocated_space: usize,
+}
+
+impl<'a> SpaceHead<'a> {
+    /// Create a new head that references the given element.
+    pub fn new(element: &'a mut SpaceElement) -> Self {
+        Self {
+            element: Some(element),
+            allocated_space: 0,
+        }
+    }
+
+    fn internal_allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
+        let element = self.element.take()?;
+        let (new_element, new_space) = element.allocate(size)?;
+        self.element = Some(new_element);
+        self.allocated_space += size;
+        Some(new_space)
+    }
+}
+
+impl<'a> MutSpace<'a> for SpaceHead<'a> {
+    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])> {
+        let padding: usize = if apply_padding {
+            (8 - self.allocated_space % 8) % 8
+        } else {
+            0
+        };
+
+        if padding != 0 {
+            self.internal_allocate(padding);
+        }
+
+        self.internal_allocate(size)
+            .map(|new_space| (padding, new_space))
+    }
+}
+
 /// A `MutSpace` that notes the amount of allocated space in an atom header.
 pub struct FramedMutSpace<'a, 'b> {
     atom: &'a mut sys::LV2_Atom,
     parent: &'b mut dyn MutSpace<'a>,
+}
+
+impl<'a, 'b> FramedMutSpace<'a, 'b> {
+    /// Create a new framed space with the given parent and type URID.
+    pub fn new<A: ?Sized>(parent: &'b mut dyn MutSpace<'a>, urid: URID<A>) -> Option<Self> {
+        let atom = sys::LV2_Atom {
+            size: 0,
+            type_: urid.get(),
+        };
+        let atom: &'a mut sys::LV2_Atom = parent.write(&atom, true)?;
+        Some(Self { atom, parent })
+    }
 }
 
 impl<'a, 'b> MutSpace<'a> for FramedMutSpace<'a, 'b> {
@@ -273,19 +406,14 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
         Some(unsafe { &mut *(output_data.as_mut_ptr() as *mut T) })
     }
 
-    /// Create new `FramedMutSpace` to write an atom.
-    ///
-    /// Simply pass the URID of the atom as an argument.
-    pub fn create_atom_frame<'c, A: ?Sized>(
+    /// Initialize a new atom in the space.
+    pub fn init<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         urid: URID<A>,
-    ) -> Option<FramedMutSpace<'a, 'c>> {
-        let atom = sys::LV2_Atom {
-            size: 0,
-            type_: urid.get(),
-        };
-        let atom: &'a mut sys::LV2_Atom = self.write(&atom, true)?;
-        Some(FramedMutSpace { atom, parent: self })
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        let new_space = FramedMutSpace::new(self, urid)?;
+        A::init(new_space, parameter)
     }
 }
 
@@ -366,29 +494,24 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_root_mut_space() {
-        const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let mut frame: RootMutSpace = RootMutSpace::new(unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        });
+    fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {
+        let mut mapper = Box::pin(HashURIDMapper::new());
+        let interface = mapper.as_mut().make_map_interface();
+        let map = Map::new(&interface);
+        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
             test_data[i] = i as u8;
         }
 
-        match frame.write_raw(test_data.as_slice(), true) {
+        match space.write_raw(test_data.as_slice(), true) {
             Some(written_data) => assert_eq!(test_data.as_slice(), written_data),
             None => panic!("Writing failed!"),
         }
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = (&mut frame as &mut dyn MutSpace)
+        let written_atom = (&mut space as &mut dyn MutSpace)
             .write(&test_atom, true)
             .unwrap();
         assert_eq!(written_atom.size, test_atom.size);
@@ -403,27 +526,9 @@ mod tests {
             written_atom as *mut _ as usize
         );
         assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
-    }
 
-    #[test]
-    fn test_framed_mut_space() {
-        const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let mut root: RootMutSpace = RootMutSpace::new(unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        });
-
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
-        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
-
-        let mut atom_frame: FramedMutSpace = (&mut root as &mut dyn MutSpace)
-            .create_atom_frame(urids.chunk)
-            .unwrap();
+        let mut atom_frame =
+            FramedMutSpace::new(&mut space as &mut dyn MutSpace, urids.chunk).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];
         for i in 0..test_data.len() {
@@ -446,6 +551,27 @@ mod tests {
     }
 
     #[test]
+    fn test_root_mut_space() {
+        const MEMORY_SIZE: usize = 256;
+        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
+        let frame: RootMutSpace = RootMutSpace::new(unsafe {
+            std::slice::from_raw_parts_mut(
+                (&mut memory).as_mut_ptr() as *mut u8,
+                MEMORY_SIZE * size_of::<u64>(),
+            )
+        });
+
+        test_mut_space(frame);
+    }
+
+    #[test]
+    fn test_space_head() {
+        let mut space = SpaceElement::default();
+        let head = SpaceHead::new(&mut space);
+        test_mut_space(head);
+    }
+
+    #[test]
     fn test_padding_inside_frame() {
         const MEMORY_SIZE: usize = 256;
         let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
@@ -459,9 +585,9 @@ mod tests {
         // writing
         {
             let mut root: RootMutSpace = RootMutSpace::new(raw_space);
-            let mut frame = (&mut root as &mut dyn MutSpace)
-                .create_atom_frame(unsafe { URID::<()>::new_unchecked(1) })
-                .unwrap();
+            let mut frame =
+                FramedMutSpace::new(&mut root as &mut dyn MutSpace, URID::<()>::new(1).unwrap())
+                    .unwrap();
             {
                 let frame = &mut frame as &mut dyn MutSpace;
                 frame.write::<u32>(&42, true).unwrap();

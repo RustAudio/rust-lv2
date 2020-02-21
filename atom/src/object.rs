@@ -65,7 +65,7 @@
 //!     ).unwrap();
 //!
 //!     // Write a property to the object.
-//!     object_writer.write(urids.property_a, None, urids.atom.int, 42).unwrap();
+//!     object_writer.init(urids.property_a, None, urids.atom.int, 42).unwrap();
 //! }
 //! ```
 //!
@@ -198,7 +198,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
     /// Initialize a new property.
     ///
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
-    pub fn write<'c, G: ?Sized, A: Atom<'a, 'c>>(
+    pub fn init<'c, G: ?Sized, A: Atom<'a, 'c>>(
         &'c mut self,
         key: URID<G>,
         context: Option<URID>,
@@ -206,8 +206,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), context)?;
-        let child_frame = (&mut self.frame as &mut dyn MutSpace).create_atom_frame(child_urid)?;
-        A::init(child_frame, parameter)
+        (&mut self.frame as &mut dyn MutSpace).init(child_urid, parameter)
     }
 }
 
@@ -303,9 +302,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urids.object)
-                .unwrap();
+            let frame = FramedMutSpace::new(&mut space as &mut dyn MutSpace, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
                 ObjectHeader {
@@ -316,12 +313,12 @@ mod tests {
             .unwrap();
             {
                 writer
-                    .write(first_key, None, urids.int, first_value)
+                    .init(first_key, None, urids.int, first_value)
                     .unwrap();
             }
             {
                 writer
-                    .write(second_key, None, urids.float, second_value)
+                    .init(second_key, None, urids.float, second_value)
                     .unwrap();
             }
         }

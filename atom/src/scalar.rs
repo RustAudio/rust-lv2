@@ -187,10 +187,7 @@ mod tests {
         // writing
         {
             let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = (&mut space as &mut dyn MutSpace)
-                .create_atom_frame(urid)
-                .unwrap();
-            A::init(frame, value).unwrap();
+            (&mut space as &mut dyn MutSpace).init(urid, value).unwrap();
         }
 
         // verifying

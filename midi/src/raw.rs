@@ -3,9 +3,7 @@
 /// This implementation is very low-level; Basically an alias for a chunk. It should only be used by those who don't want additional dependencies or want to modify messages directly.
 ///
 /// If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
-use atom::chunk::ByteWriter;
 use atom::prelude::*;
-use atom::space::*;
 use core::prelude::*;
 
 /// Midi Event.
@@ -24,13 +22,13 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = ByteWriter<'a, 'b>;
+    type WriteHandle = FramedMutSpace<'a, 'b>;
 
     fn read(body: Space<'a>, _: ()) -> Option<&'a [u8]> {
         body.data()
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<ByteWriter<'a, 'b>> {
-        Some(ByteWriter::new(frame))
+    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
+        Some(frame)
     }
 }

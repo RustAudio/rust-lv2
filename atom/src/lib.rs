@@ -91,6 +91,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
+    pub use space::{FramedMutSpace, MutSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
@@ -109,7 +110,7 @@ pub struct AtomURIDCollection {
     pub long: URID<scalar::Long>,
     pub urid: URID<scalar::AtomURID>,
     pub bool: URID<scalar::Bool>,
-    pub vector: URID<vector::Vector<scalar::Int>>,
+    vector: URID<vector::Vector<scalar::Int>>,
     pub chunk: URID<chunk::Chunk>,
     pub literal: URID<string::Literal>,
     pub object: URID<object::Object>,
@@ -117,6 +118,12 @@ pub struct AtomURIDCollection {
     pub string: URID<string::String>,
     pub tuple: URID<tuple::Tuple>,
     pub sequence: URID<sequence::Sequence>,
+}
+
+impl AtomURIDCollection {
+    pub fn vector<S: scalar::ScalarAtom>(&self) -> URID<vector::Vector<S>> {
+        unsafe { URID::new_unchecked(self.vector.get()) }
+    }
 }
 
 /// Atom type.
