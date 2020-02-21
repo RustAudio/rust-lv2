@@ -28,13 +28,13 @@ impl Storage {
     }
 
     /// External version of [`store`](#method.store).
-    /// 
+    ///
     /// This function has the appropriate signature to be used as a storage callback.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This method is unsafe since it dereferences raw pointers.
-    /// 
+    ///
     /// The `handle` has to be a pointer to a `Storage` instance and `value` must point to a slice of bytes with the length of `size`.
     pub unsafe extern "C" fn extern_store(
         handle: sys::LV2_State_Handle,
@@ -58,7 +58,7 @@ impl Storage {
     }
 
     /// Try to retrieve a property.
-    /// 
+    ///
     /// If the property doesn't exist, `None` is returned.
     pub fn retrieve(&self, key: URID) -> Option<(URID, &[u8])> {
         self.items
@@ -67,13 +67,13 @@ impl Storage {
     }
 
     /// External version of [`retrieve`](#method.retrieve).
-    /// 
+    ///
     /// This function has the appropriate signature to be used as a storage callback.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// This method is unsafe since it dereferences raw pointers.
-    /// 
+    ///
     /// The `handle` has to be a pointer to a `Storage` instance and `size`, `type_` and `flags` must be valid pointers to instances of their respective types.
     pub unsafe extern "C" fn extern_retrieve(
         handle: sys::LV2_State_Handle,
