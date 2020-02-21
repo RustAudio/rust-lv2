@@ -117,17 +117,19 @@ impl<'a> StatePropertyWriter<'a> {
 
     /// Initialize the property.
     ///
-    /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `None` is returned.
+    /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `Err(StateErr::Unknown)` is returned.
     pub fn init<'b, A: Atom<'a, 'b>>(
         &'b mut self,
         urid: URID<A>,
         parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
+    ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
+            (&mut self.head as &mut dyn MutSpace)
+                .init(urid, parameter)
+                .ok_or(StateErr::Unknown)
         } else {
-            None
+            Err(StateErr::Unknown)
         }
     }
 }

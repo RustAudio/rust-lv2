@@ -51,12 +51,10 @@ impl State for Stateful {
     fn save(&self, mut store: StoreHandle, _: ()) -> Result<(), StateErr> {
         store
             .draft(URID::new(1000).unwrap())
-            .init(self.urids.float, self.internal)
-            .unwrap();
+            .init(self.urids.float, self.internal)?;
         store
             .draft(URID::new(1001).unwrap())
-            .init(self.urids.vector(), self.urids.float)
-            .unwrap()
+            .init(self.urids.vector(), self.urids.float)?
             .append(self.audio.as_ref());
 
         store.commit_all()

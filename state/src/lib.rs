@@ -1,4 +1,78 @@
-/// Extension for LV2 Plugins to store their state.
+//! Extension for LV2 plugins to store their state.
+//!
+//! This is a rather classic extension to LV2 plugins: There is a trait called [`State`](trait.State.html) which requires the methods [`save`](trait.State.html#tymethod.save) and [`restore`](trait.State.html#tymethiod.restore) to be implemented. These methods will be called by the host to save and restore the state of the plugin.
+//!
+//! ## Example usage
+//! 
+//! ```
+//! use lv2_atom::prelude::*;
+//! use lv2_core::prelude::*;
+//! use lv2_state::*;
+//! use lv2_urid::prelude::*;
+//! 
+//! /// A plugin that stores a float value.
+//! struct Stateful {
+//!     internal: f32,
+//!     urids: AtomURIDCollection,
+//! }
+//! 
+//! /// `Stateful`s implementation of `State`.
+//! impl State for Stateful {
+//!     type StateFeatures = ();
+//! 
+//!     fn save(&self, mut store: StoreHandle, _: ()) -> Result<(), StateErr> {
+//!         // Try to draft a new property and store the float inside it.
+//!         store
+//!             .draft(URID::new(1000).unwrap())
+//!             .init(self.urids.float, self.internal)?;
+//! 
+//!         // Commit the written property.
+//!         // Otherwise, it will discarded.
+//!         store.commit_all()
+//!     }
+//! 
+//!     fn restore(&mut self, store: RetrieveHandle, _: ()) -> Result<(), StateErr> {
+//!         // Try to restore the property.
+//!         self.internal = store
+//!             .retrieve(URID::new(1000).unwrap())?
+//!             .read(self.urids.float, ())?;
+//! 
+//!         // We're done.
+//!         Ok(())
+//!     }
+//! }
+//! 
+//! impl Plugin for Stateful {
+//!     type Ports = ();
+//!     type Features = Features<'static>;
+//! 
+//!     fn new(_: &PluginInfo, features: Features<'static>) -> Option<Self> {
+//!         Some(Stateful {
+//!             internal: 42.0,
+//!             urids: features.map.populate_collection()?,
+//!         })
+//!     }
+//! 
+//!     fn run(&mut self, _: &mut ()) {
+//!         // Set the float to a different value than the previous one.
+//!         self.internal += 1.0;
+//!     }
+//! 
+//!     fn extension_data(uri: &Uri) -> Option<&'static dyn std::any::Any> {
+//!         // Export the store extension. Otherwise, the host won't use it.
+//!         match_extensions!(uri, StateDescriptor<Self>)
+//!     }
+//! }
+//! 
+//! #[derive(FeatureCollection)]
+//! pub struct Features<'a> {
+//!     map: Map<'a>,
+//! }
+//! 
+//! unsafe impl UriBound for Stateful {
+//!     const URI: &'static [u8] = b"urn:lv2_atom:stateful\0";
+//! }
+//! ```
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
