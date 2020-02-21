@@ -20,10 +20,7 @@ pub struct StoreHandle<'a> {
 
 impl<'a> StoreHandle<'a> {
     /// Create a new store handle.
-    pub unsafe fn new(
-        store_fn: sys::LV2_State_Store_Function,
-        handle: sys::LV2_State_Handle,
-    ) -> Self {
+    pub fn new(store_fn: sys::LV2_State_Store_Function, handle: sys::LV2_State_Handle) -> Self {
         StoreHandle {
             properties: HashMap::new(),
             store_fn,
@@ -144,7 +141,7 @@ pub struct RetrieveHandle<'a> {
 
 impl<'a> RetrieveHandle<'a> {
     /// Create a new retrieval handle that uses the given callback function and handle.
-    pub unsafe fn new(
+    pub fn new(
         retrieve_fn: sys::LV2_State_Retrieve_Function,
         handle: sys::LV2_State_Handle,
     ) -> Self {

@@ -54,7 +54,7 @@ impl Storage {
 
     /// Create a `StoreHandle` that saves it's properties to this storage.
     pub fn store_handle(&mut self) -> StoreHandle {
-        unsafe { StoreHandle::new(Some(Self::extern_store), self as *mut Self as *mut c_void) }
+        StoreHandle::new(Some(Self::extern_store), self as *mut Self as *mut c_void)
     }
 
     /// Try to retrieve a property.
@@ -100,12 +100,10 @@ impl Storage {
 
     /// Create a `RetrieveHandle` that retrieves the properties from this storage.
     pub fn retrieve_handle(&mut self) -> RetrieveHandle {
-        unsafe {
-            RetrieveHandle::new(
-                Some(Self::extern_retrieve),
-                self as *mut Self as *mut c_void,
-            )
-        }
+        RetrieveHandle::new(
+            Some(Self::extern_retrieve),
+            self as *mut Self as *mut c_void,
+        )
     }
 }
 
