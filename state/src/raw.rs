@@ -6,9 +6,11 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 use urid::prelude::*;
 
-/// A handle to abstract state storage.
+/// Property storage handle.
 ///
-/// This handle buffers the written properties and flushes them at once. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
+/// This handle can be used to store the properties of a plugin. It uses the atom system to encode the properties and is backed by a storage callback function.
+///
+/// The written properties a buffered and flushed when requested. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle<'a> {
     properties: HashMap<URID, SpaceElement>,
     store_fn: sys::LV2_State_Store_Function,
@@ -43,7 +45,7 @@ impl<'a> StoreHandle<'a> {
         ))
     }
 
-    /// Internal helper function to store one property.
+    /// Internal helper function to store a property.
     pub fn commit_pair(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
@@ -101,24 +103,39 @@ impl<'a> StoreHandle<'a> {
     }
 }
 
+/// Writing handle for properties.
 pub struct StatePropertyWriter<'a> {
     head: SpaceHead<'a>,
+    initialized: bool,
 }
 
 impl<'a> StatePropertyWriter<'a> {
+    /// Create a new property writer that uses the given space head.
     pub fn new(head: SpaceHead<'a>) -> Self {
-        Self { head }
+        Self {
+            head,
+            initialized: false,
+        }
     }
 
+    /// Initialize the property.
+    ///
+    /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `None` is returned.
     pub fn init<'b, A: Atom<'a, 'b>>(
         &'b mut self,
         urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
+        if !self.initialized {
+            self.initialized = true;
+            (&mut self.head as &mut dyn MutSpace).init(urid, parameter)
+        } else {
+            None
+        }
     }
 }
 
+/// Property retrieval handle.
 pub struct RetrieveHandle<'a> {
     retrieve_fn: sys::LV2_State_Retrieve_Function,
     handle: sys::LV2_State_Handle,
@@ -126,6 +143,7 @@ pub struct RetrieveHandle<'a> {
 }
 
 impl<'a> RetrieveHandle<'a> {
+    /// Create a new retrieval handle that uses the given callback function and handle.
     pub unsafe fn new(
         retrieve_fn: sys::LV2_State_Retrieve_Function,
         handle: sys::LV2_State_Handle,
@@ -137,6 +155,9 @@ impl<'a> RetrieveHandle<'a> {
         }
     }
 
+    /// Try to retrieve a property from the host.
+    ///
+    /// This method calls the internal retrieve callback with the given URID. If there's no property with the given URID, `Err(StateErr::NoProperty)` is returned. Otherwise, a reading handle is returned that contains the type and the data of the property and can interpret it as an atom.
     pub fn retrieve(&self, key: URID) -> Result<StatePropertyReader, StateErr> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;
@@ -161,16 +182,35 @@ impl<'a> RetrieveHandle<'a> {
     }
 }
 
+/// Reading handle for properties.
+///
+/// This handle contains the type and the data of a property retrieved from the [`RetrieveHandle`](struct.RetrieveHandle.html).
 pub struct StatePropertyReader<'a> {
     type_: URID,
     body: Space<'a>,
 }
 
 impl<'a> StatePropertyReader<'a> {
+    /// Create a new reading handle with the given type and data.
     pub fn new(type_: URID, body: Space<'a>) -> Self {
         Self { type_, body }
     }
 
+    /// Return the type of the property.
+    pub fn type_(&self) -> URID {
+        self.type_
+    }
+
+    /// Return the data of the property.
+    pub fn body(&self) -> Space {
+        self.body
+    }
+
+    /// Try to interpret the property as an atom.
+    ///
+    /// This works like any atom reader: You pass the URID of the atom type as well as the type-specific argument, and if the desired type is the actual type of the data, a read handle is returned.
+    ///
+    /// If the desired and actual data types don't match, `Err(StateErr::BadType)` is returned.
     pub fn read<A: Atom<'a, 'a>>(
         &self,
         urid: URID<A>,

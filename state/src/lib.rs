@@ -15,19 +15,29 @@ mod storage;
 #[cfg(feature = "host")]
 pub use storage::Storage;
 
+/// Kinds of errors that may occur in the crate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateErr {
+    /// The kind of the error is unknown or doesn't have a representation.
     Unknown,
+    /// A callback function pointer of a method is bad.
     BadCallback,
+    /// Retrieved data is invalid.
     BadData,
+    /// The retrieved data doesn't have the correct type.
     BadType,
+    /// The flags a method was called with are invalid.
     BadFlags,
+    /// A feature the plugin requested is missing.
     NoFeature,
+    /// A property the plugin is requesting doesn't exist.
     NoProperty,
+    /// There isn't enough memory available to execute the task.
     NoSpace,
 }
 
 impl StateErr {
+    /// Convert a raw status flag to a result or possible error value.
     pub fn from(value: u32) -> Result<(), StateErr> {
         match value {
             sys::LV2_State_Status_LV2_STATE_SUCCESS => Ok(()),
@@ -40,6 +50,7 @@ impl StateErr {
         }
     }
 
+    /// Convert a result to a raw status flag.
     pub fn into(result: Result<(), StateErr>) -> u32 {
         match result {
             Ok(()) => sys::LV2_State_Status_LV2_STATE_SUCCESS,

@@ -11,6 +11,10 @@ impl<'a> FeatureCache<'a> {
     /// Construct a cache from the raw features array.
     ///
     /// It basically populates a hash map by walking through the array and then creates a `FeatureContainer` with it. However, this method is unsafe since it dereferences a C string to a URI. Also, this method should only be used with the features list supplied by the host since the soundness of the whole module depends on that assumption.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it needs to dereference the raw feature pointers.
     pub unsafe fn from_raw(raw: *const *const ::sys::LV2_Feature) -> Self {
         let mut internal_map = HashMap::new();
         let mut feature_ptr = raw;

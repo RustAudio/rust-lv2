@@ -29,6 +29,8 @@ pub trait State: Plugin {
 }
 
 /// Raw wrapper of the [`State`](trait.State.html) extension.
+///
+/// This is a marker type that has the required external methods for the extension.
 pub struct StateDescriptor<P: State> {
     plugin: PhantomData<P>,
 }
@@ -38,6 +40,13 @@ unsafe impl<P: State> UriBound for StateDescriptor<P> {
 }
 
 impl<P: State> StateDescriptor<P> {
+    /// Handle a save request by the host.
+    ///
+    /// This involves creating the plugin reference, constructing the store handle and discovering the required host features.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it is an interface for hosts written in C and since it dereferences raw pointers.
     pub unsafe extern "C" fn extern_save(
         instance: sys::LV2_Handle,
         store: sys::LV2_State_Store_Function,
@@ -67,6 +76,13 @@ impl<P: State> StateDescriptor<P> {
         StateErr::into(plugin.save(store, features))
     }
 
+    /// Handle a restore request by the host.
+    ///
+    /// This involves creating the plugin reference, constructing the retrieve handle and discovering the required host features.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it is an interface for hosts written in C and since it dereferences raw pointers.
     pub unsafe extern "C" fn extern_restore(
         instance: sys::LV2_Handle,
         retrieve: sys::LV2_State_Retrieve_Function,
