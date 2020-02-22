@@ -6,10 +6,42 @@ use lv2_sys;
 use std::marker::PhantomData;
 use std::os::raw::*; //get all common c_type
 
-//Marker feature to signal that the plugin use the worker:schedule feature.
+/// Host feature to schedule a worker call.
 #[repr(transparent)]
 pub struct Schedule<'a> {
-    pub internal: &'a lv2_sys::LV2_Worker_Schedule,
+    internal: &'a lv2_sys::LV2_Worker_Schedule,
+}
+
+impl<'a> Schedule<'a> {
+    /// Request the host to call the worker thread.
+    ///
+    /// This function should be called from `run()` to request that the host call the `work()`
+    /// method in a non-realtime context with the given arguments.
+    ///
+    /// This function is always safe to call from `run()`, but it is not guaranteed that the worker
+    /// is actually called from a different thread. In particular, when free-wheeling (e.g. for
+    /// offline rendering), the worker may be executed immediately. This allows single-threaded
+    /// processing with sample accuracy and avoids timing problems when `run()` is executing much
+    /// faster or slower than real-time.
+    ///
+    /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
+    /// from the worker are delivered immediately, the effect of the work takes place immediately
+    /// with sample accuracy.
+    pub fn schedule_work(&self, size: u32, data: *const c_void) -> Result<(), WorkerError> {
+        unsafe {
+            let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
+                schedule_work
+            } else {
+                return Err(WorkerError::Unknown);
+            };
+            match (schedule_work)(self.internal.handle, size, data) {
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
+                _ => Err(WorkerError::Unknown),
+            }
+        }
+    }
 }
 
 //lying on sync and send
