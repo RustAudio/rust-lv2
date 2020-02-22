@@ -59,7 +59,7 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 /// Plugin wrapper which translated between the host and the plugin.
 ///
 /// The host interacts with the plugin via a C API, but the plugin is implemented with ideomatic, safe Rust. To bridge this gap, this wrapper is used to translate and abstract the communcation between the host and the plugin.
-/// 
+///
 /// This struct is `repr(C)` and has the plugin as it's first field. Therefore, a valid `*mut PluginInstance<T>` is also a valid `*mut T`.
 #[repr(C)]
 pub struct PluginInstance<T: Plugin> {
