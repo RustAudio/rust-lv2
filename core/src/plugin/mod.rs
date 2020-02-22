@@ -16,7 +16,7 @@ use sys::LV2_Handle;
 ///
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
 ///
-/// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods.
+/// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods. However, it guarantees that a valid `sys::LV2_Handle` is always a valid `*mut MyPlugin`, where `MyPlugin` is your plugin's name.
 pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// The type of the port collection.
     type Ports: PortCollection;
@@ -59,6 +59,9 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 /// Plugin wrapper which translated between the host and the plugin.
 ///
 /// The host interacts with the plugin via a C API, but the plugin is implemented with ideomatic, safe Rust. To bridge this gap, this wrapper is used to translate and abstract the communcation between the host and the plugin.
+///
+/// This struct is `repr(C)` and has the plugin as it's first field. Therefore, a valid `*mut PluginInstance<T>` is also a valid `*mut T`.
+#[repr(C)]
 pub struct PluginInstance<T: Plugin> {
     instance: T,
     connections: <T::Ports as PortCollection>::Cache,
