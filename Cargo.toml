@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["lv2", "audio", "dsp", "safe", "signal"]
 repository = "https://github.com/RustAudio/rust-lv2"
 
-[badge]
+[badges]
 travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "actively-developed" }
 

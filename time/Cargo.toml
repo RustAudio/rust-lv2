@@ -9,7 +9,7 @@ description = "rust-lv2's wrapper of LV2's time types"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 
-[badge]
+[badges]
 travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "actively-developed" }
 
