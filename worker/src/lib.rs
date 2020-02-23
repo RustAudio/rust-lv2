@@ -4,6 +4,7 @@ use lv2_core::plugin::{Plugin, PluginInstance};
 use lv2_core::prelude::*;
 use lv2_sys;
 use std::marker::PhantomData;
+use std::mem;
 use std::os::raw::*; //get all common c_type
 
 /// Host feature to schedule a worker call.
@@ -27,14 +28,16 @@ impl<'a> Schedule<'a> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
-    pub fn schedule_work(&self, size: u32, data: *const c_void) -> Result<(), WorkerError> {
+    pub fn schedule_work<P: Worker>(&self, worker_data: &P::WorkData) -> Result<(), WorkerError> {
         unsafe {
+            let size = mem::size_of_val(worker_data) as u32;
+            let ptr = worker_data as *const P::WorkData as *const c_void;
             let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
                 schedule_work
             } else {
                 return Err(WorkerError::Unknown);
             };
-            match (schedule_work)(self.internal.handle, size, data) {
+            match (schedule_work)(self.internal.handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
@@ -101,6 +104,7 @@ pub enum WorkerError {
 /// Plugins can use this interface to safely perform work that is not real-time safe, and receive
 /// the result in the run context.
 pub trait Worker: Plugin {
+    type WorkData;
     /// The work to do in a non-real-time thread. The spec require plugins to implment this method.
     ///
     /// This is called by the host in a non-realtime context as requested, possibly with an
@@ -114,8 +118,7 @@ pub trait Worker: Plugin {
     fn work(
         &mut self,
         response_handler: &ResponseHandler,
-        size: u32,
-        data: *const c_void,
+        data: &Self::WorkData,
     ) -> Result<(), WorkerError>;
 
     /// Handle a response from the worker. The spec require plugins to implement this method even if
@@ -151,19 +154,33 @@ impl<P: Worker> WorkerDescriptor<P> {
         size: u32,
         data: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
-        if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            let plugin = plugin_instance.instance_mut();
-            let response_handler = ResponseHandler {
-                response_function,
-                respond_handle,
+        //deref plugin_instance and get the plugin
+        let plugin_instance =
+            if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+                plugin_instance
+            } else {
+                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
             };
-            match plugin.work(&response_handler, size, data) {
-                Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
-                Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-                Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
-            }
-        } else {
-            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN
+        let plugin = plugin_instance.instance_mut();
+        //build response handler
+        let response_handler = ResponseHandler {
+            response_function,
+            respond_handle,
+        };
+        //build ref to worker data from raw pointer
+        let worker_data =
+            if let Some(worker_data) = (data as *const <P as Worker>::WorkData).as_ref() {
+                worker_data
+            } else {
+                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+            };
+        if size as usize != mem::size_of_val(worker_data) {
+            return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+        }
+        match plugin.work(&response_handler, worker_data) {
+            Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+            Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+            Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
         }
     }
 
