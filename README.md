@@ -100,7 +100,7 @@ Since the bindings to the raw C headers are generated with bindgen, you need to 
 ## Features
 
 There are two optional features:
-* `host`:  Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is provide an easy way to create plugins, these aren't nescessary and therefore gated behind that feature.
+* `host`:  Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is to provide an easy way to create plugins, these aren't necessary and therefore gated behind that feature.
 * `wmidi`: Add [`wmidi`](https://crates.io/crates/wmidi) as an optional dependency to `lv2-midi`, which enables a shortcut to read and write MIDI events directly with the types defined by this crate.
 
 ## License

@@ -1,6 +1,6 @@
-# rust-lv2 core crate
+# rust-lv2's core library.
 
-The foundation of the `rust-lv2` audio plugin framework, a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+The foundation of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
 
 This crate provides the `Plugin` trait along with some utilities, which lets you create a basic audio plugin with the option to use host and plugin extensions.
 
@@ -75,7 +75,7 @@ Since the bindings to the raw C headers are generated with bindgen, you need to 
 
 ## Features
 
-Like any other crate of `rust-lv2`, this crate has the optional `host` feature. Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is provide an easy way to create plugins, these aren't nescessary and therefore gated behind that feature.
+Like any other crate of `rust-lv2`, this crate has the optional `host` feature. Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is to provide an easy way to create plugins, these aren't necessary and therefore gated behind that feature.
 
 ## License
 
