@@ -73,9 +73,16 @@ pub struct ResponseHandler {
 }
 
 impl ResponseHandler {
-    pub fn respond(&self, size: u32, data: *const c_void) -> Result<(), WorkerError> {
+    pub fn respond<P: Worker>(&self, response_data: &P::ResponseData) -> Result<(), WorkerError> {
         unsafe {
-            match (self.response_function.unwrap())(self.respond_handle, size, data) {
+            let size = mem::size_of_val(response_data) as u32;
+            let ptr = response_data as *const P::ResponseData as *const c_void;
+            let response_function = if let Some(response_function) = self.response_function {
+                response_function
+            } else {
+                return Err(WorkerError::Unknown);
+            };
+            match (response_function)(self.respond_handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
@@ -104,7 +111,10 @@ pub enum WorkerError {
 /// Plugins can use this interface to safely perform work that is not real-time safe, and receive
 /// the result in the run context.
 pub trait Worker: Plugin {
+    /// Data sended to the worker thread
     type WorkData;
+    /// Data sended by the worker thread to `work_response`
+    type ResponseData;
     /// The work to do in a non-real-time thread. The spec require plugins to implment this method.
     ///
     /// This is called by the host in a non-realtime context as requested, possibly with an
@@ -125,7 +135,7 @@ pub trait Worker: Plugin {
     /// many host support to not have it.
     ///
     /// This is called by the host in the run() context when a response from the worker is ready.
-    fn work_response(&mut self, size: u32, body: *const c_void) -> Result<(), WorkerError>;
+    fn work_response(&mut self, data: &Self::ResponseData) -> Result<(), WorkerError>;
 
     ///Called when all responses for this cycle have been delivered. (optional)
     ///
@@ -190,15 +200,29 @@ impl<P: Worker> WorkerDescriptor<P> {
         size: u32,
         body: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
-        if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            let plugin = plugin_instance.instance_mut();
-            match plugin.work_response(size, body) {
-                Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
-                Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
-                Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
-            }
-        } else {
-            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN
+        //deref plugin_instance and get the plugin
+        let plugin_instance =
+            if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+                plugin_instance
+            } else {
+                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+            };
+        let plugin = plugin_instance.instance_mut();
+        //build ref to response data from raw pointer
+        let response_data =
+            if let Some(response_data) = (body as *const <P as Worker>::ResponseData).as_ref() {
+                response_data
+            } else {
+                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+            };
+        if size as usize != mem::size_of_val(response_data) {
+            return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+        }
+
+        match plugin.work_response(response_data) {
+            Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
+            Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
+            Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
         }
     }
 
