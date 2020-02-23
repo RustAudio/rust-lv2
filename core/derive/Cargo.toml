@@ -1,7 +1,15 @@
 [package]
 name = "lv2-core-derive"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+
+description = "Procedural macros for lv2-core"
+readme = "README.md"
+repository = "https://github.com/RustAudio/rust-lv2"
+
+[badges]
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "passively-maintained" }
 
 [lib]
 proc-macro = true
