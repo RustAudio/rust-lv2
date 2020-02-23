@@ -40,8 +40,10 @@ fn main() {
         }
     }
 
+    // Generating the bindings.
     let bindings = bindings.generate().expect("Unable to generate bindings");
 
+    // Writing the bindings to a file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
