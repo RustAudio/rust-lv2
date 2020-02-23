@@ -5,24 +5,38 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    let mut source_dir = PathBuf::new();
-    source_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
-    source_dir.push("src");
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
+    let mut source_dir = PathBuf::new();
+    source_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
+
+    // Adding the crate to the include path of clang.
+    // Otherwise, included headers can not be found.
+    bindings = bindings.clang_arg(format!("-I{}", source_dir.to_str().unwrap()));
+
+    source_dir.push("lv2");
+
     for entry in fs::read_dir(source_dir).unwrap() {
-        let entry = match entry {
-            Ok(entry) => entry.path(),
-            _ => continue,
+        let spec_dir = if let Ok(spec_dir) = entry {
+            spec_dir.path()
+        } else {
+            continue
         };
 
-        let extension = match entry.extension() {
-            Some(extension) => extension,
-            None => continue,
-        };
+        for entry in fs::read_dir(spec_dir).unwrap() {
+            let entry = match entry {
+                Ok(entry) => entry.path(),
+                _ => continue,
+            };
 
-        if extension == "h" {
-            bindings = bindings.header(entry.to_str().unwrap());
+            let extension = match entry.extension() {
+                Some(extension) => extension,
+                None => continue,
+            };
+
+            if extension == "h" {
+                bindings = bindings.header(entry.to_str().unwrap());
+            }
         }
     }
 
