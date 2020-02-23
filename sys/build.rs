@@ -8,7 +8,7 @@ fn main() {
     let mut source_dir = PathBuf::new();
     source_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
     source_dir.push("src");
-    let mut bindings = bindgen::Builder::default().rustfmt_bindings(true);
+    let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
     for entry in fs::read_dir(source_dir).unwrap() {
         let entry = match entry {

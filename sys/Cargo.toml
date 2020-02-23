@@ -6,4 +6,4 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [build-dependencies]
-bindgen = { version = "0.51.1", default-features = false }
+bindgen = "0.53.1"
