@@ -1,6 +1,6 @@
 [package]
 name = "lv2"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>",
  "Yruama_Lairba <yruama_lairba@hotmail.com>"]
 edition = "2018"
@@ -12,7 +12,7 @@ keywords = ["lv2", "audio", "dsp", "safe", "signal"]
 repository = "https://github.com/RustAudio/rust-lv2"
 
 [badges]
-travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
