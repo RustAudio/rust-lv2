@@ -1,6 +1,6 @@
 # Raw LV2 API bindings
 
-This crate contains raw bindings of the standard LV2 specifcation API headers. Those were taken from the official [Git repository](https://gitlab.com/lv2/lv2) and generated at compile time using [bindgen](https://github.com/rust-lang/rust-bindgen).
+This crate contains the raw bindings of the standard LV2 API headers, version 1.16.0, as published on the [official website](https://lv2plug.in/) ([Tarball](http://lv2plug.in/spec/lv2-1.16.0.tar.bz2)). The bindings are generated at compile time using [bindgen](https://github.com/rust-lang/rust-bindgen) and therefore exactly match to the headers.
 
 ## Building
 
