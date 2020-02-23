@@ -9,7 +9,7 @@ fn main() {
     let mut bindings = bindgen::Builder::default()
         .rustfmt_bindings(true)
         .size_t_is_usize(true);
-    
+
     // Retrieve the root directory of the crate.
     let mut root_dir = PathBuf::new();
     root_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
