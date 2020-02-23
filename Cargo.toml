@@ -17,7 +17,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 lv2-atom = { path = "atom" }
-lv2-core = { path = "core" }
+lv2-core = "1.0.0"
 lv2-midi = { path = "midi" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
