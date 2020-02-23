@@ -1,32 +1,8 @@
-# rust-lv2
+# rust-lv2 core crate
 
-[![Build Status](https://travis-ci.org/rustaudio/rust-lv2.svg?branch=master)](https://travis-ci.org/rustaudio/rust-lv2)
+The foundation of the `rust-lv2` audio plugin framework, a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
 
-A safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
-
-**This library is a work in progress.**
-
-It provides the following features, through the [LV2 Core specification](http://lv2plug.in/ns/lv2core/lv2core.html):
-
-* Lightweight, realtime non-blocking and allocation-free audio processing.
-* Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host on any platform.
-* Any number of ports / Any channel mapping, which can be different for input and output.  
-  This obviously includes Mono, Stereo, Surround, etc., any configuration your CPU can handle.
-* Can be extended to support any additional features, extensions and port types.  
-  They can be official, unofficial or completely custom.
-
-Through the [LV2 official additional specifications](http://lv2plug.in/ns/), this library also provides many
-additional features, including:
-
-* MIDI processing
-* Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
-* State management
-* Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
-* Presets handling **(Not yet implemented)**
-* Asynchronous work processing **(Not yet implemented)**
-* ... and more! (Not yet implemented either)
-
-Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings to any other specification that will integrate with this library.
+This crate provides the `Plugin` trait along with some utilities, which lets you create a basic audio plugin with the option to use host and plugin extensions.
 
 ## Example
 
@@ -34,7 +10,7 @@ This example contains the code of a simple amplification plugin. Please note tha
 
 ```Rust
 // Import everything we need.
-use lv2::core::prelude::*;
+use lv2_core::prelude::*;
 
 // The input and output ports are defined by a struct which implements the `PortCollection` trait.
 // In this case, there is an input control port for the gain of the amplification, an input audio
@@ -99,9 +75,7 @@ Since the bindings to the raw C headers are generated with bindgen, you need to 
 
 ## Features
 
-There are two optional features:
-* `host`:  Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is provide an easy way to create plugins, these aren't nescessary and therefore gated behind that feature.
-* `wmidi`: Add [`wmidi`](https://crates.io/crates/wmidi) as an optional dependency to `lv2-midi`, which enables a shortcut to read and write MIDI events directly with the types defined by this crate.
+Like any other crate of `rust-lv2`, this crate has the optional `host` feature. Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is provide an easy way to create plugins, these aren't nescessary and therefore gated behind that feature.
 
 ## License
 
