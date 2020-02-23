@@ -1,6 +1,6 @@
 # rust-lv2's C header bindings.
 
-Bindings to the official [LV2](https://lv2plug.in/) API headers, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+Bindings to the official [LV2](https://lv2plug.in/) API headers, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 ## Building
 

@@ -1,6 +1,6 @@
 ## rust-lv2's MIDI processing library.
 
-The MIDI processing library of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+The MIDI processing library of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 This is a addon to [`lv2-atom`](https://crates.io/crates/lv2-atom) that adds the `MidiEvent` atom type. There is also an optional dependency to [`wmidi`](https://crates.io/crates/wmidi), which introduces the `WMidiEvent` atom type, which allows you to directly read and write the events defined by `wmidi`.
 

@@ -2,14 +2,14 @@
 
 [![Build Status](https://travis-ci.org/rustaudio/rust-lv2.svg?branch=master)](https://travis-ci.org/rustaudio/rust-lv2)
 
-A safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+A safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 **This library is a work in progress.**
 
 It provides the following features, through the [LV2 Core specification](http://lv2plug.in/ns/lv2core/lv2core.html):
 
 * Lightweight, realtime non-blocking and allocation-free audio processing.
-* Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host on any platform.
+* Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host.
 * Any number of ports / Any channel mapping, which can be different for input and output.  
   This obviously includes Mono, Stereo, Surround, etc., any configuration your CPU can handle.
 * Can be extended to support any additional features, extensions and port types.  

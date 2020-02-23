@@ -1,6 +1,6 @@
 # rust-lv2's state handling library.
 
-A wrapper of LV2's State API which allows plugins to save and restore their state. This is a part of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+A wrapper of LV2's State API which allows plugins to save and restore their state. This is a part of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 ## Documentation
 
 The original LV2 API (in the `C` programming language) is documented by ["the LV2 book"](https://lv2plug.in/book/). This book is in the process of being translated to Rust along with the development of `rust-lv2` [(link)](https://janonard.github.io/rust-lv2-book/) and describes how to properly use `rust-lv2`.

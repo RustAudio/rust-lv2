@@ -1,6 +1,6 @@
 # rust-lv2's URID handling crate.
 
-URI <-> URID mapping utilities used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+URI <-> URID mapping utilities used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 LV2 often uses URIs to identify types. However, comparing strings isn't particularly performant. Therefore, every URI can be mapped to a URID (basically a `u32`) by the host, which can be efficiently compared. This crate contains safe handles for this mapping feature, as well as the handy `URID<T>` type: It already contains the type the URID is describing, which leads to many generic type arguments be elidable.
 

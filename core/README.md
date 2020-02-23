@@ -1,6 +1,6 @@
 # rust-lv2's core library.
 
-The foundation of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+The foundation of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 This crate provides the `Plugin` trait along with some utilities, which lets you create a basic audio plugin with the option to use host and plugin extensions.
 

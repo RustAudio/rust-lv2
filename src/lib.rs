@@ -1,12 +1,11 @@
-//! A safe, fast, and ergonomic Rust library to create [LV2 plugins](http://lv2plug.in/) for audio processing or synthesis,
-//! on any platform.
+//! A safe, fast, and ergonomic Rust library to create [LV2 plugins](http://lv2plug.in/) for audio processing or synthesis.
 //!
 //! **This library is a work in progress.**
 //!
 //! It provides the following features, through the [LV2 Core specification](http://lv2plug.in/ns/lv2core/lv2core.html):
 //!
 //! * Lightweight, realtime non-blocking and allocation-free audio processing.
-//! * Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host on any platform.
+//! * Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host.
 //! * Any number of ports / Any channel mapping, which can be different for input and output.
 //!   This obviously includes Mono, Stereo, Surround, etc., anything your CPU can handle.
 //! * Can be extended to support any additional features, extensions and port types.

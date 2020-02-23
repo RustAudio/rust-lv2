@@ -1,6 +1,6 @@
 # rust-lv2's Atom handling library.
 
-A library for reading and writing [LV2's](https://lv2plug.in/) Atom type system, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing on any platform, written in Rust.
+A library for reading and writing [LV2's](https://lv2plug.in/) Atom type system, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
 LV2 has it's own type system to make data exchange between plugins as versatile and portable as possible. Basic integer and float types are supported as well as vectors, event sequences, and URID->Atom maps.
 
