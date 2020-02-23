@@ -17,7 +17,7 @@ maintenance = { status = "passively-maintained" }
 lv2-sys = "1.0.0"
 lv2-core = "1.0.0"
 lv2-urid = "1.0.0"
-lv2-units = { path = "../units" }
+lv2-units = "0.1.0"
 
 [features]
 default = []
