@@ -1,6 +1,6 @@
 [package]
 name = "lv2-core-derive"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 license = "MIT OR Apache-2.0"
 
@@ -9,7 +9,7 @@ readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 
 [badges]
-travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [lib]
