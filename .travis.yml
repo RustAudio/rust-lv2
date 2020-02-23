@@ -12,15 +12,13 @@ rust:
 
 os:
   - linux
-  - windows
-  - osx
 
 matrix:
   allow_failures:
     - rust: nightly
-    - os: windows
 
 before_script:
+  - sudo apt-get install clang
   - rustup component add rustfmt
   - rustup component add clippy
 
