@@ -13,7 +13,7 @@ travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "ma
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-lv2-sys = { path = "../sys" }
+lv2-sys = "1.0.0"
 lv2-core = { path = "../core" }
 lv2-urid = { path = "../urid" }
 lv2-atom = { path = "../atom" }

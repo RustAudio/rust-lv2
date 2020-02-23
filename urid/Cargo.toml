@@ -15,8 +15,8 @@ maintenance = { status = "passively-maintained" }
 
 [dependencies]
 lv2-core = { path = "../core" }
-lv2-sys = { path = "../sys" }
-lv2-urid-derive = { path = "derive" }
+lv2-sys = "1.0.0"
+lv2-urid-derive = "1.0.0"
 
 [features]
 default = []

@@ -16,7 +16,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 lv2-core = { path = "../core" }
 lv2-urid = { path = "../urid" }
-lv2-sys = { path = "../sys" }
+lv2-sys = "1.0.0"
 
 [features]
 default = []
