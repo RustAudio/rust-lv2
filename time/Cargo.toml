@@ -5,7 +5,11 @@ authors = ["Yruama_Lairba <yruama_lairba@hotmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "rust-lv2's wrapper of LV2's time types"
+readme = "README.md"
+repository = "https://github.com/RustAudio/rust-lv2"
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 lv2-core = { path = "../core" }

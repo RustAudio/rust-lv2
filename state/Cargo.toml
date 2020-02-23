@@ -4,7 +4,11 @@ version = "1.0.0"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "rust-lv2's state handling library"
+readme = "README.md"
+repository = "https://github.com/RustAudio/rust-lv2"
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 lv2-sys = { path = "../sys" }
