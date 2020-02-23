@@ -20,7 +20,7 @@ fn main() {
         let spec_dir = if let Ok(spec_dir) = entry {
             spec_dir.path()
         } else {
-            continue
+            continue;
         };
 
         for entry in fs::read_dir(spec_dir).unwrap() {
