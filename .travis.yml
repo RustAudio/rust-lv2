@@ -10,6 +10,8 @@ rust:
   - beta
   - nightly
 
+dist: eoan
+
 os:
   - linux
 
