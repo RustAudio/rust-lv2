@@ -18,7 +18,7 @@ matrix:
     - rust: nightly
 
 before_script:
-  - sudo apt-get install clang
+  - sudo apt-get install libclang1
   - rustup component add rustfmt
   - rustup component add clippy
 
