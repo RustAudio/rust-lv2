@@ -5,6 +5,14 @@ authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>",
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
+description = "rust-lv2's URID handling library"
+readme = "README.md"
+repository = "https://github.com/RustAudio/rust-lv2"
+
+[badges]
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "passively-maintained" }
+
 [dependencies]
 lv2-core = { path = "../core" }
 lv2-sys = { path = "../sys" }

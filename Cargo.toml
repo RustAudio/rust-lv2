@@ -6,6 +6,15 @@ authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>",
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
+description = "A safe, fast, and ergonomic framework to create LV2 plugins"
+readme = "README.md"
+keywords = ["lv2", "audio", "dsp", "safe", "signal"]
+repository = "https://github.com/RustAudio/rust-lv2"
+
+[badges]
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "actively-developed" }
+
 [dependencies]
 lv2-atom = { path = "atom" }
 lv2-core = { path = "core" }

@@ -5,6 +5,14 @@ authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adr
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
+description = "rust-lv2's core library"
+readme = "README.md"
+repository = "https://github.com/RustAudio/rust-lv2"
+
+[badges]
+travis-ci = { repository = "https://github.com/RustAudio/rust-lv2", branch = "master" }
+maintenance = { status = "passively-maintained" }
+
 [dependencies]
 lv2-sys = { path = "../sys" }
 lv2-core-derive = { path = "./derive" }
