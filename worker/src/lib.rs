@@ -28,20 +28,30 @@ impl<'a> Schedule<'a> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
-    pub fn schedule_work<P: Worker>(&self, worker_data: &P::WorkData) -> Result<(), WorkerError> {
+    pub fn schedule_work<P: Worker>(&self, worker_data: P::WorkData) -> Result<(), WorkerError> {
         unsafe {
-            let size = mem::size_of_val(worker_data) as u32;
-            let ptr = worker_data as *const P::WorkData as *const c_void;
+            let size = mem::size_of_val(&worker_data) as u32;
+            let ptr = &worker_data as *const _ as *const c_void;
             let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
                 schedule_work
             } else {
+                println!("schedule: Unknown error");
                 return Err(WorkerError::Unknown);
             };
             match (schedule_work)(self.internal.handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
-                _ => Err(WorkerError::Unknown),
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => {
+                    println!("schedule: Unknown error");
+                    Err(WorkerError::Unknown)
+                }
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => {
+                    println!("Schedule: NoSpace error");
+                    Err(WorkerError::NoSpace)
+                }
+                _ => {
+                    println!("schedule: Unknown error");
+                    Err(WorkerError::Unknown)
+                }
             }
         }
     }
@@ -73,10 +83,10 @@ pub struct ResponseHandler {
 }
 
 impl ResponseHandler {
-    pub fn respond<P: Worker>(&self, response_data: &P::ResponseData) -> Result<(), WorkerError> {
+    pub fn respond<P: Worker>(&self, response_data: P::ResponseData) -> Result<(), WorkerError> {
         unsafe {
-            let size = mem::size_of_val(response_data) as u32;
-            let ptr = response_data as *const P::ResponseData as *const c_void;
+            let size = mem::size_of_val(&response_data) as u32;
+            let ptr = &response_data as *const P::ResponseData as *const c_void;
             let response_function = if let Some(response_function) = self.response_function {
                 response_function
             } else {
@@ -182,10 +192,17 @@ impl<P: Worker> WorkerDescriptor<P> {
             if let Some(worker_data) = (data as *const <P as Worker>::WorkData).as_ref() {
                 worker_data
             } else {
+                println!("extern_work : worker data point to null");
                 return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
             };
-        if size as usize != mem::size_of_val(worker_data) {
-            return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+        let type_size = mem::size_of_val(worker_data);
+        println!("type size : {}", type_size);
+        if size as usize != type_size {
+            println!(
+                "extern_work : error when checking data size : size {}, type size {}",
+                size, type_size
+            );
+            //return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
         match plugin.work(&response_handler, worker_data) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
