@@ -273,8 +273,120 @@ impl<P: Worker> ExtensionDescriptor for WorkerDescriptor<P> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use lv2_sys::*;
+    use std::fmt;
+    use std::ops;
+    use std::ptr;
+
+    // structure to test drooping issue
+    struct HasDrop;
+
+    impl ops::Drop for HasDrop {
+        fn drop(&mut self) {
+            panic!("Dropped!");
+        }
+    }
+
+    impl fmt::Display for HasDrop {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "HasDrop variable")
+        }
+    }
+    #[derive(PortContainer)]
+    struct Ports {}
+    struct TestDropWorker;
+    // URI identifier
+    unsafe impl<'a> UriBound for TestDropWorker {
+        const URI: &'static [u8] = b"not relevant\0";
+    }
+    impl Plugin for TestDropWorker {
+        type Ports = Ports;
+        type Features = ();
+
+        fn new(_plugin_info: &PluginInfo, _features: ()) -> Option<Self> {
+            Some(Self {})
+        }
+
+        fn activate(&mut self) {}
+
+        fn deactivate(&mut self) {}
+
+        fn run(&mut self, _ports: &mut Ports) {}
+    }
+
+    impl Worker for TestDropWorker {
+        type WorkData = HasDrop;
+        type ResponseData = HasDrop;
+
+        fn work(
+            &mut self,
+            _response_handler: &ResponseHandler,
+            _data: &HasDrop,
+        ) -> Result<(), WorkerError> {
+            Ok(())
+        }
+
+        fn work_response(&mut self, _data: &HasDrop) -> Result<(), WorkerError> {
+            Ok(())
+        }
+    }
+
+    extern "C" fn extern_schedule(
+        _handle: LV2_Worker_Schedule_Handle,
+        _size: u32,
+        _data: *const c_void,
+    ) -> LV2_Worker_Status {
+        LV2_Worker_Status_LV2_WORKER_SUCCESS
+    }
+
+    extern "C" fn extern_respond(
+        _handle: LV2_Worker_Respond_Handle,
+        _size: u32,
+        _data: *const c_void,
+    ) -> LV2_Worker_Status {
+        LV2_Worker_Status_LV2_WORKER_SUCCESS
+    }
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn schedule_must_not_drop() {
+        let hd = HasDrop;
+        let schedule = Schedule {
+            internal: &lv2_sys::LV2_Worker_Schedule {
+                handle: ptr::null_mut(),
+                schedule_work: Some(extern_schedule),
+            },
+        };
+        schedule.schedule_work::<TestDropWorker>(hd);
+    }
+
+    #[test]
+    fn respond_must_not_drop() {
+        let hd = HasDrop;
+        let respond = ResponseHandler {
+            response_function: Some(extern_respond),
+            respond_handle: ptr::null_mut(),
+        };
+        respond.respond::<TestDropWorker>(hd);
+    }
+
+    #[test]
+    fn extern_work_should_drop() {
+        unsafe {
+            let hd = HasDrop;
+            let ptr_hd = &hd as *const _ as *const c_void;
+            let size = mem::size_of_val(&hd) as u32;
+            let mut tdw = TestDropWorker {};
+
+            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+            WorkerDescriptor::<TestDropWorker>::extern_work(
+                ptr_tdw,
+                Some(extern_respond),
+                ptr::null_mut(),
+                size,
+                ptr_hd,
+            );
+        }
     }
 }
