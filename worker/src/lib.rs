@@ -6,6 +6,7 @@ use lv2_sys;
 use std::marker::PhantomData;
 use std::mem;
 use std::os::raw::*; //get all common c_type
+use std::ptr;
 
 /// Host feature to schedule a worker call.
 #[repr(transparent)]
@@ -28,8 +29,10 @@ impl<'a> Schedule<'a> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
-    pub fn schedule_work<P: Worker>(&self, worker_data: P::WorkData) -> Result<(), WorkerError> {
+    pub fn schedule_work<P: Worker>(&self, worker_data: P::WorkData) -> Result<(), WorkerError> 
+    where P::WorkData : 'static + Send {
         unsafe {
+            let worker_data = mem::ManuallyDrop::new(worker_data);
             let size = mem::size_of_val(&worker_data) as u32;
             let ptr = &worker_data as *const _ as *const c_void;
             let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
@@ -83,10 +86,12 @@ pub struct ResponseHandler {
 }
 
 impl ResponseHandler {
-    pub fn respond<P: Worker>(&self, response_data: P::ResponseData) -> Result<(), WorkerError> {
+    pub fn respond<P: Worker>(&self, response_data: P::ResponseData) -> Result<(), WorkerError>
+    where P::WorkData : 'static + Send {
         unsafe {
+            let response_data = mem::ManuallyDrop::new(response_data);
             let size = mem::size_of_val(&response_data) as u32;
-            let ptr = &response_data as *const P::ResponseData as *const c_void;
+            let ptr = &response_data as *const _ as *const c_void;
             let response_function = if let Some(response_function) = self.response_function {
                 response_function
             } else {
@@ -122,9 +127,9 @@ pub enum WorkerError {
 /// the result in the run context.
 pub trait Worker: Plugin {
     /// Data sended to the worker thread
-    type WorkData;
+    type WorkData: 'static + Send;
     /// Data sended by the worker thread to `work_response`
-    type ResponseData;
+    type ResponseData: 'static + Send;
     /// The work to do in a non-real-time thread. The spec require plugins to implment this method.
     ///
     /// This is called by the host in a non-realtime context as requested, possibly with an
@@ -138,14 +143,14 @@ pub trait Worker: Plugin {
     fn work(
         &mut self,
         response_handler: &ResponseHandler,
-        data: &Self::WorkData,
+        data: Self::WorkData,
     ) -> Result<(), WorkerError>;
 
     /// Handle a response from the worker. The spec require plugins to implement this method even if
     /// many host support to not have it.
     ///
     /// This is called by the host in the run() context when a response from the worker is ready.
-    fn work_response(&mut self, data: &Self::ResponseData) -> Result<(), WorkerError>;
+    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError>;
 
     ///Called when all responses for this cycle have been delivered. (optional)
     ///
@@ -189,13 +194,9 @@ impl<P: Worker> WorkerDescriptor<P> {
         };
         //build ref to worker data from raw pointer
         let worker_data =
-            if let Some(worker_data) = (data as *const <P as Worker>::WorkData).as_ref() {
-                worker_data
-            } else {
-                println!("extern_work : worker data point to null");
-                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
-            };
-        let type_size = mem::size_of_val(worker_data);
+            ptr::read_unaligned(data as *const mem::ManuallyDrop<<P as Worker>::WorkData>);
+        let worker_data = mem::ManuallyDrop::into_inner(worker_data);
+        let type_size = mem::size_of_val(&worker_data);
         println!("type size : {}", type_size);
         if size as usize != type_size {
             println!(
@@ -227,12 +228,9 @@ impl<P: Worker> WorkerDescriptor<P> {
         let plugin = plugin_instance.instance_mut();
         //build ref to response data from raw pointer
         let response_data =
-            if let Some(response_data) = (body as *const <P as Worker>::ResponseData).as_ref() {
-                response_data
-            } else {
-                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
-            };
-        if size as usize != mem::size_of_val(response_data) {
+            ptr::read_unaligned(body as *const mem::ManuallyDrop<<P as Worker>::ResponseData>);
+        let response_data = mem::ManuallyDrop::into_inner(response_data);
+        if size as usize != mem::size_of_val(&response_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
 
@@ -276,15 +274,32 @@ mod tests {
     use super::*;
     use lv2_sys::*;
     use std::fmt;
+    use std::mem;
     use std::ops;
     use std::ptr;
 
     // structure to test drooping issue
-    struct HasDrop;
+    struct HasDrop {
+        drop_count: u32,
+        drop_limit: u32,
+    }
+
+    impl HasDrop {
+        fn new(val: u32) -> Self {
+            Self {
+                drop_count: 0,
+                drop_limit: val,
+            }
+        }
+    }
 
     impl ops::Drop for HasDrop {
         fn drop(&mut self) {
-            panic!("Dropped!");
+            if self.drop_count >= self.drop_limit {
+                panic!("Dropped more than {} time", self.drop_limit);
+            } else {
+                self.drop_count += 1;
+            }
         }
     }
 
@@ -322,12 +337,12 @@ mod tests {
         fn work(
             &mut self,
             _response_handler: &ResponseHandler,
-            _data: &HasDrop,
+            _data: HasDrop,
         ) -> Result<(), WorkerError> {
             Ok(())
         }
 
-        fn work_response(&mut self, _data: &HasDrop) -> Result<(), WorkerError> {
+        fn work_response(&mut self, _data: HasDrop) -> Result<(), WorkerError> {
             Ok(())
         }
     }
@@ -350,31 +365,31 @@ mod tests {
 
     #[test]
     fn schedule_must_not_drop() {
-        let hd = HasDrop;
+        let hd = HasDrop::new(0);
         let schedule = Schedule {
             internal: &lv2_sys::LV2_Worker_Schedule {
                 handle: ptr::null_mut(),
                 schedule_work: Some(extern_schedule),
             },
         };
-        schedule.schedule_work::<TestDropWorker>(hd);
+        let _ = schedule.schedule_work::<TestDropWorker>(hd);
     }
 
     #[test]
     fn respond_must_not_drop() {
-        let hd = HasDrop;
+        let hd = HasDrop::new(0);
         let respond = ResponseHandler {
             response_function: Some(extern_respond),
             respond_handle: ptr::null_mut(),
         };
-        respond.respond::<TestDropWorker>(hd);
+        let _ = respond.respond::<TestDropWorker>(hd);
     }
 
     #[test]
-    #[should_panic(expected = "Dropped!")]
+    #[should_panic(expected = "Dropped")]
     fn extern_work_should_drop() {
         unsafe {
-            let hd = HasDrop;
+            let hd = mem::ManuallyDrop::new(HasDrop::new(0));
             let ptr_hd = &hd as *const _ as *const c_void;
             let size = mem::size_of_val(&hd) as u32;
             let mut tdw = TestDropWorker {};
@@ -392,21 +407,51 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Dropped!")]
-    fn extern_work_response_should_drop() {
+    fn extern_work_should_not_drop_twice() {
         unsafe {
-            let hd = HasDrop;
+            let hd = mem::ManuallyDrop::new(HasDrop::new(1));
             let ptr_hd = &hd as *const _ as *const c_void;
             let size = mem::size_of_val(&hd) as u32;
             let mut tdw = TestDropWorker {};
 
             let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
             //trash trick i use Plugin ptr insteas of Pluginstance ptr
-            WorkerDescriptor::<TestDropWorker>::extern_work_response(
+            WorkerDescriptor::<TestDropWorker>::extern_work(
                 ptr_tdw,
+                Some(extern_respond),
+                ptr::null_mut(),
                 size,
                 ptr_hd,
             );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Dropped")]
+    fn extern_work_response_should_drop() {
+        unsafe {
+            let hd = mem::ManuallyDrop::new(HasDrop::new(0));
+            let ptr_hd = &hd as *const _ as *const c_void;
+            let size = mem::size_of_val(&hd) as u32;
+            let mut tdw = TestDropWorker {};
+
+            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+            WorkerDescriptor::<TestDropWorker>::extern_work_response(ptr_tdw, size, ptr_hd);
+        }
+    }
+
+    #[test]
+    fn extern_work_response_should_not_drop_twice() {
+        unsafe {
+            let hd = mem::ManuallyDrop::new(HasDrop::new(1));
+            let ptr_hd = &hd as *const _ as *const c_void;
+            let size = mem::size_of_val(&hd) as u32;
+            let mut tdw = TestDropWorker {};
+
+            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+            WorkerDescriptor::<TestDropWorker>::extern_work_response(ptr_tdw, size, ptr_hd);
         }
     }
 }
