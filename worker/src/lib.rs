@@ -371,6 +371,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Dropped!")]
     fn extern_work_should_drop() {
         unsafe {
             let hd = HasDrop;
@@ -384,6 +385,25 @@ mod tests {
                 ptr_tdw,
                 Some(extern_respond),
                 ptr::null_mut(),
+                size,
+                ptr_hd,
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Dropped!")]
+    fn extern_work_response_should_drop() {
+        unsafe {
+            let hd = HasDrop;
+            let ptr_hd = &hd as *const _ as *const c_void;
+            let size = mem::size_of_val(&hd) as u32;
+            let mut tdw = TestDropWorker {};
+
+            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+            WorkerDescriptor::<TestDropWorker>::extern_work_response(
+                ptr_tdw,
                 size,
                 ptr_hd,
             );
