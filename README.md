@@ -1,6 +1,11 @@
 # rust-lv2
 
-[![Build Status](https://travis-ci.org/rustaudio/rust-lv2.svg?branch=master)](https://travis-ci.org/rustaudio/rust-lv2)
+[![Build Status][travis-badge]][travis-url] [![Current Crates.io Version][crates-badge]][crates-url]
+
+[travis-badge]: https://travis-ci.org/rustaudio/rust-lv2.svg?branch=master
+[travis-url]: https://travis-ci.org/rustaudio/rust-lv2
+[crates-badge]: https://img.shields.io/crates/v/lv2.svg
+[crates-url]: https://crates.io/crates/lv2
 
 A safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 
