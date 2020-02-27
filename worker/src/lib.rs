@@ -10,11 +10,12 @@ use std::ptr;
 
 /// Host feature to schedule a worker call.
 #[repr(transparent)]
-pub struct Schedule<'a> {
+pub struct Schedule<'a,P: Worker> {
     internal: &'a lv2_sys::LV2_Worker_Schedule,
+    phantom: PhantomData<P>,
 }
 
-impl<'a> Schedule<'a> {
+impl<'a,P: Worker> Schedule<'a,P> {
     /// Request the host to call the worker thread.
     ///
     /// This function should be called from `run()` to request that the host call the `work()`
@@ -29,7 +30,7 @@ impl<'a> Schedule<'a> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
-    pub fn schedule_work<P: Worker>(&self, worker_data: P::WorkData) -> Result<(), WorkerError> 
+    pub fn schedule_work(&self, worker_data: P::WorkData) -> Result<(), WorkerError> 
     where P::WorkData : 'static + Send {
         unsafe {
             let worker_data = mem::ManuallyDrop::new(worker_data);
@@ -61,32 +62,33 @@ impl<'a> Schedule<'a> {
 }
 
 //lying on sync and send
-unsafe impl Sync for Schedule<'_> {}
-unsafe impl Send for Schedule<'_> {}
+unsafe impl<P: Worker> Sync for Schedule<'_,P> {}
+unsafe impl<P: Worker> Send for Schedule<'_,P> {}
 
-unsafe impl<'a> UriBound for Schedule<'a> {
+unsafe impl<'a,P: Worker> UriBound for Schedule<'a,P> {
     const URI: &'static [u8] = lv2_sys::LV2_WORKER__schedule;
 }
 
-unsafe impl<'a> Feature for Schedule<'a> {
+unsafe impl<'a,P: Worker> Feature for Schedule<'a,P> {
     unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
         (feature as *const lv2_sys::LV2_Worker_Schedule)
             .as_ref()
-            .map(|internal| Self { internal })
+            .map(|internal| Self { internal, phantom: PhantomData::<P> })
     }
 }
 
 /// Response handler to use inside worker function when youwant to send response to `run()`.
-pub struct ResponseHandler {
+pub struct ResponseHandler<P: Worker> {
     /// function provided by the host to send response to `run()`
     response_function: lv2_sys::LV2_Worker_Respond_Function,
     /// Response handler provided by the host, must be passed to the host provided
     /// response_function.
     respond_handle: lv2_sys::LV2_Worker_Respond_Handle,
+    phantom: PhantomData<P>,
 }
 
-impl ResponseHandler {
-    pub fn respond<P: Worker>(&self, response_data: P::ResponseData) -> Result<(), WorkerError>
+impl<P: Worker> ResponseHandler<P> {
+    pub fn respond(&self, response_data: P::ResponseData) -> Result<(), WorkerError>
     where P::WorkData : 'static + Send {
         unsafe {
             let response_data = mem::ManuallyDrop::new(response_data);
@@ -142,7 +144,7 @@ pub trait Worker: Plugin {
     /// threads.
     fn work(
         &mut self,
-        response_handler: &ResponseHandler,
+        response_handler: &ResponseHandler<Self>,
         data: Self::WorkData,
     ) -> Result<(), WorkerError>;
 
@@ -191,6 +193,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         let response_handler = ResponseHandler {
             response_function,
             respond_handle,
+            phantom : PhantomData::<P>,
         };
         //build ref to worker data from raw pointer
         let worker_data =
