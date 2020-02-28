@@ -10,12 +10,42 @@ use std::ptr;
 
 /// Host feature to schedule a worker call.
 #[repr(transparent)]
-pub struct Schedule<'a,P: Worker> {
+pub struct Schedule<'a> {
     internal: &'a lv2_sys::LV2_Worker_Schedule,
+}
+
+unsafe impl<'a> UriBound for Schedule<'a> {
+    const URI: &'static [u8] = lv2_sys::LV2_WORKER__schedule;
+}
+
+unsafe impl<'a> Feature for Schedule<'a> {
+    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+        (feature as *const lv2_sys::LV2_Worker_Schedule)
+            .as_ref()
+            .map(|internal| Self { internal })
+    }
+}
+
+pub struct ScheduleHandler<P> {
+    schedule_handle: lv2_sys::LV2_Worker_Schedule_Handle,
+    schedule_work: Option<
+        unsafe extern "C" fn(
+            handle: lv2_sys::LV2_Worker_Schedule_Handle,
+            size: u32,
+            data: *const c_void,
+        ) -> lv2_sys::LV2_Worker_Status,
+    >,
     phantom: PhantomData<P>,
 }
 
-impl<'a,P: Worker> Schedule<'a,P> {
+//declare Schedulehandler Send and Sync is needed to make it usable.
+//Send is safe to implement because poited dated should outlive the plugin and are only managed by the host
+//I don't think Sync is fully safe to implement, because i don't know what happen if a smart guy is
+//multithreading the run function and try to schedule work inside a thread.
+unsafe impl<P: Worker> Send for ScheduleHandler<P> {}
+unsafe impl<P: Worker> Sync for ScheduleHandler<P> {}
+
+impl<P: Worker> ScheduleHandler<P> {
     /// Request the host to call the worker thread.
     ///
     /// This function should be called from `run()` to request that the host call the `work()`
@@ -30,19 +60,21 @@ impl<'a,P: Worker> Schedule<'a,P> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
-    pub fn schedule_work(&self, worker_data: P::WorkData) -> Result<(), WorkerError> 
-    where P::WorkData : 'static + Send {
+    pub fn schedule_work(&self, worker_data: P::WorkData) -> Result<(), WorkerError>
+    where
+        P::WorkData: 'static + Send,
+    {
         unsafe {
             let worker_data = mem::ManuallyDrop::new(worker_data);
             let size = mem::size_of_val(&worker_data) as u32;
             let ptr = &worker_data as *const _ as *const c_void;
-            let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
+            let schedule_work = if let Some(schedule_work) = self.schedule_work {
                 schedule_work
             } else {
                 println!("schedule: Unknown error");
                 return Err(WorkerError::Unknown);
             };
-            match (schedule_work)(self.internal.handle, size, ptr) {
+            match (schedule_work)(self.schedule_handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => {
                     println!("schedule: Unknown error");
@@ -61,19 +93,13 @@ impl<'a,P: Worker> Schedule<'a,P> {
     }
 }
 
-//lying on sync and send
-unsafe impl<P: Worker> Sync for Schedule<'_,P> {}
-unsafe impl<P: Worker> Send for Schedule<'_,P> {}
-
-unsafe impl<'a,P: Worker> UriBound for Schedule<'a,P> {
-    const URI: &'static [u8] = lv2_sys::LV2_WORKER__schedule;
-}
-
-unsafe impl<'a,P: Worker> Feature for Schedule<'a,P> {
-    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
-        (feature as *const lv2_sys::LV2_Worker_Schedule)
-            .as_ref()
-            .map(|internal| Self { internal, phantom: PhantomData::<P> })
+impl<P: Worker> From<Schedule<'_>> for ScheduleHandler<P> {
+    fn from(schedule_feature: Schedule) -> Self {
+        Self {
+            schedule_handle: schedule_feature.internal.handle,
+            schedule_work: schedule_feature.internal.schedule_work,
+            phantom: PhantomData::<P>,
+        }
     }
 }
 
@@ -89,7 +115,9 @@ pub struct ResponseHandler<P: Worker> {
 
 impl<P: Worker> ResponseHandler<P> {
     pub fn respond(&self, response_data: P::ResponseData) -> Result<(), WorkerError>
-    where P::WorkData : 'static + Send {
+    where
+        P::WorkData: 'static + Send,
+    {
         unsafe {
             let response_data = mem::ManuallyDrop::new(response_data);
             let size = mem::size_of_val(&response_data) as u32;
@@ -193,7 +221,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         let response_handler = ResponseHandler {
             response_function,
             respond_handle,
-            phantom : PhantomData::<P>,
+            phantom: PhantomData::<P>,
         };
         //build ref to worker data from raw pointer
         let worker_data =
