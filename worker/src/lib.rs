@@ -71,21 +71,17 @@ impl<P: Worker> ScheduleHandler<P> {
             let schedule_work = if let Some(schedule_work) = self.schedule_work {
                 schedule_work
             } else {
-                println!("schedule: Unknown error");
                 return Err(WorkerError::Unknown);
             };
             match (schedule_work)(self.schedule_handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => {
-                    println!("schedule: Unknown error");
                     Err(WorkerError::Unknown)
                 }
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => {
-                    println!("Schedule: NoSpace error");
                     Err(WorkerError::NoSpace)
                 }
                 _ => {
-                    println!("schedule: Unknown error");
                     Err(WorkerError::Unknown)
                 }
             }
@@ -227,14 +223,8 @@ impl<P: Worker> WorkerDescriptor<P> {
         let worker_data =
             ptr::read_unaligned(data as *const mem::ManuallyDrop<<P as Worker>::WorkData>);
         let worker_data = mem::ManuallyDrop::into_inner(worker_data);
-        let type_size = mem::size_of_val(&worker_data);
-        println!("type size : {}", type_size);
-        if size as usize != type_size {
-            println!(
-                "extern_work : error when checking data size : size {}, type size {}",
-                size, type_size
-            );
-            //return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+        if size as usize != mem::size_of_val(&worker_data) {
+            return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
         match plugin.work(&response_handler, worker_data) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
