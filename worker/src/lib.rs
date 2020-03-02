@@ -323,7 +323,7 @@ mod tests {
             write!(f, "HasDrop variable")
         }
     }
-    #[derive(PortContainer)]
+    #[derive(PortCollection)]
     struct Ports {}
     struct TestDropWorker;
     // URI identifier
@@ -351,7 +351,7 @@ mod tests {
 
         fn work(
             &mut self,
-            _response_handler: &ResponseHandler,
+            _response_handler: &ResponseHandler<Self>,
             _data: HasDrop,
         ) -> Result<(), WorkerError> {
             Ok(())
@@ -381,13 +381,12 @@ mod tests {
     #[test]
     fn schedule_must_not_drop() {
         let hd = HasDrop::new(0);
-        let schedule = Schedule {
-            internal: &lv2_sys::LV2_Worker_Schedule {
-                handle: ptr::null_mut(),
-                schedule_work: Some(extern_schedule),
-            },
+        let schedule = ScheduleHandler {
+            schedule_handle: ptr::null_mut(),
+            schedule_work: Some(extern_schedule),
+            phantom: PhantomData::<TestDropWorker>,
         };
-        let _ = schedule.schedule_work::<TestDropWorker>(hd);
+        let _ = schedule.schedule_work(hd);
     }
 
     #[test]
@@ -396,8 +395,9 @@ mod tests {
         let respond = ResponseHandler {
             response_function: Some(extern_respond),
             respond_handle: ptr::null_mut(),
+            phantom: PhantomData::<TestDropWorker>,
         };
-        let _ = respond.respond::<TestDropWorker>(hd);
+        let _ = respond.respond(hd);
     }
 
     #[test]
