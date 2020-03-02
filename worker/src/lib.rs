@@ -75,15 +75,9 @@ impl<P: Worker> ScheduleHandler<P> {
             };
             match (schedule_work)(self.schedule_handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => {
-                    Err(WorkerError::Unknown)
-                }
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => {
-                    Err(WorkerError::NoSpace)
-                }
-                _ => {
-                    Err(WorkerError::Unknown)
-                }
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
+                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
+                _ => Err(WorkerError::Unknown),
             }
         }
     }
