@@ -176,9 +176,8 @@ pub trait Worker: Plugin {
     ///
     ///Since work_response() may be called after run() finished, this provides a hook for code that
     ///must run after the cycle is completed.
-    fn end_run(&mut self) -> Result<(), WorkerError> {
-        Ok(())
-    }
+    #[cfg(any(feature = "end_run",doc))]
+    fn end_run(&mut self) -> Result<(), WorkerError> ;
 }
 
 // A descriptor for the plugin. This is just a marker type to associate constants and methods with.
@@ -257,7 +256,7 @@ impl<P: Worker> WorkerDescriptor<P> {
     }
 
     /// Extern unsafe version of `end_run` method actually called by the host
-    // This throw a warning if it's not in `INTERFACE`
+    #[cfg(any(feature = "end_run",doc))]
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
             let plugin = plugin_instance.instance_mut();
@@ -279,8 +278,10 @@ impl<P: Worker> ExtensionDescriptor for WorkerDescriptor<P> {
     const INTERFACE: &'static lv2_sys::LV2_Worker_Interface = &lv2_sys::LV2_Worker_Interface {
         work: Some(Self::extern_work),
         work_response: Some(Self::extern_work_response),
-        //i want to have `None` here when the plugin doesn't implements the `end_run` trait method
+        #[cfg(any(feature = "end_run",doc))]
         end_run: Some(Self::extern_end_run),
+        #[cfg(not(any(feature = "end_run",doc)))]
+        end_run: None,
     };
 }
 

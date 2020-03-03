@@ -13,3 +13,4 @@ lv2-urid = { path = "../urid" }
 [features]
 default = []
 host = []
+end_run = []
