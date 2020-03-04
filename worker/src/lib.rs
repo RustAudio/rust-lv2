@@ -17,6 +17,109 @@
 //! allowed** in safe rust. That means:
 //!  * Change may occur in lv2-worker an lv2-crate to fix this issue.
 //!  * It's up to you to ensure that no uncontrolled concurrent access happen.
+//!
+//! # Example
+//!```
+//!use core::any::Any;
+//!use lv2_core::feature::*;
+//!use lv2_core::prelude::*;
+//!use lv2_worker::*;
+//!
+//!#[derive(PortCollection)]
+//!struct Ports {}
+//!
+//!/// Requested features
+//!#[derive(FeatureCollection)]
+//!struct Features<'a> {
+//!    ///host feature allowing to schedule some work
+//!    schedule: Schedule<'a>,
+//!}
+//!
+//!//custom datatype
+//!struct WorkMessage {
+//!    cycle: usize,
+//!    task: usize,
+//!}
+//!
+//!/// A plugin that do some work in another thread
+//!struct EgWorker {
+//!    //schedule handler need to know the plugin type to use it use WorkData associated type.
+//!    schedule_handler: ScheduleHandler<Self>,
+//!    cycle: usize,
+//!    end_cycle: usize,
+//!}
+//!
+//!/// URI identifier
+//!unsafe impl UriBound for EgWorker {
+//!    const URI: &'static [u8] = b"urn:rust-lv2-more-examples:eg-worker-rs\0";
+//!}
+//!
+//!impl Plugin for EgWorker {
+//!    type Ports = Ports;
+//!    type Features = Features<'static>;
+//!
+//!    fn new(_plugin_info: &PluginInfo, features: Features<'static>) -> Option<Self> {
+//!        // build the schedule_handler using the schedule host feature.
+//!        let schedule_handler = ScheduleHandler::from(features.schedule);
+//!        Some(Self {
+//!            schedule_handler,
+//!            cycle: 0,
+//!            end_cycle: 1,
+//!        })
+//!    }
+//!
+//!    fn run(&mut self, _ports: &mut Ports) {
+//!        self.cycle += 1;
+//!        let cycle = self.cycle;
+//!        println!("cycle {} started", cycle);
+//!        for task in 0..10 {
+//!            let work = WorkMessage { cycle, task };
+//!            // schedule some work and passing some data
+//!            let _ = self.schedule_handler.schedule_work(work);
+//!        }
+//!    }
+//!
+//!    fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
+//!        match_extensions![uri, WorkerDescriptor<Self>]
+//!    }
+//!}
+//!
+//!/// Implementing the extension.
+//!impl Worker for EgWorker {
+//!    // data type sended by the schedule handler and received by the `work` method.
+//!    type WorkData = WorkMessage;
+//!    // data type sended by the response handler and received by the `work_response` method.
+//!    type ResponseData = String;
+//!    fn work(
+//!        &mut self,
+//!        //response handler need to know the plugin type.
+//!        response_handler: &ResponseHandler<Self>,
+//!        data: Self::WorkData,
+//!    ) -> Result<(), WorkerError> {
+//!        println!("work received: cycle {}, task {}", data.cycle, data.task);
+//!        if data.task >= 5 {
+//!            let _ = response_handler.respond(format!( "response to cycle {}, task {}",
+//!                data.cycle, data.task
+//!            ));
+//!        };
+//!        Ok(())
+//!    }
+//!
+//!    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError> {
+//!        println!("work_response received: {}", data);
+//!        Ok(())
+//!    }
+//!
+//!    fn end_run(&mut self) -> Result<(), WorkerError> {
+//!        println!("cycle {} ended", self.end_cycle);
+//!        self.end_cycle += 1;
+//!        Ok(())
+//!    }
+//!}
+//!
+//!lv2_descriptors!(EgWorker);
+//!```
+
 use lv2_core::extension::ExtensionDescriptor;
 use lv2_core::feature::*;
 use lv2_core::plugin::{Plugin, PluginInstance};
