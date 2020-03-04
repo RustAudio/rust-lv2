@@ -310,7 +310,10 @@ pub trait Worker: Plugin {
     /// Handle a response from the worker.
     ///
     /// This is called by the host in the `run()` context when a response from the worker is ready.
-    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError>;
+    #[allow(unused_variables)]
+    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError> {
+        Ok(())
+    }
 
     ///Called when all responses for this cycle have been delivered.
     ///
