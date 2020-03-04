@@ -19,7 +19,7 @@ pub fn urid_collection_derive_impl(input: TokenStream) -> TokenStream {
 
     let implementation = quote! {
         impl ::lv2_urid::URIDCollection for #struct_name {
-            fn from_map(map: &::lv2_urid::Map) -> Option<Self> {
+            fn from_map<M: ::lv2_urid::URIDMap + ?Sized>(map: &M) -> Option<Self> {
                 Some(Self {
                     #(#field_inits)*
                 })

@@ -20,7 +20,7 @@ pub use urid::*;
 
 /// Prelude of `lv2_urid` for wildcard usage.
 pub mod prelude {
-    pub use crate::feature::{Map, Unmap};
+    pub use crate::feature::{URIDMap, Map, URIDUnmap, Unmap};
     pub use crate::{URIDCollection, URID};
     pub use lv2_urid_derive::*;
 }

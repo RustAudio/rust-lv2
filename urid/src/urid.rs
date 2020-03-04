@@ -60,7 +60,7 @@ where
 ///     assert_eq!(2, collection.my_type_b);
 pub trait URIDCollection: Sized {
     /// Construct the collection from the mapper.
-    fn from_map(map: &Map) -> Option<Self>;
+    fn from_map<T: URIDMap + ?Sized>(map: &T) -> Option<Self>;
 }
 
 impl URID<()> {
@@ -101,7 +101,7 @@ impl<T: ?Sized> URID<T> {
 }
 
 impl<T: UriBound + ?Sized> URIDCollection for URID<T> {
-    fn from_map(map: &Map) -> Option<Self> {
+    fn from_map<M: URIDMap + ?Sized>(map: &M) -> Option<Self> {
         map.map_type()
     }
 }
