@@ -37,6 +37,9 @@ unsafe impl<'a> Feature for Schedule<'a> {
 }
 
 /// Handler to use in `run()` context to schedule work and pass data to worker.
+///
+/// ScheduleHandler need the current Worker trait implementor as generic parameter, because it use
+/// the `WorkData` associated type to know the datatype to send to the worker.
 pub struct ScheduleHandler<P> {
     schedule_handle: lv2_sys::LV2_Worker_Schedule_Handle,
     schedule_work: Option<
@@ -59,7 +62,7 @@ unsafe impl<P: Worker> Sync for ScheduleHandler<P> {}
 impl<P: Worker> ScheduleHandler<P> {
     /// Request the host to call the worker thread.
     ///
-    /// This function should be called from `run()` context to request that the host call the `work()`
+    /// This method should be called from `run()` context to request that the host call the `work()`
     /// method in a non-realtime context with the given arguments.
     ///
     /// This function is always safe to call from `run()`, but it is not guaranteed that the worker
@@ -71,6 +74,10 @@ impl<P: Worker> ScheduleHandler<P> {
     /// Plugins SHOULD be written in such a way that if the worker runs immediately, and responses
     /// from the worker are delivered immediately, the effect of the work takes place immediately
     /// with sample accuracy.
+    ///
+    /// **Notes about the passed data:** The buffer used to pass data is managed by the host. That
+    /// mean the size is unknown and may be limited. So if you need to pass huge amount of data,
+    /// it's preferable to use another way, for example a sync::mpsc channel.
     pub fn schedule_work(&self, worker_data: P::WorkData) -> Result<(), WorkerError>
     where
         P::WorkData: 'static + Send,
@@ -105,6 +112,10 @@ impl<P: Worker> From<Schedule<'_>> for ScheduleHandler<P> {
 }
 
 /// Handler available inside worker function to send response to `run()` context.
+///
+/// ResponseHandler need the current Worker trait implementor as generic parameter, because it use
+/// the `ResponseData` associated type to know the datatype to send to the `worker_response`
+/// method.
 pub struct ResponseHandler<P: Worker> {
     /// function provided by the host to send response to `run()`
     response_function: lv2_sys::LV2_Worker_Respond_Function,
@@ -115,6 +126,14 @@ pub struct ResponseHandler<P: Worker> {
 }
 
 impl<P: Worker> ResponseHandler<P> {
+    /// Allow to give response to the `run` context.
+    ///
+    /// This method allow to give a response to the `run` context. After calling this method, the host will call
+    /// `worker_response` and give the passed data.
+    ///
+    /// **Notes about the passed data:** The buffer used to pass data is managed by the host. That
+    /// mean the size is unknown and may be limited. So if you need to pass huge amount of data,
+    /// it's preferable to use another way, for example a sync::mpsc channel.
     pub fn respond(&self, response_data: P::ResponseData) -> Result<(), WorkerError>
     where
         P::WorkData: 'static + Send,
