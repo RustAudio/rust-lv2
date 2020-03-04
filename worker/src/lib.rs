@@ -8,6 +8,15 @@
 //!
 //! This crate provide the worker trait and some handlers to describe and schedule non-realtime task
 //! and to pass some data beetween contexts.
+//!
+//! # WARNING!
+//!
+//! The current version of this crate have a **safety flow**. In the `work` method, you have a mutable
+//! access to the plugin. Since the `work` method is meant to be called in another thread from the
+//! run context, this allow **uncontrolled concurrent access** between two threads wich is **normally not
+//! allowed** in safe rust. That means:
+//!  * Change may occur in lv2-worker an lv2-crate to fix this issue.
+//!  * It's up to you to ensure that no uncontrolled concurrent access happen.
 use lv2_core::extension::ExtensionDescriptor;
 use lv2_core::feature::*;
 use lv2_core::plugin::{Plugin, PluginInstance};
