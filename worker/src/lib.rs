@@ -287,9 +287,9 @@ pub enum WorkerError {
 /// functions to the host with `match_extensions!` macro in `extension_data()` methods of the
 /// Plugin trait.
 pub trait Worker: Plugin {
-    /// Data sended to the worker thread
+    /// Type of data sended to `work` by using a schedule handler.
     type WorkData: 'static + Send;
-    /// Data sended by the worker thread to `work_response`
+    /// Type of data sended to `work_response` by using a response handler.
     type ResponseData: 'static + Send;
     /// The work to do in a non-real-time context,
     ///
