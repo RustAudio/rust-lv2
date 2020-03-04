@@ -86,9 +86,9 @@
 //!
 //!/// Implementing the extension.
 //!impl Worker for EgWorker {
-//!    // data type sended by the schedule handler and received by the `work` method.
+//!    // data type sent by the schedule handler and received by the `work` method.
 //!    type WorkData = WorkMessage;
-//!    // data type sended by the response handler and received by the `work_response` method.
+//!    // data type sent by the response handler and received by the `work_response` method.
 //!    type ResponseData = String;
 //!    fn work(
 //!        &mut self,
@@ -287,9 +287,9 @@ pub enum WorkerError {
 /// functions to the host with `match_extensions!` macro in `extension_data()` methods of the
 /// Plugin trait.
 pub trait Worker: Plugin {
-    /// Type of data sended to `work` by using a schedule handler.
+    /// Type of data sent to `work` by using a schedule handler.
     type WorkData: 'static + Send;
-    /// Type of data sended to `work_response` by using a response handler.
+    /// Type of data sent to `work_response` by using a response handler.
     type ResponseData: 'static + Send;
     /// The work to do in a non-real-time context,
     ///
