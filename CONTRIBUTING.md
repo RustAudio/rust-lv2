@@ -55,6 +55,8 @@ Only pull requests that are up to date with the `develop` branch can be merged. 
 
 GitHub allows closing issues using keywords. This feature should be used to keep the issue tracker tidy. However, it is generally preferred to put the "closes #123" text in the PR description rather than the issue commit; particularly during rebasing, citing the issue number in the commit can "spam" the issue in question.
 
+Another useful feature are [draft Pull Requests](https://github.blog/2019-02-14-introducing-draft-pull-requests/). If you want to let us know that you are working on something, but don't want us to pull it yet, you should create a draft pull request.
+
 ## Writing Documentation
 
 Documentation improvements are very welcome. The API documentation is generated from the source code itself. However, the [rust-lv2 book](https://github.com/Janonard/rust-lv2-book), which explains how to use rust-lv2 in general, is a separate project. Documentation pull requests function in the same way as other pull requests.
