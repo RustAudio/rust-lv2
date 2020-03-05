@@ -301,7 +301,7 @@ impl SpaceElement {
 /// # use lv2_urid::mapper::*;
 /// # use lv2_atom::prelude::*;
 /// # use lv2_atom::space::*;
-/// # let mut mapper = Box::pin(HashURIDMapper::new());
+/// # let mut mapper = Box::pin(HostURIDMapper::new());
 /// # let interface = mapper.as_mut().make_map_interface();
 /// # let map = Map::new(&interface);
 /// // URID cache creation is omitted.
@@ -495,7 +495,7 @@ mod tests {
     }
 
     fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();

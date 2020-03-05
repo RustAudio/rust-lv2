@@ -47,7 +47,7 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     # let mut mapper = Box::pin(HashURIDMapper::new());
+///     # let mut mapper = Box::pin(HostURIDMapper::default());
 ///     # let host_map = mapper.as_mut().make_map_interface();
 ///     # let host_unmap = mapper.as_mut().make_unmap_interface();
 ///     # let map = Map::new(&host_map);

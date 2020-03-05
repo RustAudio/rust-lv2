@@ -7,9 +7,7 @@
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 
-#[cfg(feature = "host")]
 pub mod mapper;
-
 mod feature;
 mod urid;
 
@@ -20,7 +18,7 @@ pub use urid::*;
 
 /// Prelude of `lv2_urid` for wildcard usage.
 pub mod prelude {
-    pub use crate::feature::{URIDMap, Map, URIDUnmap, Unmap};
+    pub use crate::feature::{Map, URIDMap, URIDUnmap, Unmap};
     pub use crate::{URIDCollection, URID};
     pub use lv2_urid_derive::*;
 }

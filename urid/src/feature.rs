@@ -2,8 +2,7 @@
 
 use crate::{URIDCollection, URID};
 use core::feature::Feature;
-use core::Uri;
-use core::UriBound;
+use core::{Uri, UriBound};
 use std::ffi::c_void;
 use std::os::raw::c_char;
 
@@ -33,7 +32,7 @@ pub trait URIDMap {
     ///     let uri = Uri::from_bytes_with_nul(b"http://lv2plug.in\0").unwrap();
     ///
     ///     // Use the `map` feature provided by the host:
-    ///     # let mut mapper = Box::pin(HashURIDMapper::new());
+    ///     # let mut mapper = Box::pin(HostURIDMapper::new());
     ///     # let host_map = mapper.as_mut().make_map_interface();
     ///     # let map = Map::new(&host_map);
     ///     let urid: URID = map.map_uri(uri).unwrap();
@@ -57,12 +56,15 @@ pub trait URIDMap {
     ///     }
     ///
     ///     // Use the `map` feature provided by the host:
-    ///     # let mut mapper = Box::pin(HashURIDMapper::new());
+    ///     # let mut mapper = Box::pin(HostURIDMapper::new());
     ///     # let host_map = mapper.as_mut().make_map_interface();
     ///     # let map = Map::new(&host_map);
     ///     let urid: URID<MyUriBound> = map.map_type::<MyUriBound>().unwrap();
     ///     assert_eq!(1, urid);
-    fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>>;
+    fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
+        self.map_uri(T::uri())
+            .map(|urid| unsafe { URID::new_unchecked(urid.get()) })
+    }
 
     /// Populate a URID collection.
     ///
@@ -97,7 +99,6 @@ impl<'a> URIDMap for Map<'a> {
         URID::new(urid)
     }
 
-    
     fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
         let handle = self.internal.handle;
         let uri = T::URI.as_ptr() as *const c_char;
@@ -127,7 +128,7 @@ pub trait URIDUnmap {
     ///     }
     ///
     ///     // Using the `map` and `unmap` features provided by the host:
-    ///     # let mut mapper = Box::pin(HashURIDMapper::new());
+    ///     # let mut mapper = Box::pin(HostURIDMapper::new());
     ///     # let host_map = mapper.as_mut().make_map_interface();
     ///     # let host_unmap = mapper.as_mut().make_unmap_interface();
     ///     # let map = Map::new(&host_map);

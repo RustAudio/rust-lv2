@@ -4,7 +4,7 @@ extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 
 use core::prelude::*;
-use urid::mapper::{HashURIDMapper, URIDMapper};
+use urid::mapper::HostURIDMapper;
 use urid::prelude::*;
 
 struct MyTypeA;
@@ -21,7 +21,7 @@ unsafe impl UriBound for MyTypeB {
 
 #[test]
 fn test_map() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper = Box::pin(HostURIDMapper::default());
     let host_map = mapper.as_mut().make_map_interface();
     let map_feature = Map::new(&host_map);
 
@@ -37,7 +37,7 @@ fn test_map() {
 
 #[test]
 fn test_unmap() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper = Box::pin(HostURIDMapper::default());
     let host_map = mapper.as_mut().make_map_interface();
     let host_unmap = mapper.as_mut().make_unmap_interface();
     let map_feature = Map::new(&host_map);
@@ -62,10 +62,10 @@ struct MyURIDCollection {
 
 #[test]
 fn test_collection() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper = Box::pin(HostURIDMapper::default());
     let host_map = mapper.as_mut().make_map_interface();
-    let map_feature = Map::new(&host_map);
-    let collection = MyURIDCollection::from_map(&map_feature).unwrap();
+    let mut map_feature = Map::new(&host_map);
+    let collection = MyURIDCollection::from_map(&mut map_feature).unwrap();
 
     assert_eq!(1, collection.type_a);
     assert_eq!(2, collection.type_b);

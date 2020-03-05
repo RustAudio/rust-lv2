@@ -177,7 +177,7 @@ mod tests {
         A::InternalType: PartialEq<A::InternalType>,
         A::InternalType: std::fmt::Debug,
     {
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
         let urid: URID<A> = map.map_type().unwrap();

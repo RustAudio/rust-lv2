@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_sequence() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
         let urids = TestURIDCollection::from_map(&map).unwrap();

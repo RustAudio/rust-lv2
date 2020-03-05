@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_midi_event() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let map_interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&map_interface);
         let urid = map.map_type::<WMidiEvent>().unwrap();
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_sysex_event() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let map_interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&map_interface);
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();

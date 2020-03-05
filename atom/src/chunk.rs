@@ -69,7 +69,7 @@ mod tests {
     fn test_chunk_and_slice_writer() {
         const SLICE_LENGTH: usize = 42;
 
-        let mut mapper = Box::pin(HashURIDMapper::new());
+        let mut mapper = Box::pin(HostURIDMapper::new());
         let interface = mapper.as_mut().make_map_interface();
         let map = Map::new(&interface);
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();

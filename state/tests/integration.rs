@@ -77,7 +77,7 @@ lv2_descriptors! {
     Stateful
 }
 
-fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
+fn create_plugin(mapper: Pin<&mut HostURIDMapper>) -> Stateful {
     let plugin = {
         // Faking the map's lifetime.
         let interface = mapper.make_map_interface();
@@ -101,7 +101,7 @@ fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
 
 #[test]
 fn test_save_n_restore() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper = Box::pin(HostURIDMapper::new());
     let mut storage = lv2_state::Storage::default();
 
     let (store_fn, restore_fn) = unsafe {
