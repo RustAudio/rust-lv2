@@ -1,13 +1,10 @@
-//! Extension for LV2 plugins to do some task that shouldn't be done in realtime context
+//! Work scheduling library that allows real-time capable LV2 plugins to execute non-real-time actions.
 //!
-//! This extension allows plugins to schedule work that must be performed in another thread.
+//! This crate allows plugins to schedule work that must be performed in another thread.
 //! Plugins can use this interface to safely perform work that is not real-time safe, and receive
-//! the result in the run context. A typicall use case is a sampler reading and caching data from
+//! the result in the run context. A typical use case is a sampler reading and caching data from
 //! disk. You can look at the
 //! [LV2 Worker Specification](https://lv2plug.in/ns/ext/worker/worker.html) for more details.
-//!
-//! This crate provide the worker trait and some handlers to describe and schedule non-realtime task
-//! and to pass some data beetween contexts.
 //!
 //! # WARNING!
 //!
