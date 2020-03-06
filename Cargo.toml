@@ -37,6 +37,7 @@ members = [
     "units",
     "urid",
     "urid/derive",
+    "worker",
 ]
 
 [patch.crates-io]
