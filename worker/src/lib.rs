@@ -114,7 +114,6 @@
 //!    }
 //!}
 //!
-//!lv2_descriptors!(EgWorker);
 //!```
 
 use lv2_core::extension::ExtensionDescriptor;
