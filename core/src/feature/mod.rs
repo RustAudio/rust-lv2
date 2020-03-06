@@ -11,6 +11,9 @@ pub use descriptor::FeatureDescriptor;
 
 use std::ffi::c_void;
 
+/// All threading contexts of LV2 interface methods.
+///
+/// The [core LV2 specifications](https://lv2plug.in/ns/lv2core/lv2core.html) declare three threading classes: "Discovery", where plugins are discovered by the host, "Instantiation", where plugins are instantiated and (de-)activated, and "Audio", where the actual audio processing happens.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ThreadingClass {
     Discovery,
@@ -21,11 +24,13 @@ pub enum ThreadingClass {
 
 /// Trait to generalize the feature detection system.
 ///
-/// A host that only implements the core LV2 specification does not have much functionality. Therefore, hosts can provide extra functionalities, called "Features", a plugin can use to become more useful.
+/// A host that only implements the core LV2 specification does not have much functionality. Instead, hosts can provide extra functionalities, called "host features" or short "features", which a make plugins more useful.
 ///
 /// A native plugin written in C would discover a host's features by iterating through an array of URIs and pointers. When it finds the URI of the feature it is looking for, it casts the pointer to the type of the feature interface and uses the information from the interface.
 ///
 /// In Rust, most of this behaviour is done internally and instead of simply casting a pointer, a safe feature descriptor, which implements this trait, is constructed using the [`from_raw_data`](#tymethod.from_raw_data) method.
+///
+/// Some host features may only be used in certain threading classes. This is guarded by rust-lv2 by passing the threading class in which the plugin will be used to the feature, which then may take different actions.
 pub unsafe trait Feature: UriBound + Sized {
     /// Create an instance of the featurer.
     ///
@@ -34,6 +39,10 @@ pub unsafe trait Feature: UriBound + Sized {
     /// # Implementing
     ///
     /// If nescessary, you should dereference it and store the reference inside the feature struct in order to use it.
+    ///
+    /// You have to document in which threading classes your feature can be used and should panic if the threading class is not supported. When this happens when the plugin programmer has added your feature to the wrong feature collection, which is considered a programming error and therefore justifies the panic. If you don't panic in this case, the error is handled silently, which may make debugging harder.
+    ///
+    /// You should always allow the [`Other`](enum.ThreadingClass.html#variant.Other) threading class in order to restrict your feature from use cases you might not know.
     ///
     /// # Safety
     ///
@@ -75,7 +84,7 @@ impl std::fmt::Display for MissingFeatureError {
 ///         hardrt: Option<HardRTCapable>,
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
-    /// Populate a collection with features from the cache.
+    /// Populate a collection with features from the cache for the given threading class.
     fn from_cache(
         cache: &mut FeatureCache<'a>,
         class: ThreadingClass,

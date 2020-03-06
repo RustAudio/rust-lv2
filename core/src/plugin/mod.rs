@@ -21,9 +21,20 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// The type of the port collection.
     type Ports: PortCollection;
 
-    /// The host features used by this plugin.
+    /// The host features used by this plugin in the "Initialization" thread class.
+    ///
+    /// This collection will be created by the framework when the plugin is initialized and every
+    /// method in the "Initialization" threading class has access to it via a mutable reference.
+    ///
+    /// If a host feature is missing, the plugin creation simply fails and your plugin host will tell you so. However, this collection may only contain features that are usable in the "Initialization" thread class. Otherwise, the backend may panic during initialization. Please consult each feature's documentation.
     type InitFeatures: FeatureCollection<'static>;
 
+    /// The host features used by this plugin in the "Audio" thread class.
+    ///
+    /// This collection will be created by the framework when the plugin is initialized and every
+    /// method in the "Audio" threading class has access to it via a mutable reference.
+    ///
+    /// If a host feature is missing, the plugin creation simply fails and your plugin host will tell you so. However, this collection may only contain features that are usable in the "Audio" thread class. Otherwise, the backend may panic during initialization. Please consult each feature's documentation.
     type AudioFeatures: FeatureCollection<'static>;
 
     /// Create a new plugin instance.
@@ -65,19 +76,24 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 /// This struct is `repr(C)` and has the plugin as it's first field. Therefore, a valid `*mut PluginInstance<T>` is also a valid `*mut T`.
 #[repr(C)]
 pub struct PluginInstance<T: Plugin> {
-    instance: T,
-    connections: <T::Ports as PortCollection>::Cache,
-    init_features: T::InitFeatures,
-    audio_features: T::AudioFeatures,
+    /// The plugin instance.
+    pub instance: T,
+    /// A temporary storage for all ports of the plugin.
+    pub connections: <T::Ports as PortCollection>::Cache,
+    /// All features that may be used in the initialization threading class.
+    pub init_features: T::InitFeatures,
+    /// All features that may be used in the audio threading class.
+    pub audio_features: T::AudioFeatures,
 }
 
 impl<T: Plugin> PluginInstance<T> {
-    pub fn init_features(&mut self) -> &mut T::InitFeatures {
-        &mut self.init_features
-    }
-
-    pub fn audio_features(&mut self) -> &mut T::AudioFeatures {
-        &mut self.audio_features
+    /// Try to create a port collection from the currently collected connections.
+    ///
+    /// # Safety
+    ///
+    /// This method is unsafe since it needs to dereference raw pointers, which are only valid if the method is called in the "Audio" threading class.
+    pub unsafe fn ports(&self, sample_count: u32) -> Option<T::Ports> {
+        <T::Ports as PortCollection>::from_connections(&self.connections, sample_count)
     }
 
     /// Instantiate the plugin.
@@ -116,7 +132,6 @@ impl<T: Plugin> PluginInstance<T> {
 
         // Collect the supported features.
         let mut feature_cache = FeatureCache::from_raw(features);
-
         let mut init_features =
             match T::InitFeatures::from_cache(&mut feature_cache, ThreadingClass::Instantiation) {
                 Ok(f) => f,
@@ -206,9 +221,7 @@ impl<T: Plugin> PluginInstance<T> {
     /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = &mut *(instance as *mut Self);
-        let ports =
-            <T::Ports as PortCollection>::from_connections(&instance.connections, sample_count);
-        if let Some(mut ports) = ports {
+        if let Some(mut ports) = instance.ports(sample_count) {
             instance
                 .instance
                 .run(&mut ports, &mut instance.audio_features);

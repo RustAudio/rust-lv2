@@ -45,7 +45,9 @@ impl<'a> FeatureCache<'a> {
 
     /// Try to retrieve a feature.
     ///
-    /// If feature is not found, this method will return `None`. Since the resulting feature object may have writing access to the raw data, it will be removed from the cache to avoid the existence of two feature objects with writing access.
+    /// If the feature is not found, this method will return `None`. Since the resulting feature object may have mutable access to the raw data, it will be removed from the cache to avoid aliasing.
+    ///
+    /// You also have to provide the threading class of the feature you want to retrieve.
     pub fn retrieve_feature<F: Feature, T: FromResolvedFeature<F>>(
         &mut self,
         class: ThreadingClass,

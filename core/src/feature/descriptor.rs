@@ -30,7 +30,7 @@ impl<'a> FeatureDescriptor<'a> {
 
     /// Try to return a feature struct instance from the internal data.
     ///
-    /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise.
+    /// If this object describes the requested feature, it will be created from the raw data. This operation consumes the descriptor since it would be possible to have multiple features instances otherwise. You also have to provide the threading class of the feature.
     ///
     /// If the feature construction fails, the descriptor will be returned again.
     pub fn into_feature<T: Feature>(self, class: ThreadingClass) -> Result<T, Self> {
