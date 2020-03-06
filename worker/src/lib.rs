@@ -251,11 +251,7 @@ impl<P: Worker> ResponseHandler<P> {
             let response_data = mem::ManuallyDrop::new(response_data);
             let size = mem::size_of_val(&response_data) as u32;
             let ptr = &response_data as *const _ as *const c_void;
-            let response_function = if let Some(response_function) = self.response_function {
-                response_function
-            } else {
-                return Err(WorkerError::Unknown);
-            };
+            let response_function = self.response_function.ok_or(WorkerError::Unknown)?;
             match (response_function)(self.respond_handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
