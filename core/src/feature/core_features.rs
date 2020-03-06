@@ -28,7 +28,7 @@ unsafe impl UriBound for InPlaceBroken {
     const URI: &'static [u8] = ::lv2_sys::LV2_CORE__inPlaceBroken;
 }
 
-unsafe impl<'a> Feature for InPlaceBroken {
+unsafe impl Feature for InPlaceBroken {
     unsafe fn from_feature_ptr(_feature: *const c_void, _: ThreadingClass) -> Option<Self> {
         Some(Self)
     }
@@ -41,7 +41,7 @@ unsafe impl UriBound for IsLive {
     const URI: &'static [u8] = ::lv2_sys::LV2_CORE__isLive;
 }
 
-unsafe impl<'a> Feature for IsLive {
+unsafe impl Feature for IsLive {
     unsafe fn from_feature_ptr(_feature: *const c_void, _: ThreadingClass) -> Option<Self> {
         Some(Self)
     }

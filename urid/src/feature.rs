@@ -23,7 +23,7 @@ unsafe impl<'a> Feature for Map<'a> {
                 .as_ref()
                 .map(|internal| Self { internal })
         } else {
-            None
+            panic!("The URID mapping feature isn't allowed in the audio threading class");
         }
     }
 }
@@ -122,7 +122,7 @@ unsafe impl<'a> Feature for Unmap<'a> {
                 .as_ref()
                 .map(|internal| Self { internal })
         } else {
-            None
+            panic!("The URID unmapping feature isn't allowed in the audio threading class");
         }
     }
 }
