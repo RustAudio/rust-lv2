@@ -17,7 +17,7 @@ impl<'a> FeatureCollectionField<'a> {
 
     fn make_retrieval(&self) -> impl ::quote::ToTokens {
         let identifier = self.identifier;
-        quote! {#identifier: cache.retrieve_feature()?,}
+        quote! {#identifier: cache.retrieve_feature(class)?,}
     }
 }
 
@@ -58,7 +58,8 @@ impl<'a> FeatureCollectionStruct<'a> {
         (quote! {
             impl#generics FeatureCollection<#lifetime> for #struct_name#generics {
                 fn from_cache(
-                    cache: &mut FeatureCache<#lifetime>
+                    cache: &mut FeatureCache<#lifetime>,
+                    class: ThreadingClass,
                 ) -> Result<Self, MissingFeatureError> {
                     Ok(Self {
                         #(#retrievals)*

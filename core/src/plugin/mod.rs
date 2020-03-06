@@ -72,6 +72,14 @@ pub struct PluginInstance<T: Plugin> {
 }
 
 impl<T: Plugin> PluginInstance<T> {
+    pub fn init_features(&mut self) -> &mut T::InitFeatures {
+        &mut self.init_features
+    }
+
+    pub fn audio_features(&mut self) -> &mut T::AudioFeatures {
+        &mut self.audio_features
+    }
+
     /// Instantiate the plugin.
     ///
     /// This method provides a required method for the C interface of a plugin and is used by the `lv2_descriptors` macro.
@@ -109,20 +117,22 @@ impl<T: Plugin> PluginInstance<T> {
         // Collect the supported features.
         let mut feature_cache = FeatureCache::from_raw(features);
 
-        let mut init_features = match T::InitFeatures::from_cache(&mut feature_cache) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("{}", e);
-                return std::ptr::null_mut();
-            }
-        };
-        let audio_features = match T::AudioFeatures::from_cache(&mut feature_cache) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("{}", e);
-                return std::ptr::null_mut();
-            }
-        };
+        let mut init_features =
+            match T::InitFeatures::from_cache(&mut feature_cache, ThreadingClass::Instantiation) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return std::ptr::null_mut();
+                }
+            };
+        let audio_features =
+            match T::AudioFeatures::from_cache(&mut feature_cache, ThreadingClass::Audio) {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return std::ptr::null_mut();
+                }
+            };
 
         // Instantiate the plugin.
         match T::new(&plugin_info, &mut init_features) {

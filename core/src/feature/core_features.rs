@@ -2,7 +2,7 @@
 //!
 //! This module is for internal organization only and is not meant to be exposed.
 
-use crate::feature::Feature;
+use crate::feature::*;
 use crate::UriBound;
 use std::ffi::c_void;
 
@@ -14,7 +14,7 @@ unsafe impl UriBound for HardRTCapable {
 }
 
 unsafe impl Feature for HardRTCapable {
-    unsafe fn from_feature_ptr(_feature: *const c_void) -> Option<Self> {
+    unsafe fn from_feature_ptr(_feature: *const c_void, _: ThreadingClass) -> Option<Self> {
         Some(Self)
     }
 }
@@ -29,7 +29,7 @@ unsafe impl UriBound for InPlaceBroken {
 }
 
 unsafe impl<'a> Feature for InPlaceBroken {
-    unsafe fn from_feature_ptr(_feature: *const c_void) -> Option<Self> {
+    unsafe fn from_feature_ptr(_feature: *const c_void, _: ThreadingClass) -> Option<Self> {
         Some(Self)
     }
 }
@@ -42,7 +42,7 @@ unsafe impl UriBound for IsLive {
 }
 
 unsafe impl<'a> Feature for IsLive {
-    unsafe fn from_feature_ptr(_feature: *const c_void) -> Option<Self> {
+    unsafe fn from_feature_ptr(_feature: *const c_void, _: ThreadingClass) -> Option<Self> {
         Some(Self)
     }
 }

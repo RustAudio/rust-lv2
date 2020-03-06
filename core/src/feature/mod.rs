@@ -11,6 +11,14 @@ pub use descriptor::FeatureDescriptor;
 
 use std::ffi::c_void;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ThreadingClass {
+    Discovery,
+    Instantiation,
+    Audio,
+    Other,
+}
+
 /// Trait to generalize the feature detection system.
 ///
 /// A host that only implements the core LV2 specification does not have much functionality. Therefore, hosts can provide extra functionalities, called "Features", a plugin can use to become more useful.
@@ -30,7 +38,7 @@ pub unsafe trait Feature: UriBound + Sized {
     /// # Safety
     ///
     /// This method is unsafe since it has to de-reference a pointer.
-    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self>;
+    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self>;
 }
 
 /// An error created during feature resolution when a required feature is missing.
@@ -68,12 +76,18 @@ impl std::fmt::Display for MissingFeatureError {
 ///     }
 pub trait FeatureCollection<'a>: Sized + 'a {
     /// Populate a collection with features from the cache.
-    fn from_cache(cache: &mut FeatureCache<'a>) -> Result<Self, MissingFeatureError>;
+    fn from_cache(
+        cache: &mut FeatureCache<'a>,
+        class: ThreadingClass,
+    ) -> Result<Self, MissingFeatureError>;
 }
 
 impl<'a> FeatureCollection<'a> for () {
     #[inline]
-    fn from_cache(_cache: &mut FeatureCache) -> Result<Self, MissingFeatureError> {
+    fn from_cache(
+        _cache: &mut FeatureCache,
+        _: ThreadingClass,
+    ) -> Result<Self, MissingFeatureError> {
         Ok(())
     }
 }
@@ -100,7 +114,7 @@ mod tests {
     }
 
     unsafe impl<'a> Feature for FeatureA<'a> {
-        unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+        unsafe fn from_feature_ptr(feature: *const c_void, _: ThreadingClass) -> Option<Self> {
             (feature as *const i32)
                 .as_ref()
                 .map(|number| Self { number })
@@ -112,7 +126,7 @@ mod tests {
     }
 
     unsafe impl<'a> Feature for FeatureB<'a> {
-        unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
+        unsafe fn from_feature_ptr(feature: *const c_void, _: ThreadingClass) -> Option<Self> {
             (feature as *const f32)
                 .as_ref()
                 .map(|number| Self { number })
@@ -185,10 +199,14 @@ mod tests {
         assert!(features_cache.contains::<FeatureA>());
         assert!(features_cache.contains::<FeatureB>());
 
-        let retrieved_feature_a: FeatureA = features_cache.retrieve_feature().unwrap();
+        let retrieved_feature_a: FeatureA = features_cache
+            .retrieve_feature(ThreadingClass::Other)
+            .unwrap();
         assert_eq!(*retrieved_feature_a.number, *(setting.data_a));
 
-        let retrieved_feature_b: FeatureB = features_cache.retrieve_feature().unwrap();
+        let retrieved_feature_b: FeatureB = features_cache
+            .retrieve_feature(ThreadingClass::Other)
+            .unwrap();
         assert!(retrieved_feature_b.number - *(setting.data_b) < std::f32::EPSILON);
     }
 
@@ -208,21 +226,28 @@ mod tests {
         let mut feature_b_found = false;
         for descriptor in feature_descriptors {
             if descriptor.is_feature::<FeatureA>() {
-                if let Ok(retrieved_feature_a) = descriptor.into_feature::<FeatureA>() {
+                if let Ok(retrieved_feature_a) =
+                    descriptor.into_feature::<FeatureA>(ThreadingClass::Other)
+                {
                     assert!(*retrieved_feature_a.number == *(setting.data_a));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_a_found = true;
             } else if descriptor.is_feature::<FeatureB>() {
-                if let Ok(retrieved_feature_b) = descriptor.into_feature::<FeatureB>() {
+                if let Ok(retrieved_feature_b) =
+                    descriptor.into_feature::<FeatureB>(ThreadingClass::Other)
+                {
                     assert_eq!(*retrieved_feature_b.number, *(setting.data_b));
                 } else {
                     panic!("Feature interpretation failed!");
                 }
                 feature_b_found = true;
             } else if descriptor.is_feature::<crate::feature::IsLive>() {
-                if descriptor.into_feature::<IsLive>().is_err() {
+                if descriptor
+                    .into_feature::<IsLive>(ThreadingClass::Other)
+                    .is_err()
+                {
                     panic!("Feature interpretation failed!");
                 }
             } else {
@@ -238,7 +263,7 @@ mod tests {
         let setting = FeatureTestSetting::new();
         let mut features_cache = setting.features_cache;
 
-        let cache = Collection::from_cache(&mut features_cache).unwrap();
+        let cache = Collection::from_cache(&mut features_cache, ThreadingClass::Other).unwrap();
         assert_eq!(*cache.a.number, *setting.data_a);
         assert_eq!(*cache.b.number, *setting.data_b);
     }
