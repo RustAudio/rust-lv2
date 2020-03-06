@@ -74,13 +74,14 @@
 //!
 //! impl Plugin for MyPlugin {
 //!     type Ports = ();
-//!     type Features = ();
+//!     type InitFeatures = ();
+//!     type AudioFeatures = ();
 //!
-//!     fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+//!     fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
 //!         Some(Self { internal: 0 })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut ()) {
 //!         self.internal += 1;
 //!     }
 //!
@@ -109,7 +110,7 @@
 //! let sample_rate = 44100.0;
 //! let plugin_info = PluginInfo::new(plugin_uri, bundle_path, sample_rate);
 //!
-//! let mut plugin = MyPlugin::new(&plugin_info, ()).unwrap();
+//! let mut plugin = MyPlugin::new(&plugin_info, &mut ()).unwrap();
 //!
 //! let extension = MyPlugin::extension_data(MyExtensionDescriptor::<MyPlugin>::uri())
 //!     .and_then(|interface| interface.downcast_ref::<MyExtensionInterface>())

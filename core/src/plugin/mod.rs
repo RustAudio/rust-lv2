@@ -22,27 +22,29 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     type Ports: PortCollection;
 
     /// The host features used by this plugin.
-    type Features: FeatureCollection<'static>;
+    type InitFeatures: FeatureCollection<'static>;
+
+    type AudioFeatures: FeatureCollection<'static>;
 
     /// Create a new plugin instance.
     ///
     /// This method only creates an instance of the plugin, it does not reset or set up it's internal state. This is done by the `activate` method.
-    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Option<Self>;
+    fn new(plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self>;
 
     /// Run a processing step.
     ///
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
-    fn run(&mut self, ports: &mut Self::Ports);
+    fn run(&mut self, ports: &mut Self::Ports, features: &mut Self::AudioFeatures);
 
     /// Reset and initialize the complete internal state of the plugin.
     ///
     /// This method will be called if the plugin has just been created of if the plugin has been deactivated. Also, a host's `activate` call will be as close as possible to the first `run` call.
-    fn activate(&mut self) {}
+    fn activate(&mut self, _features: &mut Self::InitFeatures) {}
 
     /// Deactivate the plugin.
     ///
     /// The host will always call this method when it wants to shut the plugin down. After `deactivate` has been called, `run` will not be called until `activate` has been called again.
-    fn deactivate(&mut self) {}
+    fn deactivate(&mut self, _features: &mut Self::InitFeatures) {}
 
     /// Return additional, extension-specific data.
     ///
@@ -65,6 +67,8 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 pub struct PluginInstance<T: Plugin> {
     instance: T,
     connections: <T::Ports as PortCollection>::Cache,
+    init_features: T::InitFeatures,
+    audio_features: T::AudioFeatures,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -103,9 +107,16 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut features = FeatureCache::from_raw(features);
+        let mut feature_cache = FeatureCache::from_raw(features);
 
-        let features = match <T::Features as FeatureCollection>::from_cache(&mut features) {
+        let mut init_features = match T::InitFeatures::from_cache(&mut feature_cache) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
+                return std::ptr::null_mut();
+            }
+        };
+        let audio_features = match T::AudioFeatures::from_cache(&mut feature_cache) {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("{}", e);
@@ -114,11 +125,13 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Instantiate the plugin.
-        match T::new(&plugin_info, features) {
+        match T::new(&plugin_info, &mut init_features) {
             Some(instance) => {
                 let instance = Box::new(Self {
                     instance,
                     connections: <<T::Ports as PortCollection>::Cache as Default>::default(),
+                    init_features,
+                    audio_features,
                 });
                 Box::leak(instance) as *mut Self as LV2_Handle
             }
@@ -147,7 +160,7 @@ impl<T: Plugin> PluginInstance<T> {
     /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn activate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
-        instance.instance.activate()
+        instance.instance.activate(&mut instance.init_features)
     }
 
     /// Call `deactivate`.
@@ -159,7 +172,7 @@ impl<T: Plugin> PluginInstance<T> {
     /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn deactivate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
-        instance.instance.deactivate()
+        instance.instance.deactivate(&mut instance.init_features)
     }
 
     /// Update a port pointer.
@@ -186,7 +199,9 @@ impl<T: Plugin> PluginInstance<T> {
         let ports =
             <T::Ports as PortCollection>::from_connections(&instance.connections, sample_count);
         if let Some(mut ports) = ports {
-            instance.instance.run(&mut ports);
+            instance
+                .instance
+                .run(&mut ports, &mut instance.audio_features);
         }
     }
 
