@@ -1,7 +1,7 @@
 # rust-lv2's library to implement LV2 Worker extension.
 
-lv2-worker is a wrapper of the LV2's Worker API which allows plugins to
-schedule work in a non-realtime thread. This is a part of
+Work scheduling library that allows real-time capable LV2 plugins to execute
+non-real-time actions. This is a part of
 [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic
 framework to create [LV2 plugins](http://lv2plug.in/) for audio processing,
 written in Rust.
