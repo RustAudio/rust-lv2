@@ -421,6 +421,7 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 #[cfg(feature = "host")]
 mod tests {
     use crate::space::*;
+    use core::prelude::*;
     use std::mem::{size_of, size_of_val};
     use urid::mapper::*;
     use urid::prelude::*;

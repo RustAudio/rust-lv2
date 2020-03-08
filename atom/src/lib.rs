@@ -97,8 +97,8 @@ pub mod prelude {
     pub use vector::Vector;
 }
 
-use core::UriBound;
 use space::*;
+use urid::UriBound;
 use urid::{URIDCollection, URID};
 
 #[derive(Clone, URIDCollection)]

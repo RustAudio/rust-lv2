@@ -59,8 +59,8 @@
 //! }
 //! ```
 use atom::prelude::*;
-use core::prelude::*;
 use std::convert::TryFrom;
+use urid::prelude::*;
 
 /// Midi event.
 ///
@@ -165,10 +165,10 @@ impl<'a, 'b> Drop for Writer<'a, 'b> {
 mod tests {
     use crate::wmidi_binding::*;
     use atom::space::RootMutSpace;
+    use core::prelude::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::*;
-    use urid::prelude::*;
     use wmidi::*;
 
     #[test]

@@ -14,7 +14,7 @@ use urid::prelude::*;
 ///
 /// All Struct suffixed by `Class` are time Classes, others are time properties.
 pub mod time {
-    use core::UriBound;
+    use urid::UriBound;
 
     ///A point in time and/or the speed at which time is passing.
     ///

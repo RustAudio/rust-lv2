@@ -6,7 +6,7 @@ pub use lv2_core_derive::*;
 
 use crate::feature::*;
 use crate::port::*;
-use crate::{Uri, UriBound};
+use lv2_urid::{Uri, UriBound};
 use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;

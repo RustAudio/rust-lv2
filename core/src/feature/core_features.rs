@@ -1,9 +1,7 @@
 //! Contains the LV2 features defined by the LV2 Core specification.
 //!
 //! This module is for internal organization only and is not meant to be exposed.
-
 use crate::feature::*;
-use crate::UriBound;
 use std::ffi::c_void;
 
 /// Marker feature to signal that the plugin can run in a hard real-time environment.

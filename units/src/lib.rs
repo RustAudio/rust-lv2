@@ -9,7 +9,7 @@ use urid::prelude::*;
 
 /// All unit URI bounds.
 pub mod units {
-    use core::UriBound;
+    use urid::UriBound;
 
     pub struct Bar;
     unsafe impl UriBound for Bar {

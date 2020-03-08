@@ -27,7 +27,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::*;
 use crate::Atom;
-use core::UriBound;
+use urid::UriBound;
 
 /// An atom containing memory of undefined type.
 ///
@@ -61,6 +61,7 @@ where
 mod tests {
     use crate::chunk::*;
     use crate::*;
+    use core::prelude::*;
     use std::mem::size_of;
     use urid::mapper::*;
     use urid::prelude::*;

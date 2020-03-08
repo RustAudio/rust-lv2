@@ -3,6 +3,7 @@ use crate::StateErr;
 use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
+use urid::prelude::*;
 
 /// A plugin extension that lets a plugins save and restore it's state.
 ///

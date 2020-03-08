@@ -33,8 +33,8 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
 use crate::space::*;
 use crate::*;
-use core::UriBound;
 use std::marker::Unpin;
+use urid::UriBound;
 use urid::URID;
 
 /// An atom that only contains a single, scalar value.
@@ -167,6 +167,7 @@ mod tests {
     use crate::prelude::*;
     use crate::scalar::ScalarAtom;
     use crate::space::*;
+    use core::prelude::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::*;

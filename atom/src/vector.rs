@@ -34,7 +34,6 @@
 use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
 use std::marker::PhantomData;
 use std::mem::size_of;
 use urid::prelude::*;
@@ -144,6 +143,7 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use core::prelude::*;
     use std::mem::size_of;
     use urid::mapper::*;
     use urid::prelude::*;

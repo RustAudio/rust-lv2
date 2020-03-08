@@ -1,7 +1,6 @@
 //! Implementation of the mapping feature for testing purposes.
 use crate::feature::{URIDMap, URIDUnmap};
-use crate::URID;
-use core::Uri;
+use crate::{Uri, URID};
 use std::os::raw::*;
 use std::pin::Pin;
 use std::ptr::null;

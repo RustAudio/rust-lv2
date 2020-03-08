@@ -4,7 +4,7 @@
 ///
 /// If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
 use atom::prelude::*;
-use core::prelude::*;
+use urid::prelude::*;
 
 /// Midi Event.
 ///

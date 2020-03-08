@@ -67,7 +67,6 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
 use urid::prelude::*;
@@ -266,6 +265,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
 mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
+    use core::prelude::*;
     use std::mem::size_of;
     use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
     use urid::mapper::*;

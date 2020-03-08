@@ -73,9 +73,9 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
 use crate::space::*;
 use crate::*;
-use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
+use urid::UriBound;
 use urid::URID;
 
 /// An atom containing multiple key-value pairs.

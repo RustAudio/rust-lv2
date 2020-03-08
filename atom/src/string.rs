@@ -30,7 +30,6 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Literal](http://lv2plug.in/ns/ext/atom/atom.html#Literal)
 use crate::prelude::*;
 use crate::space::*;
-use core::prelude::*;
 use urid::prelude::*;
 
 /// An atom containing either a localized string or an RDF literal.

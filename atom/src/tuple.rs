@@ -33,7 +33,6 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
 use urid::prelude::*;
 
 /// An atom  containing a series of other atoms.
@@ -100,6 +99,7 @@ impl<'a, 'b> TupleWriter<'a, 'b> {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use core::prelude::*;
     use std::mem::size_of;
     use urid::mapper::*;
     use urid::prelude::*;

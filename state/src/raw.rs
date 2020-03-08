@@ -228,6 +228,7 @@ mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
     use atom::space::Space;
+    use core::prelude::*;
     use urid::mapper::*;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {

@@ -1,5 +1,5 @@
 use crate::feature::*;
-use core::UriBound;
+use crate::UriBound;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -23,7 +23,6 @@ where
 /// # Usage example:
 ///
 ///     # #![cfg(feature = "host")]
-///     # use lv2_core::prelude::*;
 ///     # use lv2_urid::prelude::*;
 ///     # use lv2_urid::mapper::*;
 ///     # use std::ffi::CStr;
@@ -47,11 +46,7 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     # let mut mapper = Box::pin(HostURIDMapper::default());
-///     # let host_map = mapper.as_mut().make_map_interface();
-///     # let host_unmap = mapper.as_mut().make_unmap_interface();
-///     # let map = Map::new(&host_map);
-///     # let unmap = Unmap::new(&host_unmap);
+///     # let mut map = HostURIDMapper::default();
 ///     // Populating the collection, Using the `map` and `unmap` features provided by the host:
 ///     let collection = MyCollection::from_map(&map).unwrap();
 ///
