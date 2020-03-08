@@ -149,7 +149,6 @@ impl<'a, 'b> Drop for StringWriter<'a, 'b> {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
     use urid::mapper::*;
@@ -171,9 +170,7 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = TestURIDs::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -228,9 +225,7 @@ mod tests {
 
     #[test]
     fn test_string() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

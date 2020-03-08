@@ -270,16 +270,13 @@ impl Property {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::mem::size_of;
     use urid::mapper::*;
     use urid::prelude::*;
 
     #[test]
     fn test_object() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let object_type = map

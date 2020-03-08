@@ -228,7 +228,6 @@ mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
     use atom::space::Space;
-    use core::prelude::*;
     use urid::mapper::*;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
@@ -289,9 +288,7 @@ mod tests {
 
     #[test]
     fn test_storage() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut storage = Storage::default();

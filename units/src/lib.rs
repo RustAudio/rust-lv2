@@ -1,7 +1,6 @@
 //! LV2 specification for measuring unit definitions.
 //!
 //! The original [specification](http://lv2plug.in/ns/extensions/units/units.html) contains means to describe units for LV2 values in RDF files. This implementation is focused on the stock units defined by the specification by binding them to marker types.
-extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_urid as urid;
 

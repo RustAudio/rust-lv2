@@ -420,7 +420,6 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 #[cfg(test)]
 mod tests {
     use crate::space::*;
-    use core::prelude::*;
     use std::mem::{size_of, size_of_val};
     use urid::mapper::*;
     use urid::prelude::*;
@@ -495,9 +494,7 @@ mod tests {
     }
 
     fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];

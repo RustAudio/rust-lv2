@@ -165,7 +165,6 @@ impl<'a, 'b> Drop for Writer<'a, 'b> {
 mod tests {
     use crate::wmidi_binding::*;
     use atom::space::RootMutSpace;
-    use core::prelude::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::mapper::*;
@@ -173,9 +172,7 @@ mod tests {
 
     #[test]
     fn test_midi_event() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let map_interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&map_interface);
+        let map = HostURIDMapper::new();
         let urid = map.map_type::<WMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -213,9 +210,7 @@ mod tests {
 
     #[test]
     fn test_sysex_event() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let map_interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&map_interface);
+        let map = HostURIDMapper::new();
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

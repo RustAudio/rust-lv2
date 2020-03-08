@@ -265,7 +265,6 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
 mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
-    use core::prelude::*;
     use std::mem::size_of;
     use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
     use urid::mapper::*;
@@ -278,9 +277,7 @@ mod tests {
 
     #[test]
     fn test_sequence() {
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = TestURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

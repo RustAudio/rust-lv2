@@ -142,7 +142,6 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::mem::size_of;
     use urid::mapper::*;
     use urid::prelude::*;
@@ -151,9 +150,7 @@ mod tests {
     fn test_vector() {
         const CHILD_COUNT: usize = 17;
 
-        let mut mapper = Box::pin(HostURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HostURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
