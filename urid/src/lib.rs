@@ -7,8 +7,8 @@
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 
-pub mod mapper;
 mod feature;
+pub mod mapper;
 mod urid;
 
 pub use lv2_urid_derive::*;

@@ -2,7 +2,7 @@
 
 use crate::{URIDCollection, URID};
 use core::feature::Feature;
-use core::{Uri, UriBound};
+use core::prelude::*;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 
@@ -79,10 +79,15 @@ unsafe impl<'a> UriBound for Map<'a> {
 }
 
 unsafe impl<'a> Feature for Map<'a> {
-    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
-        (feature as *const sys::LV2_URID_Map)
-            .as_ref()
-            .map(|internal| Self { internal })
+    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
+        match class {
+            ThreadingClass::Audio => {
+                panic!("The URID mapping feature isn't allowed in the audio threading class")
+            }
+            _ => (feature as *const sys::LV2_URID_Map)
+                .as_ref()
+                .map(|internal| Self { internal }),
+        }
     }
 }
 
@@ -150,10 +155,15 @@ unsafe impl<'a> UriBound for Unmap<'a> {
 }
 
 unsafe impl<'a> Feature for Unmap<'a> {
-    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
-        (feature as *const sys::LV2_URID_Unmap)
-            .as_ref()
-            .map(|internal| Self { internal })
+    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
+        match class {
+            ThreadingClass::Audio => {
+                panic!("The URID unmapping feature isn't allowed in the audio threading class")
+            }
+            _ => (feature as *const sys::LV2_URID_Unmap)
+                .as_ref()
+                .map(|internal| Self { internal }),
+        }
     }
 }
 

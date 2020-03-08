@@ -36,15 +36,16 @@ unsafe impl UriBound for AtomPlugin {
 
 impl Plugin for AtomPlugin {
     type Ports = Ports;
-    type Features = Features<'static>;
+    type InitFeatures = Features<'static>;
+    type AudioFeatures = ();
 
-    fn new(_plugin_info: &PluginInfo, features: Features) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: &mut Features) -> Option<Self> {
         Some(Self {
             urids: features.map.populate_collection()?,
         })
     }
 
-    fn run(&mut self, ports: &mut Ports) {
+    fn run(&mut self, ports: &mut Ports, _: &mut ()) {
         let sequence_reader = ports
             .input
             .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)

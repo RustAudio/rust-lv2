@@ -44,16 +44,17 @@
 //!
 //! impl Plugin for Stateful {
 //!     type Ports = ();
-//!     type Features = Features<'static>;
+//!     type InitFeatures = Features<'static>;
+//!     type AudioFeatures = ();
 //!
-//!     fn new(_: &PluginInfo, features: Features<'static>) -> Option<Self> {
+//!     fn new(_: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
 //!         Some(Stateful {
 //!             internal: 42.0,
 //!             urids: features.map.populate_collection()?,
 //!         })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut ()) {
 //!         // Set the float to a different value than the previous one.
 //!         self.internal += 1.0;
 //!     }

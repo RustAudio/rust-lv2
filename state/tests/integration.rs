@@ -25,9 +25,10 @@ unsafe impl UriBound for Stateful {
 
 impl Plugin for Stateful {
     type Ports = ();
-    type Features = Features<'static>;
+    type InitFeatures = Features<'static>;
+    type AudioFeatures = ();
 
-    fn new(_plugin_info: &PluginInfo, features: Features<'static>) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
         Some(Stateful {
             internal: 42.0,
             audio: Vec::new(),
@@ -35,7 +36,7 @@ impl Plugin for Stateful {
         })
     }
 
-    fn run(&mut self, _: &mut ()) {
+    fn run(&mut self, _: &mut (), _: &mut ()) {
         self.internal = 17.0;
         self.audio.extend((0..32).map(|f| f as f32));
     }
@@ -88,7 +89,7 @@ fn create_plugin(mapper: Pin<&mut HostURIDMapper>) -> Stateful {
         // Constructing the plugin.
         Stateful::new(
             &PluginInfo::new(Stateful::uri(), Path::new("./"), 44100.0),
-            Features { map: map },
+            &mut Features { map: map },
         )
         .unwrap()
     };
@@ -117,7 +118,7 @@ fn test_save_n_restore() {
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
-    first_plugin.run(&mut ());
+    first_plugin.run(&mut (), &mut ());
 
     assert_eq!(17.0, first_plugin.internal);
     assert_eq!(32, first_plugin.audio.len());

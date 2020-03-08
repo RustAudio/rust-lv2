@@ -67,7 +67,9 @@ impl<P: State> StateDescriptor<P> {
         let store = StoreHandle::new(store, handle);
 
         let mut feature_container = core::feature::FeatureCache::from_raw(features);
-        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+        let features = if let Ok(features) =
+            P::StateFeatures::from_cache(&mut feature_container, ThreadingClass::Other)
+        {
             features
         } else {
             return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
@@ -103,7 +105,9 @@ impl<P: State> StateDescriptor<P> {
         let store = RetrieveHandle::new(retrieve, handle);
 
         let mut feature_container = core::feature::FeatureCache::from_raw(features);
-        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+        let features = if let Ok(features) =
+            P::StateFeatures::from_cache(&mut feature_container, ThreadingClass::Other)
+        {
             features
         } else {
             return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
@@ -135,16 +139,17 @@ mod tests {
     }
 
     impl Plugin for Stateful {
-        type Features = ();
+        type InitFeatures = ();
+        type AudioFeatures = ();
         type Ports = ();
 
         #[cfg_attr(tarpaulin, skip)]
-        fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+        fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
             Some(Self)
         }
 
         #[cfg_attr(tarpaulin, skip)]
-        fn run(&mut self, _: &mut ()) {}
+        fn run(&mut self, _: &mut (), _: &mut ()) {}
     }
 
     #[derive(FeatureCollection)]
