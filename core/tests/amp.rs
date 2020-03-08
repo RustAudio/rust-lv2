@@ -27,10 +27,11 @@ struct Features {
 
 impl Plugin for Amp {
     type Ports = AmpPorts;
-    type Features = Features;
+    type InitFeatures = Features;
+    type AudioFeatures = ();
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: Features) -> Option<Self> {
+    fn new(plugin_info: &PluginInfo, features: &mut Features) -> Option<Self> {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -48,13 +49,13 @@ impl Plugin for Amp {
         Some(Amp { activated: false })
     }
 
-    fn activate(&mut self) {
+    fn activate(&mut self, _: &mut Features) {
         assert!(!self.activated);
         self.activated = true;
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts) {
+    fn run(&mut self, ports: &mut AmpPorts, _: &mut ()) {
         assert!(self.activated);
 
         let coef = *(ports.gain);
@@ -67,7 +68,7 @@ impl Plugin for Amp {
         }
     }
 
-    fn deactivate(&mut self) {
+    fn deactivate(&mut self, _: &mut Features) {
         assert!(self.activated);
         self.activated = false;
     }
