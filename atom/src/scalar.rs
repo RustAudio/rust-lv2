@@ -162,7 +162,6 @@ make_scalar_atom!(
 );
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::scalar::ScalarAtom;

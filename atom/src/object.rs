@@ -267,7 +267,6 @@ impl Property {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;

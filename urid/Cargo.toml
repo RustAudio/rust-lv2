@@ -16,7 +16,3 @@ maintenance = { status = "passively-maintained" }
 [dependencies]
 lv2-sys = "1.0.0"
 lv2-urid-derive = "1.0.0"
-
-[features]
-default = []
-host = []

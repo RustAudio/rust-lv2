@@ -139,7 +139,6 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;

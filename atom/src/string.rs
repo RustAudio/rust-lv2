@@ -146,7 +146,6 @@ impl<'a, 'b> Drop for StringWriter<'a, 'b> {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;

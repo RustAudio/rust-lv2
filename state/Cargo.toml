@@ -18,7 +18,3 @@ lv2-sys = "1.0.0"
 lv2-core = "1.0.0"
 lv2-urid = "1.0.0"
 lv2-atom = "1.0.0"
-
-[features]
-default = []
-host = ["lv2-core/host", "lv2-urid/host", "lv2-atom/host"]

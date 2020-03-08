@@ -22,7 +22,6 @@ where
 ///
 /// # Usage example:
 ///
-///     # #![cfg(feature = "host")]
 ///     # use lv2_urid::prelude::*;
 ///     # use lv2_urid::mapper::*;
 ///     # use std::ffi::CStr;

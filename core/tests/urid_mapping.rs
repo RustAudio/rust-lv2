@@ -1,5 +1,3 @@
-#![cfg(feature = "host")]
-
 extern crate lv2_core as core;
 extern crate lv2_urid as urid;
 

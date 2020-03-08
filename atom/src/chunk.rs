@@ -57,7 +57,6 @@ where
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::chunk::*;
     use crate::*;

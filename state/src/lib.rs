@@ -85,9 +85,7 @@ pub use interface::*;
 mod raw;
 pub use raw::*;
 
-#[cfg(feature = "host")]
 mod storage;
-#[cfg(feature = "host")]
 pub use storage::Storage;
 
 /// Kinds of errors that may occur in the crate.

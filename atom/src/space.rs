@@ -418,7 +418,6 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::space::*;
     use core::prelude::*;
