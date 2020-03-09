@@ -44,3 +44,4 @@ pub extern crate lv2_state as state;
 pub extern crate lv2_time as time;
 pub extern crate lv2_units as units;
 pub extern crate lv2_urid as urid;
+pub extern crate lv2_worker as worker;
