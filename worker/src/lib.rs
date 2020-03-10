@@ -128,46 +128,28 @@ use std::ptr;
 
 /// Host feature providing data to build a ScheduleHandler.
 #[repr(transparent)]
-pub struct Schedule<'a> {
+pub struct Schedule<'a, P> {
     internal: &'a lv2_sys::LV2_Worker_Schedule,
+    phantom: PhantomData<*const P>
 }
 
-unsafe impl<'a> UriBound for Schedule<'a> {
+unsafe impl<'a, P> UriBound for Schedule<'a, P> {
     const URI: &'static [u8] = lv2_sys::LV2_WORKER__schedule;
 }
 
-unsafe impl<'a> Feature for Schedule<'a> {
-    unsafe fn from_feature_ptr(feature: *const c_void) -> Option<Self> {
-        (feature as *const lv2_sys::LV2_Worker_Schedule)
-            .as_ref()
-            .map(|internal| Self { internal })
+unsafe impl<'a, P> Feature for Schedule<'a, P> {
+    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
+            if class == ThreadingClass::Audio {
+                (feature as *const lv2_sys::LV2_Worker_Schedule)
+                    .as_ref()
+                    .map(|internal| Self { internal, phantom: PhantomData::<*const P> })
+            } else {
+                panic!("The Worker Schedule feature is only allowed in the audio threading class");
+            }
     }
 }
 
-/// Handler to use in `run()` context to schedule work and pass data to worker.
-///
-/// ScheduleHandler need the current Worker trait implementor as generic parameter, because it use
-/// the `WorkData` associated type to know the datatype to send to the worker.
-pub struct ScheduleHandler<P> {
-    schedule_handle: lv2_sys::LV2_Worker_Schedule_Handle,
-    schedule_work: Option<
-        unsafe extern "C" fn(
-            handle: lv2_sys::LV2_Worker_Schedule_Handle,
-            size: u32,
-            data: *const c_void,
-        ) -> lv2_sys::LV2_Worker_Status,
-    >,
-    phantom: PhantomData<P>,
-}
-
-//declare Schedulehandler Send and Sync is needed to make it usable.
-//Send is safe to implement because poited dated should outlive the plugin and are only managed by the host
-//I don't think Sync is fully safe to implement, because i don't know what happen if a smart guy is
-//multithreading the run function and try to schedule work inside a thread.
-unsafe impl<P: Worker> Send for ScheduleHandler<P> {}
-unsafe impl<P: Worker> Sync for ScheduleHandler<P> {}
-
-impl<P: Worker> ScheduleHandler<P> {
+impl<'a, P: Worker> Schedule<'a, P> {
     /// Request the host to call the worker thread.
     ///
     /// This method should be called from `run()` context to request that the host call the `work()`
@@ -194,27 +176,17 @@ impl<P: Worker> ScheduleHandler<P> {
             let worker_data = mem::ManuallyDrop::new(worker_data);
             let size = mem::size_of_val(&worker_data) as u32;
             let ptr = &worker_data as *const _ as *const c_void;
-            let schedule_work = if let Some(schedule_work) = self.schedule_work {
+            let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
                 schedule_work
             } else {
                 return Err(WorkerError::Unknown);
             };
-            match (schedule_work)(self.schedule_handle, size, ptr) {
+            match (schedule_work)(self.internal.handle, size, ptr) {
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(WorkerError::Unknown),
                 lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(WorkerError::NoSpace),
                 _ => Err(WorkerError::Unknown),
             }
-        }
-    }
-}
-
-impl<P: Worker> From<Schedule<'_>> for ScheduleHandler<P> {
-    fn from(schedule_feature: Schedule) -> Self {
-        Self {
-            schedule_handle: schedule_feature.internal.handle,
-            schedule_work: schedule_feature.internal.schedule_work,
-            phantom: PhantomData::<P>,
         }
     }
 }
