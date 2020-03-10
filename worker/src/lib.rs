@@ -27,9 +27,9 @@
 //!
 //!/// Requested features
 //!#[derive(FeatureCollection)]
-//!struct Features<'a> {
+//!struct AudioFeatures<'a> {
 //!    ///host feature allowing to schedule some work
-//!    schedule: Schedule<'a>,
+//!    schedule: Schedule<'a, EgWorker>,
 //!}
 //!
 //!//custom datatype
@@ -41,7 +41,6 @@
 //!/// A plugin that do some work in another thread
 //!struct EgWorker {
 //!    //schedule handler need to know the plugin type to use it use WorkData associated type.
-//!    schedule_handler: ScheduleHandler<Self>,
 //!    cycle: usize,
 //!    end_cycle: usize,
 //!}
@@ -53,26 +52,24 @@
 //!
 //!impl Plugin for EgWorker {
 //!    type Ports = Ports;
-//!    type Features = Features<'static>;
+//!    type InitFeatures = ();
+//!    type AudioFeatures = AudioFeatures<'static>;
 //!
-//!    fn new(_plugin_info: &PluginInfo, features: Features<'static>) -> Option<Self> {
-//!        // build the schedule_handler using the schedule host feature.
-//!        let schedule_handler = ScheduleHandler::from(features.schedule);
+//!    fn new(_plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
 //!        Some(Self {
-//!            schedule_handler,
 //!            cycle: 0,
 //!            end_cycle: 1,
 //!        })
 //!    }
 //!
-//!    fn run(&mut self, _ports: &mut Ports) {
+//!    fn run(&mut self, _ports: &mut Ports, features: &mut Self::AudioFeatures) {
 //!        self.cycle += 1;
 //!        let cycle = self.cycle;
 //!        println!("cycle {} started", cycle);
 //!        for task in 0..10 {
 //!            let work = WorkMessage { cycle, task };
 //!            // schedule some work and passing some data
-//!            let _ = self.schedule_handler.schedule_work(work);
+//!            let _ = features.schedule.schedule_work(work);
 //!        }
 //!    }
 //!
