@@ -439,17 +439,14 @@ mod tests {
     }
     impl Plugin for TestDropWorker {
         type Ports = Ports;
-        type Features = ();
+        type InitFeatures = ();
+        type AudioFeatures = ();
 
-        fn new(_plugin_info: &PluginInfo, _features: ()) -> Option<Self> {
+        fn new(_plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
             Some(Self {})
         }
 
-        fn activate(&mut self) {}
-
-        fn deactivate(&mut self) {}
-
-        fn run(&mut self, _ports: &mut Ports) {}
+        fn run(&mut self, _ports: &mut Ports, _features: &mut Self::InitFeatures) {}
     }
 
     impl Worker for TestDropWorker {
@@ -488,10 +485,13 @@ mod tests {
     #[test]
     fn schedule_must_not_drop() {
         let hd = HasDrop::new(0);
-        let schedule = ScheduleHandler {
-            schedule_handle: ptr::null_mut(),
+        let internal = lv2_sys::LV2_Worker_Schedule {
+            handle :ptr::null_mut(),
             schedule_work: Some(extern_schedule),
-            phantom: PhantomData::<TestDropWorker>,
+        };
+        let schedule = Schedule {
+            internal: & internal,
+            phantom: PhantomData::<*const TestDropWorker>,
         };
         let _ = schedule.schedule_work(hd);
     }
