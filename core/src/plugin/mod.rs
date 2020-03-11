@@ -87,14 +87,6 @@ pub struct PluginInstance<T: Plugin> {
 }
 
 impl<T: Plugin> PluginInstance<T> {
-    /// Return instance of a plugin.
-    ///
-    /// This method allow wrapper of LV2 extension to get mutably a plugin instance from the PluginInstance
-    /// reference provided by the host
-    pub fn instance_mut(&mut self) -> &mut T {
-        &mut self.instance
-    }
-
     /// Try to create a port collection from the currently collected connections.
     ///
     /// # Safety
