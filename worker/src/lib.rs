@@ -311,7 +311,6 @@ impl<P: Worker> WorkerDescriptor<P> {
             } else {
                 return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
             };
-        let plugin = plugin_instance.instance_mut();
         //build response handler
         let response_handler = ResponseHandler {
             response_function,
@@ -325,7 +324,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         if size as usize != mem::size_of_val(&worker_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
-        match plugin.work(&response_handler, worker_data) {
+        match plugin_instance.instance.work(&response_handler, worker_data) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -345,7 +344,6 @@ impl<P: Worker> WorkerDescriptor<P> {
             } else {
                 return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
             };
-        //let plugin = plugin_instance.instance_mut();
         //build ref to response data from raw pointer
         let response_data =
             ptr::read_unaligned(body as *const mem::ManuallyDrop<<P as Worker>::ResponseData>);
@@ -364,7 +362,6 @@ impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `end_run` method actually called by the host
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            //let plugin = plugin_instance.instance_mut();
             match plugin_instance.instance.end_run(&mut plugin_instance.audio_features) {
                 Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
                 Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
