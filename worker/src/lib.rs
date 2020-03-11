@@ -99,12 +99,12 @@
 //!        Ok(())
 //!    }
 //!
-//!    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError> {
+//!    fn work_response(&mut self, data: Self::ResponseData, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
 //!        println!("work_response received: {}", data);
 //!        Ok(())
 //!    }
 //!
-//!    fn end_run(&mut self) -> Result<(), WorkerError> {
+//!    fn end_run(&mut self, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
 //!        println!("cycle {} ended", self.end_cycle);
 //!        self.end_cycle += 1;
 //!        Ok(())
@@ -271,8 +271,7 @@ pub trait Worker: Plugin {
     /// Handle a response from the worker.
     ///
     /// This is called by the host in the `run()` context when a response from the worker is ready.
-    #[allow(unused_variables)]
-    fn work_response(&mut self, data: Self::ResponseData) -> Result<(), WorkerError> {
+    fn work_response(&mut self, _data: Self::ResponseData, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
         Ok(())
     }
 
@@ -280,7 +279,7 @@ pub trait Worker: Plugin {
     ///
     ///Since work_response() may be called after `run()` finished, this method provides a hook for code that
     ///must run after the cycle is completed.
-    fn end_run(&mut self) -> Result<(), WorkerError> {
+    fn end_run(&mut self, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
         Ok(())
     }
 }
@@ -346,7 +345,7 @@ impl<P: Worker> WorkerDescriptor<P> {
             } else {
                 return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
             };
-        let plugin = plugin_instance.instance_mut();
+        //let plugin = plugin_instance.instance_mut();
         //build ref to response data from raw pointer
         let response_data =
             ptr::read_unaligned(body as *const mem::ManuallyDrop<<P as Worker>::ResponseData>);
@@ -355,7 +354,7 @@ impl<P: Worker> WorkerDescriptor<P> {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
 
-        match plugin.work_response(response_data) {
+        match plugin_instance.instance.work_response(response_data, &mut plugin_instance.audio_features) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -365,8 +364,8 @@ impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `end_run` method actually called by the host
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            let plugin = plugin_instance.instance_mut();
-            match plugin.end_run() {
+            //let plugin = plugin_instance.instance_mut();
+            match plugin_instance.instance.end_run(&mut plugin_instance.audio_features) {
                 Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
                 Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
                 Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -458,7 +457,7 @@ mod tests {
             Ok(())
         }
 
-        fn work_response(&mut self, _data: HasDrop) -> Result<(), WorkerError> {
+        fn work_response(&mut self, _data: HasDrop, _features: &mut  Self::AudioFeatures ) -> Result<(), WorkerError> {
             Ok(())
         }
     }
