@@ -127,7 +127,7 @@ use std::ptr;
 #[repr(transparent)]
 pub struct Schedule<'a, P> {
     internal: &'a lv2_sys::LV2_Worker_Schedule,
-    phantom: PhantomData<*const P>
+    phantom: PhantomData<*const P>,
 }
 
 unsafe impl<'a, P> UriBound for Schedule<'a, P> {
@@ -136,13 +136,16 @@ unsafe impl<'a, P> UriBound for Schedule<'a, P> {
 
 unsafe impl<'a, P> Feature for Schedule<'a, P> {
     unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
-            if class == ThreadingClass::Audio {
-                (feature as *const lv2_sys::LV2_Worker_Schedule)
-                    .as_ref()
-                    .map(|internal| Self { internal, phantom: PhantomData::<*const P> })
-            } else {
-                panic!("The Worker Schedule feature is only allowed in the audio threading class");
-            }
+        if class == ThreadingClass::Audio {
+            (feature as *const lv2_sys::LV2_Worker_Schedule)
+                .as_ref()
+                .map(|internal| Self {
+                    internal,
+                    phantom: PhantomData::<*const P>,
+                })
+        } else {
+            panic!("The Worker Schedule feature is only allowed in the audio threading class");
+        }
     }
 }
 
@@ -271,7 +274,11 @@ pub trait Worker: Plugin {
     /// Handle a response from the worker.
     ///
     /// This is called by the host in the `run()` context when a response from the worker is ready.
-    fn work_response(&mut self, _data: Self::ResponseData, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
+    fn work_response(
+        &mut self,
+        _data: Self::ResponseData,
+        _features: &mut Self::AudioFeatures,
+    ) -> Result<(), WorkerError> {
         Ok(())
     }
 
@@ -324,7 +331,10 @@ impl<P: Worker> WorkerDescriptor<P> {
         if size as usize != mem::size_of_val(&worker_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
-        match plugin_instance.instance.work(&response_handler, worker_data) {
+        match plugin_instance
+            .instance
+            .work(&response_handler, worker_data)
+        {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -352,7 +362,10 @@ impl<P: Worker> WorkerDescriptor<P> {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
 
-        match plugin_instance.instance.work_response(response_data, &mut plugin_instance.audio_features) {
+        match plugin_instance
+            .instance
+            .work_response(response_data, &mut plugin_instance.audio_features)
+        {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -362,7 +375,10 @@ impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `end_run` method actually called by the host
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            match plugin_instance.instance.end_run(&mut plugin_instance.audio_features) {
+            match plugin_instance
+                .instance
+                .end_run(&mut plugin_instance.audio_features)
+            {
                 Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
                 Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
                 Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -454,7 +470,11 @@ mod tests {
             Ok(())
         }
 
-        fn work_response(&mut self, _data: HasDrop, _features: &mut  Self::AudioFeatures ) -> Result<(), WorkerError> {
+        fn work_response(
+            &mut self,
+            _data: HasDrop,
+            _features: &mut Self::AudioFeatures,
+        ) -> Result<(), WorkerError> {
             Ok(())
         }
     }
@@ -479,11 +499,11 @@ mod tests {
     fn schedule_must_not_drop() {
         let hd = HasDrop::new(0);
         let internal = lv2_sys::LV2_Worker_Schedule {
-            handle :ptr::null_mut(),
+            handle: ptr::null_mut(),
             schedule_work: Some(extern_schedule),
         };
         let schedule = Schedule {
-            internal: & internal,
+            internal: &internal,
             phantom: PhantomData::<*const TestDropWorker>,
         };
         let _ = schedule.schedule_work(hd);
