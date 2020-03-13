@@ -111,7 +111,7 @@ pub enum StateErr {
 
 impl StateErr {
     /// Convert a raw status flag to a result or possible error value.
-    pub fn from(value: u32) -> Result<(), StateErr> {
+    pub fn from(value: sys::LV2_State_Status) -> Result<(), StateErr> {
         match value {
             sys::LV2_State_Status_LV2_STATE_SUCCESS => Ok(()),
             sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE => Err(StateErr::BadType),
@@ -124,7 +124,7 @@ impl StateErr {
     }
 
     /// Convert a result to a raw status flag.
-    pub fn into(result: Result<(), StateErr>) -> u32 {
+    pub fn into(result: Result<(), StateErr>) -> sys::LV2_State_Status {
         match result {
             Ok(()) => sys::LV2_State_Status_LV2_STATE_SUCCESS,
             Err(StateErr::BadType) => sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE,
@@ -167,7 +167,10 @@ mod test {
             Err(StateErr::NoSpace),
             StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_NO_SPACE)
         );
-        assert_eq!(Err(StateErr::Unknown), StateErr::from(std::u32::MAX));
+        assert_eq!(
+            Err(StateErr::Unknown),
+            StateErr::from(std::i32::MAX as sys::LV2_State_Status)
+        );
 
         assert_eq!(
             sys::LV2_State_Status_LV2_STATE_SUCCESS,

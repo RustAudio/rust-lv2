@@ -55,7 +55,9 @@ impl<P: State> StateDescriptor<P> {
         flags: u32,
         features: *const *const sys::LV2_Feature,
     ) -> sys::LV2_State_Status {
-        if flags & sys::LV2_State_Flags_LV2_STATE_IS_POD == 0 {
+        let flags: u32 =
+            (sys::LV2_State_Flags::from(flags) & sys::LV2_State_Flags::LV2_STATE_IS_POD).into();
+        if flags == 0 {
             return sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS;
         }
 
@@ -93,7 +95,9 @@ impl<P: State> StateDescriptor<P> {
         flags: u32,
         features: *const *const sys::LV2_Feature,
     ) -> sys::LV2_State_Status {
-        if flags & sys::LV2_State_Flags_LV2_STATE_IS_POD == 0 {
+        let flags: u32 =
+            (sys::LV2_State_Flags::from(flags) & sys::LV2_State_Flags::LV2_STATE_IS_POD).into();
+        if flags == 0 {
             return sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS;
         }
 
@@ -202,7 +206,7 @@ mod tests {
                 std::ptr::null_mut(),
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -212,7 +216,7 @@ mod tests {
                 std::ptr::null_mut(),
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -222,7 +226,7 @@ mod tests {
                 &mut plugin as *mut Stateful as sys::LV2_Handle,
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -232,7 +236,7 @@ mod tests {
                 &mut plugin as *mut Stateful as sys::LV2_Handle,
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });

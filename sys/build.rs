@@ -40,6 +40,8 @@ fn main() {
         }
     }
 
+    bindings = bindings.bitfield_enum("LV2_State_Flags");
+
     // Generating the bindings.
     let bindings = bindings.generate().expect("Unable to generate bindings");
 
