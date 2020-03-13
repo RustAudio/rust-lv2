@@ -13,11 +13,12 @@ rust:
 os:
   - linux
   - osx
+  - windows
 
 matrix:
   allow_failures:
-    - rust: nightly
     - os: windows
+    - rust: nightly
 
 before_script:
   - rustup component add rustfmt
