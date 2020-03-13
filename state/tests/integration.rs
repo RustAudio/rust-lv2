@@ -128,7 +128,7 @@ fn test_save_n_restore() {
             &mut first_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_store),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };
@@ -140,7 +140,7 @@ fn test_save_n_restore() {
             &mut second_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_retrieve),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };

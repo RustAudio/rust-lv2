@@ -64,8 +64,9 @@ impl<'a> StoreHandle<'a> {
         let data_ptr = data as *const _ as *const c_void;
         let data_size = header.size as usize;
         let data_type = header.type_;
-        let flags =
-            sys::LV2_State_Flags_LV2_STATE_IS_POD | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
+        let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
+            | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
+            .into();
         StateErr::from(unsafe { (store_fn)(handle, key, data_ptr, data_size, data_type, flags) })
     }
 
