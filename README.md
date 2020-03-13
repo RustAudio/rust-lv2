@@ -68,16 +68,17 @@ impl Plugin for Amp {
     // Tell the framework which ports this plugin has.
     type Ports = Ports;
     // We don't need any special host features; We can leave them out.
-    type Features = ();
+    type InitFeatures = ();
+    type AudioFeatures = ();
 
     // Create a new instance of the plugin; Trivial in this case.
-    fn new(_plugin_info: &PluginInfo, _features: ()) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, _features: &mut ()) -> Option<Self> {
         Some(Self)
     }
 
     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
     // iterates over.
-    fn run(&mut self, ports: &mut Ports) {
+    fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
         let coef = if *(ports.gain) > -90.0 {
             10.0_f32.powf(*(ports.gain) * 0.05)
         } else {

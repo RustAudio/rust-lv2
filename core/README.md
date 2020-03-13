@@ -10,7 +10,7 @@ This example contains the code of a simple amplification plugin. Please note tha
 
 ```Rust
 // Import everything we need.
-use lv2_core::prelude::*;
+use lv2::core::prelude::*;
 
 // The input and output ports are defined by a struct which implements the `PortCollection` trait.
 // In this case, there is an input control port for the gain of the amplification, an input audio
@@ -39,16 +39,17 @@ impl Plugin for Amp {
     // Tell the framework which ports this plugin has.
     type Ports = Ports;
     // We don't need any special host features; We can leave them out.
-    type Features = ();
+    type InitFeatures = ();
+    type AudioFeatures = ();
 
     // Create a new instance of the plugin; Trivial in this case.
-    fn new(_plugin_info: &PluginInfo, _features: ()) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, _features: &mut ()) -> Option<Self> {
         Some(Self)
     }
 
     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
     // iterates over.
-    fn run(&mut self, ports: &mut Ports) {
+    fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
         let coef = if *(ports.gain) > -90.0 {
             10.0_f32.powf(*(ports.gain) * 0.05)
         } else {
