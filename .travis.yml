@@ -18,7 +18,14 @@ os:
 matrix:
   allow_failures:
     - rust: nightly
-    - os: windows
+
+install:
+  - |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        choco install llvm
+        ;;
+    esac
 
 before_script:
   - rustup component add rustfmt
