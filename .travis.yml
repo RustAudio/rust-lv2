@@ -23,7 +23,7 @@ install:
   - |-
     case $TRAVIS_OS_NAME in
       windows)
-        choco install llvm
+        choco upgrade
         ;;
     esac
 
