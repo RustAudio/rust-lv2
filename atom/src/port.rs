@@ -7,7 +7,6 @@
 //!
 //! ```
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
 //!
 //! #[derive(PortCollection)]
@@ -25,7 +24,7 @@
 //! }
 //! ```
 use crate::space::*;
-use core::port::PortType;
+use lv2_core::port::PortType;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use urid::URID;
@@ -121,7 +120,7 @@ impl PortType for AtomPort {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
+    use lv2_core::prelude::*;
     use std::mem::size_of;
     use std::ptr::NonNull;
     use urid::*;

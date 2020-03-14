@@ -6,7 +6,6 @@
 //!
 //! ```
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_units::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::sequence::*;

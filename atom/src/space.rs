@@ -297,14 +297,11 @@ impl SpaceElement {
 ///
 /// ```
 /// # use lv2_core::prelude::*;
-/// # use lv2_urid::prelude::*;
 /// # use lv2_atom::prelude::*;
 /// # use lv2_atom::space::*;
 /// # use urid::*;
 /// # use std::pin::Pin;
-/// # let mut mapper: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
-/// # let interface = mapper.as_mut().make_map_interface();
-/// # let map = LV2Map::new(&interface);
+/// # let map = HashURIDMapper::new();
 /// // URID cache creation is omitted.
 /// let urids: AtomURIDCollection = map.populate_collection().unwrap();
 ///

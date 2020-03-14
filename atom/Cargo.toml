@@ -15,7 +15,15 @@ maintenance = { status = "passively-maintained" }
 
 [dependencies]
 lv2-sys = "1.0.0"
-lv2-core = "1.0.0"
-lv2-urid = "1.0.0"
 lv2-units = "0.1.0"
 urid = "0.1.0"
+
+[dependencies.lv2-core]
+version = "1.0.0"
+optional = true
+
+[dev-dependencies]
+lv2-urid = "1.0.0"
+
+[features]
+default = ["lv2-core"]

@@ -12,9 +12,3 @@ mod mapper;
 
 pub use feature::*;
 pub use mapper::*;
-
-/// Prelude of `lv2_urid` for wildcard usage.
-pub mod prelude {
-    pub use crate::feature::{LV2Map, LV2Unmap};
-    pub use crate::mapper::HostMap;
-}
