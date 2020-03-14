@@ -36,6 +36,7 @@ members = [
     "units",
     "urid",
     "urid/derive",
+    "urid/common",
 ]
 
 [patch.crates-io]
@@ -48,7 +49,8 @@ lv2-sys = { path = "sys" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
 lv2-urid = { path = "urid" }
-lv2-urid-derive = { path = "urid/derive" }
+urid-derive = { path = "urid/derive" }
+urid = { path = "urid/common" }
 
 [features]
 default = []

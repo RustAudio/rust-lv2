@@ -1,5 +1,5 @@
 //! Additional host functionalities.
-use crate::{Uri, UriBound};
+use urid::{Uri, UriBound};
 
 mod cache;
 mod core_features;

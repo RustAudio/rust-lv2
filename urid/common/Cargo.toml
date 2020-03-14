@@ -1,0 +1,13 @@
+[package]
+name = "urid"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+
+description = "TODO"
+readme = "TODO"
+repository = "https://github.com/RustAudio/rust-lv2"
+
+[dependencies]
+urid-derive = "0.1.0"

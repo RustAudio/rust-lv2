@@ -3,7 +3,7 @@
 //! This module is for internal organization only and is not meant to be exposed.
 
 use crate::feature::*;
-use crate::UriBound;
+use urid::UriBound;
 use std::ffi::c_void;
 
 /// Marker feature to signal that the plugin can run in a hard real-time environment.

@@ -1,4 +1,4 @@
-use crate::Uri;
+use urid::Uri;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::str::Utf8Error;

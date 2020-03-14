@@ -120,7 +120,7 @@
 //!
 //! assert_eq!(42, plugin.internal);
 //! ```
-use crate::UriBound;
+use urid::UriBound;
 use std::any::Any;
 
 /// A descriptor for a plugin extension.

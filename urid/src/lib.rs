@@ -11,16 +11,11 @@ extern crate lv2_sys as sys;
 pub mod mapper;
 
 mod feature;
-mod urid;
-
-pub use lv2_urid_derive::*;
 
 pub use feature::*;
-pub use urid::*;
 
 /// Prelude of `lv2_urid` for wildcard usage.
 pub mod prelude {
     pub use crate::feature::{Map, Unmap};
     pub use crate::{URIDCollection, URID};
-    pub use lv2_urid_derive::*;
 }
