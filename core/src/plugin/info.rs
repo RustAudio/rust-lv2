@@ -1,7 +1,7 @@
-use urid::Uri;
 use std::os::raw::c_char;
 use std::path::Path;
 use std::str::Utf8Error;
+use urid::Uri;
 
 #[derive(Debug)]
 pub enum PluginInfoError {
