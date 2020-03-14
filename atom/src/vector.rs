@@ -34,10 +34,9 @@
 use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
 use std::marker::PhantomData;
 use std::mem::size_of;
-use urid::prelude::*;
+use urid::*;
 
 /// An atom containg an array of scalar atom bodies.
 ///
@@ -140,21 +139,17 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     #[test]
     fn test_vector() {
         const CHILD_COUNT: usize = 17;
 
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

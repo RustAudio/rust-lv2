@@ -8,7 +8,8 @@
 //! use lv2_atom::prelude::*;
 //! use lv2_core::prelude::*;
 //! use lv2_state::*;
-//! use lv2_urid::prelude::*;
+//! use lv2_urid::*;
+//! use urid::*;
 //!
 //! /// A plugin that stores a float value.
 //! struct Stateful {
@@ -67,7 +68,7 @@
 //!
 //! #[derive(FeatureCollection)]
 //! pub struct Features<'a> {
-//!     map: Map<'a>,
+//!     map: LV2Map<'a>,
 //! }
 //!
 //! unsafe impl UriBound for Stateful {
@@ -77,7 +78,6 @@
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
-extern crate lv2_urid as urid;
 
 mod interface;
 pub use interface::*;
@@ -85,9 +85,7 @@ pub use interface::*;
 mod raw;
 pub use raw::*;
 
-#[cfg(feature = "host")]
 mod storage;
-#[cfg(feature = "host")]
 pub use storage::Storage;
 
 /// Kinds of errors that may occur in the crate.

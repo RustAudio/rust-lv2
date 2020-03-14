@@ -15,6 +15,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_urid::prelude::*;
 //! use lv2_units::prelude::*;
+//! use urid::*;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -69,7 +70,6 @@
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
-extern crate lv2_urid as urid;
 
 pub mod chunk;
 pub mod object;
@@ -97,9 +97,8 @@ pub mod prelude {
     pub use vector::Vector;
 }
 
-use core::UriBound;
 use space::*;
-use urid::{URIDCollection, URID};
+use urid::{URIDCollection, UriBound, URID};
 
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.

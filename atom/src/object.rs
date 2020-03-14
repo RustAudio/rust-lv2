@@ -7,6 +7,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use lv2_urid::prelude::*;
+//! use urid::*;
 //!
 //! struct ObjectClass;
 //! unsafe impl UriBound for ObjectClass {
@@ -73,9 +74,9 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
 use crate::space::*;
 use crate::*;
-use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
+use urid::UriBound;
 use urid::URID;
 
 /// An atom containing multiple key-value pairs.
@@ -267,33 +268,28 @@ impl Property {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     #[test]
     fn test_object() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let object_type = map
-            .map_uri(Uri::from_bytes_with_nul(b"urn:my-type\0").unwrap())
+            .map(Uri::from_bytes_with_nul(b"urn:my-type\0").unwrap())
             .unwrap();
 
         let first_key = map
-            .map_uri(Uri::from_bytes_with_nul(b"urn:value-a\0").unwrap())
+            .map(Uri::from_bytes_with_nul(b"urn:value-a\0").unwrap())
             .unwrap();
         let first_value: i32 = 17;
 
         let second_key = map
-            .map_uri(Uri::from_bytes_with_nul(b"urn:value-b\0").unwrap())
+            .map(Uri::from_bytes_with_nul(b"urn:value-b\0").unwrap())
             .unwrap();
         let second_value: f32 = 42.0;
 

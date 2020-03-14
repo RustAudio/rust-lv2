@@ -30,8 +30,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Literal](http://lv2plug.in/ns/ext/atom/atom.html#Literal)
 use crate::prelude::*;
 use crate::space::*;
-use core::prelude::*;
-use urid::prelude::*;
+use urid::*;
 
 /// An atom containing either a localized string or an RDF literal.
 ///
@@ -147,15 +146,12 @@ impl<'a, 'b> Drop for StringWriter<'a, 'b> {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     struct German;
     unsafe impl UriBound for German {
@@ -173,9 +169,7 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = TestURIDs::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -230,9 +224,7 @@ mod tests {
 
     #[test]
     fn test_string() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

@@ -11,6 +11,7 @@
 //! ```
 //! use lv2_core::extension::ExtensionDescriptor;
 //! use lv2_core::prelude::*;
+//! use urid::*;
 //! use std::any::Any;
 //! use std::ffi::c_void;
 //! use std::marker::PhantomData;
@@ -147,7 +148,7 @@ macro_rules! match_extensions {
     ($uri:expr, $($descriptor:ty),*) => {
         match ($uri).to_bytes_with_nul() {
             $(
-                <$descriptor as ::lv2_core::UriBound>::URI => Some(<$descriptor as ::lv2_core::extension::ExtensionDescriptor>::INTERFACE as &'static dyn std::any::Any),
+                <$descriptor as ::urid::UriBound>::URI => Some(<$descriptor as ::lv2_core::extension::ExtensionDescriptor>::INTERFACE as &'static dyn std::any::Any),
             )*
             _ => None,
         }
