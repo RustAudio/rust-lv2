@@ -1,6 +1,6 @@
-use urid::*;
 use lv2_urid::*;
 use std::pin::Pin;
+use urid::*;
 
 struct MyTypeA;
 
