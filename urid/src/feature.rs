@@ -33,7 +33,7 @@ impl<'a> LV2Map<'a> {
 }
 
 impl<'a> Map for LV2Map<'a> {
-    fn map(&self, uri: &Uri) -> Option<URID> {
+    fn map_uri(&self, uri: &Uri) -> Option<URID> {
         let uri = uri.as_ptr();
         let urid = unsafe { (self.internal.map.unwrap())(self.internal.handle, uri) };
         URID::new(urid)

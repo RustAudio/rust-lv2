@@ -279,16 +279,16 @@ mod tests {
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let object_type = map
-            .map(Uri::from_bytes_with_nul(b"urn:my-type\0").unwrap())
+            .map_uri(Uri::from_bytes_with_nul(b"urn:my-type\0").unwrap())
             .unwrap();
 
         let first_key = map
-            .map(Uri::from_bytes_with_nul(b"urn:value-a\0").unwrap())
+            .map_uri(Uri::from_bytes_with_nul(b"urn:value-a\0").unwrap())
             .unwrap();
         let first_value: i32 = 17;
 
         let second_key = map
-            .map(Uri::from_bytes_with_nul(b"urn:value-b\0").unwrap())
+            .map_uri(Uri::from_bytes_with_nul(b"urn:value-b\0").unwrap())
             .unwrap();
         let second_value: f32 = 42.0;
 

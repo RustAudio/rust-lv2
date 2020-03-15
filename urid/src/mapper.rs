@@ -28,7 +28,7 @@ impl<M: Map + Unmap + Unpin> HostMap<M> {
     ) -> crate::sys::LV2_URID {
         match (*(handle as *const Self))
             .internal_map
-            .map(Uri::from_ptr(uri))
+            .map_uri(Uri::from_ptr(uri))
         {
             Some(urid) => urid.get(),
             _ => 0,

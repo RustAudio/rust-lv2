@@ -16,13 +16,13 @@ unsafe impl UriBound for MyTypeB {
 fn test_map() {
     let map = HashURIDMapper::new();
 
-    assert_eq!(1, map.map(MyTypeA::uri()).unwrap());
+    assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
     assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
 
+    assert_eq!(2, map.map_uri(MyTypeB::uri()).unwrap());
     assert_eq!(2, map.map_type::<MyTypeB>().unwrap());
-    assert_eq!(2, map.map(MyTypeB::uri()).unwrap());
 
-    assert_eq!(1, map.map(MyTypeA::uri()).unwrap());
+    assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
     assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
 }
 

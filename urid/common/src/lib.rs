@@ -252,10 +252,10 @@ pub trait Map {
     /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
     /// they might need at initialization time. See the `URIDCollection` for more information on how to
     /// achieve this.
-    fn map(&self, uri: &Uri) -> Option<URID>;
+    fn map_uri(&self, uri: &Uri) -> Option<URID>;
 
     fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
-        self.map(T::uri())
+        self.map_uri(T::uri())
             .map(|urid| unsafe { URID::new_unchecked(urid.get()) })
     }
 
@@ -289,7 +289,7 @@ pub trait Unmap {
 pub struct HashURIDMapper(Mutex<HashMap<UriBuf, URID>>);
 
 impl Map for HashURIDMapper {
-    fn map(&self, uri: &Uri) -> Option<URID<()>> {
+    fn map_uri(&self, uri: &Uri) -> Option<URID<()>> {
         let mut map = self.0.lock().ok()?; // Fail if the Mutex got poisoned
         match map.get(uri) {
             Some(urid) => Some(*urid),
