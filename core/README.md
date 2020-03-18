@@ -10,7 +10,7 @@ This example contains the code of a simple amplification plugin. Please note tha
 
 ```Rust
 // Import everything we need.
-use lv2::core::prelude::*;
+use lv2_core::prelude::*;
 
 // The input and output ports are defined by a struct which implements the `PortCollection` trait.
 // In this case, there is an input control port for the gain of the amplification, an input audio
