@@ -85,7 +85,6 @@
 //!    // data type sent by the response handler and received by the `work_response` method.
 //!    type ResponseData = String;
 //!    fn work(
-//!        &mut self,
 //!        //response handler need to know the plugin type.
 //!        response_handler: &ResponseHandler<Self>,
 //!        data: Self::WorkData,
@@ -336,7 +335,6 @@ pub trait Worker: Plugin {
     /// non-real-time thread, but MUST NOT make concurrent calls to this method from several
     /// threads.
     fn work(
-        &mut self,
         response_handler: &ResponseHandler<Self>,
         data: Self::WorkData,
     ) -> Result<(), WorkerError>;
@@ -375,19 +373,12 @@ unsafe impl<P: Worker> UriBound for WorkerDescriptor<P> {
 impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `work` method actually called by the host
     unsafe extern "C" fn extern_work(
-        handle: lv2_sys::LV2_Handle,
+        _handle: lv2_sys::LV2_Handle,
         response_function: lv2_sys::LV2_Worker_Respond_Function,
         respond_handle: lv2_sys::LV2_Worker_Respond_Handle,
         size: u32,
         data: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
-        //deref plugin_instance and get the plugin
-        let plugin_instance =
-            if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-                plugin_instance
-            } else {
-                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
-            };
         //build response handler
         let response_handler = ResponseHandler {
             response_function,
@@ -401,9 +392,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         if size as usize != mem::size_of_val(&worker_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
-        match plugin_instance
-            .instance
-            .work(&response_handler, worker_data)
+        match P::work(&response_handler, worker_data)
         {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
@@ -533,7 +522,6 @@ mod tests {
         type ResponseData = HasDrop;
 
         fn work(
-            &mut self,
             _response_handler: &ResponseHandler<Self>,
             _data: HasDrop,
         ) -> Result<(), WorkerError> {
