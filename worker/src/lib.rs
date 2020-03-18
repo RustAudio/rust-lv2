@@ -118,6 +118,7 @@ use lv2_core::feature::*;
 use lv2_core::plugin::{Plugin, PluginInstance};
 use lv2_core::prelude::*;
 use lv2_sys;
+use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::mem::ManuallyDrop;
@@ -132,6 +133,15 @@ pub enum ScheduleError<T> {
     Unknown(T),
     /// Failure due to a lack of space
     NoSpace(T),
+}
+
+impl<T> fmt::Debug for ScheduleError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ScheduleError::Unknown(..) => "Unknown(..)".fmt(f),
+            ScheduleError::NoSpace(..) => "NoSpace(..)".fmt(f),
+        }
+    }
 }
 
 /// Host feature providing data to build a ScheduleHandler.
@@ -221,6 +231,15 @@ pub enum RespondError<T> {
     Unknown(T),
     /// Failure due to a lack of space
     NoSpace(T),
+}
+
+impl<T> fmt::Debug for RespondError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            RespondError::Unknown(..) => "Unknown(..)".fmt(f),
+            RespondError::NoSpace(..) => "NoSpace(..)".fmt(f),
+        }
+    }
 }
 
 /// Handler available inside worker function to send response to `run()` context.
