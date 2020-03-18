@@ -132,6 +132,10 @@ pub enum ScheduleError<T> {
     Unknown(T),
     /// Failure due to a lack of space
     NoSpace(T),
+    /// No `schedule_work` callback was provided by the host
+    ///
+    /// This can only happen with faulty host
+    NoCallback(T),
 }
 
 impl<T> fmt::Debug for ScheduleError<T> {
@@ -139,6 +143,7 @@ impl<T> fmt::Debug for ScheduleError<T> {
         match *self {
             ScheduleError::Unknown(..) => "Unknown(..)".fmt(f),
             ScheduleError::NoSpace(..) => "NoSpace(..)".fmt(f),
+            ScheduleError::NoCallback(..) => "NoCallback(..)".fmt(f),
         }
     }
 }
@@ -202,7 +207,7 @@ impl<'a, P: Worker> Schedule<'a, P> {
             let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
                 schedule_work
             } else {
-                return Err(ScheduleError::Unknown(ManuallyDrop::into_inner(
+                return Err(ScheduleError::NoCallback(ManuallyDrop::into_inner(
                     worker_data,
                 )));
             };
@@ -230,6 +235,10 @@ pub enum RespondError<T> {
     Unknown(T),
     /// Failure due to a lack of space
     NoSpace(T),
+    /// No response callback was provided by the host
+    ///
+    /// This can only happen with faulty host
+    NoCallback(T),
 }
 
 impl<T> fmt::Debug for RespondError<T> {
@@ -237,6 +246,7 @@ impl<T> fmt::Debug for RespondError<T> {
         match *self {
             RespondError::Unknown(..) => "Unknown(..)".fmt(f),
             RespondError::NoSpace(..) => "NoSpace(..)".fmt(f),
+            RespondError::NoCallback(..) => "NoCallback(..)".fmt(f),
         }
     }
 }
@@ -281,7 +291,7 @@ impl<P: Worker> ResponseHandler<P> {
             let response_function = if let Some(response_function) = self.response_function {
                 response_function
             } else {
-                return Err(RespondError::Unknown(ManuallyDrop::into_inner(
+                return Err(RespondError::NoCallback(ManuallyDrop::into_inner(
                     response_data,
                 )));
             };
