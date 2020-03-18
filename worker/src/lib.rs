@@ -199,29 +199,27 @@ impl<'a, P: Worker> Schedule<'a, P> {
     where
         P::WorkData: 'static + Send,
     {
-        unsafe {
-            let worker_data = ManuallyDrop::new(worker_data);
-            let size = mem::size_of_val(&worker_data) as u32;
-            let ptr = &worker_data as *const _ as *const c_void;
-            let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
-                schedule_work
-            } else {
-                return Err(ScheduleError::NoCallback(ManuallyDrop::into_inner(
-                    worker_data,
-                )));
-            };
-            match (schedule_work)(self.internal.handle, size, ptr) {
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(ScheduleError::Unknown(
-                    ManuallyDrop::into_inner(worker_data),
-                )),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(ScheduleError::NoSpace(
-                    ManuallyDrop::into_inner(worker_data),
-                )),
-                _ => Err(ScheduleError::Unknown(ManuallyDrop::into_inner(
-                    worker_data,
-                ))),
-            }
+        let worker_data = ManuallyDrop::new(worker_data);
+        let size = mem::size_of_val(&worker_data) as u32;
+        let ptr = &worker_data as *const _ as *const c_void;
+        let schedule_work = if let Some(schedule_work) = self.internal.schedule_work {
+            schedule_work
+        } else {
+            return Err(ScheduleError::NoCallback(ManuallyDrop::into_inner(
+                worker_data,
+            )));
+        };
+        match unsafe { (schedule_work)(self.internal.handle, size, ptr) } {
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(ScheduleError::Unknown(
+                ManuallyDrop::into_inner(worker_data),
+            )),
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(ScheduleError::NoSpace(
+                ManuallyDrop::into_inner(worker_data),
+            )),
+            _ => Err(ScheduleError::Unknown(ManuallyDrop::into_inner(
+                worker_data,
+            ))),
         }
     }
 }
@@ -283,29 +281,27 @@ impl<P: Worker> ResponseHandler<P> {
     where
         P::WorkData: 'static + Send,
     {
-        unsafe {
-            let response_data = ManuallyDrop::new(response_data);
-            let size = mem::size_of_val(&response_data) as u32;
-            let ptr = &response_data as *const _ as *const c_void;
-            let response_function = if let Some(response_function) = self.response_function {
-                response_function
-            } else {
-                return Err(RespondError::NoCallback(ManuallyDrop::into_inner(
-                    response_data,
-                )));
-            };
-            match (response_function)(self.respond_handle, size, ptr) {
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(RespondError::Unknown(
-                    ManuallyDrop::into_inner(response_data),
-                )),
-                lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(RespondError::NoSpace(
-                    ManuallyDrop::into_inner(response_data),
-                )),
-                _ => Err(RespondError::Unknown(ManuallyDrop::into_inner(
-                    response_data,
-                ))),
-            }
+        let response_data = ManuallyDrop::new(response_data);
+        let size = mem::size_of_val(&response_data) as u32;
+        let ptr = &response_data as *const _ as *const c_void;
+        let response_function = if let Some(response_function) = self.response_function {
+            response_function
+        } else {
+            return Err(RespondError::NoCallback(ManuallyDrop::into_inner(
+                response_data,
+            )));
+        };
+        match unsafe { (response_function)(self.respond_handle, size, ptr) } {
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(RespondError::Unknown(
+                ManuallyDrop::into_inner(response_data),
+            )),
+            lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE => Err(RespondError::NoSpace(
+                ManuallyDrop::into_inner(response_data),
+            )),
+            _ => Err(RespondError::Unknown(ManuallyDrop::into_inner(
+                response_data,
+            ))),
         }
     }
 }
@@ -631,14 +627,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Dropped")]
     fn extern_work_should_drop() {
-        unsafe {
-            let hd = mem::ManuallyDrop::new(HasDrop::new(0));
-            let ptr_hd = &hd as *const _ as *const c_void;
-            let size = mem::size_of_val(&hd) as u32;
-            let mut tdw = TestDropWorker {};
+        let hd = mem::ManuallyDrop::new(HasDrop::new(0));
+        let ptr_hd = &hd as *const _ as *const c_void;
+        let size = mem::size_of_val(&hd) as u32;
+        let mut tdw = TestDropWorker {};
 
-            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
-            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+        //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        unsafe {
             WorkerDescriptor::<TestDropWorker>::extern_work(
                 ptr_tdw,
                 Some(extern_respond),
@@ -651,14 +647,14 @@ mod tests {
 
     #[test]
     fn extern_work_should_not_drop_twice() {
-        unsafe {
-            let hd = mem::ManuallyDrop::new(HasDrop::new(1));
-            let ptr_hd = &hd as *const _ as *const c_void;
-            let size = mem::size_of_val(&hd) as u32;
-            let mut tdw = TestDropWorker {};
+        let hd = mem::ManuallyDrop::new(HasDrop::new(1));
+        let ptr_hd = &hd as *const _ as *const c_void;
+        let size = mem::size_of_val(&hd) as u32;
+        let mut tdw = TestDropWorker {};
 
-            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
-            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+        //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        unsafe {
             WorkerDescriptor::<TestDropWorker>::extern_work(
                 ptr_tdw,
                 Some(extern_respond),
@@ -672,28 +668,28 @@ mod tests {
     #[test]
     #[should_panic(expected = "Dropped")]
     fn extern_work_response_should_drop() {
-        unsafe {
-            let hd = mem::ManuallyDrop::new(HasDrop::new(0));
-            let ptr_hd = &hd as *const _ as *const c_void;
-            let size = mem::size_of_val(&hd) as u32;
-            let mut tdw = TestDropWorker {};
+        let hd = mem::ManuallyDrop::new(HasDrop::new(0));
+        let ptr_hd = &hd as *const _ as *const c_void;
+        let size = mem::size_of_val(&hd) as u32;
+        let mut tdw = TestDropWorker {};
 
-            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
-            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+        //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        unsafe {
             WorkerDescriptor::<TestDropWorker>::extern_work_response(ptr_tdw, size, ptr_hd);
         }
     }
 
     #[test]
     fn extern_work_response_should_not_drop_twice() {
-        unsafe {
-            let hd = mem::ManuallyDrop::new(HasDrop::new(1));
-            let ptr_hd = &hd as *const _ as *const c_void;
-            let size = mem::size_of_val(&hd) as u32;
-            let mut tdw = TestDropWorker {};
+        let hd = mem::ManuallyDrop::new(HasDrop::new(1));
+        let ptr_hd = &hd as *const _ as *const c_void;
+        let size = mem::size_of_val(&hd) as u32;
+        let mut tdw = TestDropWorker {};
 
-            let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
-            //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        let ptr_tdw = &mut tdw as *mut _ as *mut c_void;
+        //trash trick i use Plugin ptr insteas of Pluginstance ptr
+        unsafe {
             WorkerDescriptor::<TestDropWorker>::extern_work_response(ptr_tdw, size, ptr_hd);
         }
     }
