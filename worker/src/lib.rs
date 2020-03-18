@@ -6,15 +6,11 @@
 //! disk. You can look at the
 //! [LV2 Worker Specification](https://lv2plug.in/ns/ext/worker/worker.html) for more details.
 //!
-//! # WARNING!
+//! # Note
 //!
-//! The current version of this crate have a **safety flow**. In the `work` method, you have a mutable
-//! access to the plugin. Since the `work` method is meant to be called in another thread from the
-//! run context, this allow **uncontrolled concurrent access** between two threads wich is **normally not
-//! allowed** in safe rust. That means:
-//!  * Change may occur in lv2-worker an lv2-crate to fix this issue.
-//!  * It's up to you to ensure that no uncontrolled concurrent access happen.
-//!
+//! To avoid breaking the rust safety rules with a concurrency issue, we maid the choice to remove
+//! access to plugin data inside the `work` method. This may too restrictive for some use case, but
+//! it's the most convenient method in the  majority of case.
 //! # Example
 //!```
 //!use core::any::Any;
