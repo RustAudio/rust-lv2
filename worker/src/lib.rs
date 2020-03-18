@@ -116,7 +116,6 @@ use lv2_core::extension::ExtensionDescriptor;
 use lv2_core::feature::*;
 use lv2_core::plugin::{Plugin, PluginInstance};
 use lv2_core::prelude::*;
-use lv2_sys;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
@@ -402,8 +401,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         if size as usize != mem::size_of_val(&worker_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
-        match P::work(&response_handler, worker_data)
-        {
+        match P::work(&response_handler, worker_data) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
