@@ -8,15 +8,11 @@
 //! use lv2_atom::prelude::*;
 //! use urid::*;
 //!
+//! #[uri_bound("urn:object-class")]
 //! struct ObjectClass;
-//! unsafe impl UriBound for ObjectClass {
-//!     const URI: &'static [u8] = b"urn:object-class\0";
-//! }
 //!
+//! #[uri_bound("urn:property-a")]
 //! struct PropertyA;
-//! unsafe impl UriBound for PropertyA {
-//!     const URI: &'static [u8] = b"urn:property-a\0";
-//! }
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {

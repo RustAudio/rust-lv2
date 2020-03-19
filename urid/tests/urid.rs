@@ -3,11 +3,8 @@ use urid::*;
 #[uri_bound("urn:my-type-a")]
 struct MyTypeA;
 
+#[uri_bound("urn:my-type-b")]
 struct MyTypeB;
-
-unsafe impl UriBound for MyTypeB {
-    const URI: &'static [u8] = b"urn:my-type-b\0";
-}
 
 #[test]
 fn test_map() {

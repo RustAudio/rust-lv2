@@ -27,16 +27,12 @@ pub type UriBuf = ::std::ffi::CString;
 ///
 /// Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
 ///
-///     use urid::UriBound;
+///     use urid::*;
 ///
 ///     // Defining the struct
+///     #[uri_bound("urn:my-struct")]
 ///     pub struct MyStruct {
 ///         a: f32,
-///     }
-///
-///     // Implementing `UriBound`
-///     unsafe impl UriBound for MyStruct {
-///         const URI: &'static [u8] = b"urn:my-struct\0";
 ///     }
 ///
 ///     // Retrieving the URI
@@ -79,17 +75,11 @@ where
 ///
 ///     # use urid::*;
 ///     // Defining all URI bounds.
+///     #[uri_bound("urn:my-type-a")]
 ///     struct MyTypeA;
 ///     
-///     unsafe impl UriBound for MyTypeA {
-///         const URI: &'static [u8] = b"urn:my-type-a\0";
-///     }
-///     
+///     #[uri_bound("urn:my-type-b")]
 ///     struct MyTypeB;
-///     
-///     unsafe impl UriBound for MyTypeB {
-///         const URI: &'static [u8] = b"urn:my-type-b\0";
-///     }
 ///
 ///     // Defining the collection.
 ///     #[derive(URIDCollection)]
