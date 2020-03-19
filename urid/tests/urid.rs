@@ -1,10 +1,7 @@
 use urid::*;
 
+#[uri_bound("urn:my-type-a")]
 struct MyTypeA;
-
-unsafe impl UriBound for MyTypeA {
-    const URI: &'static [u8] = b"urn:my-type-a\0";
-}
 
 struct MyTypeB;
 
