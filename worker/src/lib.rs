@@ -64,8 +64,10 @@
 //!        println!("cycle {} started", cycle);
 //!        for task in 0..10 {
 //!            let work = WorkMessage { cycle, task };
-//!            // schedule some work and passing some data
-//!            let _ = features.schedule.schedule_work(work);
+//!            // schedule some work, passing some data and check for error
+//!            if let Err(e) = features.schedule.schedule_work(work) {
+//!                eprintln!("Can't schedule work: {}", e);
+//!            }
 //!        }
 //!    }
 //!
@@ -87,14 +89,21 @@
 //!    ) -> Result<(), WorkerError> {
 //!        println!("work received: cycle {}, task {}", data.cycle, data.task);
 //!        if data.task >= 5 {
-//!            let _ = response_handler.respond(format!( "response to cycle {}, task {}",
+//!            if let Err(e) = response_handler.respond(format!(
+//!                "response to cycle {}, task {}",
 //!                data.cycle, data.task
-//!            ));
+//!            )) {
+//!                eprintln!("Can't respond: {}", e);
+//!            }
 //!        };
 //!        Ok(())
 //!    }
 //!
-//!    fn work_response(&mut self, data: Self::ResponseData, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
+//!    fn work_response(
+//!        &mut self,
+//!        data: Self::ResponseData,
+//!        _features: &mut Self::AudioFeatures,
+//!    ) -> Result<(), WorkerError> {
 //!        println!("work_response received: {}", data);
 //!        Ok(())
 //!    }
@@ -105,7 +114,6 @@
 //!        Ok(())
 //!    }
 //!}
-//!
 //!```
 
 use lv2_core::extension::ExtensionDescriptor;
@@ -139,6 +147,16 @@ impl<T> fmt::Debug for ScheduleError<T> {
             ScheduleError::Unknown(..) => "Unknown(..)".fmt(f),
             ScheduleError::NoSpace(..) => "NoSpace(..)".fmt(f),
             ScheduleError::NoCallback(..) => "NoCallback(..)".fmt(f),
+        }
+    }
+}
+
+impl<T> fmt::Display for ScheduleError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ScheduleError::Unknown(..) => "unknown error".fmt(f),
+            ScheduleError::NoSpace(..) => "not enough space".fmt(f),
+            ScheduleError::NoCallback(..) => "no callback".fmt(f),
         }
     }
 }
@@ -239,6 +257,16 @@ impl<T> fmt::Debug for RespondError<T> {
             RespondError::Unknown(..) => "Unknown(..)".fmt(f),
             RespondError::NoSpace(..) => "NoSpace(..)".fmt(f),
             RespondError::NoCallback(..) => "NoCallback(..)".fmt(f),
+        }
+    }
+}
+
+impl<T> fmt::Display for RespondError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            RespondError::Unknown(..) => "unknown error".fmt(f),
+            RespondError::NoSpace(..) => "not enough space".fmt(f),
+            RespondError::NoCallback(..) => "no callback".fmt(f),
         }
     }
 }
