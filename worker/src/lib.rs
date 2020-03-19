@@ -315,10 +315,8 @@ pub enum WorkerError {
 /// This trait, and `struct` that implements it, provide methods called by the host to implement
 /// the worker extension.
 ///
-/// However, the host will not directly use these methods. Instead, the host use wrapping functions
-/// associated with [`WorkerDescriptor`](struct.WorkerDescriptor.html) and then, you pass this
-/// functions to the host with `match_extensions!` macro in `extension_data()` methods of the
-/// Plugin trait.
+/// In order to be used by the host, you need to to export the [`WorkerDescriptor`](struct.WorkerDescriptor.html)
+/// in the `extension_data` method. You can do that with the `match_extensions` macro from the `lv2-core` crate.
 pub trait Worker: Plugin {
     /// Type of data sent to `work` by using a schedule handler.
     type WorkData: 'static + Send;
