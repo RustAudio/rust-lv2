@@ -320,7 +320,7 @@ pub enum WorkerError {
 pub trait Worker: Plugin {
     /// Type of data sent to `work` by using a schedule handler.
     type WorkData: 'static + Send;
-    /// Type of data sent to `work_response` by using a response handler.
+    /// Type of data sent to `work_response` by the response handler.
     type ResponseData: 'static + Send;
     /// The work to do in a non-real-time context,
     ///
