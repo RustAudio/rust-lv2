@@ -172,8 +172,7 @@ unsafe impl<'a, P> Feature for Schedule<'a, P> {
 impl<'a, P: Worker> Schedule<'a, P> {
     /// Request the host to call the worker thread.
     ///
-    /// When this method fail, the data is considered not transmitted and returned to the caller
-    /// inside the error.
+    /// If this method fails, the data is considered as untransmitted and is returned to the caller.
     ///
     /// This method should be called from `run()` context to request that the host call the `work()`
     /// method in a non-realtime context with the given arguments.
