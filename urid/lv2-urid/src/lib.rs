@@ -1,4 +1,4 @@
-//! LV2 specification centered around the Map feature.
+//! LV2 integration of the URID concept.
 //!
 //! The URID specification provides a host feature that can be used by plugins to map URIs to integers, so-called URIDs. These URIDs are used by many other specifications to identify other URI bounds and combine the flexibility of URIs with the comparison speed of integers.
 //!

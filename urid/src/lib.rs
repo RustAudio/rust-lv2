@@ -1,3 +1,12 @@
+//! Library for idiomatic URID support.
+//!
+//! In the world of [RDF](https://en.wikipedia.org/wiki/Resource_Description_Framework), resources are described using [URIs](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier). In Rust, this concept can be adapted to describe types with URIs using the [`UriBound`](trait.UriBound.html) trait. Then, other crates might use these URIs to describe relationships between types or values using URIs.
+//!
+//! However, comparing URIs isn't necessarily fast. Therefore, another concept was introduced: The [URID](struct.URID.html). A URID is basically a `u32` which represents a URI. These URIDs are assigned by a [`Map`](trait.Map.html) and can be "dereferenced" by an [`Unmap`](trait.Unmap.html).
+//!
+//! This library also supports connecting URIDs to their `UriBound` via a generics argument. This can be used, for example, to request the URID of a certain bound as a parameter of a function. If someone would try to call this function with the wrong URID, the compiler will raise an error before the code is even compiled.
+//!
+//! This may seem a bit minor to you now, but the audio plugin framework [rust-lv2](https://github.com/RustAudio/rust-lv2) heavily relies on this crate for fast, portable and dynamic data identification and exchange.
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -9,12 +18,14 @@ use std::sync::Mutex;
 
 pub use urid_derive::*;
 
+/// Representation of a borrowed Uri.
 pub type Uri = ::std::ffi::CStr;
+/// Representation of an owned Uri.
 pub type UriBuf = ::std::ffi::CString;
 
-/// Trait for types that can be identified by a URI.
+/// A trait for types that can be identified by a URI.
 ///
-/// LV2 makes heavy use of URIs to identify resources. This is where this trait comes in: Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
+/// Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
 ///
 ///     use urid::UriBound;
 ///
@@ -52,17 +63,17 @@ pub unsafe trait UriBound {
 
 /// Representation of a URI for fast comparisons.
 ///
-/// A URID is basically a number which represents a URI, which makes the identification of other features faster and easier. The mapping of URIs to URIDs is handled by the host and plugins can retrieve them using the [`Map`](struct.Map.html) feature. A given URID can also be converted back to a URI with the [`Unmap`](struct.Unmap.html) feature.
+/// A URID is basically a number which represents a URI, which makes the identification of other features faster and easier. The mapping of URIs to URIDs is handled by a something that implements the [`Map`](trait.Map.html) trait. A given URID can also be converted back to a URI with an implementation of the [`Unmap`](trait.Unmap.html) trait. However, these implementations should obviously be linked.
 ///
-/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the type can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCollection`](trait.URIDCollection.html), which can be used to build bigger collections.
+/// This struct has an optional type parameter `T` which defaults to `()`. In this case, the type can represent any URID at all, but if `T` is a `UriBound`, the instance of `URID<T>` can only describe the URID of the given bound. This makes creation easier and also turns it into an atomic [`URIDCollection`](trait.URIDCollection.html), which can be used to build bigger collections.
 #[repr(transparent)]
 pub struct URID<T = ()>(NonZeroU32, PhantomData<T>)
 where
     T: ?Sized;
 
-/// Abstraction of types that store URIDs.
+/// A store of pre-mapped URIDs
 ///
-/// This trait makes the creation of static URID collections easy: You simply define the collection and derive `URIDCollection` for it, and you have a single method to create it.
+/// This trait can be used to easily cache URIDs. The usual way of creating such a collection is to define a struct of `URID<T>`s, where `T` implements `UriBound`, and then using the derive macro to implement `URIDCollection` for it. Then, you can populate it with a map and access it any time, even in a real-time-sensitive context.
 ///
 /// # Usage example:
 ///
@@ -87,8 +98,8 @@ where
 ///         my_type_b: URID<MyTypeB>,
 ///     }
 ///
-///     # let map = HashURIDMapper::new();
-///     // Populating the collection, Using the `map` and `unmap` features provided by the host:
+///     // Creating a mapper and collecting URIDs.
+///     let map = HashURIDMapper::new();
 ///     let collection = MyCollection::from_map(&map).unwrap();
 ///
 ///     // Asserting.
@@ -102,7 +113,7 @@ pub trait URIDCollection: Sized {
 impl URID<()> {
     /// Creates a new URID from a raw number.
     ///
-    /// URID may never be zero. If the given number is zero, `None` is returned.
+    /// URIDs may never be zero. If the given number is zero, `None` is returned.
     #[inline]
     pub fn new(raw_urid: u32) -> Option<Self> {
         NonZeroU32::new(raw_urid).map(|inner| Self(inner, PhantomData))
@@ -112,15 +123,13 @@ impl URID<()> {
 impl<T: ?Sized> URID<T> {
     /// Create a URID without checking for type or value validity.
     ///
-    /// First of all, the value may only be a URID the host actually recognizes. Therefore, it should only be used by [`Map::map_uri`](struct.Map.html#method.map_uri) or [`Map::map_type`](struct.Map.html#method.map_type), after the raw mapping function was called.
-    ///
-    /// Additionally, the value of 0 is reserved for a failed URI mapping process and therefore, is not a valid URID. If `T` is a URI bound, the URID may only be the one the host maps the bounded URI.
-    ///
-    /// Since all of these constraints are not checked by this method, it is unsafe.
+    /// This value may only be a URID the mapper actually produced and that is recognised by a compatible unmapper. Therefore, it should only be used by [`Map::map_uri`](trait.Map.html#tymethod.map_uri) or [`Map::map_type`](trait.Map.html#method.map_type).
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it assumes that `raw_urid` is not zero. Using this method is sound as long as `raw_urid` is not zero.
+    /// A URID may not be 0 since this value is reserved for the `None` value of `Option<URID<T>>`, which therefore has the same size as a `URID<T>`. If `T` is also a URI bound, the URID may only be the one that is mapped to the bounded URI.
+    ///
+    /// Since these constraints aren't checked by this method, it is unsafe. Using this method is technically sound as long as `raw_urid` is not zero, but might still result in bad behaviour if its the wrong URID for the bound `T`.
     pub unsafe fn new_unchecked(raw_urid: u32) -> Self {
         Self(NonZeroU32::new_unchecked(raw_urid), PhantomData)
     }
@@ -233,6 +242,7 @@ mod tests {
     }
 }
 
+/// A handle to map URIs to URIDs.
 pub trait Map {
     /// Maps an URI to an `URID` that corresponds to it.
     ///
@@ -245,15 +255,12 @@ pub trait Map {
     /// circumstances (i.e. the URI map SHOULD be dynamic).
     ///
     /// # Realtime usage
-    /// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
-    /// operations, such as memory allocation or Mutex locking.
-    ///
-    /// Therefore, these methods should never be called in a realtime context (such as a plugin's
-    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* cache IDs
-    /// they might need at initialization time. See the `URIDCollection` for more information on how to
-    /// achieve this.
+    /// This action may not be realtime-safe since it may involve locking mutexes or allocating dynamic memory. If you are working in a realtime environment, you should cache mapped URIDs in a [`URIDCollection`](trait.URIDCollection.html) and use it instead.
     fn map_uri(&self, uri: &Uri) -> Option<URID>;
 
+    /// Retrieve the URI of the bound and map it to a URID.
+    ///
+    /// The rules of [`map_uri`](#tymethod.map_uri) apply here too.
     fn map_type<T: UriBound + ?Sized>(&self) -> Option<URID<T>> {
         self.map_uri(T::uri())
             .map(|urid| unsafe { URID::new_unchecked(urid.get()) })
@@ -261,25 +268,20 @@ pub trait Map {
 
     /// Populate a URID collection.
     ///
-    /// This is basically an alias for `T::from_map(self)` that makes the derive macro for `URIDCollection` easier.
+    /// This is basically an alias for [`T::from_map(self)`](trait.URIDCollection.html#tymethod.from_map) that simplifies the derive macro for `URIDCollection`.
     fn populate_collection<T: URIDCollection>(&self) -> Option<T> {
         T::from_map(self)
     }
 }
 
+/// A handle to map URIDs to URIs.
 pub trait Unmap {
-    /// Gets the URId for a previously mapped `URID`.
+    /// Get the URI of a previously mapped URID.
     ///
-    /// This method may return `None` if the given `urid` is not yet mapped.
+    /// This method may return `None` if the given `urid` is not mapped to URI yet.
     ///
     /// # Realtime usage
-    /// As per the LV2 specification, please note that URID mappers are allowed to perform non-realtime
-    /// operations, such as memory allocation or Mutex locking.
-    ///
-    /// Therefore, these methods should never be called in a realtime context (such as a plugin's
-    /// `run()` method). Plugins and other realtime or performance-critical contexts *should* collection IDs
-    /// they might need at initialization time. See the `URIDCollection` for more information on how to
-    /// achieve this.
+    /// This action may not be realtime-safe since it may involve locking mutexes or allocating dynamic memory. If you are working in a realtime environment, you should cache mapped URIDs in a [`URIDCollection`](trait.URIDCollection.html) and use it instead.
     fn unmap<T: ?Sized>(&self, urid: URID<T>) -> Option<&Uri>;
 }
 

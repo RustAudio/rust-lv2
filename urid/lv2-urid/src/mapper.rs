@@ -4,6 +4,7 @@ use std::pin::Pin;
 use std::ptr::null;
 use urid::*;
 
+/// A wrapper for a URID (un)mapper that exposes it as an LV2 host feature.
 pub struct HostMap<M: Map + Unmap + Unpin> {
     internal_map: M,
 }
