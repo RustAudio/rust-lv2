@@ -36,7 +36,7 @@
 //!
 //!/// A plugin that do some work in another thread
 //!struct EgWorker {
-//!    //schedule handler need to know the plugin type to use it use WorkData associated type.
+//!    // The schedule handler needs to know the plugin type in order to access the `WorkData` type.
 //!    cycle: usize,
 //!    end_cycle: usize,
 //!}
