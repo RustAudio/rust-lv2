@@ -297,13 +297,11 @@ impl SpaceElement {
 ///
 /// ```
 /// # use lv2_core::prelude::*;
-/// # use lv2_urid::prelude::*;
-/// # use lv2_urid::mapper::*;
 /// # use lv2_atom::prelude::*;
 /// # use lv2_atom::space::*;
-/// # let mut mapper = Box::pin(HashURIDMapper::new());
-/// # let interface = mapper.as_mut().make_map_interface();
-/// # let map = Map::new(&interface);
+/// # use urid::*;
+/// # use std::pin::Pin;
+/// # let map = HashURIDMapper::new();
 /// // URID cache creation is omitted.
 /// let urids: AtomURIDCollection = map.populate_collection().unwrap();
 ///
@@ -418,12 +416,10 @@ impl<'a, 'b> dyn MutSpace<'a> + 'b {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::space::*;
     use std::mem::{size_of, size_of_val};
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     #[test]
     fn test_space() {
@@ -495,9 +491,7 @@ mod tests {
     }
 
     fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 24];

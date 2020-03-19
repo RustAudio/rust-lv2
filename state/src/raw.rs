@@ -4,7 +4,7 @@ use atom::space::*;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::marker::PhantomData;
-use urid::prelude::*;
+use urid::*;
 
 /// Property storage handle.
 ///
@@ -229,7 +229,6 @@ mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
     use atom::space::Space;
-    use urid::mapper::*;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
         let mut store_handle = storage.store_handle();
@@ -289,9 +288,7 @@ mod tests {
 
     #[test]
     fn test_storage() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut storage = Storage::default();

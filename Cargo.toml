@@ -36,6 +36,7 @@ members = [
     "units",
     "urid",
     "urid/derive",
+    "urid/lv2-urid",
 ]
 
 [patch.crates-io]
@@ -47,18 +48,10 @@ lv2-state = { path = "state" }
 lv2-sys = { path = "sys" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
-lv2-urid = { path = "urid" }
-lv2-urid-derive = { path = "urid/derive" }
+urid = { path = "urid" }
+urid-derive = { path = "urid/derive" }
+lv2-urid = { path = "urid/lv2-urid" }
 
 [features]
 default = []
-host = [
-    "lv2-atom/host",
-    "lv2-core/host",
-    "lv2-midi/host",
-    "lv2-time/host",
-    "lv2-units/host",
-    "lv2-urid/host",
-    "lv2-state/host"
-]
 wmidi = ["lv2-midi/wmidi"]

@@ -2,12 +2,12 @@ extern crate lv2_atom as atom;
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
-extern crate lv2_urid as urid;
 
 use atom::prelude::*;
 use core::prelude::*;
+use lv2_urid::*;
 use units::prelude::*;
-use urid::prelude::*;
+use urid::*;
 
 #[derive(PortCollection)]
 struct Ports {
@@ -17,7 +17,7 @@ struct Ports {
 
 #[derive(FeatureCollection)]
 struct Features<'a> {
-    map: Map<'a>,
+    map: LV2Map<'a>,
 }
 
 #[derive(URIDCollection)]
@@ -78,18 +78,20 @@ lv2_descriptors![AtomPlugin];
 #[test]
 fn main() {
     use atom::space::*;
+    use lv2_urid::*;
     use std::ffi::{c_void, CStr};
     use std::mem::size_of;
-    use urid::mapper::*;
+    use std::pin::Pin;
+    use urid::*;
 
     // Instantiating all features.
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
     let map_interface = Box::pin(mapper.as_mut().make_map_interface());
-    let map = Map::new(map_interface.as_ref().get_ref());
+    let map = LV2Map::new(map_interface.as_ref().get_ref());
 
     let mut map_feature_interface = Box::pin(mapper.as_mut().make_map_interface());
     let map_feature = Box::pin(sys::LV2_Feature {
-        URI: Map::URI.as_ptr() as *const i8,
+        URI: LV2Map::URI.as_ptr() as *const i8,
         data: map_feature_interface.as_mut().get_mut() as *mut _ as *mut c_void,
     });
     let features_list: &[*const sys::LV2_Feature] =

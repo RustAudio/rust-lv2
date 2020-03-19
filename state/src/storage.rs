@@ -2,7 +2,7 @@ use crate::raw::{RetrieveHandle, StoreHandle};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
-use urid::prelude::*;
+use urid::*;
 
 /// A simple property store.
 ///

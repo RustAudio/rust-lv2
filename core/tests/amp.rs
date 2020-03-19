@@ -3,6 +3,7 @@ use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
 use std::ops::Drop;
 use std::os::raw::c_char;
+use urid::*;
 
 struct Amp {
     activated: bool,
@@ -100,8 +101,8 @@ fn test_discovery() {
 
 #[test]
 fn test_plugin() {
-    use lv2_core::UriBound;
     use lv2_sys::*;
+    use urid::UriBound;
 
     // Creating the ports.
     let mut gain: f32 = 2.0;

@@ -1,4 +1,4 @@
-//! Procedural macros for `lv2-urid`.
+//! Procedural macros for `urid`.
 #![recursion_limit = "128"]
 
 extern crate proc_macro;

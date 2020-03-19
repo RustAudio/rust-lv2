@@ -3,6 +3,7 @@ use crate::StateErr;
 use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
+use urid::*;
 
 /// A plugin extension that lets a plugins save and restore it's state.
 ///
@@ -134,7 +135,8 @@ impl<P: State> ExtensionDescriptor for StateDescriptor<P> {
 mod tests {
     use crate::*;
     use lv2_core::prelude::*;
-    use lv2_urid::prelude::*;
+    use lv2_urid::*;
+    use urid::*;
 
     struct Stateful;
 
@@ -158,7 +160,7 @@ mod tests {
 
     #[derive(FeatureCollection)]
     struct Features<'a> {
-        _map: Map<'a>,
+        _map: LV2Map<'a>,
     }
 
     impl State for Stateful {

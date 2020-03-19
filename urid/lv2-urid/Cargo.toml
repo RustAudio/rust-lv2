@@ -1,11 +1,11 @@
 [package]
-name = "lv2-core"
+name = "lv2-urid"
 version = "1.0.1"
-authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
-description = "rust-lv2's core library"
+description = "rust-lv2's URID handling library"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 
@@ -14,6 +14,6 @@ travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-urid = "0.1.0"
+lv2-core = "1.0.0"
 lv2-sys = "1.0.0"
-lv2-core-derive = "1.0.0"
+urid = "0.1.0"

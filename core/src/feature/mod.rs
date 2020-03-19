@@ -1,5 +1,5 @@
 //! Additional host functionalities.
-use crate::{Uri, UriBound};
+use urid::{Uri, UriBound};
 
 mod cache;
 mod core_features;
@@ -105,10 +105,11 @@ impl<'a> FeatureCollection<'a> for () {
 #[allow(clippy::float_cmp)]
 mod tests {
     use crate::feature::FeatureCache;
-    use crate::{feature::*, plugin::*, UriBound};
+    use crate::{feature::*, plugin::*};
     use std::ffi::c_void;
     use std::os::raw::c_char;
     use std::pin::Pin;
+    use urid::UriBound;
 
     struct FeatureA<'a> {
         number: &'a i32,
