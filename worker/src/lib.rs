@@ -8,9 +8,9 @@
 //!
 //! # Note
 //!
-//! To avoid breaking the rust safety rules with a concurrency issue, we maid the choice to remove
-//! access to plugin data inside the `work` method. This may too restrictive for some use case, but
-//! it's the most convenient method in the  majority of case.
+//! To avoid breaking Rust's safety rules with a concurrency issue, we've made the choice to remove
+//! access to plugin data inside the `work` method. This may be a restriction for some use cases, but
+//! it's the most convenient method for the majority of use cases.
 //! # Example
 //!```
 //!use core::any::Any;
