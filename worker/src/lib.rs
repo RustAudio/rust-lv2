@@ -6,11 +6,6 @@
 //! disk. You can look at the
 //! [LV2 Worker Specification](https://lv2plug.in/ns/ext/worker/worker.html) for more details.
 //!
-//! # Note
-//!
-//! To avoid breaking Rust's safety rules with a concurrency issue, we've made the choice to remove
-//! access to plugin data inside the `work` method. This may be a restriction for some use cases, but
-//! it's the most convenient method for the majority of use cases.
 //! # Example
 //!```
 //!use core::any::Any;
