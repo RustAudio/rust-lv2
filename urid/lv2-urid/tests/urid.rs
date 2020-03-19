@@ -1,3 +1,5 @@
+use lv2_urid::*;
+use std::pin::Pin;
 use urid::*;
 
 struct MyTypeA;
@@ -14,7 +16,9 @@ unsafe impl UriBound for MyTypeB {
 
 #[test]
 fn test_map() {
-    let map = HashURIDMapper::new();
+    let mut host_map: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
+    let map_interface = host_map.as_mut().make_map_interface();
+    let map = LV2Map::new(&map_interface);
 
     assert_eq!(1, map.map_uri(MyTypeA::uri()).unwrap());
     assert_eq!(1, map.map_type::<MyTypeA>().unwrap());
@@ -28,7 +32,11 @@ fn test_map() {
 
 #[test]
 fn test_unmap() {
-    let map = HashURIDMapper::new();
+    let mut host_map: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
+    let map_interface = host_map.as_mut().make_map_interface();
+    let map = LV2Map::new(&map_interface);
+    let unmap_interface = host_map.as_mut().make_unmap_interface();
+    let unmap = LV2Unmap::new(&unmap_interface);
 
     let (type_a, type_b) = {
         (
@@ -37,8 +45,8 @@ fn test_unmap() {
         )
     };
 
-    assert_eq!(MyTypeA::uri(), map.unmap(type_a).unwrap());
-    assert_eq!(MyTypeB::uri(), map.unmap(type_b).unwrap());
+    assert_eq!(MyTypeA::uri(), unmap.unmap(type_a).unwrap());
+    assert_eq!(MyTypeB::uri(), unmap.unmap(type_b).unwrap());
 }
 
 #[derive(URIDCollection)]
@@ -49,7 +57,9 @@ struct MyURIDCollection {
 
 #[test]
 fn test_collection() {
-    let map = HashURIDMapper::new();
+    let mut host_map: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
+    let map_interface = host_map.as_mut().make_map_interface();
+    let map = LV2Map::new(&map_interface);
     let collection = MyURIDCollection::from_map(&map).unwrap();
 
     assert_eq!(1, collection.type_a);
