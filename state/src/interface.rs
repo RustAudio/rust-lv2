@@ -138,11 +138,8 @@ mod tests {
     use lv2_urid::*;
     use urid::*;
 
+    #[uri_bound("urn:stateful")]
     struct Stateful;
-
-    unsafe impl UriBound for Stateful {
-        const URI: &'static [u8] = b"urn:null\0";
-    }
 
     impl Plugin for Stateful {
         type InitFeatures = ();
