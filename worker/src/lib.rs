@@ -333,15 +333,16 @@ pub enum WorkerError {
     NoSpace,
 }
 
-/// The trait providing worker extension to rust-lv2 plugins.
+/// The non-realtime working extension for plugins.
 ///
-/// This trait, and `struct` that implements it, provide methods called by the host to implement
-/// the worker extension.
+/// This trait and the [`Schedule`](struct.Schedule.html) struct enable plugin creators to use the
+/// [Worker specification](https://lv2plug.in/doc/html/group__worker.html) for non-realtime working
+/// tasks.
 ///
 /// In order to be used by the host, you need to to export the [`WorkerDescriptor`](struct.WorkerDescriptor.html)
 /// in the `extension_data` method. You can do that with the `match_extensions` macro from the `lv2-core` crate.
 pub trait Worker: Plugin {
-    /// Type of data sent to `work` by using a schedule handler.
+    /// Type of data sent to `work` by the schedule handler.
     type WorkData: 'static + Send;
     /// Type of data sent to `work_response` by the response handler.
     type ResponseData: 'static + Send;
