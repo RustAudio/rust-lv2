@@ -10,7 +10,7 @@ use syn::{parse, Ident, Item};
 /// This function also checks that the item has no generics, since this macro isn't smart enough to
 /// implement `UriBound` for all arguments of the generic type.
 fn get_type_ident(item: TokenStream) -> Ident {
-    const PARSING_ERROR: &'static str = "Only structs, enums, types, and unions may have a URI";
+    const PARSING_ERROR: &str = "Only structs, enums, types, and unions may have a URI";
 
     let (ident, generics) = match parse::<Item>(item).expect(PARSING_ERROR) {
         Item::Enum(definition) => (definition.ident, definition.generics),
@@ -20,7 +20,7 @@ fn get_type_ident(item: TokenStream) -> Ident {
         _ => panic!(PARSING_ERROR),
     };
 
-    if generics.params.len() > 0 {
+    if !generics.params.is_empty() {
         panic!("The uri attribute does not support generic types");
     }
     ident
@@ -34,7 +34,7 @@ fn get_uri(attr: TokenStream) -> Literal {
         static ref GET_STRING_RE: Regex = Regex::new(r#"^"(.*)"$"#).unwrap();
     }
 
-    const PARSING_ERROR: &'static str = "A URI has to be a string literal";
+    const PARSING_ERROR: &str = "A URI has to be a string literal";
 
     if parse::<Literal>(attr.clone()).is_err() {
         panic!(PARSING_ERROR);
