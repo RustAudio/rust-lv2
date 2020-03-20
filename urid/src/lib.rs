@@ -7,6 +7,46 @@
 //! This library also supports connecting URIDs to their `UriBound` via a generics argument. This can be used, for example, to request the URID of a certain bound as a parameter of a function. If someone would try to call this function with the wrong URID, the compiler will raise an error before the code is even compiled.
 //!
 //! This may seem a bit minor to you now, but the audio plugin framework [rust-lv2](https://github.com/RustAudio/rust-lv2) heavily relies on this crate for fast, portable and dynamic data identification and exchange.
+//!
+//! # Example
+//!
+//! ```
+//! use urid::*;
+//!
+//! // Some types with URIs. The attribute implements `UriBound` with the given URI.
+//! #[uri("urn:urid-example:my-struct-a")]
+//! struct MyStructA;
+//!
+//! #[uri("urn:urid-example:my-struct-b")]
+//! struct MyStructB;
+//!
+//! // A collection of URIDs that can be created by a mapper with one method call.
+//! #[derive(URIDCollection)]
+//! struct MyURIDCollection {
+//!     my_struct_a: URID<MyStructA>,
+//!     my_struct_b: URID<MyStructB>,
+//! }
+//!
+//! // A function that checks whether the unmapper behaves correctly.
+//! // Due to the type argument, it can not be misused.
+//! fn test_unmapper<M: Unmap, T: UriBound>(unmap: &M, urid: URID<T>) {
+//!     assert_eq!(T::uri(), unmap.unmap(urid).unwrap());
+//! }
+//!
+//! // Create a simple mapper. The `HashURIDMapper` is thread-safe and can map and unmap all URIs.
+//! let map = HashURIDMapper::new();
+//!
+//! // Get the URIDs of the structs. You can use the collection or retrieve individual URIDs.
+//! let urids: MyURIDCollection = map.populate_collection().unwrap();
+//! let urid_a: URID<MyStructA> = map.map_type().unwrap();
+//!
+//! // You can also retrieve the URID of a single URI without a binding to a type.
+//! let urid_b: URID = map.map_str("https://rustup.rs").unwrap();
+//!
+//! test_unmapper(&map, urids.my_struct_a);
+//! test_unmapper(&map, urids.my_struct_b);
+//! test_unmapper(&map, urid_a);
+//! ```
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -25,26 +65,44 @@ pub type UriBuf = ::std::ffi::CString;
 
 /// A trait for types that can be identified by a URI.
 ///
-/// Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
+/// Every type that can be identified by a URI implements this trait. In most cases, you can use the `uri` attribute to implement `UriBound` safely and quickly:
 ///
-///     use urid::UriBound;
+/// ```
+/// use urid::*;
 ///
-///     // Defining the struct
-///     pub struct MyStruct {
-///         a: f32,
-///     }
+/// // Defining the struct
+/// #[uri("urn:urid-example:my-struct")]
+/// pub struct MyStruct {
+///     a: f32,
+/// }
 ///
-///     // Implementing `UriBound`
-///     unsafe impl UriBound for MyStruct {
-///         const URI: &'static [u8] = b"urn:my-struct\0";
-///     }
+/// // Retrieving the URI
+/// assert_eq!("urn:urid-example:my-struct", MyStruct::uri().to_str().unwrap());
+/// ```
 ///
-///     // Retrieving the URI
-///     assert_eq!("urn:my-struct", MyStruct::uri().to_str().unwrap());
+/// However, in some cases, you need to implement `UriBound` manually, for example if the URI comes from a generated `sys` crate:
+///
+/// ```
+/// use urid::*;
+///
+/// // This URI is part of a generated `UriBound` crate:
+/// const A_FANCY_URI: &'static [u8] = b"urn:urid-example:fancy-uri\0";
+///
+/// // This struct is part of a safe wrapper crate:
+/// struct FancyStruct {
+///     _fancy_content: f32,
+/// }
+///
+/// unsafe impl UriBound for FancyStruct {
+///     const URI: &'static [u8] = A_FANCY_URI;
+/// }
+///
+/// assert_eq!("urn:urid-example:fancy-uri", FancyStruct::uri().to_str().unwrap())
+/// ```
 ///
 /// # Unsafety
 ///
-/// This trait is unsafe to implement since the [`URI`](#associatedconstant.URI) constant has some requirements that can not be enforced with Rust's type system.
+/// The [`URI`](#associatedconstant.URI) constant has to contain a null terminator (The `\0` character at the end), which is used by C programs to determine the end of the string. If you omit it, other parts of your program may violate memory access rules, which is considered undefined behaviour. Since this can not be statically checked by the compiler, this trait is unsafe to implement manually.
 pub unsafe trait UriBound {
     /// The URI of the type, safed as a byte slice
     ///
@@ -79,17 +137,11 @@ where
 ///
 ///     # use urid::*;
 ///     // Defining all URI bounds.
+///     #[uri("urn:my-type-a")]
 ///     struct MyTypeA;
 ///     
-///     unsafe impl UriBound for MyTypeA {
-///         const URI: &'static [u8] = b"urn:my-type-a\0";
-///     }
-///     
+///     #[uri("urn:my-type-b")]
 ///     struct MyTypeB;
-///     
-///     unsafe impl UriBound for MyTypeB {
-///         const URI: &'static [u8] = b"urn:my-type-b\0";
-///     }
 ///
 ///     // Defining the collection.
 ///     #[derive(URIDCollection)]
@@ -244,7 +296,7 @@ mod tests {
 
 /// A handle to map URIs to URIDs.
 pub trait Map {
-    /// Maps an URI to an `URID` that corresponds to it.
+    /// Maps an URI to a `URID` that corresponds to it.
     ///
     /// If the URI has not been mapped before, a new URID will be assigned.
     ///
@@ -257,6 +309,21 @@ pub trait Map {
     /// # Realtime usage
     /// This action may not be realtime-safe since it may involve locking mutexes or allocating dynamic memory. If you are working in a realtime environment, you should cache mapped URIDs in a [`URIDCollection`](trait.URIDCollection.html) and use it instead.
     fn map_uri(&self, uri: &Uri) -> Option<URID>;
+
+    /// Map an URI, encoded as a `str` to a `URID` that corresponds to it.
+    ///
+    /// This function copies the string into a vector, adds a null terminator and calls [`map_uri`](#tymethod.map_uri) with it. Therefore, the rules of `map_uri` apply here too.
+    ///
+    /// # Additional Errors
+    /// This method has the same error cases as `map_uri`, but also returns `None` if the string isn't an ASCII string or if the string can not be converted to a `Uri`.
+    fn map_str(&self, uri: &str) -> Option<URID> {
+        if !uri.is_ascii() {
+            return None;
+        }
+        let mut bytes: Vec<u8> = uri.as_bytes().to_owned();
+        bytes.push(0);
+        self.map_uri(Uri::from_bytes_with_nul(bytes.as_ref()).ok()?)
+    }
 
     /// Retrieve the URI of the bound and map it to a URID.
     ///

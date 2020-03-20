@@ -2,17 +2,11 @@ use lv2_urid::*;
 use std::pin::Pin;
 use urid::*;
 
+#[uri("urn:my-type-a")]
 struct MyTypeA;
 
-unsafe impl UriBound for MyTypeA {
-    const URI: &'static [u8] = b"urn:my-type-a\0";
-}
-
+#[uri("urn:my-type-b")]
 struct MyTypeB;
-
-unsafe impl UriBound for MyTypeB {
-    const URI: &'static [u8] = b"urn:my-type-b\0";
-}
 
 #[test]
 fn test_map() {

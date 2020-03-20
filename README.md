@@ -53,6 +53,7 @@ struct Ports {
 }
 
 // The plugin struct. In this case, we don't need any data and therefore, this struct is empty.
+#[uri("urn:rust-lv2-book:eg-amp-rs")]
 struct Amp;
 
 // LV2 uses URIs to identify types. This association is expressed via the `UriBound` trait, which
@@ -60,9 +61,8 @@ struct Amp;
 //
 // This trait is unsafe to implement since you **need** to include the \0 character at the end of
 // the string.
-unsafe impl UriBound for Amp {
-    const URI: &'static [u8] = b"urn:rust-lv2-book:eg-amp-rs\0";
-}
+// TODO: Move the doc to an appropriate place.
+
 
 // The implementation of the `Plugin` trait, which turns `Amp` into a plugin.
 impl Plugin for Amp {

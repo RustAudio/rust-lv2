@@ -5,12 +5,9 @@ use std::ops::Drop;
 use std::os::raw::c_char;
 use urid::*;
 
+#[uri("http://lv2plug.in/plugins.rs/example_amp")]
 struct Amp {
     activated: bool,
-}
-
-unsafe impl UriBound for Amp {
-    const URI: &'static [u8] = b"http://lv2plug.in/plugins.rs/example_amp\0";
 }
 
 #[derive(PortCollection)]

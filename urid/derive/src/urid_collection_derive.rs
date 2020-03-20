@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use syn::DeriveInput;
-use syn::{parse_macro_input, Data, DataStruct};
+use quote::quote;
+use syn::{parse_macro_input, Data, DataStruct, DeriveInput};
 
 pub fn urid_collection_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);

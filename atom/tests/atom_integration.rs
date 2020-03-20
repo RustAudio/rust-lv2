@@ -26,12 +26,9 @@ struct URIDs {
     units: UnitURIDCollection,
 }
 
+#[uri("urn:rust-lv2:atom-plugin")]
 struct AtomPlugin {
     urids: URIDs,
-}
-
-unsafe impl UriBound for AtomPlugin {
-    const URI: &'static [u8] = b"urn:rust-lv2:atom-plugin\0";
 }
 
 impl Plugin for AtomPlugin {
