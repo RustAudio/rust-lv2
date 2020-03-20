@@ -4,14 +4,12 @@ version = "0.1.0"
 authors = ["Amaury ABRIAL aka Yruama_Lairba <yruama_lairba@hotmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+
 description = "rust-lv2's work offloading library"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
-[dependencies]
-lv2-sys = { path = "../sys" }
-lv2-core = { path = "../core" }
-lv2-urid = { path = "../urid" }
 
-[features]
-default = []
-host = []
+[dependencies]
+lv2-sys = "1.0.0"
+lv2-core = "1.0.0"
+urid = "0.1.0"
