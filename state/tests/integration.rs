@@ -2,10 +2,10 @@ use lv2_atom::prelude::*;
 use lv2_core::feature::{FeatureCollection, MissingFeatureError};
 use lv2_core::prelude::*;
 use lv2_state::*;
-use lv2_urid::mapper::*;
-use lv2_urid::prelude::*;
+use lv2_urid::*;
 use std::path::Path;
 use std::pin::Pin;
+use urid::*;
 
 struct Stateful {
     internal: f32,
@@ -16,7 +16,7 @@ struct Stateful {
 
 #[derive(FeatureCollection)]
 pub struct Features<'a> {
-    map: Map<'a>,
+    map: LV2Map<'a>,
 }
 
 unsafe impl UriBound for Stateful {
@@ -78,13 +78,13 @@ lv2_descriptors! {
     Stateful
 }
 
-fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
+fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
     let plugin = {
         // Faking the map's lifetime.
         let interface = mapper.make_map_interface();
         let interface = &interface as *const lv2_sys::LV2_URID_Map;
         let interface = unsafe { interface.as_ref().unwrap() };
-        let map = Map::new(interface);
+        let map = LV2Map::new(interface);
 
         // Constructing the plugin.
         Stateful::new(
@@ -102,7 +102,7 @@ fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
 
 #[test]
 fn test_save_n_restore() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
     let mut storage = lv2_state::Storage::default();
 
     let (store_fn, restore_fn) = unsafe {
@@ -128,7 +128,7 @@ fn test_save_n_restore() {
             &mut first_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_store),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };
@@ -140,7 +140,7 @@ fn test_save_n_restore() {
             &mut second_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_retrieve),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };

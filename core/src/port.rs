@@ -1,10 +1,10 @@
 //! Types to declare derivable port collections.
 //!
 //! Every plugin has a type of [`PortCollection`](trait.PortCollection.html) which is used to handle input/output ports. In order to make the creation of these port collection types easier, `PortCollection` can simply be derived. However, the macro that implements `PortCollection` requires the fields of the struct to have specific types. These types are provided in this module.
-use crate::UriBound;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
+use urid::UriBound;
 
 pub use lv2_core_derive::*;
 

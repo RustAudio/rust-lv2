@@ -4,17 +4,15 @@
 //! The original [specification](https://lv2plug.in/ns/ext/time/time.html) contains means to
 //! describe time for LV2 values in RDF files. This implementation is focused on the stock time
 //! descriptions defined by the specification by binding them to marker types.
-extern crate lv2_core as core;
 extern crate lv2_sys as sys;
-extern crate lv2_urid as urid;
 
-use urid::prelude::*;
+use urid::*;
 
 /// All time URI bounds
 ///
 /// All Struct suffixed by `Class` are time Classes, others are time properties.
 pub mod time {
-    use core::UriBound;
+    use urid::UriBound;
 
     ///A point in time and/or the speed at which time is passing.
     ///

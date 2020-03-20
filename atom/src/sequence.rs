@@ -6,10 +6,10 @@
 //!
 //! ```
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_units::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::sequence::*;
+//! use urid::*;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -67,10 +67,9 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
-use urid::prelude::*;
+use urid::*;
 
 /// An atom containing a sequence of time-stamped events.
 ///
@@ -268,7 +267,6 @@ mod tests {
     use crate::sequence::*;
     use std::mem::size_of;
     use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
-    use urid::mapper::*;
 
     #[derive(URIDCollection)]
     struct TestURIDCollection {
@@ -278,9 +276,7 @@ mod tests {
 
     #[test]
     fn test_sequence() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = TestURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

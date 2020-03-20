@@ -3,8 +3,8 @@
 //! This module is for internal organization only and is not meant to be exposed.
 
 use crate::feature::*;
-use crate::UriBound;
 use std::ffi::c_void;
+use urid::UriBound;
 
 /// Marker feature to signal that the plugin can run in a hard real-time environment.
 pub struct HardRTCapable;

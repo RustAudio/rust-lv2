@@ -4,7 +4,7 @@ use atom::space::*;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::marker::PhantomData;
-use urid::prelude::*;
+use urid::*;
 
 /// Property storage handle.
 ///
@@ -64,8 +64,9 @@ impl<'a> StoreHandle<'a> {
         let data_ptr = data as *const _ as *const c_void;
         let data_size = header.size as usize;
         let data_type = header.type_;
-        let flags =
-            sys::LV2_State_Flags_LV2_STATE_IS_POD | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
+        let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
+            | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
+            .into();
         StateErr::from(unsafe { (store_fn)(handle, key, data_ptr, data_size, data_type, flags) })
     }
 
@@ -228,7 +229,6 @@ mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
     use atom::space::Space;
-    use urid::mapper::*;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
         let mut store_handle = storage.store_handle();
@@ -288,9 +288,7 @@ mod tests {
 
     #[test]
     fn test_storage() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut storage = Storage::default();

@@ -6,11 +6,11 @@ pub use lv2_core_derive::*;
 
 use crate::feature::*;
 use crate::port::*;
-use crate::{Uri, UriBound};
 use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use sys::LV2_Handle;
+use urid::{Uri, UriBound};
 
 /// The central trait to describe LV2 plugins.
 ///
