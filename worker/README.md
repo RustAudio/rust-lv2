@@ -21,16 +21,6 @@ have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't
 in your system's standard path, set the environment variable `LIBCLANG_PATH` to
 the path of `libClang`.
 
-## Features
-
-There are two optional features:
-* `host`:  Some of the types defined by some crates are only useful for testing
-  or LV2 hosts. Since the goal of this framework is to provide an easy way to
-create plugins, these aren't necessary and therefore gated behind that feature.
-* `wmidi`: Add [`wmidi`](https://crates.io/crates/wmidi) as an optional
-  dependency to `lv2-midi`, which enables a shortcut to read and write MIDI
-events directly with the types defined by this crate.
-
 ## License
 
 Licensed under either of
