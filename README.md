@@ -53,7 +53,7 @@ struct Ports {
 }
 
 // The plugin struct. In this case, we don't need any data and therefore, this struct is empty.
-#[uri_bound("urn:rust-lv2-book:eg-amp-rs")]
+#[uri("urn:rust-lv2-book:eg-amp-rs")]
 struct Amp;
 
 // LV2 uses URIs to identify types. This association is expressed via the `UriBound` trait, which

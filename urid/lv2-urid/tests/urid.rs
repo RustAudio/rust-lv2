@@ -2,10 +2,10 @@ use lv2_urid::*;
 use std::pin::Pin;
 use urid::*;
 
-#[uri_bound("urn:my-type-a")]
+#[uri("urn:my-type-a")]
 struct MyTypeA;
 
-#[uri_bound("urn:my-type-b")]
+#[uri("urn:my-type-b")]
 struct MyTypeB;
 
 #[test]

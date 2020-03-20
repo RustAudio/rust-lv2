@@ -65,7 +65,7 @@
 //! // ##########
 //!
 //! /// This plugin actually isn't a plugin, it only has a counter.
-//! #[uri_bound("urn:my-project:my-plugin")]
+//! #[uri("urn:my-project:my-plugin")]
 //! pub struct MyPlugin {
 //!     internal: u32,
 //! }

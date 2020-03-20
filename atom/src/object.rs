@@ -8,10 +8,10 @@
 //! use lv2_atom::prelude::*;
 //! use urid::*;
 //!
-//! #[uri_bound("urn:object-class")]
+//! #[uri("urn:object-class")]
 //! struct ObjectClass;
 //!
-//! #[uri_bound("urn:property-a")]
+//! #[uri("urn:property-a")]
 //! struct PropertyA;
 //!
 //! #[derive(PortCollection)]
