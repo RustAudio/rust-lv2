@@ -3,31 +3,22 @@ use proc_macro::TokenStream;
 use proc_macro2::Literal;
 use quote::quote;
 use regex::Regex;
-use syn::{parse, Generics, Ident, ItemEnum, ItemStruct, ItemType, ItemUnion};
+use syn::{parse, Ident, Item};
 
 /// Get the identity of the item we have to implement `UriBound` for.
-/// 
+///
 /// This function also checks that the item has no generics, since this macro isn't smart enough to
 /// implement `UriBound` for all arguments of the generic type.
-fn get_type_ident(item: &TokenStream) -> Ident {
-    let ident: Ident;
-    let generics: Generics;
+fn get_type_ident(item: TokenStream) -> Ident {
+    const PARSING_ERROR: &'static str = "Only structs, enums, types, and unions may have a URI";
 
-    if let Ok(definition) = parse::<ItemStruct>(item.clone()) {
-        ident = definition.ident;
-        generics = definition.generics;
-    } else if let Ok(definition) = parse::<ItemEnum>(item.clone()) {
-        ident = definition.ident;
-        generics = definition.generics;
-    } else if let Ok(definition) = parse::<ItemType>(item.clone()) {
-        ident = definition.ident;
-        generics = definition.generics;
-    } else if let Ok(definition) = parse::<ItemUnion>(item.clone()) {
-        ident = definition.ident;
-        generics = definition.generics;
-    } else {
-        panic!("Only structs, enums, types, and unions may have a URI");
-    }
+    let (ident, generics) = match parse::<Item>(item).expect(PARSING_ERROR) {
+        Item::Enum(definition) => (definition.ident, definition.generics),
+        Item::Struct(definition) => (definition.ident, definition.generics),
+        Item::Type(definition) => (definition.ident, definition.generics),
+        Item::Union(definition) => (definition.ident, definition.generics),
+        _ => panic!(PARSING_ERROR),
+    };
 
     if generics.params.len() > 0 {
         panic!("The uri attribute does not support generic types");
@@ -36,7 +27,7 @@ fn get_type_ident(item: &TokenStream) -> Ident {
 }
 
 /// Parse the attribute argument and create the URI literal from it.
-/// 
+///
 /// This includes multiple checks to assure that the literal is formatted correctly.
 fn get_uri(attr: TokenStream) -> Literal {
     lazy_static! {
@@ -65,15 +56,15 @@ fn get_uri(attr: TokenStream) -> Literal {
 
 /// Implement `UriBound` for a given item.
 pub fn impl_uri_bound(attr: TokenStream, mut item: TokenStream) -> TokenStream {
-    let ident = get_type_ident(&item);
+    let ident = get_type_ident(item.clone());
     let uri = get_uri(attr);
+
     let implementation: TokenStream = quote! {
         unsafe impl ::urid::UriBound for #ident {
             const URI: &'static [u8] = #uri;
         }
     }
     .into();
-
     item.extend(implementation);
     item
 }
