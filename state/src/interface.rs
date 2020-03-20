@@ -138,7 +138,7 @@ mod tests {
     use lv2_urid::*;
     use urid::*;
 
-    #[uri_bound("urn:stateful")]
+    #[uri("urn:stateful")]
     struct Stateful;
 
     impl Plugin for Stateful {

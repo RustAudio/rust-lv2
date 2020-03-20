@@ -30,7 +30,7 @@ pub type UriBuf = ::std::ffi::CString;
 ///     use urid::*;
 ///
 ///     // Defining the struct
-///     #[uri_bound("urn:my-struct")]
+///     #[uri("urn:my-struct")]
 ///     pub struct MyStruct {
 ///         a: f32,
 ///     }
@@ -75,10 +75,10 @@ where
 ///
 ///     # use urid::*;
 ///     // Defining all URI bounds.
-///     #[uri_bound("urn:my-type-a")]
+///     #[uri("urn:my-type-a")]
 ///     struct MyTypeA;
 ///     
-///     #[uri_bound("urn:my-type-b")]
+///     #[uri("urn:my-type-b")]
 ///     struct MyTypeB;
 ///
 ///     // Defining the collection.

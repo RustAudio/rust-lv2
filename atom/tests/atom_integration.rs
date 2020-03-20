@@ -26,7 +26,7 @@ struct URIDs {
     units: UnitURIDCollection,
 }
 
-#[uri_bound("urn:rust-lv2:atom-plugin")]
+#[uri("urn:rust-lv2:atom-plugin")]
 struct AtomPlugin {
     urids: URIDs,
 }

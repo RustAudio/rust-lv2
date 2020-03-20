@@ -5,7 +5,7 @@ use std::ops::Drop;
 use std::os::raw::c_char;
 use urid::*;
 
-#[uri_bound("http://lv2plug.in/plugins.rs/example_amp")]
+#[uri("http://lv2plug.in/plugins.rs/example_amp")]
 struct Amp {
     activated: bool,
 }
