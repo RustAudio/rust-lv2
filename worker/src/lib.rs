@@ -267,11 +267,10 @@ impl<T> fmt::Display for RespondError<T> {
     }
 }
 
-/// Handler available inside worker function to send response to `run()` context.
+/// Handler available inside the worker function to send a response to the `run()` context.
 ///
-/// ResponseHandler need the current Worker trait implementor as generic parameter, because it use
-/// the `ResponseData` associated type to know the datatype to send to the `worker_response`
-/// method.
+/// The `ResponseHandler` needs to know the `Worker` trait implementor as a generic parameter since the
+/// data, which is send to `work_response`, must be of the `ResponseData` associated type.
 pub struct ResponseHandler<P: Worker> {
     /// function provided by the host to send response to `run()`
     response_function: lv2_sys::LV2_Worker_Respond_Function,
