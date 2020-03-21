@@ -23,6 +23,7 @@ lv2-time = "0.1.0"
 lv2-units = "0.1.0"
 lv2-urid = "1.0.0"
 lv2-state = "1.0.0"
+lv2-worker = "0.1.0"
 
 [workspace]
 members = [
@@ -37,6 +38,7 @@ members = [
     "urid",
     "urid/derive",
     "urid/lv2-urid",
+    "worker",
 ]
 
 [patch.crates-io]
@@ -51,6 +53,7 @@ lv2-units = { path = "units" }
 urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }
+lv2-worker = { path = "worker" }
 
 [features]
 default = []
