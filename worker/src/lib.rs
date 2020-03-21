@@ -281,17 +281,12 @@ pub struct ResponseHandler<P: Worker> {
 }
 
 impl<P: Worker> ResponseHandler<P> {
-    /// Allow to give response to the `run` context.
+    /// Send a response to the `run` context.
     ///
-    /// This method allow to give a response to the `run` context. After calling this method, the
-    /// host will call `worker_response` and give the passed data.
+    /// This method allows the worker to give a response to the `run` context. After calling this
+    /// method, the host will call `worker_response` with the given response data or a copy of it.
     ///
-    /// When this method fail, the data is considered not transmitted and returned to the caller
-    /// inside the error.
-    ///
-    /// **Notes about the passed data:** The buffer used to pass data is managed by the host. That
-    /// mean the size is unknown and may be limited. So if you need to pass huge amount of data,
-    /// it's preferable to use another way, for example a sync::mpsc channel.
+    /// If this method fails, the data is considered as untransmitted and is returned to the caller.
     pub fn respond(
         &self,
         response_data: P::ResponseData,
