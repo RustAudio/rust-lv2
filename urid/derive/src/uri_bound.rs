@@ -60,7 +60,7 @@ pub fn impl_uri_bound(attr: TokenStream, mut item: TokenStream) -> TokenStream {
     let uri = get_uri(attr);
 
     let implementation: TokenStream = quote! {
-        unsafe impl ::urid::UriBound for #ident {
+        unsafe impl UriBound for #ident {
             const URI: &'static [u8] = #uri;
         }
     }
