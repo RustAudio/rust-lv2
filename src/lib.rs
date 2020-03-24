@@ -35,6 +35,27 @@
 //! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
 //! you need to have clang installed on your machine.
 
+pub mod prelude {
+    #[cfg(feature = "lv2-atom")]
+    pub use ::lv2_atom::prelude::*;
+    #[cfg(feature = "lv2-core")]
+    pub use ::lv2_core::prelude::*;
+    #[cfg(feature = "lv2-midi")]
+    pub use ::lv2_midi::prelude::*;
+    #[cfg(feature = "lv2-state")]
+    pub use ::lv2_state::*;
+    #[cfg(feature = "lv2-time")]
+    pub use ::lv2_time::prelude::*;
+    #[cfg(feature = "lv2-units")]
+    pub use ::lv2_units::prelude::*;
+    #[cfg(feature = "lv2-urid")]
+    pub use ::lv2_urid::*;
+    #[cfg(feature = "urid")]
+    pub use ::urid::*;
+    #[cfg(feature = "lv2-work")]
+    pub use ::lv2_worker::prelude::*;
+}
+
 #[cfg(feature = "lv2-atom")]
 pub mod atom {
     pub use lv2_atom::*;
@@ -76,25 +97,4 @@ pub mod urid {
 #[cfg(feature = "lv2-worker")]
 pub mod worker {
     pub use lv2_worker::*;
-}
-
-pub mod prelude {
-    #[cfg(feature = "lv2-atom")]
-    pub use ::lv2_atom::prelude::*;
-    #[cfg(feature = "lv2-core")]
-    pub use ::lv2_core::prelude::*;
-    #[cfg(feature = "lv2-midi")]
-    pub use ::lv2_midi::prelude::*;
-    #[cfg(feature = "lv2-state")]
-    pub use ::lv2_state::*;
-    #[cfg(feature = "lv2-time")]
-    pub use ::lv2_time::prelude::*;
-    #[cfg(feature = "lv2-units")]
-    pub use ::lv2_units::prelude::*;
-    #[cfg(feature = "lv2-urid")]
-    pub use ::lv2_urid::*;
-    #[cfg(feature = "urid")]
-    pub use ::urid::*;
-    #[cfg(feature = "lv2-work")]
-    pub use ::lv2_worker::prelude::*;
 }
