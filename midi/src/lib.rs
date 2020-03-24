@@ -3,7 +3,7 @@
 //! This crate adds a new atom type for the `lv2_atom` crate: The `MidiEvent`, a message conformant to the [MIDI specification](https://www.midi.org/specifications-old/item/the-midi-1-0-specification). Due to the one-crate-per-spec policy of the `rust-lv2` project, this relatively small crate isn't integrated into the main atom crate.
 //!
 //! If compiled with the optional `wmidi` dependency, the crate also has an additional module containing the `WMidiEvent`. This atom uses the `MidiMessage` type defined in by `wmidi` instead of byte slices.
-//! 
+//!
 //! # Example
 //!
 //! This example showcases a MIDI event processor that modulates every played note up a forth, using the `wmidi` optional dependency.

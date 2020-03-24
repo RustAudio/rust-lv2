@@ -1,7 +1,7 @@
 //! Atom types to make direct usage of the `wmidi` crate.
-//! 
+//!
 //! This is the high-level and recommended module for MIDI message handling. The contained atom type can convert the raw MIDI message to rustic enumerations and back.
-//! 
+//!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
 use atom::prelude::*;
 use std::convert::TryFrom;
