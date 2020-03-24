@@ -50,10 +50,10 @@ pub mod prelude {
     pub use ::lv2_units::prelude::*;
     #[cfg(feature = "lv2-urid")]
     pub use ::lv2_urid::*;
-    #[cfg(feature = "urid")]
-    pub use ::urid::*;
     #[cfg(feature = "lv2-work")]
     pub use ::lv2_worker::prelude::*;
+    #[cfg(feature = "urid")]
+    pub use ::urid::*;
 }
 
 #[cfg(feature = "lv2-atom")]
@@ -88,10 +88,10 @@ pub mod units {
 
 #[cfg(any(feature = "lv2-urid", feature = "urid"))]
 pub mod urid {
-    #[cfg(feature = "urid")]
-    pub use urid::*;
     #[cfg(feature = "lv2-urid")]
     pub use lv2_urid::*;
+    #[cfg(feature = "urid")]
+    pub use urid::*;
 }
 
 #[cfg(feature = "lv2-worker")]
