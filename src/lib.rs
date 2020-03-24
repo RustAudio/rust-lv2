@@ -111,6 +111,7 @@
 //! 
 //! Please note that this re-export crate is only meant to be used by plugin projects. If you want to extend the framework with your own crates, please use the sub-crates as your dependencies instead. This will dramatically boost building durations and backwards compability.
 
+/// The super-prelude that contains the preludes of all enabled crates.
 pub mod prelude {
     #[cfg(feature = "lv2-atom")]
     pub use ::lv2_atom::prelude::*;
