@@ -1,7 +1,7 @@
 //! Prelude for wildcard use, containing many important types.
+pub use crate::extension::ExtensionDescriptor;
 pub use crate::feature::{FeatureCache, FeatureCollection, MissingFeatureError, ThreadingClass};
 pub use crate::match_extensions;
-pub use crate::extension::ExtensionDescriptor;
 pub use crate::plugin::{
     lv2_descriptors, Plugin, PluginInfo, PluginInstance, PluginInstanceDescriptor, PortCollection,
 };
