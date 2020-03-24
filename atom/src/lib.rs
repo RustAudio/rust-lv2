@@ -98,7 +98,7 @@ pub mod prelude {
 }
 
 use space::*;
-use urid::{URIDCollection, UriBound, URID};
+use urid::*;
 
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
