@@ -25,7 +25,7 @@ impl<'a> PortCollectionField<'a> {
         let port_type = self.port_type;
         quote! {
             #identifier: {
-                let connection = <#port_type as ::lv2_core::port::PortHandle>::from_raw(connections.#identifier, sample_count);
+                let connection = <#port_type as PortHandle>::from_raw(connections.#identifier, sample_count);
                 if let Some(connection) = connection {
                     connection
                 } else {
@@ -71,9 +71,12 @@ struct PortCollectionStruct<'a> {
 
 impl<'a> PortCollectionStruct<'a> {
     /// Return an `Ident` for the internal module name.
-    fn internal_mod_name(&self) -> Ident {
+    fn internal_cache_name(&self) -> Ident {
         Ident::new(
-            &format!("__lv2_plugin_ports_derive_{}", self.struct_name),
+            &format!(
+                "__lv2_plugin_ports_derive_{}_PortPointerCache",
+                self.struct_name
+            ),
             Span::call_site(),
         )
     }
@@ -97,7 +100,7 @@ impl<'a> PortCollectionStruct<'a> {
     /// Implement `PortCollection` for the struct.
     fn make_derived_contents(&self) -> TokenStream {
         let struct_name = self.struct_name;
-        let internal_mod_name = self.internal_mod_name();
+        let internal_cache_name = self.internal_cache_name();
 
         let connections_from_raw = self
             .fields
@@ -119,7 +122,7 @@ impl<'a> PortCollectionStruct<'a> {
 
         (quote! {
             impl PortCollection for #struct_name {
-                type Cache = #internal_mod_name::DerivedPortPointerCache;
+                type Cache = #internal_cache_name;
 
                 #[inline]
                 unsafe fn from_connections(connections: &<Self as PortCollection>::Cache, sample_count: u32) -> Option<Self> {
@@ -133,26 +136,24 @@ impl<'a> PortCollectionStruct<'a> {
 
             #[doc(hidden)]
             #[allow(non_snake_case)]
-            mod #internal_mod_name {
-                pub struct DerivedPortPointerCache {
-                    #(#raw_field_declarations)*
-                }
+            pub struct #internal_cache_name {
+                #(#raw_field_declarations)*
+            }
 
-                impl Default for DerivedPortPointerCache {
-                    #[inline]
-                    fn default() -> Self {
-                        Self {
-                            #(#raw_field_inits)*
-                        }
+            impl Default for #internal_cache_name {
+                #[inline]
+                fn default() -> Self {
+                    Self {
+                        #(#raw_field_inits)*
                     }
                 }
+            }
 
-                impl ::lv2_core::port::PortPointerCache for DerivedPortPointerCache {
-                    fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
-                        match index {
-                            #(#connect_matchers)*
-                            _ => ()
-                        }
+            impl PortPointerCache for #internal_cache_name {
+                fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
+                    match index {
+                        #(#connect_matchers)*
+                        _ => ()
                     }
                 }
             }

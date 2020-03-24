@@ -18,8 +18,8 @@ pub fn urid_collection_derive_impl(input: TokenStream) -> TokenStream {
         .map(|ident| quote! {#ident: map.populate_collection()?,});
 
     let implementation = quote! {
-        impl ::urid::URIDCollection for #struct_name {
-            fn from_map<M: ::urid::Map + ?Sized>(map: &M) -> Option<Self> {
+        impl URIDCollection for #struct_name {
+            fn from_map<M: Map + ?Sized>(map: &M) -> Option<Self> {
                 Some(Self {
                     #(#field_inits)*
                 })

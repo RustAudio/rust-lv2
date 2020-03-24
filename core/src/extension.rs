@@ -145,7 +145,7 @@ macro_rules! match_extensions {
     ($uri:expr, $($descriptor:ty),*) => {
         match ($uri).to_bytes_with_nul() {
             $(
-                <$descriptor as ::urid::UriBound>::URI => Some(<$descriptor as ::lv2_core::extension::ExtensionDescriptor>::INTERFACE as &'static dyn std::any::Any),
+                <$descriptor as UriBound>::URI => Some(<$descriptor as ExtensionDescriptor>::INTERFACE as &'static dyn ::std::any::Any),
             )*
             _ => None,
         }
