@@ -15,15 +15,66 @@ repository = "https://github.com/RustAudio/rust-lv2"
 travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "actively-developed" }
 
-[dependencies]
-lv2-atom = "1.0.0"
-lv2-core = "1.0.0"
-lv2-midi = "1.0.0"
-lv2-time = "0.1.0"
-lv2-units = "0.1.0"
-lv2-urid = "1.0.0"
-lv2-state = "1.0.0"
-lv2-worker = "0.1.0"
+[dependencies.lv2-atom]
+version = "1.0.0"
+optional = true
+
+[dependencies.lv2-core]
+version = "1.0.0"
+optional = true
+
+[dependencies.lv2-midi]
+version = "1.0.0"
+optional = true
+
+[dependencies.lv2-time]
+version = "0.1.0"
+optional = true
+
+[dependencies.lv2-units]
+version = "0.1.0"
+optional = true
+
+[dependencies.urid]
+version = "0.1.0"
+optional = true
+
+[dependencies.lv2-urid]
+version = "1.0.0"
+optional = true
+
+[dependencies.lv2-state]
+version = "1.0.0"
+optional = true
+
+[dependencies.lv2-worker]
+version = "0.1.0"
+optional = true
+
+[features]
+default = ["plugin"]
+minimal_plugin = [
+    "lv2-core",
+    "urid",
+]
+plugin = [
+    "minimal_plugin",
+    "lv2-atom",
+    "lv2-midi",
+    "lv2-urid",
+]
+full = [
+    "lv2-atom",
+    "lv2-core",
+    "lv2-midi",
+    "lv2-time",
+    "lv2-units",
+    "urid",
+    "lv2-urid",
+    "lv2-state",
+    "lv2-worker",
+]
+wmidi = ["lv2-midi", "lv2-midi/wmidi"]
 
 [workspace]
 members = [
@@ -54,7 +105,3 @@ urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }
 lv2-worker = { path = "worker" }
-
-[features]
-default = []
-wmidi = ["lv2-midi/wmidi"]
