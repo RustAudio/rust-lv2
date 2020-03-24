@@ -133,44 +133,28 @@ pub mod prelude {
 }
 
 #[cfg(feature = "lv2-atom")]
-pub mod atom {
-    pub use lv2_atom::*;
-}
+pub extern crate lv2_atom;
 
 #[cfg(feature = "lv2-core")]
-pub mod core {
-    pub use lv2_core::*;
-}
+pub extern crate lv2_core;
 
 #[cfg(feature = "lv2-midi")]
-pub mod midi {
-    pub use lv2_midi::*;
-}
+pub extern crate lv2_midi;
 
 #[cfg(feature = "lv2-state")]
-pub mod state {
-    pub use lv2_state::*;
-}
+pub extern crate lv2_state;
 
 #[cfg(feature = "lv2-time")]
-pub mod time {
-    pub use lv2_time::*;
-}
+pub extern crate lv2_time;
+
+#[cfg(feature = "urid")]
+pub extern crate urid;
 
 #[cfg(feature = "lv2-units")]
-pub mod units {
-    pub use lv2_units::*;
-}
+pub extern crate lv2_units;
 
-#[cfg(any(feature = "lv2-urid", feature = "urid"))]
-pub mod urid {
-    #[cfg(feature = "lv2-urid")]
-    pub use lv2_urid::*;
-    #[cfg(feature = "urid")]
-    pub use urid::*;
-}
+#[cfg(feature = "lv2-urid")]
+pub extern crate lv2_urid;
 
 #[cfg(feature = "lv2-worker")]
-pub mod worker {
-    pub use lv2_worker::*;
-}
+pub extern crate lv2_worker;
