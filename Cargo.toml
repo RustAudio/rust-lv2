@@ -81,6 +81,7 @@ members = [
     "atom",
     "core",
     "core/derive",
+    "log",
     "midi",
     "state",
     "sys",
