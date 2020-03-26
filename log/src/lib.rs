@@ -1,4 +1,5 @@
 use lv2_core::feature::*;
+//use std::ffi::CString;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
@@ -27,6 +28,17 @@ unsafe impl UriBound for WarningClass {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Warning;
 }
 
+/// Marker for URID representing the nature of a log message
+// Note : it's may be better to have a URID trait to define a common interface
+pub unsafe trait EntryType {
+    fn get(self) -> u32;
+}
+
+unsafe impl EntryType for URID<ErrorClass>{ fn get(self) -> u32 {URID::<ErrorClass>::get(self)}}
+unsafe impl EntryType for URID<NoteClass>{ fn get(self) -> u32 {URID::<NoteClass>::get(self)}}
+unsafe impl EntryType for URID<TraceClass>{ fn get(self) -> u32 {URID::<TraceClass>::get(self)}}
+unsafe impl EntryType for URID<WarningClass>{ fn get(self) -> u32 {URID::<WarningClass>::get(self)}}
+
 /// The Log feature
 #[repr(transparent)]
 pub struct Log<'a> {
@@ -47,8 +59,24 @@ unsafe impl<'a> Feature for Log<'a> {
     }
 }
 
+impl<'a> Log<'a> {
+    pub fn print(&self, entry_type: impl EntryType, message: &[u8]) -> Result<(),()> {
+        let printf = if let Some(printf) = self.internal.printf {
+            printf
+        } else {
+            return Err(());
+        };
+        let res = unsafe { (printf)(self.internal.handle, entry_type.get(), message as *const _ as *const c_char )};
+        if res > 0 {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+}
+
 /// A URID cache containing all time properties.
-#[derive(URIDCollection)]
+#[derive(URIDCollection,Debug)]
 pub struct LogURIDCollection {
     pub entry_class: URID<EntryClass>,
     pub error_class: URID<ErrorClass>,
