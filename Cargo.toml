@@ -91,7 +91,3 @@ members = [
     "urid/lv2-urid",
     "worker",
 ]
-
-[patch.crates-io]
-lv2-midi = { path = "midi" }
-lv2-state = { path = "state" }
