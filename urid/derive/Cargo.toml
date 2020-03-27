@@ -5,7 +5,7 @@ authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>",
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
-description = "Procedural macros for lv2-urid"
+description = "Procedural macros for urid"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 

@@ -1,10 +1,6 @@
-# Procedural macros for lv2-urid
+# Procedural macros for urid
 
-This crate includes several produral macros used by the [lv2-urid](https://crates.io/crates/lv2-urid) crate.
-
-## Documentation
-
-The original LV2 API (in the `C` programming language) is documented by ["the LV2 book"](https://lv2plug.in/book/). This book is in the process of being translated to Rust along with the development of `rust-lv2` [(link)](https://janonard.github.io/rust-lv2-book/) and describes how to properly use `rust-lv2`.
+This crate includes several produral macros used by the [urid](https://crates.io/crates/urid) crate.
 
 ## License
 
