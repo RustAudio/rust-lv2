@@ -94,10 +94,7 @@ members = [
 
 [patch.crates-io]
 lv2-atom = { path = "atom" }
-lv2-core = { path = "core" }
 lv2-midi = { path = "midi" }
 lv2-state = { path = "state" }
-lv2-time = { path = "time" }
-lv2-units = { path = "units" }
 lv2-urid = { path = "urid/lv2-urid" }
 lv2-worker = { path = "worker" }
