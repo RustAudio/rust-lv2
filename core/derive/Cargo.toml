@@ -1,6 +1,6 @@
 [package]
 name = "lv2-core-derive"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 license = "MIT OR Apache-2.0"
 

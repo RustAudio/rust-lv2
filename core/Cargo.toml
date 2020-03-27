@@ -1,6 +1,6 @@
 [package]
 name = "lv2-core"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["Janonard <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -16,4 +16,4 @@ maintenance = { status = "passively-maintained" }
 [dependencies]
 urid = "0.1.0"
 lv2-sys = "1.0.0"
-lv2-core-derive = "1.0.0"
+lv2-core-derive = "2.0.0"
