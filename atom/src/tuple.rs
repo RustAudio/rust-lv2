@@ -5,7 +5,6 @@
 //! # Example
 //! ```
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use lv2_atom::tuple::{TupleIterator, TupleWriter};
 //!
@@ -33,8 +32,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
 use crate::space::*;
 use crate::*;
-use core::prelude::*;
-use urid::prelude::*;
+use urid::*;
 
 /// An atom  containing a series of other atoms.
 ///
@@ -101,14 +99,11 @@ mod tests {
     use crate::prelude::*;
     use crate::space::*;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     #[test]
     fn test_tuple() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

@@ -6,17 +6,13 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_urid::prelude::*;
+//! use urid::*;
 //!
+//! #[uri("urn:object-class")]
 //! struct ObjectClass;
-//! unsafe impl UriBound for ObjectClass {
-//!     const URI: &'static [u8] = b"urn:object-class\0";
-//! }
 //!
+//! #[uri("urn:property-a")]
 //! struct PropertyA;
-//! unsafe impl UriBound for PropertyA {
-//!     const URI: &'static [u8] = b"urn:property-a\0";
-//! }
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -73,9 +69,9 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
 use crate::space::*;
 use crate::*;
-use core::UriBound;
 use std::convert::TryFrom;
 use std::iter::Iterator;
+use urid::UriBound;
 use urid::URID;
 
 /// An atom containing multiple key-value pairs.
@@ -267,20 +263,15 @@ impl Property {
 }
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
-    use core::prelude::*;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     #[test]
     fn test_object() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
         let object_type = map

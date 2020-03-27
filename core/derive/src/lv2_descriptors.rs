@@ -26,16 +26,16 @@ impl Lv2InstanceDescriptor {
     pub fn make_instance_descriptor_impl(&self) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         quote! {
-            unsafe impl ::lv2_core::plugin::PluginInstanceDescriptor for #plugin_type {
-                const DESCRIPTOR: ::lv2_core::prelude::LV2_Descriptor = ::lv2_core::prelude::LV2_Descriptor {
+            unsafe impl PluginInstanceDescriptor for #plugin_type {
+                const DESCRIPTOR: LV2_Descriptor = LV2_Descriptor {
                     URI: Self::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
-                    instantiate: Some(::lv2_core::plugin::PluginInstance::<Self>::instantiate),
-                    connect_port: Some(::lv2_core::plugin::PluginInstance::<Self>::connect_port),
-                    activate: Some(::lv2_core::plugin::PluginInstance::<Self>::activate),
-                    run: Some(::lv2_core::plugin::PluginInstance::<Self>::run),
-                    deactivate: Some(::lv2_core::plugin::PluginInstance::<Self>::deactivate),
-                    cleanup: Some(::lv2_core::plugin::PluginInstance::<Self>::cleanup),
-                    extension_data: Some(::lv2_core::plugin::PluginInstance::<Self>::extension_data)
+                    instantiate: Some(PluginInstance::<Self>::instantiate),
+                    connect_port: Some(PluginInstance::<Self>::connect_port),
+                    activate: Some(PluginInstance::<Self>::activate),
+                    run: Some(PluginInstance::<Self>::run),
+                    deactivate: Some(PluginInstance::<Self>::deactivate),
+                    cleanup: Some(PluginInstance::<Self>::cleanup),
+                    extension_data: Some(PluginInstance::<Self>::extension_data)
                 };
             }
         }
@@ -49,7 +49,7 @@ impl Lv2InstanceDescriptor {
     fn make_index_match_arm(&self, index: u32) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         quote! {
-            #index => &<#plugin_type as ::lv2_core::plugin::PluginInstanceDescriptor>::DESCRIPTOR,
+            #index => &<#plugin_type as PluginInstanceDescriptor>::DESCRIPTOR,
         }
     }
 }
@@ -103,7 +103,7 @@ impl Lv2InstanceDescriptorList {
             ///
             /// The returned pointer references a constant and there is valid as long as the library is loaded.
             #[no_mangle]
-            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const ::lv2_core::prelude::LV2_Descriptor {
+            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const LV2_Descriptor {
                 match index {
                     #(#index_matchers)*
                     _ => ::std::ptr::null()

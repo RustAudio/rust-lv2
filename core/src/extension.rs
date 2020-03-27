@@ -11,6 +11,7 @@
 //! ```
 //! use lv2_core::extension::ExtensionDescriptor;
 //! use lv2_core::prelude::*;
+//! use urid::*;
 //! use std::any::Any;
 //! use std::ffi::c_void;
 //! use std::marker::PhantomData;
@@ -64,23 +65,21 @@
 //! // ##########
 //!
 //! /// This plugin actually isn't a plugin, it only has a counter.
+//! #[uri("urn:my-project:my-plugin")]
 //! pub struct MyPlugin {
 //!     internal: u32,
 //! }
 //!
-//! unsafe impl UriBound for MyPlugin {
-//!     const URI: &'static [u8] = b"urn:my-project:my-plugin\0";
-//! }
-//!
 //! impl Plugin for MyPlugin {
 //!     type Ports = ();
-//!     type Features = ();
+//!     type InitFeatures = ();
+//!     type AudioFeatures = ();
 //!
-//!     fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+//!     fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
 //!         Some(Self { internal: 0 })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut ()) {
 //!         self.internal += 1;
 //!     }
 //!
@@ -109,7 +108,7 @@
 //! let sample_rate = 44100.0;
 //! let plugin_info = PluginInfo::new(plugin_uri, bundle_path, sample_rate);
 //!
-//! let mut plugin = MyPlugin::new(&plugin_info, ()).unwrap();
+//! let mut plugin = MyPlugin::new(&plugin_info, &mut ()).unwrap();
 //!
 //! let extension = MyPlugin::extension_data(MyExtensionDescriptor::<MyPlugin>::uri())
 //!     .and_then(|interface| interface.downcast_ref::<MyExtensionInterface>())
@@ -119,8 +118,8 @@
 //!
 //! assert_eq!(42, plugin.internal);
 //! ```
-use crate::UriBound;
 use std::any::Any;
+use urid::UriBound;
 
 /// A descriptor for a plugin extension.
 ///
@@ -146,7 +145,7 @@ macro_rules! match_extensions {
     ($uri:expr, $($descriptor:ty),*) => {
         match ($uri).to_bytes_with_nul() {
             $(
-                <$descriptor as ::lv2_core::UriBound>::URI => Some(<$descriptor as ::lv2_core::extension::ExtensionDescriptor>::INTERFACE as &'static dyn std::any::Any),
+                <$descriptor as UriBound>::URI => Some(<$descriptor as ExtensionDescriptor>::INTERFACE as &'static dyn ::std::any::Any),
             )*
             _ => None,
         }

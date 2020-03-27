@@ -4,6 +4,61 @@
 //!
 //! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
 //! you need to have clang installed on your machine.
+//!
+//! # Example
+//!
+//! ```
+//! // Import everything we need.
+//! use lv2_core::prelude::*;
+//! use urid::*;
+//!
+//! // The input and output ports are defined by a struct which implements the `PortCollection` trait.
+//! // In this case, there is an input control port for the gain of the amplification, an input audio
+//! // port and an output audio port.
+//! #[derive(PortCollection)]
+//! struct Ports {
+//!     gain: InputPort<Control>,
+//!     input: InputPort<Audio>,
+//!     output: OutputPort<Audio>,
+//! }
+//!
+//! // The plugin struct. In this case, we don't need any data and therefore, this struct is empty.
+//! //
+//! // LV2 uses URIs to identify types. This association is expressed via the `UriBound` trait,
+//! // which tells the framework that the type `Amp` is identified by the given URI. The usual
+//! // way to implement this trait is to use the `uri` attribute.
+//! #[uri("urn:rust-lv2-book:eg-amp-rs")]
+//! struct Amp;
+//!
+//! // The implementation of the `Plugin` trait, which turns `Amp` into a plugin.
+//! impl Plugin for Amp {
+//!     // Tell the framework which ports this plugin has.
+//!     type Ports = Ports;
+//!
+//!     // We don't need any special host features; We can leave them out.
+//!     type InitFeatures = ();
+//!     type AudioFeatures = ();
+//!
+//!     // Create a new instance of the plugin; Trivial in this case.
+//!     fn new(_plugin_info: &PluginInfo, _features: &mut ()) -> Option<Self> {
+//!         Some(Self)
+//!     }
+//!
+//!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
+//!     // iterates over.
+//!     fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+//!         let coef = if *(ports.gain) > -90.0 {
+//!             10.0_f32.powf(*(ports.gain) * 0.05)
+//!         } else {
+//!             0.0
+//!         };
+//!
+//!         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter_mut()) {
+//!             *out_frame = in_frame * coef;
+//!         }
+//!     }
+//! }
+//! ```
 extern crate lv2_sys as sys;
 
 pub mod extension;
@@ -11,44 +66,3 @@ pub mod feature;
 pub mod plugin;
 pub mod port;
 pub mod prelude;
-
-pub type Uri = ::std::ffi::CStr;
-pub type UriBuf = ::std::ffi::CString;
-
-/// Trait for types that can be identified by a URI.
-///
-/// LV2 makes heavy use of URIs to identify resources. This is where this trait comes in: Every type that can be identified by a URI implements this trait, which makes the retrieval of these URIs as easy as the following:
-///
-///     use lv2_core::UriBound;
-///
-///     // Defining the struct
-///     pub struct MyStruct {
-///         a: f32,
-///     }
-///
-///     // Implementing `UriBound`
-///     unsafe impl UriBound for MyStruct {
-///         const URI: &'static [u8] = b"urn:my-struct\0";
-///     }
-///
-///     // Retrieving the URI
-///     assert_eq!("urn:my-struct", MyStruct::uri().to_str().unwrap());
-///
-/// # Unsafety
-///
-/// This trait is unsafe to implement since the [`URI`](#associatedconstant.URI) constant has some requirements that can not be enforced with Rust's type system.
-pub unsafe trait UriBound {
-    /// The URI of the type, safed as a byte slice
-    ///
-    /// Currently, there is no way to express a `CStr` in a constant way. Therefore, the URI has to be stored as a null-terminated byte slice.
-    ///
-    /// The slice must be a valid URI and must have the null character, expressed as `\0`, at the end. Otherwise, other code might produce a segmentation fault or read a faulty URI while looking for the null character.
-    const URI: &'static [u8];
-
-    /// Construct a `CStr` reference to the URI.
-    ///
-    /// Assuming that [`URI`](#associatedconstant.URI) is correct, this method constructs a `CStr` reference from the byte slice referenced by `URI`.
-    fn uri() -> &'static Uri {
-        unsafe { Uri::from_bytes_with_nul_unchecked(Self::URI) }
-    }
-}

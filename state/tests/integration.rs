@@ -2,10 +2,10 @@ use lv2_atom::prelude::*;
 use lv2_core::feature::{FeatureCollection, MissingFeatureError};
 use lv2_core::prelude::*;
 use lv2_state::*;
-use lv2_urid::mapper::*;
-use lv2_urid::prelude::*;
+use lv2_urid::*;
 use std::path::Path;
 use std::pin::Pin;
+use urid::*;
 
 struct Stateful {
     internal: f32,
@@ -16,7 +16,7 @@ struct Stateful {
 
 #[derive(FeatureCollection)]
 pub struct Features<'a> {
-    map: Map<'a>,
+    map: LV2Map<'a>,
 }
 
 unsafe impl UriBound for Stateful {
@@ -25,9 +25,10 @@ unsafe impl UriBound for Stateful {
 
 impl Plugin for Stateful {
     type Ports = ();
-    type Features = Features<'static>;
+    type InitFeatures = Features<'static>;
+    type AudioFeatures = ();
 
-    fn new(_plugin_info: &PluginInfo, features: Features<'static>) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
         Some(Stateful {
             internal: 42.0,
             audio: Vec::new(),
@@ -35,7 +36,7 @@ impl Plugin for Stateful {
         })
     }
 
-    fn run(&mut self, _: &mut ()) {
+    fn run(&mut self, _: &mut (), _: &mut ()) {
         self.internal = 17.0;
         self.audio.extend((0..32).map(|f| f as f32));
     }
@@ -77,18 +78,18 @@ lv2_descriptors! {
     Stateful
 }
 
-fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
+fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
     let plugin = {
         // Faking the map's lifetime.
         let interface = mapper.make_map_interface();
         let interface = &interface as *const lv2_sys::LV2_URID_Map;
         let interface = unsafe { interface.as_ref().unwrap() };
-        let map = Map::new(interface);
+        let map = LV2Map::new(interface);
 
         // Constructing the plugin.
         Stateful::new(
             &PluginInfo::new(Stateful::uri(), Path::new("./"), 44100.0),
-            Features { map: map },
+            &mut Features { map: map },
         )
         .unwrap()
     };
@@ -101,7 +102,7 @@ fn create_plugin(mapper: Pin<&mut HashURIDMapper>) -> Stateful {
 
 #[test]
 fn test_save_n_restore() {
-    let mut mapper = Box::pin(HashURIDMapper::new());
+    let mut mapper: Pin<Box<HostMap<HashURIDMapper>>> = Box::pin(HashURIDMapper::new().into());
     let mut storage = lv2_state::Storage::default();
 
     let (store_fn, restore_fn) = unsafe {
@@ -117,7 +118,7 @@ fn test_save_n_restore() {
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
-    first_plugin.run(&mut ());
+    first_plugin.run(&mut (), &mut ());
 
     assert_eq!(17.0, first_plugin.internal);
     assert_eq!(32, first_plugin.audio.len());
@@ -127,7 +128,7 @@ fn test_save_n_restore() {
             &mut first_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_store),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };
@@ -139,7 +140,7 @@ fn test_save_n_restore() {
             &mut second_plugin as *mut Stateful as lv2_sys::LV2_Handle,
             Some(lv2_state::Storage::extern_retrieve),
             &mut storage as *mut lv2_state::Storage as lv2_sys::LV2_State_Handle,
-            lv2_sys::LV2_State_Flags_LV2_STATE_IS_POD,
+            lv2_sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
             std::ptr::null_mut(),
         )
     };

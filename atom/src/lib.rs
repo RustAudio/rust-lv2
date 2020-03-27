@@ -13,8 +13,8 @@
 //! ```
 //! use lv2_atom::prelude::*;
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_units::prelude::*;
+//! use urid::*;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -66,20 +66,20 @@
 //!
 //! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
 //! you need to have clang installed on your machine.
-extern crate lv2_core as core;
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
-extern crate lv2_urid as urid;
 
 pub mod chunk;
 pub mod object;
-pub mod port;
 pub mod scalar;
 pub mod sequence;
 pub mod space;
 pub mod string;
 pub mod tuple;
 pub mod vector;
+
+#[cfg(feature = "lv2-core")]
+pub mod port;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
@@ -97,9 +97,8 @@ pub mod prelude {
     pub use vector::Vector;
 }
 
-use core::UriBound;
 use space::*;
-use urid::{URIDCollection, URID};
+use urid::*;
 
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.

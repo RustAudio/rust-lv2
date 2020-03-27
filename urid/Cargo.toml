@@ -1,23 +1,13 @@
 [package]
-name = "lv2-urid"
-version = "1.0.1"
-authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+name = "urid"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 
-description = "rust-lv2's URID handling library"
-readme = "README.md"
+description = "TODO"
+readme = "TODO"
 repository = "https://github.com/RustAudio/rust-lv2"
 
-[badges]
-travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
-maintenance = { status = "passively-maintained" }
-
 [dependencies]
-lv2-core = "1.0.0"
-lv2-sys = "1.0.0"
-lv2-urid-derive = "1.0.0"
-
-[features]
-default = []
-host = ["lv2-core/host"]
+urid-derive = "0.1.0"

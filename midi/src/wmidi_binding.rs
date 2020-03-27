@@ -1,66 +1,11 @@
 //! Atom types to make direct usage of the `wmidi` crate.
 //!
-//! # Example
+//! This is the high-level and recommended module for MIDI message handling. The contained atom type can convert the raw MIDI message to rustic enumerations and back.
 //!
-//! This example showcases a MIDI event processor that modulates every played note up a forth.
-//!
-//! ```
-//! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
-//! use lv2_atom::prelude::*;
-//! use lv2_midi::prelude::*;
-//! use lv2_units::prelude::*;
-//! use wmidi::*;
-//!
-//! #[derive(URIDCollection)]
-//! struct MyURIDs {
-//!     atom: AtomURIDCollection,
-//!     midi: MidiURIDCollection,
-//!     units: UnitURIDCollection,
-//! }
-//!
-//! #[derive(PortCollection)]
-//! struct MyPorts {
-//!     input: InputPort<AtomPort>,
-//!     output: OutputPort<AtomPort>,
-//! }
-//!
-//! /// Something like a plugin's run method.
-//! fn run(ports: &mut MyPorts, urids: MyURIDs) {
-//!     // Retrieving the input and output sequence.
-//!     let input_sequence = ports.input.read(urids.atom.sequence, urids.units.beat).unwrap();
-//!     let mut output_sequence = ports.output.init(
-//!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
-//!
-//!     for (timestamp, atom) in input_sequence {
-//!         // If the atom encodes a message...
-//!         if let Some(message) = atom.read(urids.midi.wmidi, ()) {
-//!             // Calculate the message to send.
-//!             let message_to_send = match message {
-//!                 MidiMessage::NoteOn(channel, note, velocity) => {
-//!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
-//!                     MidiMessage::NoteOn(channel, note, velocity)
-//!                 },
-//!                 MidiMessage::NoteOff(channel, note, velocity) => {
-//!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
-//!                     MidiMessage::NoteOff(channel, note, velocity)
-//!                 }
-//!                 _ => message,
-//!             };
-//!             // Write the modulated message or forward it.
-//!             output_sequence.init(timestamp, urids.midi.wmidi, message_to_send);
-//!         } else {
-//!             // Forward the other, uninterpreted message.
-//!             output_sequence.forward(timestamp, atom);
-//!         }
-//!     }
-//! }
-//! ```
+//! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
 use atom::prelude::*;
-use core::prelude::*;
 use std::convert::TryFrom;
+use urid::*;
 
 /// Midi event.
 ///
@@ -167,15 +112,11 @@ mod tests {
     use atom::space::RootMutSpace;
     use std::convert::TryFrom;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
     use wmidi::*;
 
     #[test]
     fn test_midi_event() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let map_interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&map_interface);
+        let map = HashURIDMapper::new();
         let urid = map.map_type::<WMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);
@@ -213,9 +154,7 @@ mod tests {
 
     #[test]
     fn test_sysex_event() {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let map_interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&map_interface);
+        let map = HashURIDMapper::new();
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

@@ -8,7 +8,6 @@
 //!
 //! ```
 //! use lv2_core::prelude::*;
-//! use lv2_urid::prelude::*;
 //! use lv2_atom::prelude::*;
 //!
 //! #[derive(PortCollection)]
@@ -33,8 +32,8 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
 use crate::space::*;
 use crate::*;
-use core::UriBound;
 use std::marker::Unpin;
+use urid::UriBound;
 use urid::URID;
 
 /// An atom that only contains a single, scalar value.
@@ -162,24 +161,20 @@ make_scalar_atom!(
 );
 
 #[cfg(test)]
-#[cfg(feature = "host")]
 mod tests {
     use crate::prelude::*;
     use crate::scalar::ScalarAtom;
     use crate::space::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
-    use urid::mapper::*;
-    use urid::prelude::*;
+    use urid::*;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
     where
         A::InternalType: PartialEq<A::InternalType>,
         A::InternalType: std::fmt::Debug,
     {
-        let mut mapper = Box::pin(HashURIDMapper::new());
-        let interface = mapper.as_mut().make_map_interface();
-        let map = Map::new(&interface);
+        let map = HashURIDMapper::new();
         let urid: URID<A> = map.map_type().unwrap();
 
         let mut raw_space: Box<[u8]> = Box::new([0; 256]);

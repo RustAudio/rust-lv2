@@ -2,7 +2,7 @@ use crate::raw::{RetrieveHandle, StoreHandle};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
-use urid::prelude::*;
+use urid::*;
 
 /// A simple property store.
 ///
@@ -83,8 +83,9 @@ impl Storage {
         flags: *mut u32,
     ) -> *const c_void {
         if !flags.is_null() {
-            *flags =
-                sys::LV2_State_Flags_LV2_STATE_IS_POD | sys::LV2_State_Flags_LV2_STATE_IS_PORTABLE;
+            *flags = (sys::LV2_State_Flags::LV2_STATE_IS_POD
+                | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
+                .into();
         }
 
         let handle = (handle as *mut Self).as_mut().unwrap();

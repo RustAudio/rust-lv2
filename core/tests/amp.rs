@@ -3,13 +3,11 @@ use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
 use std::ops::Drop;
 use std::os::raw::c_char;
+use urid::*;
 
+#[uri("http://lv2plug.in/plugins.rs/example_amp")]
 struct Amp {
     activated: bool,
-}
-
-unsafe impl UriBound for Amp {
-    const URI: &'static [u8] = b"http://lv2plug.in/plugins.rs/example_amp\0";
 }
 
 #[derive(PortCollection)]
@@ -27,10 +25,11 @@ struct Features {
 
 impl Plugin for Amp {
     type Ports = AmpPorts;
-    type Features = Features;
+    type InitFeatures = Features;
+    type AudioFeatures = ();
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: Features) -> Option<Self> {
+    fn new(plugin_info: &PluginInfo, features: &mut Features) -> Option<Self> {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -48,13 +47,13 @@ impl Plugin for Amp {
         Some(Amp { activated: false })
     }
 
-    fn activate(&mut self) {
+    fn activate(&mut self, _: &mut Features) {
         assert!(!self.activated);
         self.activated = true;
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts) {
+    fn run(&mut self, ports: &mut AmpPorts, _: &mut ()) {
         assert!(self.activated);
 
         let coef = *(ports.gain);
@@ -67,7 +66,7 @@ impl Plugin for Amp {
         }
     }
 
-    fn deactivate(&mut self) {
+    fn deactivate(&mut self, _: &mut Features) {
         assert!(self.activated);
         self.activated = false;
     }
@@ -99,8 +98,8 @@ fn test_discovery() {
 
 #[test]
 fn test_plugin() {
-    use lv2_core::UriBound;
     use lv2_sys::*;
+    use urid::UriBound;
 
     // Creating the ports.
     let mut gain: f32 = 2.0;

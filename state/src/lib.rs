@@ -8,7 +8,8 @@
 //! use lv2_atom::prelude::*;
 //! use lv2_core::prelude::*;
 //! use lv2_state::*;
-//! use lv2_urid::prelude::*;
+//! use lv2_urid::*;
+//! use urid::*;
 //!
 //! /// A plugin that stores a float value.
 //! struct Stateful {
@@ -44,16 +45,17 @@
 //!
 //! impl Plugin for Stateful {
 //!     type Ports = ();
-//!     type Features = Features<'static>;
+//!     type InitFeatures = Features<'static>;
+//!     type AudioFeatures = ();
 //!
-//!     fn new(_: &PluginInfo, features: Features<'static>) -> Option<Self> {
+//!     fn new(_: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
 //!         Some(Stateful {
 //!             internal: 42.0,
 //!             urids: features.map.populate_collection()?,
 //!         })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut ()) {
 //!         // Set the float to a different value than the previous one.
 //!         self.internal += 1.0;
 //!     }
@@ -66,7 +68,7 @@
 //!
 //! #[derive(FeatureCollection)]
 //! pub struct Features<'a> {
-//!     map: Map<'a>,
+//!     map: LV2Map<'a>,
 //! }
 //!
 //! unsafe impl UriBound for Stateful {
@@ -76,7 +78,6 @@
 extern crate lv2_atom as atom;
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
-extern crate lv2_urid as urid;
 
 mod interface;
 pub use interface::*;
@@ -84,9 +85,7 @@ pub use interface::*;
 mod raw;
 pub use raw::*;
 
-#[cfg(feature = "host")]
 mod storage;
-#[cfg(feature = "host")]
 pub use storage::Storage;
 
 /// Kinds of errors that may occur in the crate.
@@ -112,7 +111,7 @@ pub enum StateErr {
 
 impl StateErr {
     /// Convert a raw status flag to a result or possible error value.
-    pub fn from(value: u32) -> Result<(), StateErr> {
+    pub fn from(value: sys::LV2_State_Status) -> Result<(), StateErr> {
         match value {
             sys::LV2_State_Status_LV2_STATE_SUCCESS => Ok(()),
             sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE => Err(StateErr::BadType),
@@ -125,7 +124,7 @@ impl StateErr {
     }
 
     /// Convert a result to a raw status flag.
-    pub fn into(result: Result<(), StateErr>) -> u32 {
+    pub fn into(result: Result<(), StateErr>) -> sys::LV2_State_Status {
         match result {
             Ok(()) => sys::LV2_State_Status_LV2_STATE_SUCCESS,
             Err(StateErr::BadType) => sys::LV2_State_Status_LV2_STATE_ERR_BAD_TYPE,
@@ -168,7 +167,10 @@ mod test {
             Err(StateErr::NoSpace),
             StateErr::from(sys::LV2_State_Status_LV2_STATE_ERR_NO_SPACE)
         );
-        assert_eq!(Err(StateErr::Unknown), StateErr::from(std::u32::MAX));
+        assert_eq!(
+            Err(StateErr::Unknown),
+            StateErr::from(std::i32::MAX as sys::LV2_State_Status)
+        );
 
         assert_eq!(
             sys::LV2_State_Status_LV2_STATE_SUCCESS,

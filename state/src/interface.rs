@@ -3,6 +3,7 @@ use crate::StateErr;
 use core::extension::ExtensionDescriptor;
 use core::prelude::*;
 use std::marker::PhantomData;
+use urid::*;
 
 /// A plugin extension that lets a plugins save and restore it's state.
 ///
@@ -54,7 +55,9 @@ impl<P: State> StateDescriptor<P> {
         flags: u32,
         features: *const *const sys::LV2_Feature,
     ) -> sys::LV2_State_Status {
-        if flags & sys::LV2_State_Flags_LV2_STATE_IS_POD == 0 {
+        let flags: u32 =
+            (sys::LV2_State_Flags::from(flags) & sys::LV2_State_Flags::LV2_STATE_IS_POD).into();
+        if flags == 0 {
             return sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS;
         }
 
@@ -67,7 +70,9 @@ impl<P: State> StateDescriptor<P> {
         let store = StoreHandle::new(store, handle);
 
         let mut feature_container = core::feature::FeatureCache::from_raw(features);
-        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+        let features = if let Ok(features) =
+            P::StateFeatures::from_cache(&mut feature_container, ThreadingClass::Other)
+        {
             features
         } else {
             return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
@@ -90,7 +95,9 @@ impl<P: State> StateDescriptor<P> {
         flags: u32,
         features: *const *const sys::LV2_Feature,
     ) -> sys::LV2_State_Status {
-        if flags & sys::LV2_State_Flags_LV2_STATE_IS_POD == 0 {
+        let flags: u32 =
+            (sys::LV2_State_Flags::from(flags) & sys::LV2_State_Flags::LV2_STATE_IS_POD).into();
+        if flags == 0 {
             return sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS;
         }
 
@@ -103,7 +110,9 @@ impl<P: State> StateDescriptor<P> {
         let store = RetrieveHandle::new(retrieve, handle);
 
         let mut feature_container = core::feature::FeatureCache::from_raw(features);
-        let features = if let Ok(features) = P::StateFeatures::from_cache(&mut feature_container) {
+        let features = if let Ok(features) =
+            P::StateFeatures::from_cache(&mut feature_container, ThreadingClass::Other)
+        {
             features
         } else {
             return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
@@ -126,30 +135,29 @@ impl<P: State> ExtensionDescriptor for StateDescriptor<P> {
 mod tests {
     use crate::*;
     use lv2_core::prelude::*;
-    use lv2_urid::prelude::*;
+    use lv2_urid::*;
+    use urid::*;
 
+    #[uri("urn:stateful")]
     struct Stateful;
 
-    unsafe impl UriBound for Stateful {
-        const URI: &'static [u8] = b"urn:null\0";
-    }
-
     impl Plugin for Stateful {
-        type Features = ();
+        type InitFeatures = ();
+        type AudioFeatures = ();
         type Ports = ();
 
         #[cfg_attr(tarpaulin, skip)]
-        fn new(_: &PluginInfo, _: ()) -> Option<Self> {
+        fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
             Some(Self)
         }
 
         #[cfg_attr(tarpaulin, skip)]
-        fn run(&mut self, _: &mut ()) {}
+        fn run(&mut self, _: &mut (), _: &mut ()) {}
     }
 
     #[derive(FeatureCollection)]
     struct Features<'a> {
-        _map: Map<'a>,
+        _map: LV2Map<'a>,
     }
 
     impl State for Stateful {
@@ -196,7 +204,7 @@ mod tests {
                 std::ptr::null_mut(),
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -206,7 +214,7 @@ mod tests {
                 std::ptr::null_mut(),
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -216,7 +224,7 @@ mod tests {
                 &mut plugin as *mut Stateful as sys::LV2_Handle,
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
@@ -226,7 +234,7 @@ mod tests {
                 &mut plugin as *mut Stateful as sys::LV2_Handle,
                 None,
                 std::ptr::null_mut(),
-                sys::LV2_State_Flags_LV2_STATE_IS_POD,
+                sys::LV2_State_Flags::LV2_STATE_IS_POD.into(),
                 std::ptr::null_mut(),
             )
         });
