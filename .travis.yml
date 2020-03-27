@@ -3,7 +3,6 @@ language: rust
 branches:
   only:
   - master
-  - release
   - develop
 
 rust:
