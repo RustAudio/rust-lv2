@@ -99,6 +99,5 @@ lv2-midi = { path = "midi" }
 lv2-state = { path = "state" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
-urid = { path = "urid" }
 lv2-urid = { path = "urid/lv2-urid" }
 lv2-worker = { path = "worker" }
