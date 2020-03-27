@@ -15,19 +15,17 @@
 //! additional features, including:
 //!
 //! * MIDI processing
-//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
 //! * Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
-//! * Presets handling and State management **(Not yet implemented)**
-//! * Asynchronous work processing **(Not yet implemented)**
-//! * … and more! (Not yet implemented either)
+//! * State management
+//! * Asynchronous work processing
+//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
+//! * Presets handling **(Not yet implemented)**
+//! * ... and more! (Not yet implemented either)
 //!
 //! Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible
 //! with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
 //! to any other specification that will integrate with this library.
-//!
-//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
-//! you need to have clang installed on your machine. For more information, check out the [requirements list of bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html).
-//!
+//! 
 //! # Example
 //!
 //! A simple amplification plugin would like this:
@@ -86,10 +84,17 @@
 //!
 //! # Using this framework
 //!
-//! For a general introduction into plugin creation, please checkout the [rust-lv2 book](https://janonard.github.io/rust-lv2-book/) first. This will show you how to use this library in general and what is possible.
-//!
-//! Internally, this framework is built of several sub-crates which this crate re-exports. All dependencies are optional and can be enabled via features. These are:
-//!
+//! ## Documentation
+//! 
+//! There are multiple valuable sources of documentation:
+//! * ["The rust-lv2 book"](https://janonard.github.io/rust-lv2-book/) describes how to use rust-lv2 in general, broad terms. It's the ideal point to get started and is updated with every new version of rust-lv2.
+//! * [The API documentation](https://docs.rs/lv2).
+//! * [The LV2 specification reference](https://lv2plug.in/ns/).
+//! 
+//! ## Features
+//! 
+//! Internally, this framework is built of several sub-crates which are re-exported by the `lv2` crate. All dependencies are optional and can be enabled via features. These are:
+//! 
 //! * `lv2-atom`: General data IO.
 //! * `lv2-core`: Implementation of the core LV2 specification.
 //! * `lv2-midi`: MIDI message extension for `lv2-midi`. Support for the [`wmidi` crate](https://crates.io/crates/wmidi) can be enabled with the `wmidi` feature.
@@ -99,14 +104,14 @@
 //! * `lv2-urid`: LV2 integration of the URID concept.
 //! * `lv2-worker`: Work scheduling library that allows real-time capable LV2 plugins to execute non-real-time actions.
 //! * `urid`: Idiomatic URID support.
-//!
+//! 
 //! Sub-crates with an `lv2-` prefix implement a certain LV2 specification, which can be looked up in [the reference](https://lv2plug.in/ns/). Enabling a crate only adds new content, it does not remove or break others.
-//!
+//! 
 //! There are also feature sets that account for common scenarios:
 //! * `minimal_plugin`: The bare minimum to create plugins. Includes `lv2-core` and `urid`.
 //! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
 //! * `full`: All sub-crates.
-//!
+//! 
 //! # Extending
 //!
 //! Please note that this re-export crate is only meant to be used by plugin projects. If you want to extend the framework with your own crates, please use the sub-crates as your dependencies instead. This will dramatically boost building durations and backwards compability.
