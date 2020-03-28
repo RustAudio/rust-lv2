@@ -109,7 +109,7 @@
 //!
 //! There are also feature sets that account for common scenarios:
 //! * `minimal_plugin`: The bare minimum to create plugins. Includes `lv2-core` and `urid`.
-//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
+//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi` with the `wmidi` feature, `lv2-units`, `lv2-urid`, and `urid`. **This is the default.**
 //! * `full`: All sub-crates.
 //!
 //! # Extending
