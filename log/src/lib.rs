@@ -68,7 +68,7 @@ unsafe impl<'a> UriBound for Log<'a> {
 
 unsafe impl<'a> Feature for Log<'a> {
     // Note: this feature can be used in any threading class and doesn't seems to have thready
-    // unsafty
+    // unsafty, but you are supposed to only use the trace log in rt context
     unsafe fn from_feature_ptr(feature: *const c_void, _class: ThreadingClass) -> Option<Self> {
         (feature as *const lv2_sys::LV2_Log_Log)
             .as_ref()
@@ -77,17 +77,29 @@ unsafe impl<'a> Feature for Log<'a> {
 }
 
 impl<'a> Log<'a> {
-    pub fn print(&self, entry_type: impl EntryType, message: &[u8]) -> Result<(), ()> {
+    pub fn print(&self, entry_type: impl EntryType, message: &str) -> Result<(), ()> {
         let printf = if let Some(printf) = self.internal.printf {
             printf
         } else {
             return Err(());
         };
+        //checking for null terminator
+        let mut have_null = false;
+        for b in message.bytes() {
+            if b == b'\0' {
+                have_null = true;
+                break;
+            }
+        }
+        if !have_null {
+            return Err(());
+        }
+
         let res = unsafe {
             (printf)(
                 self.internal.handle,
                 entry_type.get(),
-                b"%s\0" as *const _ as *const c_char,
+                "%s\0" as *const _ as *const c_char,
                 message as *const _ as *const c_char,
             )
         };
