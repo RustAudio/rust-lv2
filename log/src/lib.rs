@@ -1,5 +1,6 @@
 use lv2_core::feature::*;
 //use std::ffi::CString;
+use std::fmt;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
@@ -34,10 +35,26 @@ pub unsafe trait EntryType {
     fn get(self) -> u32;
 }
 
-unsafe impl EntryType for URID<ErrorClass>{ fn get(self) -> u32 {URID::<ErrorClass>::get(self)}}
-unsafe impl EntryType for URID<NoteClass>{ fn get(self) -> u32 {URID::<NoteClass>::get(self)}}
-unsafe impl EntryType for URID<TraceClass>{ fn get(self) -> u32 {URID::<TraceClass>::get(self)}}
-unsafe impl EntryType for URID<WarningClass>{ fn get(self) -> u32 {URID::<WarningClass>::get(self)}}
+unsafe impl EntryType for URID<ErrorClass> {
+    fn get(self) -> u32 {
+        URID::<ErrorClass>::get(self)
+    }
+}
+unsafe impl EntryType for URID<NoteClass> {
+    fn get(self) -> u32 {
+        URID::<NoteClass>::get(self)
+    }
+}
+unsafe impl EntryType for URID<TraceClass> {
+    fn get(self) -> u32 {
+        URID::<TraceClass>::get(self)
+    }
+}
+unsafe impl EntryType for URID<WarningClass> {
+    fn get(self) -> u32 {
+        URID::<WarningClass>::get(self)
+    }
+}
 
 /// The Log feature
 #[repr(transparent)]
@@ -60,13 +77,20 @@ unsafe impl<'a> Feature for Log<'a> {
 }
 
 impl<'a> Log<'a> {
-    pub fn print(&self, entry_type: impl EntryType, message: &[u8]) -> Result<(),()> {
+    pub fn print(&self, entry_type: impl EntryType, message: &[u8]) -> Result<(), ()> {
         let printf = if let Some(printf) = self.internal.printf {
             printf
         } else {
             return Err(());
         };
-        let res = unsafe { (printf)(self.internal.handle, entry_type.get(), message as *const _ as *const c_char )};
+        let res = unsafe {
+            (printf)(
+                self.internal.handle,
+                entry_type.get(),
+                b"%s\0" as *const _ as *const c_char,
+                message as *const _ as *const c_char,
+            )
+        };
         if res > 0 {
             Ok(())
         } else {
@@ -76,7 +100,7 @@ impl<'a> Log<'a> {
 }
 
 /// A URID cache containing all time properties.
-#[derive(URIDCollection,Debug)]
+#[derive(URIDCollection, Debug)]
 pub struct LogURIDCollection {
     pub entry_class: URID<EntryClass>,
     pub error_class: URID<ErrorClass>,
