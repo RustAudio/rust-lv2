@@ -54,8 +54,8 @@ impl<'a> FeatureCache<'a> {
     ) -> Result<T, MissingFeatureError> {
         T::from_resolved_feature(
             self.internal
-                .remove(F::uri())
-                .and_then(|ptr| unsafe { F::from_feature_ptr(ptr, class) }),
+                .get(F::uri())
+                .and_then(|ptr| unsafe { F::from_feature_ptr(*ptr, class) }),
         )
     }
 }
