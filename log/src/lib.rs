@@ -31,7 +31,10 @@ unsafe impl UriBound for WarningClass {
 
 /// Marker for URID representing the nature of a log message
 // Note : it's may be better to have a URID trait to define a common interface
-pub unsafe trait EntryType {
+pub unsafe trait EntryType
+where
+    Self: Copy,
+{
     fn get(self) -> u32;
 }
 
