@@ -87,12 +87,20 @@ unsafe impl<'a> UriBound for Log<'a> {
 }
 
 unsafe impl<'a> Feature for Log<'a> {
-    // Note: this feature can be used in any threading class and doesn't seems to have thready
-    // unsafty, but you are supposed to only use the trace log in rt context
-    unsafe fn from_feature_ptr(feature: *const c_void, _class: ThreadingClass) -> Option<Self> {
+    // Note: this feature can be used in any threading class but:
+    // * i have a doubt about it's thread safety, can we assume the host provide this thread safety
+    // since this feature can be used anywhere ?.
+    // * i shouldn't be used in context where rt is a concern, that mean is audiothreadclass in
+    // practice, but it's acceptable to use it for debugging purpose
+    // So, at this time, i just giving access to it instanciation class
+    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
+        if class == ThreadingClass::Instantiation {
         (feature as *const lv2_sys::LV2_Log_Log)
             .as_ref()
             .map(|internal| Self { internal })
+        } else {
+            panic!("The log feature is only allowed in the indtantiation threading class");
+        }
     }
 }
 
