@@ -77,13 +77,13 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 #[repr(C)]
 pub struct PluginInstance<T: Plugin> {
     /// The plugin instance.
-    pub instance: T,
+    instance: T,
     /// A temporary storage for all ports of the plugin.
-    pub connections: <T::Ports as PortCollection>::Cache,
+    connections: <T::Ports as PortCollection>::Cache,
     /// All features that may be used in the initialization threading class.
-    pub init_features: T::InitFeatures,
+    init_features: T::InitFeatures,
     /// All features that may be used in the audio threading class.
-    pub audio_features: T::AudioFeatures,
+    audio_features: T::AudioFeatures,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -246,6 +246,25 @@ impl<T: Plugin> PluginInstance<T> {
         } else {
             std::ptr::null()
         }
+    }
+
+    /// Retrieve the internal plugin.
+    pub fn plugin_handle(&mut self) -> &mut T {
+        &mut self.instance
+    }
+
+    /// Retrieve the required handles to execute an Initialization class method.
+    /// 
+    /// This method can be used by extensions to call an extension method in the Initialization threading class and provide it the host features for that class.
+    pub fn init_class_handle(&mut self) -> (&mut T, &mut T::InitFeatures) {
+        (&mut self.instance, &mut self.init_features)
+    }
+
+    /// Retrieve the required handles to execute an Audio class method.
+    /// 
+    /// This method can be used by extensions to call an extension method in the Audio threading class and provide it the host features for that class.
+    pub fn audio_class_handle(&mut self) -> (&mut T, &mut T::AudioFeatures) {
+        (&mut self.instance, &mut self.audio_features)
     }
 }
 

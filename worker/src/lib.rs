@@ -437,10 +437,8 @@ impl<P: Worker> WorkerDescriptor<P> {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
 
-        match plugin_instance
-            .instance
-            .work_response(response_data, &mut plugin_instance.audio_features)
-        {
+        let (instance, features) = plugin_instance.audio_class_handle();
+        match instance.work_response(response_data, features) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -450,10 +448,8 @@ impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `end_run` method actually called by the host
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            match plugin_instance
-                .instance
-                .end_run(&mut plugin_instance.audio_features)
-            {
+            let (instance, features) = plugin_instance.audio_class_handle();
+            match instance.end_run(features) {
                 Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
                 Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
                 Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
