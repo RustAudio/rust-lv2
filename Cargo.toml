@@ -1,6 +1,6 @@
 [package]
 name = "lv2"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>", "Adrien Prokopowicz <adrien.prokopowicz@gmail.com>",
  "Yruama_Lairba <yruama_lairba@hotmail.com>"]
 edition = "2018"
@@ -59,9 +59,11 @@ minimal_plugin = [
 ]
 plugin = [
     "minimal_plugin",
-    "lv2-atom",
-    "lv2-midi",
     "lv2-urid",
+    "lv2-units",
+    "lv2-atom",
+    "wmidi",
+    "lv2-midi",
 ]
 full = [
     "lv2-atom",
