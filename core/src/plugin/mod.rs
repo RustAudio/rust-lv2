@@ -131,17 +131,21 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut feature_cache = FeatureCache::from_raw(features);
-        let mut init_features =
-            match T::InitFeatures::from_cache(&mut feature_cache, ThreadingClass::Instantiation) {
-                Ok(f) => f,
-                Err(e) => {
-                    eprintln!("{}", e);
-                    return std::ptr::null_mut();
-                }
-            };
+        let mut init_features_cache = FeatureCache::from_raw(features);
+        let mut audio_features_cache = init_features_cache.clone();
+
+        let mut init_features = match T::InitFeatures::from_cache(
+            &mut init_features_cache,
+            ThreadingClass::Instantiation,
+        ) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
+                return std::ptr::null_mut();
+            }
+        };
         let audio_features =
-            match T::AudioFeatures::from_cache(&mut feature_cache, ThreadingClass::Audio) {
+            match T::AudioFeatures::from_cache(&mut audio_features_cache, ThreadingClass::Audio) {
                 Ok(f) => f,
                 Err(e) => {
                     eprintln!("{}", e);
