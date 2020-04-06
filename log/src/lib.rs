@@ -95,9 +95,9 @@ unsafe impl<'a> Feature for Log<'a> {
     // So, at this time, i just giving access to it instanciation class
     unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
         if class == ThreadingClass::Instantiation {
-        (feature as *const lv2_sys::LV2_Log_Log)
-            .as_ref()
-            .map(|internal| Self { internal })
+            (feature as *const lv2_sys::LV2_Log_Log)
+                .as_ref()
+                .map(|internal| Self { internal })
         } else {
             panic!("The log feature is only allowed in the indtantiation threading class");
         }
@@ -107,7 +107,7 @@ unsafe impl<'a> Feature for Log<'a> {
 impl<'a> Log<'a> {
     /// Send a log message to the host.
     ///
-    /// the `entry_type` parameter is an URID representing the kind of log message. There are four
+    /// The `entry_type` parameter is an URID representing the kind of log message. There are four
     /// kind of message:
     /// * **note:** an informative message.
     /// * **warning:** a warning message.
@@ -122,24 +122,40 @@ impl<'a> Log<'a> {
         } else {
             return Err(LogError::NoCallback);
         };
-        //checking for null terminator
-        let mut have_null = false;
-        for b in message.bytes() {
-            if b == b'\0' {
-                have_null = true;
-                break;
-            }
-        }
-        if !have_null {
-            return Err(LogError::NoNullTerminator);
-        }
+        let message = String::from(message) + "\0";
 
         let res = unsafe {
             (printf)(
                 self.internal.handle,
                 entry_type.get(),
                 "%s\0" as *const _ as *const c_char,
-                message as *const _ as *const c_char,
+                message.as_str() as *const _ as *const c_char,
+            )
+        };
+        if res > 0 {
+            Ok(())
+        } else {
+            Err(LogError::PrintError)
+        }
+    }
+    /// Send a message to the host with a new line at the end.
+    ///
+    /// It same as [print](struct.Log.html#method.print) but add a newline a the end of message.
+    /// See [print](struct.Log.html#method.print) documentation for details.
+    pub fn println(&self, entry_type: impl EntryType, message: &str) -> Result<(), LogError> {
+        let printf = if let Some(printf) = self.internal.printf {
+            printf
+        } else {
+            return Err(LogError::NoCallback);
+        };
+        let message = String::from(message) + "\n\0";
+
+        let res = unsafe {
+            (printf)(
+                self.internal.handle,
+                entry_type.get(),
+                "%s\0" as *const _ as *const c_char,
+                message.as_str() as *const _ as *const c_char,
             )
         };
         if res > 0 {
