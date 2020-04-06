@@ -39,8 +39,11 @@ fn main() {
             }
         }
     }
-
-    bindings = bindings.bitfield_enum("LV2_State_Flags");
+    bindings = bindings
+        .whitelist_type("LV2.*")
+        .whitelist_function("LV2.*")
+        .whitelist_var("LV2.*")
+        .bitfield_enum("LV2_State_Flags");
 
     // Generating the bindings.
     let bindings = bindings.generate().expect("Unable to generate bindings");
