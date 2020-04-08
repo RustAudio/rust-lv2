@@ -14,4 +14,4 @@ travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [build-dependencies]
-bindgen = "0.53.1"
+bindgen = {version= "0.53.1", optional=true}

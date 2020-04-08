@@ -1,10 +1,24 @@
-extern crate bindgen;
-
-use std::env;
-use std::fs;
-use std::path::PathBuf;
-
+#[cfg(not(feature = "bindgen"))]
 fn main() {
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+
+    let mut source_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    source_path.push("build_data");
+    source_path.push("bindings.rs");
+    let mut out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    out_path.push("bindings.rs");
+    fs::copy(source_path, out_path).unwrap();
+}
+
+#[cfg(feature = "bindgen")]
+fn main() {
+    extern crate bindgen;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
     let mut source_dir = PathBuf::new();
