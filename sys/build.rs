@@ -43,6 +43,7 @@ fn main() {
         .whitelist_type("LV2.*")
         .whitelist_function("LV2.*")
         .whitelist_var("LV2.*")
+        .layout_tests(false)
         .bitfield_enum("LV2_State_Flags");
 
     // Generating the bindings.
