@@ -77,10 +77,10 @@ fn test_compatible_target() {
     if !output.status.success() {
         panic!("'rustc --print target-list' returned an error");
     }
-    let targets = std::str::from_utf8(&output.stdout).unwrap().split('\n');
+    let targets = std::str::from_utf8(&output.stdout).unwrap().split_whitespace();
 
     for target in targets {
-        let target = String::from(target.trim());
+        let target = String::from(target);
         let test_h = String::from(test_h);
         print!("{}: ", target);
         //the thread spawning avoid to exit when bindgen panics
