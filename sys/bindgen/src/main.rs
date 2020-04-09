@@ -89,9 +89,13 @@ fn test_compatible_target() {
                 .size_t_is_usize(true)
                 .clang_arg(format!("--target={}", target))
                 .header(test_h);
+            // make silent panic
+            std::panic::set_hook(Box::new(|_|()));
             let bindings = builder
                 .generate()
                 .expect("failed to generate a test binding");
+            //restore default panic hook because it's not thread local
+            let _ = std::panic::take_hook();
             bindings.to_string()
         });
         let res = handle.join();
