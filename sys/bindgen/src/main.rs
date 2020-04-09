@@ -62,6 +62,7 @@ fn generate_bindings() {
         .expect("Couldn't write bindings!");
 }
 
+use std::io::Write;
 use std::thread;
 
 fn test_compatible_target() {
@@ -77,20 +78,22 @@ fn test_compatible_target() {
     if !output.status.success() {
         panic!("'rustc --print target-list' returned an error");
     }
-    let targets = std::str::from_utf8(&output.stdout).unwrap().split_whitespace();
-
+    let targets = std::str::from_utf8(&output.stdout)
+        .unwrap()
+        .split_whitespace();
+    let mut valid_targets = Vec::new();
     for target in targets {
-        let target = String::from(target);
+        let target2 = String::from(target);
         let test_h = String::from(test_h);
         print!("{}: ", target);
         //the thread spawning avoid to exit when bindgen panics
         let handle = thread::spawn(move || {
             let builder = bindgen::Builder::default()
                 .size_t_is_usize(true)
-                .clang_arg(format!("--target={}", target))
+                .clang_arg(format!("--target={}", target2))
                 .header(test_h);
             // make silent panic
-            std::panic::set_hook(Box::new(|_|()));
+            std::panic::set_hook(Box::new(|_| ()));
             let bindings = builder
                 .generate()
                 .expect("failed to generate a test binding");
@@ -102,12 +105,25 @@ fn test_compatible_target() {
         let is_ok = if let Ok(res) = res {
             let pat = "pub type test = ";
             if let Some(i) = res.find(pat) {
-                print!("{}, ", &res[i+pat.len()..i+pat.len() + 3]);
+                print!("{}, ", &res[i + pat.len()..i + pat.len() + 3]);
             }
             res.contains("pub type test = u32") || res.contains("pub type test = i32")
         } else {
             false
         };
+        if is_ok {
+            valid_targets.push(target);
+        }
         println!("{}", is_ok);
+    }
+    //write valid target to a file
+    let mut out_path = PathBuf::new();
+    out_path.push(env::var("CARGO_MANIFEST_DIR").unwrap());
+    out_path.pop();
+    out_path.push("build_data");
+    out_path.push("valid_targets.txt");
+    let mut f = fs::File::create(out_path).unwrap();
+    for target in valid_targets {
+        writeln!(f, "{}", target).unwrap();
     }
 }
