@@ -1,22 +1,27 @@
-fn main() {
-    extern crate bindgen;
-    use std::env;
-    use std::fs;
-    use std::path::PathBuf;
+extern crate bindgen;
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 
+fn main() {
+    generate_bindings();
+    test_compatible_target();
+}
+
+fn generate_bindings() {
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
     let mut work_dir = PathBuf::new();
     work_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
     work_dir.pop();
 
-    let source_dir= work_dir.join("lv2");
+    let source_dir = work_dir.join("lv2");
     let out_path = work_dir.join("build_data");
 
     // Adding the crate to the include path of clang.
     // Otherwise, included headers can not be found.
     bindings = bindings.clang_arg(format!("-I{}", work_dir.to_str().unwrap()));
-
 
     for entry in fs::read_dir(source_dir).unwrap() {
         let spec_dir = if let Ok(spec_dir) = entry {
@@ -55,4 +60,50 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+}
+
+use std::thread;
+
+fn test_compatible_target() {
+    let mut test_h = PathBuf::new();
+    test_h.push(env::var("CARGO_MANIFEST_DIR").unwrap());
+    test_h.push("enum_test.h");
+    let test_h = test_h.to_str().unwrap();
+    let output = Command::new("rustc")
+        .args(&["--print", "target-list"])
+        .output()
+        .expect("failed to execute rustc --print target-list");
+
+    if !output.status.success() {
+        panic!("'rustc --print target-list' returned an error");
+    }
+    let targets = std::str::from_utf8(&output.stdout).unwrap().split('\n');
+
+    for target in targets {
+        let target = String::from(target.trim());
+        let test_h = String::from(test_h);
+        print!("{}: ", target);
+        //the thread spawning avoid to exit when bindgen panics
+        let handle = thread::spawn(move || {
+            let builder = bindgen::Builder::default()
+                .size_t_is_usize(true)
+                .clang_arg(format!("--target={}", target))
+                .header(test_h);
+            let bindings = builder
+                .generate()
+                .expect("failed to generate a test binding");
+            bindings.to_string()
+        });
+        let res = handle.join();
+        let is_ok = if let Ok(res) = res {
+            let pat = "pub type test = ";
+            if let Some(i) = res.find(pat) {
+                print!("{}, ", &res[i+pat.len()..i+pat.len() + 3]);
+            }
+            res.contains("pub type test = u32") || res.contains("pub type test = i32")
+        } else {
+            false
+        };
+        println!("{}", is_ok);
+    }
 }
