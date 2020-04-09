@@ -86,6 +86,7 @@ members = [
     "midi",
     "state",
     "sys",
+    "sys/bindgen",
     "time",
     "units",
     "urid",
