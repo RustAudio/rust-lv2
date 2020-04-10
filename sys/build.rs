@@ -1,7 +1,16 @@
 #[cfg(not(feature = "bindgen"))]
 use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[cfg(not(feature = "bindgen"))]
+fn main() {
+    if let Err(e) = try_main() {
+        eprintln!("{}", e);
+        std::process::exit(-1);
+    }
+}
+
+#[cfg(not(feature = "bindgen"))]
+fn try_main() -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs;
     use std::path::PathBuf;
@@ -15,9 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     if !valid_targets.contains(&target) {
         let s = format!("No valid prebinding for {}. ", target)
             + "Add \"lv2_sys\" with \"bindgen\" feature in your dependencies.";
-        eprintln!("{}", s);
-        std::process::exit(-1);
-        //return Err("No prebinding for the target".into()) ;
+        return Err(s.into()) ;
     }
 
     let mut out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -25,6 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     fs::copy(data_path.join("bindings.rs"), out_path).unwrap();
     Ok(())
 }
+
 
 #[cfg(feature = "bindgen")]
 fn main() {
