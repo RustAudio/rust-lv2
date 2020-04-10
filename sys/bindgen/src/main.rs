@@ -6,7 +6,7 @@ use std::process::Command;
 
 fn main() {
     generate_bindings();
-    test_compatible_target();
+    generate_valid_target();
 }
 
 fn generate_bindings() {
@@ -65,7 +65,7 @@ fn generate_bindings() {
 use std::io::Write;
 use std::thread;
 
-fn test_compatible_target() {
+fn generate_valid_target() {
     let mut test_h = PathBuf::new();
     test_h.push(env::var("CARGO_MANIFEST_DIR").unwrap());
     test_h.push("enum_test.h");
@@ -102,19 +102,24 @@ fn test_compatible_target() {
             bindings.to_string()
         });
         let res = handle.join();
-        let is_ok = if let Ok(res) = res {
-            let pat = "pub type test = ";
-            if let Some(i) = res.find(pat) {
-                print!("{}, ", &res[i + pat.len()..i + pat.len() + 3]);
+        match res {
+            Ok(res) => {
+                let pat = "pub type test = ";
+                let i1 = res.find(pat).unwrap() + pat.len();
+                let i2 = i1 + res.get(i1..).unwrap().find(';').unwrap();
+                let repr = res.get(i1..i2).unwrap();
+                print!("enum is {}, ", repr);
+                if repr.contains("u32") || repr.contains("i32") {
+                    println!("valid.");
+                    valid_targets.push(target);
+                } else {
+                    println!("not valid.");
+                }
             }
-            res.contains("pub type test = u32") || res.contains("pub type test = i32")
-        } else {
-            false
+            Err(_) => {
+                println!("bindgen error");
+            }
         };
-        if is_ok {
-            valid_targets.push(target);
-        }
-        println!("{}", is_ok);
     }
     //write valid target to a file
     let mut out_path = PathBuf::new();
