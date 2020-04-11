@@ -135,7 +135,6 @@ where
 /// Deprecated alias of `Object`
 ///
 /// A blank object is an object that isn't an instance of a class. The [specification recommends](https://lv2plug.in/ns/ext/atom/atom.html#Blank) to use an [`Object`](struct.Object.html) with an id of `None`, but some hosts still use it and therefore, it's included in this library.
-#[deprecated]
 pub struct Blank;
 
 #[allow(deprecated)]
