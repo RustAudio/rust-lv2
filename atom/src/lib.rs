@@ -207,9 +207,11 @@ impl<'a> UnidentifiedAtom<'a> {
     }
 
     /// Retrieve the type URID of the atom.
-    /// 
+    ///
     /// This can be used to identify atoms without actually reading them.
     pub fn type_urid(self) -> Option<URID> {
-        self.space.split_type::<sys::LV2_Atom>().and_then(|(header, _)| URID::new(header.type_))
+        self.space
+            .split_type::<sys::LV2_Atom>()
+            .and_then(|(header, _)| URID::new(header.type_))
     }
 }
