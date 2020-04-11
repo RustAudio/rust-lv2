@@ -135,14 +135,14 @@ where
 /// Alias of `Object`, used by older hosts.
 ///
 /// A blank object is an object that isn't an instance of a class. The [specification recommends](https://lv2plug.in/ns/ext/atom/atom.html#Blank) to use an [`Object`](struct.Object.html) with an id of `None`, but some hosts still use it and therefore, it's included in this library.
+/// 
+/// If you want to read an object, you should also support `Blank`s, but if you want to write an object, you should always use `Object`.
 pub struct Blank;
 
-#[allow(deprecated)]
 unsafe impl UriBound for Blank {
     const URI: &'static [u8] = sys::LV2_ATOM__Blank;
 }
 
-#[allow(deprecated)]
 impl<'a, 'b> Atom<'a, 'b> for Blank
 where
     'a: 'b,
