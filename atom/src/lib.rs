@@ -103,6 +103,7 @@ use urid::*;
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
 pub struct AtomURIDCollection {
+    pub blank: URID<object::Blank>,
     pub double: URID<scalar::Double>,
     pub float: URID<scalar::Float>,
     pub int: URID<scalar::Int>,
@@ -203,5 +204,12 @@ impl<'a> UnidentifiedAtom<'a> {
             .split_atom_body(urid)
             .map(|(body, _)| body)
             .and_then(|body| A::read(body, parameter))
+    }
+
+    /// Retrieve the type URID of the atom.
+    /// 
+    /// This can be used to identify atoms without actually reading them.
+    pub fn type_urid(self) -> Option<URID> {
+        self.space.split_type::<sys::LV2_Atom>().and_then(|(header, _)| URID::new(header.type_))
     }
 }
