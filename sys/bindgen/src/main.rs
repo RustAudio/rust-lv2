@@ -11,7 +11,10 @@ use std::process::Command;
 type DynError = Box<dyn Error>;
 
 fn main() {
+    print!("Generating bindings...");
+    io::stdout().flush().unwrap();
     generate_bindings();
+    println!(" Done");
     generate_valid_target();
 }
 
@@ -30,21 +33,23 @@ fn generate_valid_target() {
         .unwrap()
         .split_whitespace();
     let mut valid_targets = Vec::new();
+    println!("Target compatibility:");
+    println!("{:-^40}|{:-^12}|{:-^8}|","target triple", "enum repr.", "status");
     for target in targets {
-        print!("{}: ", target);
+        print!("{:<40}|", target);
         io::stdout().flush().unwrap();
         match get_target_enum(target) {
             Ok(res) => {
-                print!("enum is {}, ", res);
+                print!("{:^12}|", res);
                 if res.contains("32") {
-                    println!("valid.");
+                    println!("{:^8}|","Ok");
                     valid_targets.push(target);
                 } else {
-                    println!("not valid.");
+                    println!("{:^8}|","Not Ok");
                 }
             }
-            Err(e) => {
-                println!("{}",e);
+            Err(_) => {
+                println!("{:^12}|{:^8}|","??","Error");
             }
         };
     }
@@ -58,6 +63,7 @@ fn generate_valid_target() {
     for target in valid_targets {
         writeln!(f, "{}", target).unwrap();
     }
+    println!("Valid targets saved!");
 }
 
 /// Return the target enum representation or error if bindgen panics
