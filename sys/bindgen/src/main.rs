@@ -25,6 +25,7 @@ fn main() {
 
 use std::thread;
 
+/// Check and display target compatitibily and saves the good one into a file.
 fn generate_valid_target() {
     let output = Command::new("rustc")
         .args(&["--print", "target-list"])
@@ -39,7 +40,10 @@ fn generate_valid_target() {
         .split_whitespace();
     let mut valid_targets = Vec::new();
     println!("Target compatibility:");
-    println!("{:-^40}|{:-^12}|{:-^8}|","target triple", "enum repr.", "status");
+    println!(
+        "{:-^40}|{:-^12}|{:-^8}|",
+        "target triple", "enum repr.", "status"
+    );
     for target in targets {
         print!("{:<40}|", target);
         io::stdout().flush().unwrap();
@@ -47,14 +51,14 @@ fn generate_valid_target() {
             Ok(res) => {
                 print!("{:^12}|", res);
                 if res.contains("32") {
-                    println!("{:^8}|","Ok");
+                    println!("{:^8}|", "Ok");
                     valid_targets.push(target);
                 } else {
-                    println!("{:^8}|","Not Ok");
+                    println!("{:^8}|", "Not Ok");
                 }
             }
             Err(_) => {
-                println!("{:^12}|{:^8}|","??","Error");
+                println!("{:^12}|{:^8}|", "??", "Error");
             }
         };
     }

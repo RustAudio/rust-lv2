@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
+/// Generate lv2-sys bindings
 pub fn generate_bindings() {
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
