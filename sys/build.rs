@@ -1,7 +1,5 @@
-#[cfg(not(feature = "bindgen"))]
 use std::error::Error;
 
-#[cfg(not(feature = "bindgen"))]
 fn main() {
     if let Err(e) = try_main() {
         eprintln!("{}", e);
@@ -35,7 +33,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 
 
 #[cfg(feature = "bindgen")]
-fn main() {
+fn try_main() -> Result<(), Box<dyn Error>> {
     extern crate bindgen;
     use std::env;
     use std::fs;
@@ -90,4 +88,5 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+    Ok(())
 }
