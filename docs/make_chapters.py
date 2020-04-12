@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import os
 import re
 import itertools
 import argparse
-
 
 class Line(object):
     """
@@ -144,40 +144,46 @@ def lines_to_blocks(lines, language):
         last_block.add_line(line)
     yield last_block
 
-amp = Chapter("introductions/amp.md", [
-    "amp/eg-amp-rs.lv2/manifest.ttl",
-    "amp/eg-amp-rs.lv2/amp.ttl",
-    "amp/Cargo.toml",
-    "amp/src/lib.rs",
-])
+def make():
+    try:
+        os.mkdir("export")
+    except FileExistsError:
+        pass
 
-open("export/amp.md", "w").write(str(amp))
+    amp = Chapter("introductions/amp.md", [
+        "amp/eg-amp-rs.lv2/manifest.ttl",
+        "amp/eg-amp-rs.lv2/amp.ttl",
+        "amp/Cargo.toml",
+        "amp/src/lib.rs",
+    ])
 
-midigate = Chapter("introductions/midigate.md", [
-    "midigate/eg-midigate-rs.lv2/manifest.ttl",
-    "midigate/eg-midigate-rs.lv2/midigate.ttl",
-    "midigate/Cargo.toml",
-    "midigate/src/lib.rs"
-])
+    open("export/amp.md", "w").write(str(amp))
 
-open("export/midigate.md", "w").write(str(midigate))
+    midigate = Chapter("introductions/midigate.md", [
+        "midigate/eg-midigate-rs.lv2/manifest.ttl",
+        "midigate/eg-midigate-rs.lv2/midigate.ttl",
+        "midigate/Cargo.toml",
+        "midigate/src/lib.rs"
+    ])
 
-fifths = Chapter("introductions/fifths.md", [
-    "fifths/eg-fifths-rs.lv2/manifest.ttl",
-    "fifths/eg-fifths-rs.lv2/fifths.ttl",
-    "fifths/Cargo.toml",
-    "fifths/src/lib.rs"
-])
+    open("export/midigate.md", "w").write(str(midigate))
 
-open("export/fifths.md", "w").write(str(fifths))
+    fifths = Chapter("introductions/fifths.md", [
+        "fifths/eg-fifths-rs.lv2/manifest.ttl",
+        "fifths/eg-fifths-rs.lv2/fifths.ttl",
+        "fifths/Cargo.toml",
+        "fifths/src/lib.rs"
+    ])
 
-metro = Chapter("introductions/metro.md", [
-    "metro/eg-metro-rs.lv2/manifest.ttl",
-    "metro/eg-metro-rs.lv2/metro.ttl",
-    "metro/Cargo.toml",
-    "metro/src/pipes.rs",
-    "metro/src/lib.rs"
-])
+    open("export/fifths.md", "w").write(str(fifths))
 
-open("export/metro.md", "w").write(str(metro))
+    metro = Chapter("introductions/metro.md", [
+        "metro/eg-metro-rs.lv2/manifest.ttl",
+        "metro/eg-metro-rs.lv2/metro.ttl",
+        "metro/Cargo.toml",
+        "metro/src/pipes.rs",
+        "metro/src/lib.rs"
+    ])
+
+    open("export/metro.md", "w").write(str(metro))
 
