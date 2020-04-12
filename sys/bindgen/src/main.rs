@@ -11,11 +11,16 @@ use std::process::Command;
 type DynError = Box<dyn Error>;
 
 fn main() {
-    print!("Generating bindings...");
-    io::stdout().flush().unwrap();
-    generate_bindings();
-    println!(" Done");
-    generate_valid_target();
+    if get_target_enum("").unwrap().contains("32") {
+        print!("Generating bindings...");
+        io::stdout().flush().unwrap();
+        generate_bindings();
+        println!(" Done");
+        generate_valid_target();
+    } else {
+        eprintln!("host enum layout must be u32 or i32");
+        std::process::exit(-1);
+    }
 }
 
 use std::thread;
