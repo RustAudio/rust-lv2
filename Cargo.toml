@@ -92,7 +92,14 @@ members = [
     "urid/derive",
     "urid/lv2-urid",
     "worker",
+    "docs/amp",
+    "docs/fifths",
+    "docs/metro",
+    "docs/midigate",
 ]
+
+[profile.release]
+lto = true
 
 [patch.crates-io]
 lv2-atom = { path = "atom" }
@@ -107,3 +114,4 @@ urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }
 lv2-worker = { path = "worker" }
+iterpipes = { git = "https://github.com/Janonard/pipes" }
