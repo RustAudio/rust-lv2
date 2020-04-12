@@ -1,7 +1,9 @@
 extern crate bindgen;
+use lv2_sys_bindgen::*;
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -16,10 +18,6 @@ fn main() {
 use std::thread;
 
 fn generate_valid_target() {
-    let mut test_h = PathBuf::new();
-    test_h.push(env::var("CARGO_MANIFEST_DIR").unwrap());
-    test_h.push("enum_test.h");
-    let test_h = test_h.to_str().unwrap();
     let output = Command::new("rustc")
         .args(&["--print", "target-list"])
         .output()
@@ -33,41 +31,20 @@ fn generate_valid_target() {
         .split_whitespace();
     let mut valid_targets = Vec::new();
     for target in targets {
-        let target2 = String::from(target);
-        let test_h = String::from(test_h);
         print!("{}: ", target);
-        //the thread spawning avoid to exit when bindgen panics
-        let handle = thread::spawn(move || {
-            let builder = bindgen::Builder::default()
-                .size_t_is_usize(true)
-                .clang_arg(format!("--target={}", target2))
-                .header(test_h);
-            // make silent panic
-            std::panic::set_hook(Box::new(|_| ()));
-            let bindings = builder
-                .generate()
-                .expect("failed to generate a test binding");
-            //restore default panic hook because it's not thread local
-            let _ = std::panic::take_hook();
-            bindings.to_string()
-        });
-        let res = handle.join();
-        match res {
+        io::stdout().flush().unwrap();
+        match get_target_enum(target) {
             Ok(res) => {
-                let pat = "pub type test = ";
-                let i1 = res.find(pat).unwrap() + pat.len();
-                let i2 = i1 + res.get(i1..).unwrap().find(';').unwrap();
-                let repr = res.get(i1..i2).unwrap();
-                print!("enum is {}, ", repr);
-                if repr.contains("u32") || repr.contains("i32") {
+                print!("enum is {}, ", res);
+                if res.contains("32") {
                     println!("valid.");
                     valid_targets.push(target);
                 } else {
                     println!("not valid.");
                 }
             }
-            Err(_) => {
-                println!("bindgen error");
+            Err(e) => {
+                println!("{}",e);
             }
         };
     }
@@ -100,7 +77,7 @@ fn get_target_enum(target: &str) -> Result<String, DynError> {
         // make silent panic
         std::panic::set_hook(Box::new(|_| ()));
         let bindings = builder.generate().unwrap();
-        //restore default panic hook because it's not thread local
+        //restore default panic hook
         let _ = std::panic::take_hook();
         bindings.to_string()
     });
