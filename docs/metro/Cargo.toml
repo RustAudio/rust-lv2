@@ -1,0 +1,13 @@
+[package]
+name = "metro"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+license = "ISC"
+edition = "2018"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+lv2 = { version = "0.5.0", features = ["lv2-time"] }
+iterpipes = "0.2.0"
