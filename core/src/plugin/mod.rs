@@ -254,14 +254,14 @@ impl<T: Plugin> PluginInstance<T> {
     }
 
     /// Retrieve the required handles to execute an Initialization class method.
-    /// 
+    ///
     /// This method can be used by extensions to call an extension method in the Initialization threading class and provide it the host features for that class.
     pub fn init_class_handle(&mut self) -> (&mut T, &mut T::InitFeatures) {
         (&mut self.instance, &mut self.init_features)
     }
 
     /// Retrieve the required handles to execute an Audio class method.
-    /// 
+    ///
     /// This method can be used by extensions to call an extension method in the Audio threading class and provide it the host features for that class.
     pub fn audio_class_handle(&mut self) -> (&mut T, &mut T::AudioFeatures) {
         (&mut self.instance, &mut self.audio_features)
