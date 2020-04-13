@@ -58,7 +58,7 @@ jobs:
     - name: Install Sphinx
       run: |
         python -m pip install --upgrade pip
-        pip install -r recommonmark sphinx sphinx_rtd_theme
+        pip install recommonmark sphinx sphinx_rtd_theme
     - name: Build Book
       run: |
         cd docs
