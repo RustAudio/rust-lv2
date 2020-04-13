@@ -146,7 +146,7 @@ def lines_to_blocks(lines, language):
 
 def make():
     try:
-        os.mkdir("export")
+        os.mkdir("chapter")
     except FileExistsError:
         pass
 
@@ -157,7 +157,7 @@ def make():
         "amp/src/lib.rs",
     ])
 
-    open("export/amp.md", "w").write(str(amp))
+    open("chapter/amp.md", "w").write(str(amp))
 
     midigate = Chapter("introductions/midigate.md", [
         "midigate/eg-midigate-rs.lv2/manifest.ttl",
@@ -166,7 +166,7 @@ def make():
         "midigate/src/lib.rs"
     ])
 
-    open("export/midigate.md", "w").write(str(midigate))
+    open("chapter/midigate.md", "w").write(str(midigate))
 
     fifths = Chapter("introductions/fifths.md", [
         "fifths/eg-fifths-rs.lv2/manifest.ttl",
@@ -175,7 +175,7 @@ def make():
         "fifths/src/lib.rs"
     ])
 
-    open("export/fifths.md", "w").write(str(fifths))
+    open("chapter/fifths.md", "w").write(str(fifths))
 
     metro = Chapter("introductions/metro.md", [
         "metro/eg-metro-rs.lv2/manifest.ttl",
@@ -185,5 +185,5 @@ def make():
         "metro/src/lib.rs"
     ])
 
-    open("export/metro.md", "w").write(str(metro))
+    open("chapter/metro.md", "w").write(str(metro))
 
