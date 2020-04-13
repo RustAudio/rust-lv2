@@ -1,3 +1,4 @@
+// The same as before...
 use lv2::prelude::*;
 use wmidi::*;
 
@@ -19,7 +20,7 @@ pub struct URIDs {
     unit: UnitURIDCollection,
 }
 
-#[uri("https://github.com/Janonard/rust-lv2-book#fifths")]
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/fifths")]
 pub struct Fifths {
     urids: URIDs,
 }
@@ -36,6 +37,7 @@ impl Plugin for Fifths {
         })
     }
 
+    // This plugin works similar to the previous one: It iterates over the events in the input port. However, it only needs to write one or two messages instead of blocks of audio.
     fn run(&mut self, ports: &mut Ports, _: &mut ()) {
         // Get the reading handle of the input sequence.
         let input_sequence = ports
@@ -53,7 +55,7 @@ impl Plugin for Fifths {
             .unwrap();
 
         for (timestamp, atom) in input_sequence {
-            // Forward message to output.
+            // Every message is forwarded, regardless of it's content.
             output_sequence.forward(timestamp, atom);
 
             // Retrieve the message.
@@ -65,7 +67,7 @@ impl Plugin for Fifths {
 
             match message {
                 MidiMessage::NoteOn(channel, note, velocity) => {
-                    // Make a note 5th (7 semitones) higher than input.
+                    // Create a note 5th (7 semitones) higher than the input.
                     if let Ok(note) = note.step(7) {
                         // Write the fifth. Writing is done after initialization.
                         output_sequence
@@ -75,7 +77,6 @@ impl Plugin for Fifths {
                                 MidiMessage::NoteOn(channel, note, velocity),
                             )
                             .unwrap();
-                        println!("Wrote a note-on");
                     }
                 }
                 MidiMessage::NoteOff(channel, note, velocity) => {
@@ -88,10 +89,9 @@ impl Plugin for Fifths {
                                 MidiMessage::NoteOff(channel, note, velocity),
                             )
                             .unwrap();
-                        println!("Wrote a note-off");
                     }
                 }
-                _ => println!("Something different!"),
+                _ => (),
             }
         }
     }

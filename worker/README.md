@@ -1,4 +1,4 @@
-# rust-lv2's library to implement LV2 Worker extension.
+# Rust-LV2's library to implement LV2 Worker extension.
 
 Work scheduling library that allows real-time capable LV2 plugins to execute
 non-real-time actions. This is a part of

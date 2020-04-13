@@ -21,7 +21,7 @@ pub struct URIDs {
     unit: UnitURIDCollection,
 }
 
-#[uri("https://github.com/Janonard/rust-lv2-book#midigate")]
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate")]
 pub struct Midigate {
     n_active_notes: u64,
     program: u8,
@@ -31,7 +31,6 @@ pub struct Midigate {
 impl Midigate {
     // A function to write a chunk of output, to be called from `run()`. If the gate is high, then the input will be passed through for this chunk, otherwise silence is written.
     fn write_output(&mut self, ports: &mut Ports, offset: usize, mut len: usize) {
-        // check the bounds of the offset and length and cap the length, if nescessary.
         if ports.input.len() < offset + len {
             len = ports.input.len() - offset;
         }
@@ -69,12 +68,7 @@ impl Plugin for Midigate {
         })
     }
 
-    fn activate(&mut self, _features: &mut Features<'static>) {
-        self.n_active_notes = 0;
-        self.program = 0;
-    }
-
-    //This plugin works through the cycle in chunks starting at offset zero. The `offset` represents the current time within this this cycle, so the output from 0 to `offset` has already been written.
+    // This plugin works through the cycle in chunks starting at offset zero. The `offset` represents the current time within this this cycle, so the output from 0 to `offset` has already been written.
     //
     // MIDI events are read in a loop. In each iteration, the number of active notes (on note on and note off) or the program (on program change) is updated, then the output is written up until the current event time. Then `offset` is updated and the next event is processed. After the loop the final chunk from the last event to the end of the cycle is emitted.
     //
@@ -121,6 +115,12 @@ impl Plugin for Midigate {
         }
 
         self.write_output(ports, offset, ports.input.len() - offset);
+    }
+
+    // During it's runtime, the host might decide to deactivate the plugin. When the plugin is reactivated, the host calls this method which gives the plugin an opportunity to reset it's internal state.
+    fn activate(&mut self, _features: &mut Features<'static>) {
+        self.n_active_notes = 0;
+        self.program = 0;
     }
 }
 

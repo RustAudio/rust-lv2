@@ -1,4 +1,4 @@
-# rust-lv2's Atom handling library.
+# Rust-LV2's Atom handling library.
 
 A library for reading and writing [LV2's](https://lv2plug.in/) Atom type system, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 

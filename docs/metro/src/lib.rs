@@ -26,7 +26,7 @@ pub struct Features<'a> {
     map: LV2Map<'a>,
 }
 
-#[uri("https://github.com/Janonard/rust-lv2-book#metro")]
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/metro")]
 pub struct Metro {
     urids: URIDs,
     envelope: Connector<Enumerate<PulseGenerator>, Envelope>,

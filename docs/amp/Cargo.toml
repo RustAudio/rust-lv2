@@ -12,7 +12,7 @@ edition = "2018"
 [lib]
 crate-type = ["dylib"]
 
-# Rust-lv2 is a network of individual sub-crates with different version numbers and histories.
+# Rust-LV2 is a network of individual sub-crates with different version numbers and histories.
 # However, most plugins don't need to deal with them directly. Instead, they use the re-export crate
 # simply called `lv2`. It has an optional dependency to every sub-crate, which can be enabled via crate features.
 # 
