@@ -99,7 +99,7 @@ impl<'a> Pipe for EventReader<'a> {
         if let Some(atom) = atom {
             if let Some((object_header, object_reader)) = atom
                 .read(self.atom_urids.object, ())
-                .or(atom.read(self.atom_urids.blank, ()))
+                .or_else(|| atom.read(self.atom_urids.blank, ()))
             {
                 if object_header.otype == self.time_urids.position_class {
                     for (property_header, property) in object_reader {
