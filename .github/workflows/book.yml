@@ -23,6 +23,7 @@ jobs:
       run: |
         cd docs
         make html
+        touch _build/html/.nojekyll
     - name: Deploy
       if: success()
       uses: crazy-max/ghaction-github-pages@v1
