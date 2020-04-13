@@ -31,23 +31,19 @@ jobs:
       run: cargo test --all --all-features --verbose
   
   check:
-    strategy:
-      matrix:
-        toolchain: [stable, beta, nightly]
-    
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: ${{ matrix.toolchain }}
+        toolchain: stable
         override: true
         components: rustfmt, clippy
+    - name: Format
+      run: cargo fmt --all -- --check
     - uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --all-features -- -D warnings
-    - name: Format
-      run: cargo fmt --all -- --check
       
