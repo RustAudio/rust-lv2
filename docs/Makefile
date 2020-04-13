@@ -20,3 +20,4 @@ help:
 	mkdir -p export
 	./make_chapters.py
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	touch $(BUILDDIR)/.nojekyll
