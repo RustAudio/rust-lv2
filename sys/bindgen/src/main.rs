@@ -5,18 +5,26 @@ use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
 type DynError = Box<dyn Error>;
 
 fn main() {
+    let mut work_dir = PathBuf::new();
+    work_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
+    work_dir.pop();
+
+    let source_dir = work_dir.join("lv2");
+    let out_dir = work_dir.join("build_data");
+
     if get_target_enum("").unwrap().contains("32") {
         print!("Generating bindings...");
         io::stdout().flush().unwrap();
-        generate_bindings();
+        generate_bindings(&source_dir, &out_dir);
         println!(" Done");
-        generate_valid_target();
+        generate_valid_target(&out_dir);
     } else {
         eprintln!("host enum layout must be u32 or i32");
         std::process::exit(-1);
@@ -26,7 +34,9 @@ fn main() {
 use std::thread;
 
 /// Check and display target compatitibily and saves the good one into a file.
-fn generate_valid_target() {
+///
+/// work_dir is the path to the lv2-sys crate
+fn generate_valid_target(out_dir: &Path) {
     let output = Command::new("rustc")
         .args(&["--print", "target-list"])
         .output()
@@ -63,10 +73,7 @@ fn generate_valid_target() {
         };
     }
     //write valid target to a file
-    let mut out_path = PathBuf::new();
-    out_path.push(env::var("CARGO_MANIFEST_DIR").unwrap());
-    out_path.pop();
-    out_path.push("build_data");
+    let mut out_path = PathBuf::from(out_dir);
     out_path.push("valid_targets.txt");
     let mut f = fs::File::create(out_path).unwrap();
     for target in valid_targets {

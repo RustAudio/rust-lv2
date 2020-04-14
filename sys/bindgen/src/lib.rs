@@ -1,21 +1,16 @@
-use std::env;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings
-pub fn generate_bindings() {
+pub fn generate_bindings(source_dir: &Path, out_dir: &Path) {
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
-
-    let mut work_dir = PathBuf::new();
-    work_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
-    work_dir.pop();
-
-    let source_dir = work_dir.join("lv2");
-    let out_path = work_dir.join("build_data");
 
     // Adding the crate to the include path of clang.
     // Otherwise, included headers can not be found.
-    bindings = bindings.clang_arg(format!("-I{}", work_dir.to_str().unwrap()));
+    let mut include_path = PathBuf::from(source_dir);
+    include_path.pop();
+    bindings = bindings.clang_arg(format!("-I{}", include_path.to_str().unwrap()));
 
     for entry in fs::read_dir(source_dir).unwrap() {
         let spec_dir = if let Ok(spec_dir) = entry {
@@ -52,6 +47,6 @@ pub fn generate_bindings() {
 
     // Writing the bindings to a file.
     bindings
-        .write_to_file(out_path.join("bindings.rs"))
+        .write_to_file(out_dir.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 }
