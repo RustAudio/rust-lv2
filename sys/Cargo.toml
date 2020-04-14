@@ -17,3 +17,6 @@ maintenance = { status = "passively-maintained" }
 
 [build-dependencies]
 lv2-sys-bindgen = {path = "bindgen", optional=true}
+
+[dev-dependencies]
+lv2-sys-bindgen = {path = "bindgen"}
