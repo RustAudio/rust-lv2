@@ -8,10 +8,12 @@ license = "MIT OR Apache-2.0"
 description = "rust-lv2's C header bindings"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
+[features]
+bindgen = ["lv2-sys-bindgen"]
 
 [badges]
 travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [build-dependencies]
-bindgen = {version= "0.53.1", optional=true}
+lv2-sys-bindgen = {path = "bindgen", optional=true}
