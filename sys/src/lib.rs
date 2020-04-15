@@ -11,30 +11,14 @@
 #![allow(improper_ctypes)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-#[cfg(windows)]
 impl From<u32> for LV2_State_Flags {
     fn from(flags: u32) -> Self {
-        Self(flags as i32)
+        Self(flags as _)
     }
 }
 
-#[cfg(not(windows))]
-impl From<u32> for LV2_State_Flags {
-    fn from(flags: u32) -> Self {
-        Self(flags)
-    }
-}
-
-#[cfg(windows)]
 impl From<LV2_State_Flags> for u32 {
     fn from(flags: LV2_State_Flags) -> u32 {
         flags.0 as u32
-    }
-}
-
-#[cfg(not(windows))]
-impl From<LV2_State_Flags> for u32 {
-    fn from(flags: LV2_State_Flags) -> u32 {
-        flags.0
     }
 }
