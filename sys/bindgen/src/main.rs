@@ -12,11 +12,10 @@ use std::process::Command;
 type DynError = Box<dyn Error>;
 
 fn main() {
-
     let mut target: Option<_> = None;
     let mut args = env::args();
 
-    while let Some(arg) = args.next(){
+    while let Some(arg) = args.next() {
         if arg == "--target" {
             if let Some(t) = args.next() {
                 target = Some(t);
@@ -26,9 +25,8 @@ fn main() {
                 target = Some(String::from(t))
             }
         }
-
     }
-    let target =  target.as_deref();
+    let target = target.as_deref();
 
     let mut work_dir = PathBuf::new();
     work_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());

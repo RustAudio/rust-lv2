@@ -22,7 +22,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     if !valid_targets.contains(&target) {
         let s = format!("No valid prebinding for {}. ", target)
             + "Add \"lv2_sys\" with \"bindgen\" feature in your dependencies.";
-        return Err(s.into()) ;
+        return Err(s.into());
     }
 
     let mut out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -31,12 +31,10 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 #[cfg(feature = "bindgen")]
 fn try_main() -> Result<(), Box<dyn Error>> {
     extern crate lv2_sys_bindgen;
     use std::env;
-    use std::fs;
     use std::path::PathBuf;
 
     let mut source_dir = PathBuf::new();
