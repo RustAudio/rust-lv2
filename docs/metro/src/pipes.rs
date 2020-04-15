@@ -2,7 +2,7 @@
 use iterpipes::*;
 use lv2::prelude::*;
 
-// `Sampler` is a simple sampler that plays back the contents of a pre-recorded sample. It simply returns a frame for every index it receives as an input, which means that it can also be played backward or at a different speed. The actual type of frames isn't important and therefore, this sampler is generic. 
+// `Sampler` is a simple sampler that plays back the contents of a pre-recorded sample. It simply returns a frame for every index it receives as an input, which means that it can also be played backward or at a different speed. The actual type of frames isn't important and therefore, this sampler is generic.
 
 pub struct Sampler<T> {
     sample: Box<[T]>,
