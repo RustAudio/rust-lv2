@@ -44,7 +44,9 @@ fn try_main() -> Result<(), Box<dyn Error>> {
     source_dir.push("lv2");
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
-    lv2_sys_bindgen::generate_bindings(&source_dir, &out_dir);
+    let target = env::var("TARGET").unwrap();
+
+    lv2_sys_bindgen::generate_bindings(&source_dir, &out_dir, Some(&target));
 
     Ok(())
 }

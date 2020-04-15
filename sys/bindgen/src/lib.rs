@@ -3,7 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings
-pub fn generate_bindings(source_dir: &Path, out_dir: &Path) {
+pub fn generate_bindings(source_dir: &Path, out_dir: &Path, target:Option<&str>) {
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
     // Adding the crate to the include path of clang.
@@ -11,6 +11,9 @@ pub fn generate_bindings(source_dir: &Path, out_dir: &Path) {
     let mut include_path = PathBuf::from(source_dir);
     include_path.pop();
     bindings = bindings.clang_arg(format!("-I{}", include_path.to_str().unwrap()));
+    if let Some(target) = target{
+        bindings = bindings.clang_arg(format!("--target={}", target));
+    }
 
     for entry in fs::read_dir(source_dir).unwrap() {
         let spec_dir = if let Ok(spec_dir) = entry {

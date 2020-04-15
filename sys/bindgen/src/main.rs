@@ -12,6 +12,24 @@ use std::process::Command;
 type DynError = Box<dyn Error>;
 
 fn main() {
+
+    let mut target: Option<_> = None;
+    let mut args = env::args();
+
+    while let Some(arg) = args.next(){
+        if arg == "--target" {
+            if let Some(t) = args.next() {
+                target = Some(t);
+            }
+        } else if arg.starts_with("--target=") {
+            if let Some(t) = arg.get("--target=".len()..arg.len()) {
+                target = Some(String::from(t))
+            }
+        }
+
+    }
+    let target =  target.as_deref();
+
     let mut work_dir = PathBuf::new();
     work_dir.push(env::var("CARGO_MANIFEST_DIR").unwrap());
     work_dir.pop();
@@ -22,7 +40,7 @@ fn main() {
     if get_target_enum("").unwrap().contains("32") {
         print!("Generating bindings...");
         io::stdout().flush().unwrap();
-        generate_bindings(&source_dir, &out_dir);
+        generate_bindings(&source_dir, &out_dir, target);
         println!(" Done");
         generate_valid_target(&out_dir);
     } else {

@@ -12,8 +12,9 @@ fn bindings_are_equivalent() {
     let source_dir = work_dir.join("lv2");
     let bindings1_dir = work_dir.join("build_data");
     let bindings2_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let target = env::var("TARGET").unwrap();
     println!("{}", bindings2_dir.to_str().unwrap());
-    lv2_sys_bindgen::generate_bindings(&source_dir, &bindings2_dir);
+    lv2_sys_bindgen::generate_bindings(&source_dir, &bindings2_dir, Some(&target));
 
     let f1 = File::open(bindings1_dir.join("bindings.rs")).unwrap();
     let mut f1 = BufReader::new(f1).lines();
