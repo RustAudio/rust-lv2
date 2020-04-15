@@ -1,4 +1,4 @@
-# rust-lv2's URID handling library.
+# Rust-LV2's URID handling library.
 
 URI <-> URID mapping utilities used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 

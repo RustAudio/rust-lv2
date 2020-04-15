@@ -1,9 +1,11 @@
+// Now, we put it all together:
 use iterpipes::*;
 use lv2::prelude::*;
 
 mod pipes;
 use pipes::*;
 
+// In future iterations of the plugin, these values could be parameters, but for now, the're constants:
 const ATTACK_DURATION: f64 = 0.005;
 const DECAY_DURATION: f64 = 0.075;
 const NOTE_FREQUENCY: f64 = 440.0 * 2.0;
@@ -26,7 +28,8 @@ pub struct Features<'a> {
     map: LV2Map<'a>,
 }
 
-#[uri("https://github.com/Janonard/rust-lv2-book#metro")]
+// This plugin struct contains the URID collection and two pre-constructed pipes. These are later used to construct the complete pipeline.
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/metro")]
 pub struct Metro {
     urids: URIDs,
     envelope: Connector<Enumerate<PulseGenerator>, Envelope>,
@@ -43,10 +46,12 @@ impl Plugin for Metro {
         let attack_len = (ATTACK_DURATION * plugin_info.sample_rate()) as usize;
         let decay_len = (DECAY_DURATION * plugin_info.sample_rate()) as usize;
 
+        // Pre-construct the envelope pipe. Pipes can be enumerated, just like iterators, and connected.
         let envelope = PulseGenerator::new(plugin_info.sample_rate() as f32)
             .enumerate()
             .connect(Envelope::new(attack_len, decay_len));
 
+        // Calculate the sample and pre-construct the sampler pipe.
         let sample_len = (plugin_info.sample_rate() / NOTE_FREQUENCY) as usize;
         let mut sample: Vec<f32> = Vec::with_capacity(sample_len);
         for i in 0..sample_len {
@@ -55,12 +60,12 @@ impl Plugin for Metro {
                     .sin() as f32,
             );
         }
-        let sampler = Counter::<usize>::new(0, 1).compose() >> Sampler::new(sample);
+        let sampler = Counter::<usize>::new(0, 1).connect(Sampler::new(sample));
 
         Some(Self {
             urids: features.map.populate_collection()?,
             envelope,
-            sampler: sampler.unwrap(),
+            sampler: sampler,
         })
     }
 
@@ -74,6 +79,9 @@ impl Plugin for Metro {
             .control
             .read(self.urids.atom.sequence, self.urids.unit.beat)
         {
+            // Here, the final assembly of the pipeline is done. First, the event iterator is pre-processed to only emit an index and an `UnidentifiedAtom`. Then, the event iterator is wrapped into an `EventAtomizer`, which is then connected to an `EventReader` and the envelope. The resulting pipe consumes a `()` and emits the next frame of the envelope; It's already a compact pipeline.
+            //
+            // Then, the final pipeline is constructed using some lazy pipes: The first one splits a `()` to a tuple of `()`, which is then connected to a tuple of the envelope and the pre-constructed sampler. A tuple of two pipes is also a pipe; The two pipes are processed in parallel. Then, the emitted envelope and sample frame are multiplied to one frame.
             let control =
                 control.map(|(timestamp, event)| (timestamp.as_frames().unwrap() as usize, event));
 
@@ -85,6 +93,7 @@ impl Plugin for Metro {
                 >> (complete_envelope, &mut self.sampler)
                 >> Lazy::new(|(env, sample)| env * sample);
 
+            // Generate a frame for every frame in the output buffer. All of the processing is done by the single call to `next`!
             for frame in ports.output.iter_mut() {
                 *frame = pipeline.next(());
             }

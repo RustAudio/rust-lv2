@@ -1,4 +1,4 @@
-# rust-lv2's wrapper of LV2's time types.
+# Rust-LV2's wrapper of LV2's time types.
 
 This crate binds some of the time-related URIs from [the `sys`-crate](https://crates.io/crates/lv2-sys) to types and is a part of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 

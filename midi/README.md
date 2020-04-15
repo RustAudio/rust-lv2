@@ -1,4 +1,4 @@
-## rust-lv2's MIDI processing library.
+## Rust-LV2's MIDI processing library.
 
 The MIDI processing library of [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust.
 

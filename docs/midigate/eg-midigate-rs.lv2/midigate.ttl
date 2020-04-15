@@ -7,11 +7,11 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix urid: <http://lv2plug.in/ns/ext/urid#> .
 
-<https://github.com/Janonard/rust-lv2-book#midigate>
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate>
 	a lv2:Plugin ;
 	doap:name "Example MIDI Gate (Rust Version)" ;
 	doap:license <http://opensource.org/licenses/isc> ;
-	lv2:project <https://github.com/Janonard/rust-lv2-book> ;
+    lv2:project <https://github.com/RustAudio/rust-lv2> ;
 	lv2:requiredFeature urid:map , lv2:inPlaceBroken ;
 	lv2:optionalFeature lv2:hardRTCapable ;
 # This plugin has three ports.  There is an audio input and output as before,

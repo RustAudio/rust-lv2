@@ -8,6 +8,7 @@ edition = "2018"
 [lib]
 crate-type = ["dylib"]
 
+# This is the first time we need a non-default LV2 feature. In this case, this is the `lv2-time` crate.
 [dependencies]
 lv2 = { version = "0.5.0", features = ["lv2-time"] }
 iterpipes = "0.2.0"

@@ -9,8 +9,8 @@ struct Ports {
 }
 // Every plugin defines a struct for the plugin instance. All persistent data associated with a plugin instance is stored here, and is available to every instance method. In this simple plugin, there is no additional instance data and therefore, this struct is empty.
 //
-// The URI is the identifier for a plugin, and how the host associates this implementation in code with its description in data. If this URI does not match that used in the data files, the host will fail to load the plugin. This attribute internally implements the `UriBound` trait for `Amp`, which is also used to identify many other things in the rust-lv2 ecosystem.
-#[uri("https://github.com/Janonard/rust-lv2-book#amp")]
+// The URI is the identifier for a plugin, and how the host associates this implementation in code with its description in data. If this URI does not match that used in the data files, the host will fail to load the plugin. This attribute internally implements the `UriBound` trait for `Amp`, which is also used to identify many other things in the Rust-LV2 ecosystem.
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/amp")]
 struct Amp;
 // Every plugin struct implements the `Plugin` trait. This trait contains both the methods that are called by the hosting application and the collection types for the ports and the used host features. This plugin does not use additional host features and therefore, we set both feature collection types to `()`. Other plugins may define separate structs with their required and optional features and set it here.
 impl Plugin for Amp {
