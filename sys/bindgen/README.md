@@ -9,14 +9,21 @@ have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't
 in your system's standard path, set the environment variable `LIBCLANG_PATH` to
 the path of `libClang`.
 
-C enums should map to `u32` or `i32` on the host. Don't worry, it's the case on
-most computers.
-
 ## Usage
 
-Just run `cargo run -p lv2-sys-bindgen` or `cargo run lv2-sys-bindgen` anywhere
-inside the rust-lv2 workspace. It require to be launch through cargo since it
-use some environment variables defined by it.
+Usage (anywhere is rust-lv2 workspace):
+* `cargo run -p lv2-sys-bindgen -- [OPTIONS]`
+* `cargo lv2-sys-bindgen [OPTIONS]` (alias of the first)
+
+Options:
+* `--target <TRIPLE>`: generate bindings for this target. This require a clang
+  setup suitable for cross-compiling to that target.
+
+Limitations:
+* At this time, this script works only when C enum maps to u32 or i32 for the
+  selected target.
+* Since it use some environment variables defined by cargo, this script require
+  to be launch through it.
 
 ## Output files
 
