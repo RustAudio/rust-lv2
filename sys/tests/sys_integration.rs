@@ -1,6 +1,6 @@
 extern crate lv2_sys_bindgen;
-use quote::quote;
 use proc_macro2::Span;
+use quote::quote;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
@@ -55,14 +55,13 @@ fn i32_to_u32(mut item: Item) -> Item {
 // insensitive to formatting or definition order in the file.
 #[test]
 fn bindings_are_equivalent() {
-
     let work_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let source_dir = work_dir.join("lv2");
     let bindings1_dir = work_dir.join("build_data");
     let bindings2_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     //println!("{}", bindings2_dir.to_str().unwrap());
     lv2_sys_bindgen::generate_bindings(&source_dir, &bindings2_dir, None);
-    
+
     let f1 = fs::read_to_string(bindings1_dir.join("bindings.rs")).unwrap();
     let f1 = syn::parse_str::<syn::File>(&f1).unwrap();
     let h1: HashSet<_> = f1.items.into_iter().map(i32_to_u32).collect();
