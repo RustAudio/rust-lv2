@@ -26,4 +26,4 @@ proc-macro2 = "1.0.9"
 [dev-dependencies.syn]
 version = "1.0.5"
 default-features = false
-features = ["full","parsing","extra-traits","clone-impls","printing"]
+features=["full","parsing","extra-traits","clone-impls","printing","visit-mut"]
