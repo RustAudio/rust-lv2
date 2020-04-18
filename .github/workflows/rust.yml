@@ -61,7 +61,6 @@ jobs:
     - name: Install 32-bit libc
       run: |
         sudo apt-get update
-        sudo apt-get upgrade
         sudo apt-get install libc6-dev-i386
     - name: Generate 64-bit
       run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86_64.rs --target x86_64-unknown-linux-gnu
