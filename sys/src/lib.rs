@@ -11,9 +11,9 @@
 #![allow(improper_ctypes)]
 
 
-#[cfg_attr(linux, path = "linux.rs")]
+#[cfg_attr(unix, path = "unix.rs")]
 #[cfg_attr(windows, path = "windows.rs")]
-#[cfg_attr(not(any(linux, windows)), path = "unsupported.rs")]
+#[cfg_attr(not(any(unix, windows)), path = "unsupported.rs")]
 mod bindings;
 pub use bindings::*;
 
