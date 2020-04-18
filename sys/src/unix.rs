@@ -212,6 +212,32 @@ pub const LV2_DATA_ACCESS_PREFIX: &'static [u8; 38usize] =
 pub const LV2_DYN_MANIFEST_URI: &'static [u8; 37usize] = b"http://lv2plug.in/ns/ext/dynmanifest\0";
 pub const LV2_DYN_MANIFEST_PREFIX: &'static [u8; 38usize] =
     b"http://lv2plug.in/ns/ext/dynmanifest#\0";
+    pub const LV2_EVENT_URI: &'static [u8; 31usize] = b"http://lv2plug.in/ns/ext/event\0";
+pub const LV2_EVENT_PREFIX: &'static [u8; 32usize] = b"http://lv2plug.in/ns/ext/event#\0";
+pub const LV2_EVENT__Event: &'static [u8; 37usize] = b"http://lv2plug.in/ns/ext/event#Event\0";
+pub const LV2_EVENT__EventPort: &'static [u8; 41usize] =
+    b"http://lv2plug.in/ns/ext/event#EventPort\0";
+pub const LV2_EVENT__FrameStamp: &'static [u8; 42usize] =
+    b"http://lv2plug.in/ns/ext/event#FrameStamp\0";
+pub const LV2_EVENT__TimeStamp: &'static [u8; 41usize] =
+    b"http://lv2plug.in/ns/ext/event#TimeStamp\0";
+pub const LV2_EVENT__generatesTimeStamp: &'static [u8; 50usize] =
+    b"http://lv2plug.in/ns/ext/event#generatesTimeStamp\0";
+pub const LV2_EVENT__generic: &'static [u8; 39usize] = b"http://lv2plug.in/ns/ext/event#generic\0";
+pub const LV2_EVENT__inheritsEvent: &'static [u8; 45usize] =
+    b"http://lv2plug.in/ns/ext/event#inheritsEvent\0";
+pub const LV2_EVENT__inheritsTimeStamp: &'static [u8; 49usize] =
+    b"http://lv2plug.in/ns/ext/event#inheritsTimeStamp\0";
+pub const LV2_EVENT__supportsEvent: &'static [u8; 45usize] =
+    b"http://lv2plug.in/ns/ext/event#supportsEvent\0";
+pub const LV2_EVENT__supportsTimeStamp: &'static [u8; 49usize] =
+    b"http://lv2plug.in/ns/ext/event#supportsTimeStamp\0";
+pub const LV2_EVENT_AUDIO_STAMP: u32 = 0;
+pub type __uint8_t = ::std::os::raw::c_uchar;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __int32_t = ::std::os::raw::c_int;
+pub type __uint32_t = ::std::os::raw::c_uint;
+pub type __int64_t = ::std::os::raw::c_long;
 pub const LV2_INSTANCE_ACCESS_URI: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/instance-access\0";
 pub const LV2_LOG_URI: &'static [u8; 29usize] = b"http://lv2plug.in/ns/ext/log\0";
@@ -640,40 +666,15 @@ pub const LV2_UNITS__semitone12TET: &'static [u8; 52usize] =
 pub const LV2_UNITS__symbol: &'static [u8; 45usize] =
     b"http://lv2plug.in/ns/extensions/units#symbol\0";
 pub const LV2_UNITS__unit: &'static [u8; 43usize] = b"http://lv2plug.in/ns/extensions/units#unit\0";
+pub const LV2_URI_MAP_URI: &'static [u8; 33usize] = b"http://lv2plug.in/ns/ext/uri-map\0";
+pub const LV2_URI_MAP_PREFIX: &'static [u8; 34usize] = b"http://lv2plug.in/ns/ext/uri-map#\0";
 pub const LV2_WORKER_URI: &'static [u8; 32usize] = b"http://lv2plug.in/ns/ext/worker\0";
 pub const LV2_WORKER_PREFIX: &'static [u8; 33usize] = b"http://lv2plug.in/ns/ext/worker#\0";
 pub const LV2_WORKER__interface: &'static [u8; 42usize] =
     b"http://lv2plug.in/ns/ext/worker#interface\0";
 pub const LV2_WORKER__schedule: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/worker#schedule\0";
-pub const LV2_EVENT_URI: &'static [u8; 31usize] = b"http://lv2plug.in/ns/ext/event\0";
-pub const LV2_EVENT_PREFIX: &'static [u8; 32usize] = b"http://lv2plug.in/ns/ext/event#\0";
-pub const LV2_EVENT__Event: &'static [u8; 37usize] = b"http://lv2plug.in/ns/ext/event#Event\0";
-pub const LV2_EVENT__EventPort: &'static [u8; 41usize] =
-    b"http://lv2plug.in/ns/ext/event#EventPort\0";
-pub const LV2_EVENT__FrameStamp: &'static [u8; 42usize] =
-    b"http://lv2plug.in/ns/ext/event#FrameStamp\0";
-pub const LV2_EVENT__TimeStamp: &'static [u8; 41usize] =
-    b"http://lv2plug.in/ns/ext/event#TimeStamp\0";
-pub const LV2_EVENT__generatesTimeStamp: &'static [u8; 50usize] =
-    b"http://lv2plug.in/ns/ext/event#generatesTimeStamp\0";
-pub const LV2_EVENT__generic: &'static [u8; 39usize] = b"http://lv2plug.in/ns/ext/event#generic\0";
-pub const LV2_EVENT__inheritsEvent: &'static [u8; 45usize] =
-    b"http://lv2plug.in/ns/ext/event#inheritsEvent\0";
-pub const LV2_EVENT__inheritsTimeStamp: &'static [u8; 49usize] =
-    b"http://lv2plug.in/ns/ext/event#inheritsTimeStamp\0";
-pub const LV2_EVENT__supportsEvent: &'static [u8; 45usize] =
-    b"http://lv2plug.in/ns/ext/event#supportsEvent\0";
-pub const LV2_EVENT__supportsTimeStamp: &'static [u8; 49usize] =
-    b"http://lv2plug.in/ns/ext/event#supportsTimeStamp\0";
-pub const LV2_EVENT_AUDIO_STAMP: u32 = 0;
-pub const LV2_URI_MAP_URI: &'static [u8; 33usize] = b"http://lv2plug.in/ns/ext/uri-map\0";
-pub const LV2_URI_MAP_PREFIX: &'static [u8; 34usize] = b"http://lv2plug.in/ns/ext/uri-map#\0";
-pub type __uint8_t = ::std::os::raw::c_uchar;
-pub type __uint16_t = ::std::os::raw::c_ushort;
-pub type __int32_t = ::std::os::raw::c_int;
-pub type __uint32_t = ::std::os::raw::c_uint;
-pub type __int64_t = ::std::os::raw::c_long;
+pub type va_list = __builtin_va_list;
 #[doc = " The header of an atom:Atom."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -867,7 +868,6 @@ pub struct LV2_Atom_Sequence {
     #[doc = "< Body."]
     pub body: LV2_Atom_Sequence_Body,
 }
-pub type va_list = __builtin_va_list;
 #[doc = " A single entry in an Object query."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1273,6 +1273,197 @@ pub struct LV2_Extension_Data_Feature {
 #[doc = "NOT even valid to compare this to NULL. The dynamic manifest generator MAY"]
 #[doc = "use it to reference internal data."]
 pub type LV2_Dyn_Manifest_Handle = *mut ::std::os::raw::c_void;
+pub const LV2_EVENT_PPQN: u32 = 3136573440;
+#[doc = "An LV2 event (header only)."]
+#[doc = ""]
+#[doc = "LV2 events are generic time-stamped containers for any type of event."]
+#[doc = "The type field defines the format of a given event's contents."]
+#[doc = ""]
+#[doc = "This struct defines the header of an LV2 event. An LV2 event is a single"]
+#[doc = "chunk of POD (plain old data), usually contained in a flat buffer (see"]
+#[doc = "LV2_EventBuffer below). Unless a required feature says otherwise, hosts may"]
+#[doc = "assume a deep copy of an LV2 event can be created safely using a simple:"]
+#[doc = ""]
+#[doc = "memcpy(ev_copy, ev, sizeof(LV2_Event) + ev->size);  (or equivalent)"]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_Event {
+    #[doc = "The frames portion of timestamp. The units used here can optionally be"]
+    #[doc = "set for a port (with the lv2ev:timeUnits property), otherwise this is"]
+    #[doc = "audio frames, corresponding to the sample_count parameter of the LV2 run"]
+    #[doc = "method (e.g. frame 0 is the first frame for that call to run)."]
+    pub frames: u32,
+    #[doc = "The sub-frames portion of timestamp. The units used here can optionally"]
+    #[doc = "be set for a port (with the lv2ev:timeUnits property), otherwise this is"]
+    #[doc = "1/(2^32) of an audio frame."]
+    pub subframes: u32,
+    #[doc = "The type of this event, as a number which represents some URI"]
+    #[doc = "defining an event type. This value MUST be some value previously"]
+    #[doc = "returned from a call to the uri_to_id function defined in the LV2"]
+    #[doc = "URI map extension (see lv2_uri_map.h)."]
+    #[doc = "There are special rules which must be followed depending on the type"]
+    #[doc = "of an event. If the plugin recognizes an event type, the definition"]
+    #[doc = "of that event type will describe how to interpret the event, and"]
+    #[doc = "any required behaviour. Otherwise, if the type is 0, this event is a"]
+    #[doc = "non-POD event and lv2_event_unref MUST be called if the event is"]
+    #[doc = "'dropped' (see above). Even if the plugin does not understand an event,"]
+    #[doc = "it may pass the event through to an output by simply copying (and NOT"]
+    #[doc = "calling lv2_event_unref). These rules are designed to allow for generic"]
+    #[doc = "event handling plugins and large non-POD events, but with minimal hassle"]
+    #[doc = "on simple plugins that \"don't care\" about these more advanced features."]
+    pub type_: u16,
+    #[doc = "The size of the data portion of this event in bytes, which immediately"]
+    #[doc = "follows. The header size (12 bytes) is not included in this value."]
+    pub size: u16,
+}
+#[doc = "A buffer of LV2 events (header only)."]
+#[doc = ""]
+#[doc = "Like events (which this contains) an event buffer is a single chunk of POD:"]
+#[doc = "the entire buffer (including contents) can be copied with a single memcpy."]
+#[doc = "The first contained event begins sizeof(LV2_EventBuffer) bytes after the"]
+#[doc = "start of this struct."]
+#[doc = ""]
+#[doc = "After this header, the buffer contains an event header (defined by struct"]
+#[doc = "LV2_Event), followed by that event's contents (padded to 64 bits), followed"]
+#[doc = "by another header, etc:"]
+#[doc = ""]
+#[doc = "|       |       |       |       |       |       |"]
+#[doc = "| | | | | | | | | | | | | | | | | | | | | | | | |"]
+#[doc = "|FRAMES |SUBFRMS|TYP|LEN|DATA..DATA..PAD|FRAMES | ..."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_Event_Buffer {
+    #[doc = "The contents of the event buffer. This may or may not reside in the"]
+    #[doc = "same block of memory as this header, plugins must not assume either."]
+    #[doc = "The host guarantees this points to at least capacity bytes of allocated"]
+    #[doc = "memory (though only size bytes of that are valid events)."]
+    pub data: *mut u8,
+    #[doc = "The size of this event header in bytes (including everything)."]
+    #[doc = ""]
+    #[doc = "This is to allow for extending this header in the future without"]
+    #[doc = "breaking binary compatibility. Whenever this header is copied,"]
+    #[doc = "it MUST be done using this field (and NOT the sizeof this struct)."]
+    pub header_size: u16,
+    #[doc = "The type of the time stamps for events in this buffer."]
+    #[doc = "As a special exception, '0' always means audio frames and subframes"]
+    #[doc = "(1/UINT32_MAX'th of a frame) in the sample rate passed to instantiate."]
+    #[doc = ""]
+    #[doc = "INPUTS: The host must set this field to the numeric ID of some URI"]
+    #[doc = "defining the meaning of the frames/subframes fields of contained events"]
+    #[doc = "(obtained by the LV2 URI Map uri_to_id function with the URI of this"]
+    #[doc = "extension as the 'map' argument, see lv2_uri_map.h).  The host must"]
+    #[doc = "never pass a plugin a buffer which uses a stamp type the plugin does not"]
+    #[doc = "'understand'. The value of this field must never change, except when"]
+    #[doc = "connect_port is called on the input port, at which time the host MUST"]
+    #[doc = "have set the stamp_type field to the value that will be used for all"]
+    #[doc = "subsequent run calls."]
+    #[doc = ""]
+    #[doc = "OUTPUTS: The plugin may set this to any value that has been returned"]
+    #[doc = "from uri_to_id with the URI of this extension for a 'map' argument."]
+    #[doc = "When connected to a buffer with connect_port, output ports MUST set this"]
+    #[doc = "field to the type of time stamp they will be writing. On any call to"]
+    #[doc = "connect_port on an event input port, the plugin may change this field on"]
+    #[doc = "any output port, it is the responsibility of the host to check if any of"]
+    #[doc = "these values have changed and act accordingly."]
+    pub stamp_type: u16,
+    #[doc = "The number of events in this buffer."]
+    #[doc = ""]
+    #[doc = "INPUTS: The host must set this field to the number of events contained"]
+    #[doc = "in the data buffer before calling run(). The plugin must not change"]
+    #[doc = "this field."]
+    #[doc = ""]
+    #[doc = "OUTPUTS: The plugin must set this field to the number of events it has"]
+    #[doc = "written to the buffer before returning from run(). Any initial value"]
+    #[doc = "should be ignored by the plugin."]
+    pub event_count: u32,
+    #[doc = "The size of the data buffer in bytes."]
+    #[doc = "This is set by the host and must not be changed by the plugin."]
+    #[doc = "The host is allowed to change this between run() calls."]
+    pub capacity: u32,
+    #[doc = "The size of the initial portion of the data buffer containing data."]
+    #[doc = ""]
+    #[doc = "INPUTS: The host must set this field to the number of bytes used"]
+    #[doc = "by all events it has written to the buffer (including headers)"]
+    #[doc = "before calling the plugin's run()."]
+    #[doc = "The plugin must not change this field."]
+    #[doc = ""]
+    #[doc = "OUTPUTS: The plugin must set this field to the number of bytes"]
+    #[doc = "used by all events it has written to the buffer (including headers)"]
+    #[doc = "before returning from run()."]
+    #[doc = "Any initial value should be ignored by the plugin."]
+    pub size: u32,
+}
+#[doc = "Opaque pointer to host data."]
+pub type LV2_Event_Callback_Data = *mut ::std::os::raw::c_void;
+#[doc = "Non-POD events feature."]
+#[doc = ""]
+#[doc = "To support this feature the host must pass an LV2_Feature struct to the"]
+#[doc = "plugin's instantiate method with URI \"http://lv2plug.in/ns/ext/event\""]
+#[doc = "and data pointed to an instance of this struct.  Note this feature"]
+#[doc = "is not mandatory to support the event extension."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_Event_Feature {
+    #[doc = "Opaque pointer to host data."]
+    #[doc = ""]
+    #[doc = "The plugin MUST pass this to any call to functions in this struct."]
+    #[doc = "Otherwise, it must not be interpreted in any way."]
+    pub callback_data: LV2_Event_Callback_Data,
+    #[doc = "Take a reference to a non-POD event."]
+    #[doc = ""]
+    #[doc = "If a plugin receives an event with type 0, it means the event is a"]
+    #[doc = "pointer to some object in memory and not a flat sequence of bytes"]
+    #[doc = "in the buffer. When receiving a non-POD event, the plugin already"]
+    #[doc = "has an implicit reference to the event. If the event is stored AND"]
+    #[doc = "passed to an output, lv2_event_ref MUST be called on that event."]
+    #[doc = "If the event is only stored OR passed through, this is not necessary"]
+    #[doc = "(as the plugin already has 1 implicit reference)."]
+    #[doc = ""]
+    #[doc = "@param event An event received at an input that will not be copied to"]
+    #[doc = "an output or stored in any way."]
+    #[doc = ""]
+    #[doc = "@param context The calling context. Like event types, this is a mapped"]
+    #[doc = "URI, see lv2_context.h. Simple plugin with just a run() method should"]
+    #[doc = "pass 0 here (the ID of the 'standard' LV2 run context). The host"]
+    #[doc = "guarantees that this function is realtime safe iff the context is"]
+    #[doc = "realtime safe."]
+    #[doc = ""]
+    #[doc = "PLUGINS THAT VIOLATE THESE RULES MAY CAUSE CRASHES AND MEMORY LEAKS."]
+    pub lv2_event_ref: ::std::option::Option<
+        unsafe extern "C" fn(callback_data: LV2_Event_Callback_Data, event: *mut LV2_Event) -> u32,
+    >,
+    #[doc = "Drop a reference to a non-POD event."]
+    #[doc = ""]
+    #[doc = "If a plugin receives an event with type 0, it means the event is a"]
+    #[doc = "pointer to some object in memory and not a flat sequence of bytes"]
+    #[doc = "in the buffer. If the plugin does not pass the event through to"]
+    #[doc = "an output or store it internally somehow, it MUST call this function"]
+    #[doc = "on the event (more information on using non-POD events below)."]
+    #[doc = ""]
+    #[doc = "@param event An event received at an input that will not be copied to an"]
+    #[doc = "output or stored in any way."]
+    #[doc = ""]
+    #[doc = "@param context The calling context. Like event types, this is a mapped"]
+    #[doc = "URI, see lv2_context.h. Simple plugin with just a run() method should"]
+    #[doc = "pass 0 here (the ID of the 'standard' LV2 run context). The host"]
+    #[doc = "guarantees that this function is realtime safe iff the context is"]
+    #[doc = "realtime safe."]
+    #[doc = ""]
+    #[doc = "PLUGINS THAT VIOLATE THESE RULES MAY CAUSE CRASHES AND MEMORY LEAKS."]
+    pub lv2_event_unref: ::std::option::Option<
+        unsafe extern "C" fn(callback_data: LV2_Event_Callback_Data, event: *mut LV2_Event) -> u32,
+    >,
+}
+#[doc = " An iterator over an LV2_Event_Buffer."]
+#[doc = ""]
+#[doc = " Multiple simultaneous read iterators over a single buffer is fine,"]
+#[doc = " but changing the buffer invalidates all iterators (e.g. RW Lock)."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_Event_Iterator {
+    pub buf: *mut LV2_Event_Buffer,
+    pub offset: u32,
+}
 #[doc = "Opaque data to host data for LV2_Log_Log."]
 pub type LV2_Log_Handle = *mut ::std::os::raw::c_void;
 #[doc = "Log feature (LV2_LOG__log)"]
@@ -2275,6 +2466,63 @@ pub type LV2UI_Peak_Data = _LV2UI_Peak_Data;
 #[doc = "The type of the lv2ui_descriptor() function."]
 pub type LV2UI_DescriptorFunction =
     ::std::option::Option<unsafe extern "C" fn(index: u32) -> *const LV2UI_Descriptor>;
+    #[doc = "Opaque pointer to host data."]
+pub type LV2_URI_Map_Callback_Data = *mut ::std::os::raw::c_void;
+#[doc = "URI Map Feature."]
+#[doc = ""]
+#[doc = "To support this feature the host must pass an LV2_Feature struct to the"]
+#[doc = "plugin's instantiate method with URI \"http://lv2plug.in/ns/ext/uri-map\""]
+#[doc = "and data pointed to an instance of this struct."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_URI_Map_Feature {
+    #[doc = "Opaque pointer to host data."]
+    #[doc = ""]
+    #[doc = "The plugin MUST pass this to any call to functions in this struct."]
+    #[doc = "Otherwise, it must not be interpreted in any way."]
+    pub callback_data: LV2_URI_Map_Callback_Data,
+    #[doc = "Get the numeric ID of a URI from the host."]
+    #[doc = ""]
+    #[doc = "@param callback_data Must be the callback_data member of this struct."]
+    #[doc = "@param map The 'context' of this URI. Certain extensions may define a"]
+    #[doc = "URI that must be passed here with certain restrictions on the return"]
+    #[doc = "value (e.g. limited range). This value may be NULL if the plugin needs"]
+    #[doc = "an ID for a URI in general. Extensions SHOULD NOT define a context"]
+    #[doc = "unless there is a specific need to do so, e.g. to restrict the range of"]
+    #[doc = "the returned value."]
+    #[doc = "@param uri The URI to be mapped to an integer ID."]
+    #[doc = ""]
+    #[doc = "This function is referentially transparent; any number of calls with the"]
+    #[doc = "same arguments is guaranteed to return the same value over the life of a"]
+    #[doc = "plugin instance (though the same URI may return different values with a"]
+    #[doc = "different map parameter). However, this function is not necessarily very"]
+    #[doc = "fast: plugins SHOULD cache any IDs they might need in performance"]
+    #[doc = "critical situations."]
+    #[doc = ""]
+    #[doc = "The return value 0 is reserved and indicates that an ID for that URI"]
+    #[doc = "could not be created for whatever reason. Extensions MAY define more"]
+    #[doc = "precisely what this means in a certain context, but in general plugins"]
+    #[doc = "SHOULD handle this situation as gracefully as possible. However, hosts"]
+    #[doc = "SHOULD NOT return 0 from this function in non-exceptional circumstances"]
+    #[doc = "(e.g. the URI map SHOULD be dynamic). Hosts that statically support only"]
+    #[doc = "a fixed set of URIs should not expect plugins to function correctly."]
+    pub uri_to_id: ::std::option::Option<
+        unsafe extern "C" fn(
+            callback_data: LV2_URI_Map_Callback_Data,
+            map: *const ::std::os::raw::c_char,
+            uri: *const ::std::os::raw::c_char,
+        ) -> u32,
+    >,
+}
+pub type __builtin_va_list = [__va_list_tag; 1usize];
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __va_list_tag {
+    pub gp_offset: ::std::os::raw::c_uint,
+    pub fp_offset: ::std::os::raw::c_uint,
+    pub overflow_arg_area: *mut ::std::os::raw::c_void,
+    pub reg_save_area: *mut ::std::os::raw::c_void,
+}
 #[doc = "< Completed successfully."]
 pub const LV2_Worker_Status_LV2_WORKER_SUCCESS: LV2_Worker_Status = 0;
 #[doc = "< Unknown error."]
@@ -2398,251 +2646,3 @@ pub struct _LV2_Worker_Schedule {
     >,
 }
 pub type LV2_Worker_Schedule = _LV2_Worker_Schedule;
-pub const LV2_EVENT_PPQN: u32 = 3136573440;
-#[doc = "An LV2 event (header only)."]
-#[doc = ""]
-#[doc = "LV2 events are generic time-stamped containers for any type of event."]
-#[doc = "The type field defines the format of a given event's contents."]
-#[doc = ""]
-#[doc = "This struct defines the header of an LV2 event. An LV2 event is a single"]
-#[doc = "chunk of POD (plain old data), usually contained in a flat buffer (see"]
-#[doc = "LV2_EventBuffer below). Unless a required feature says otherwise, hosts may"]
-#[doc = "assume a deep copy of an LV2 event can be created safely using a simple:"]
-#[doc = ""]
-#[doc = "memcpy(ev_copy, ev, sizeof(LV2_Event) + ev->size);  (or equivalent)"]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct LV2_Event {
-    #[doc = "The frames portion of timestamp. The units used here can optionally be"]
-    #[doc = "set for a port (with the lv2ev:timeUnits property), otherwise this is"]
-    #[doc = "audio frames, corresponding to the sample_count parameter of the LV2 run"]
-    #[doc = "method (e.g. frame 0 is the first frame for that call to run)."]
-    pub frames: u32,
-    #[doc = "The sub-frames portion of timestamp. The units used here can optionally"]
-    #[doc = "be set for a port (with the lv2ev:timeUnits property), otherwise this is"]
-    #[doc = "1/(2^32) of an audio frame."]
-    pub subframes: u32,
-    #[doc = "The type of this event, as a number which represents some URI"]
-    #[doc = "defining an event type. This value MUST be some value previously"]
-    #[doc = "returned from a call to the uri_to_id function defined in the LV2"]
-    #[doc = "URI map extension (see lv2_uri_map.h)."]
-    #[doc = "There are special rules which must be followed depending on the type"]
-    #[doc = "of an event. If the plugin recognizes an event type, the definition"]
-    #[doc = "of that event type will describe how to interpret the event, and"]
-    #[doc = "any required behaviour. Otherwise, if the type is 0, this event is a"]
-    #[doc = "non-POD event and lv2_event_unref MUST be called if the event is"]
-    #[doc = "'dropped' (see above). Even if the plugin does not understand an event,"]
-    #[doc = "it may pass the event through to an output by simply copying (and NOT"]
-    #[doc = "calling lv2_event_unref). These rules are designed to allow for generic"]
-    #[doc = "event handling plugins and large non-POD events, but with minimal hassle"]
-    #[doc = "on simple plugins that \"don't care\" about these more advanced features."]
-    pub type_: u16,
-    #[doc = "The size of the data portion of this event in bytes, which immediately"]
-    #[doc = "follows. The header size (12 bytes) is not included in this value."]
-    pub size: u16,
-}
-#[doc = "A buffer of LV2 events (header only)."]
-#[doc = ""]
-#[doc = "Like events (which this contains) an event buffer is a single chunk of POD:"]
-#[doc = "the entire buffer (including contents) can be copied with a single memcpy."]
-#[doc = "The first contained event begins sizeof(LV2_EventBuffer) bytes after the"]
-#[doc = "start of this struct."]
-#[doc = ""]
-#[doc = "After this header, the buffer contains an event header (defined by struct"]
-#[doc = "LV2_Event), followed by that event's contents (padded to 64 bits), followed"]
-#[doc = "by another header, etc:"]
-#[doc = ""]
-#[doc = "|       |       |       |       |       |       |"]
-#[doc = "| | | | | | | | | | | | | | | | | | | | | | | | |"]
-#[doc = "|FRAMES |SUBFRMS|TYP|LEN|DATA..DATA..PAD|FRAMES | ..."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct LV2_Event_Buffer {
-    #[doc = "The contents of the event buffer. This may or may not reside in the"]
-    #[doc = "same block of memory as this header, plugins must not assume either."]
-    #[doc = "The host guarantees this points to at least capacity bytes of allocated"]
-    #[doc = "memory (though only size bytes of that are valid events)."]
-    pub data: *mut u8,
-    #[doc = "The size of this event header in bytes (including everything)."]
-    #[doc = ""]
-    #[doc = "This is to allow for extending this header in the future without"]
-    #[doc = "breaking binary compatibility. Whenever this header is copied,"]
-    #[doc = "it MUST be done using this field (and NOT the sizeof this struct)."]
-    pub header_size: u16,
-    #[doc = "The type of the time stamps for events in this buffer."]
-    #[doc = "As a special exception, '0' always means audio frames and subframes"]
-    #[doc = "(1/UINT32_MAX'th of a frame) in the sample rate passed to instantiate."]
-    #[doc = ""]
-    #[doc = "INPUTS: The host must set this field to the numeric ID of some URI"]
-    #[doc = "defining the meaning of the frames/subframes fields of contained events"]
-    #[doc = "(obtained by the LV2 URI Map uri_to_id function with the URI of this"]
-    #[doc = "extension as the 'map' argument, see lv2_uri_map.h).  The host must"]
-    #[doc = "never pass a plugin a buffer which uses a stamp type the plugin does not"]
-    #[doc = "'understand'. The value of this field must never change, except when"]
-    #[doc = "connect_port is called on the input port, at which time the host MUST"]
-    #[doc = "have set the stamp_type field to the value that will be used for all"]
-    #[doc = "subsequent run calls."]
-    #[doc = ""]
-    #[doc = "OUTPUTS: The plugin may set this to any value that has been returned"]
-    #[doc = "from uri_to_id with the URI of this extension for a 'map' argument."]
-    #[doc = "When connected to a buffer with connect_port, output ports MUST set this"]
-    #[doc = "field to the type of time stamp they will be writing. On any call to"]
-    #[doc = "connect_port on an event input port, the plugin may change this field on"]
-    #[doc = "any output port, it is the responsibility of the host to check if any of"]
-    #[doc = "these values have changed and act accordingly."]
-    pub stamp_type: u16,
-    #[doc = "The number of events in this buffer."]
-    #[doc = ""]
-    #[doc = "INPUTS: The host must set this field to the number of events contained"]
-    #[doc = "in the data buffer before calling run(). The plugin must not change"]
-    #[doc = "this field."]
-    #[doc = ""]
-    #[doc = "OUTPUTS: The plugin must set this field to the number of events it has"]
-    #[doc = "written to the buffer before returning from run(). Any initial value"]
-    #[doc = "should be ignored by the plugin."]
-    pub event_count: u32,
-    #[doc = "The size of the data buffer in bytes."]
-    #[doc = "This is set by the host and must not be changed by the plugin."]
-    #[doc = "The host is allowed to change this between run() calls."]
-    pub capacity: u32,
-    #[doc = "The size of the initial portion of the data buffer containing data."]
-    #[doc = ""]
-    #[doc = "INPUTS: The host must set this field to the number of bytes used"]
-    #[doc = "by all events it has written to the buffer (including headers)"]
-    #[doc = "before calling the plugin's run()."]
-    #[doc = "The plugin must not change this field."]
-    #[doc = ""]
-    #[doc = "OUTPUTS: The plugin must set this field to the number of bytes"]
-    #[doc = "used by all events it has written to the buffer (including headers)"]
-    #[doc = "before returning from run()."]
-    #[doc = "Any initial value should be ignored by the plugin."]
-    pub size: u32,
-}
-#[doc = "Opaque pointer to host data."]
-pub type LV2_Event_Callback_Data = *mut ::std::os::raw::c_void;
-#[doc = "Non-POD events feature."]
-#[doc = ""]
-#[doc = "To support this feature the host must pass an LV2_Feature struct to the"]
-#[doc = "plugin's instantiate method with URI \"http://lv2plug.in/ns/ext/event\""]
-#[doc = "and data pointed to an instance of this struct.  Note this feature"]
-#[doc = "is not mandatory to support the event extension."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct LV2_Event_Feature {
-    #[doc = "Opaque pointer to host data."]
-    #[doc = ""]
-    #[doc = "The plugin MUST pass this to any call to functions in this struct."]
-    #[doc = "Otherwise, it must not be interpreted in any way."]
-    pub callback_data: LV2_Event_Callback_Data,
-    #[doc = "Take a reference to a non-POD event."]
-    #[doc = ""]
-    #[doc = "If a plugin receives an event with type 0, it means the event is a"]
-    #[doc = "pointer to some object in memory and not a flat sequence of bytes"]
-    #[doc = "in the buffer. When receiving a non-POD event, the plugin already"]
-    #[doc = "has an implicit reference to the event. If the event is stored AND"]
-    #[doc = "passed to an output, lv2_event_ref MUST be called on that event."]
-    #[doc = "If the event is only stored OR passed through, this is not necessary"]
-    #[doc = "(as the plugin already has 1 implicit reference)."]
-    #[doc = ""]
-    #[doc = "@param event An event received at an input that will not be copied to"]
-    #[doc = "an output or stored in any way."]
-    #[doc = ""]
-    #[doc = "@param context The calling context. Like event types, this is a mapped"]
-    #[doc = "URI, see lv2_context.h. Simple plugin with just a run() method should"]
-    #[doc = "pass 0 here (the ID of the 'standard' LV2 run context). The host"]
-    #[doc = "guarantees that this function is realtime safe iff the context is"]
-    #[doc = "realtime safe."]
-    #[doc = ""]
-    #[doc = "PLUGINS THAT VIOLATE THESE RULES MAY CAUSE CRASHES AND MEMORY LEAKS."]
-    pub lv2_event_ref: ::std::option::Option<
-        unsafe extern "C" fn(callback_data: LV2_Event_Callback_Data, event: *mut LV2_Event) -> u32,
-    >,
-    #[doc = "Drop a reference to a non-POD event."]
-    #[doc = ""]
-    #[doc = "If a plugin receives an event with type 0, it means the event is a"]
-    #[doc = "pointer to some object in memory and not a flat sequence of bytes"]
-    #[doc = "in the buffer. If the plugin does not pass the event through to"]
-    #[doc = "an output or store it internally somehow, it MUST call this function"]
-    #[doc = "on the event (more information on using non-POD events below)."]
-    #[doc = ""]
-    #[doc = "@param event An event received at an input that will not be copied to an"]
-    #[doc = "output or stored in any way."]
-    #[doc = ""]
-    #[doc = "@param context The calling context. Like event types, this is a mapped"]
-    #[doc = "URI, see lv2_context.h. Simple plugin with just a run() method should"]
-    #[doc = "pass 0 here (the ID of the 'standard' LV2 run context). The host"]
-    #[doc = "guarantees that this function is realtime safe iff the context is"]
-    #[doc = "realtime safe."]
-    #[doc = ""]
-    #[doc = "PLUGINS THAT VIOLATE THESE RULES MAY CAUSE CRASHES AND MEMORY LEAKS."]
-    pub lv2_event_unref: ::std::option::Option<
-        unsafe extern "C" fn(callback_data: LV2_Event_Callback_Data, event: *mut LV2_Event) -> u32,
-    >,
-}
-#[doc = " An iterator over an LV2_Event_Buffer."]
-#[doc = ""]
-#[doc = " Multiple simultaneous read iterators over a single buffer is fine,"]
-#[doc = " but changing the buffer invalidates all iterators (e.g. RW Lock)."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct LV2_Event_Iterator {
-    pub buf: *mut LV2_Event_Buffer,
-    pub offset: u32,
-}
-#[doc = "Opaque pointer to host data."]
-pub type LV2_URI_Map_Callback_Data = *mut ::std::os::raw::c_void;
-#[doc = "URI Map Feature."]
-#[doc = ""]
-#[doc = "To support this feature the host must pass an LV2_Feature struct to the"]
-#[doc = "plugin's instantiate method with URI \"http://lv2plug.in/ns/ext/uri-map\""]
-#[doc = "and data pointed to an instance of this struct."]
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct LV2_URI_Map_Feature {
-    #[doc = "Opaque pointer to host data."]
-    #[doc = ""]
-    #[doc = "The plugin MUST pass this to any call to functions in this struct."]
-    #[doc = "Otherwise, it must not be interpreted in any way."]
-    pub callback_data: LV2_URI_Map_Callback_Data,
-    #[doc = "Get the numeric ID of a URI from the host."]
-    #[doc = ""]
-    #[doc = "@param callback_data Must be the callback_data member of this struct."]
-    #[doc = "@param map The 'context' of this URI. Certain extensions may define a"]
-    #[doc = "URI that must be passed here with certain restrictions on the return"]
-    #[doc = "value (e.g. limited range). This value may be NULL if the plugin needs"]
-    #[doc = "an ID for a URI in general. Extensions SHOULD NOT define a context"]
-    #[doc = "unless there is a specific need to do so, e.g. to restrict the range of"]
-    #[doc = "the returned value."]
-    #[doc = "@param uri The URI to be mapped to an integer ID."]
-    #[doc = ""]
-    #[doc = "This function is referentially transparent; any number of calls with the"]
-    #[doc = "same arguments is guaranteed to return the same value over the life of a"]
-    #[doc = "plugin instance (though the same URI may return different values with a"]
-    #[doc = "different map parameter). However, this function is not necessarily very"]
-    #[doc = "fast: plugins SHOULD cache any IDs they might need in performance"]
-    #[doc = "critical situations."]
-    #[doc = ""]
-    #[doc = "The return value 0 is reserved and indicates that an ID for that URI"]
-    #[doc = "could not be created for whatever reason. Extensions MAY define more"]
-    #[doc = "precisely what this means in a certain context, but in general plugins"]
-    #[doc = "SHOULD handle this situation as gracefully as possible. However, hosts"]
-    #[doc = "SHOULD NOT return 0 from this function in non-exceptional circumstances"]
-    #[doc = "(e.g. the URI map SHOULD be dynamic). Hosts that statically support only"]
-    #[doc = "a fixed set of URIs should not expect plugins to function correctly."]
-    pub uri_to_id: ::std::option::Option<
-        unsafe extern "C" fn(
-            callback_data: LV2_URI_Map_Callback_Data,
-            map: *const ::std::os::raw::c_char,
-            uri: *const ::std::os::raw::c_char,
-        ) -> u32,
-    >,
-}
-pub type __builtin_va_list = [__va_list_tag; 1usize];
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct __va_list_tag {
-    pub gp_offset: ::std::os::raw::c_uint,
-    pub fp_offset: ::std::os::raw::c_uint,
-    pub overflow_arg_area: *mut ::std::os::raw::c_void,
-    pub reg_save_area: *mut ::std::os::raw::c_void,
-}
