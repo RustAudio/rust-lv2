@@ -1,9 +1,10 @@
 [package]
-name = "lv2-sys-bindgen"
+name = "gen-bindings"
 version = "0.1.0"
 authors = ["Yruama_Lairba <yruama_lairba@hotmail.com>", "Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+publish = false
 
 description = "Generate Rust bindings of the LV2 C API"
 readme = "README.md"

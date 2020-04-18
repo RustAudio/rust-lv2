@@ -1,1 +1,1 @@
-compile_error!("The used compiler target is not supported by rust-lv2!");
+compile_error!("The targeted operation system is not supported by rust-lv2!");

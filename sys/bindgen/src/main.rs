@@ -4,7 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings and write them to out.
-pub fn generate_bindings(source_dir: &Path, out: &Path) {
+pub fn generate_bindings(source_dir: &Path, out: &Path, target: Option<&str>) {
     let mut bindings = bindgen::Builder::default()
         .size_t_is_usize(true)
         .whitelist_type("LV2.*")
@@ -12,6 +12,9 @@ pub fn generate_bindings(source_dir: &Path, out: &Path) {
         .whitelist_var("LV2.*")
         .layout_tests(false)
         .bitfield_enum("LV2_State_Flags");
+    if let Some(target) = target {
+        bindings = bindings.clang_arg(format!("--target={}", target));
+    }
 
     // Adding the headers to the include path of clang.
     // Otherwise, included headers can not be found.
@@ -54,7 +57,7 @@ pub fn generate_bindings(source_dir: &Path, out: &Path) {
 }
 
 fn main() {
-    let matches = clap::App::new("lv2-sys-bindgen")
+    let matches = clap::App::new("gen-bindings")
         .author("© 2020 Amaury 'Yruama_Lairba' Abrail, Jan-Oliver 'Janonard' Opdenhövel")
         .about("Generate Rust bindings of the LV2 C API")
         .version("0.1.0")
@@ -76,10 +79,20 @@ fn main() {
                 .value_name("OUT")
                 .takes_value(true),
         )
+        .arg(
+            clap::Arg::with_name("target")
+                .help("The compiler target triple")
+                .required(false)
+                .short("t")
+                .long("target")
+                .value_name("TRIPLE")
+                .takes_value(true),
+        )
         .get_matches();
 
     let headers = PathBuf::from(".").join(matches.value_of("LV2").unwrap());
     let out = PathBuf::from(".").join(matches.value_of("out").unwrap());
+    let target = matches.value_of("target");
 
-    generate_bindings(&headers, &out);
+    generate_bindings(&headers, &out, target);
 }
