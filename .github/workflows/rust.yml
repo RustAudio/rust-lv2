@@ -5,6 +5,7 @@ on:
     branches: 
     - master
     - develop
+    - pregenerated-sys
   pull_request:
     branches: 
     - master
@@ -46,3 +47,23 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --all-features -- -D warnings
+
+  gen-bindings:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Generate
+      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o bindings.rs
+    - uses: actions/upload-artifact@v1
+      with:
+        name: bindings
+        path: bindings.rs
