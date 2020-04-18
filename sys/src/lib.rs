@@ -9,7 +9,12 @@
 #![allow(dead_code)]
 #![allow(clippy::all)]
 #![allow(improper_ctypes)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+
+#[cfg_attr(target_os = "linux", path = "linux.rs")]
+mod bindings;
+
+pub use bindings::*;
 
 impl From<u32> for LV2_State_Flags {
     fn from(flags: u32) -> Self {
