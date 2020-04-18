@@ -11,9 +11,10 @@
 #![allow(improper_ctypes)]
 
 
-#[cfg_attr(target_os = "linux", path = "linux.rs")]
+#[cfg_attr(linux, path = "linux.rs")]
+#[cfg_attr(windows, path = "windows.rs")]
+#[cfg_attr(not(any(linux, windows)), path = "unsupported.rs")]
 mod bindings;
-
 pub use bindings::*;
 
 impl From<u32> for LV2_State_Flags {
