@@ -48,12 +48,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --all-features -- -D warnings
 
-  gen-bindings:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
-    runs-on: ${{ matrix.os }}
+  linux-bindings:
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -61,9 +57,31 @@ jobs:
       with:
         toolchain: stable
         override: true
-    - name: Generate
-      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o bindings.rs
+        target: x86_64-unknown-linux-gnu i686-unknown-linux-gnu
+    - name: Generate 64-bit
+      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86_64.rs --target x86_64-unknown-linux-gnu
+    - name: Generate 32-bit
+      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86.rs --target i686-unknown-linux-gnu
     - uses: actions/upload-artifact@v1
       with:
-        name: bindings
-        path: bindings.rs
+        name: linux-bindings
+        path: x86_64.rs x86.rs
+
+  macos-bindings:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        target: x86_64-apple-darwin i686-apple-darwin
+    - name: Generate 64-bit
+      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86_64.rs --target x86_64-apple-darwin
+    - name: Generate 32-bit
+      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86.rs --target i686-apple-darwin
+    - uses: actions/upload-artifact@v1
+      with:
+        name: macos-bindings
+        path: x86_64.rs x86.rs
