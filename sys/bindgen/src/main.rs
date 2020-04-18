@@ -23,26 +23,26 @@ pub fn generate_bindings(source_dir: &Path, out: &Path, target: Option<&str>) {
     bindings = bindings.clang_arg(format!("-I{}", include_path.to_str().unwrap()));
 
     // Iterate over every folder and header file in the source dir and add them to the bindings.
-    for entry in fs::read_dir(source_dir).unwrap() {
-        let spec_dir = if let Ok(spec_dir) = entry {
-            spec_dir.path()
-        } else {
-            continue;
-        };
+    let mut dirs: Vec<PathBuf> = fs::read_dir(source_dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    dirs.sort_unstable();
+    for spec_dir in dirs.iter() {
+        let mut files: Vec<PathBuf> = fs::read_dir(spec_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect();
+        files.sort_unstable();
 
-        for entry in fs::read_dir(spec_dir).unwrap() {
-            let entry = match entry {
-                Ok(entry) => entry.path(),
-                _ => continue,
-            };
-
-            let extension = match entry.extension() {
+        for file in files {
+            let extension = match file.extension() {
                 Some(extension) => extension,
                 None => continue,
             };
 
             if extension == "h" {
-                bindings = bindings.header(entry.to_str().unwrap());
+                bindings = bindings.header(file.to_str().unwrap());
             }
         }
     }
