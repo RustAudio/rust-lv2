@@ -1,0 +1,2 @@
+[alias]
+lv2-sys-bindgen = "run -p lv2-sys-bindgen --"
