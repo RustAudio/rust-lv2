@@ -62,14 +62,15 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libc6-dev-i386
-    - name: Generate 64-bit
-      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86_64.rs --target x86_64-unknown-linux-gnu
-    - name: Generate 32-bit
-      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86.rs --target i686-unknown-linux-gnu
+    - name: Generate
+      run: |
+        mkdir bindings
+        cargo run -p gen-bindings -- -I ./sys/lv2/ -o bindings/x86_64.rs --target x86_64-unknown-linux-gnu
+        cargo run -p gen-bindings -- -I ./sys/lv2/ -o bindings/x86.rs --target i686-unknown-linux-gnu
     - uses: actions/upload-artifact@v1
       with:
         name: linux-bindings
-        path: x86_64.rs x86.rs
+        path: bindings
 
   macos-bindings:
     runs-on: macos-latest
@@ -81,8 +82,10 @@ jobs:
         toolchain: stable
         override: true
     - name: Generate 64-bit
-      run: cargo run -p gen-bindings -- -I ./sys/lv2/ -o x86_64.rs --target x86_64-apple-darwin
+      run: |
+        mkdir bindings
+        cargo run -p gen-bindings -- -I ./sys/lv2/ -o bindings/x86_64.rs --target x86_64-apple-darwin
     - uses: actions/upload-artifact@v1
       with:
         name: macos-bindings
-        path: x86_64.rs
+        path: bindings
