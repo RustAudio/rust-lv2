@@ -1,5 +1,5 @@
 [package]
-name = "gen-bindings"
+name = "systool"
 version = "0.1.0"
 authors = ["Yruama_Lairba <yruama_lairba@hotmail.com>", "Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"

@@ -57,7 +57,7 @@ pub fn generate_bindings(source_dir: &Path, out: &Path, target: Option<&str>) {
 }
 
 fn main() {
-    let matches = clap::App::new("gen-bindings")
+    let matches = clap::App::new("systool")
         .author("© 2020 Amaury 'Yruama_Lairba' Abrail, Jan-Oliver 'Janonard' Opdenhövel")
         .about("Generate Rust bindings of the LV2 C API")
         .version("0.1.0")
