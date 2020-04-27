@@ -13,11 +13,19 @@ type DynError = Box<dyn Error>;
 
 fn main() {
     let mut input: Option<_> = None;
+    let mut output: Option<_> = None;
     let mut target: Option<_> = None;
     let mut args = env::args();
 
     //parse the arguments
     while let Some(arg) = args.next() {
+        //out path
+        if arg == "-o" {
+            if let Some(arg) = args.next() {
+                output = Some(arg)
+            }
+        }
+        //lv2 path
         if arg == "-i" {
             if let Some(t) = args.next() {
                 input = Some(t);
@@ -36,7 +44,12 @@ fn main() {
     }
 
     //check and get the required argument
-    let lv2_path:PathBuf = if let Some(val) = input {
+    let out_path: PathBuf = if let Some(val) = output {
+        val.into()
+    } else {
+        panic!("No output file was provided")
+    };
+    let lv2_path: PathBuf = if let Some(val) = input {
         val.into()
     } else {
         panic!("No path to the LV2 directory was provided.")
@@ -53,7 +66,11 @@ fn main() {
     if get_target_enum("").unwrap().contains("32") {
         print!("Generating bindings...");
         io::stdout().flush().unwrap();
-        generate_bindings(&env::current_dir().unwrap().join(&lv2_path), &out_dir.join("bindings.rs"), target);
+        generate_bindings(
+            &env::current_dir().unwrap().join(&lv2_path),
+            &env::current_dir().unwrap().join(&out_path),
+            target,
+        );
         println!(" Done");
         generate_valid_target(&out_dir);
     } else {
