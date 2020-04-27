@@ -9,6 +9,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
 
+pub mod compare;
+
 type DynError = Box<dyn Error>;
 
 /// Generate lv2-sys bindings

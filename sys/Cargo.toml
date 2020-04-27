@@ -17,13 +17,3 @@ maintenance = { status = "passively-maintained" }
 
 [build-dependencies]
 lv2-sys-bindgen = {path = "bindgen", optional=true}
-
-[dev-dependencies]
-lv2-sys-bindgen = {path = "bindgen"}
-quote = "1.0.2"
-proc-macro2 = "1.0.9"
-
-[dev-dependencies.syn]
-version = "1.0.5"
-default-features = false
-features=["full","parsing","extra-traits","clone-impls","printing","visit-mut"]

@@ -1,15 +1,13 @@
-extern crate lv2_sys_bindgen;
 use proc_macro2::Span;
 use quote::quote;
 use std::collections::HashSet;
+use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use syn::punctuated::{Pair, Punctuated};
 use syn::visit_mut;
 use syn::visit_mut::VisitMut;
 use syn::{AngleBracketedGenericArguments, Fields, Ident, Item, Type, TypeBareFn};
-
-use std::env;
 
 // this function allow to ignore some i32/u32 difference
 fn i32_to_u32(mut item: Item) -> Item {
@@ -91,16 +89,9 @@ fn remove_comma(mut item: Item) -> Item {
 
 // the idea here is to represent a binding file as a unordonned collection of syn::Item. This to be
 // insensitive to formatting or definition order in the file.
-#[test]
-fn bindings_are_equivalent() {
-    let work_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let source_dir = work_dir.join("lv2");
-    let bindings1_dir = work_dir.join("build_data");
-    let bindings2_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    //println!("{}", bindings2_dir.to_str().unwrap());
-    lv2_sys_bindgen::generate_bindings(&source_dir, &bindings2_dir, None);
+pub fn compare(file1: &Path, file2: &Path) {
 
-    let f1 = fs::read_to_string(bindings1_dir.join("bindings.rs")).unwrap();
+    let f1 = fs::read_to_string(env::current_dir().unwrap().join(file1)).unwrap();
     let f1 = syn::parse_str::<syn::File>(&f1).unwrap();
     let h1: HashSet<_> = f1
         .items
@@ -109,7 +100,7 @@ fn bindings_are_equivalent() {
         .map(i32_to_u32)
         .collect();
 
-    let f2 = fs::read_to_string(bindings2_dir.join("bindings.rs")).unwrap();
+    let f2 = fs::read_to_string(env::current_dir().unwrap().join(file2)).unwrap();
     let f2 = syn::parse_str::<syn::File>(&f2).unwrap();
     let h2: HashSet<_> = f2
         .items
@@ -123,13 +114,13 @@ fn bindings_are_equivalent() {
         let diff2: HashSet<_> = h2.difference(&h1).collect();
         let mut message = String::from("Error, binding aren't equivalent\n");
         if !diff1.is_empty() {
-            message.push_str("Item present only in static bindings:\n");
+            message.push_str("Item present only in file1 bindings:\n");
             for e in diff1 {
                 message.push_str(&format!("{}\n", quote!(#e)));
             }
         }
         if !diff2.is_empty() {
-            message.push_str("Item present only in generated bindings:\n");
+            message.push_str("Item present only in file2 bindings:\n");
             for e in diff2 {
                 message.push_str(&format!("{}\n", quote!(#e)));
             }
