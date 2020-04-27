@@ -6,11 +6,16 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 
+const USAGE: &str = "
+Usage: lv2-sys-bindgen -i LV2-DIR -o OUTPUT-FILE
+";
+
 type DynError = Box<dyn Error>;
 
 fn main() {
     if let Err(e) = try_main() {
         eprintln!("{}", e);
+        println!("{}", USAGE);
         std::process::exit(-1);
     }
 }
@@ -51,12 +56,12 @@ fn try_main() -> Result<(), DynError> {
     let lv2_path: PathBuf = if let Some(val) = input {
         val.into()
     } else {
-        return Err("No path to the LV2 directory was provided.".into())
+        return Err("No path to the LV2 directory was provided.".into());
     };
     let out_path: PathBuf = if let Some(val) = output {
         val.into()
     } else {
-        return Err("No output file was provided".into())
+        return Err("No output file was provided".into());
     };
 
     let target = target.as_deref();
