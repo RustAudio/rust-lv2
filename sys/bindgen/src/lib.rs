@@ -3,19 +3,19 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings
-pub fn generate_bindings(source_dir: &Path, out_dir: &Path, target: Option<&str>) {
+pub fn generate_bindings(lv2_dir: &Path, out_file: &Path, target: Option<&str>) {
     let mut bindings = bindgen::Builder::default().size_t_is_usize(true);
 
     // Adding the crate to the include path of clang.
     // Otherwise, included headers can not be found.
-    let mut include_path = PathBuf::from(source_dir);
+    let mut include_path = PathBuf::from(lv2_dir);
     include_path.pop();
     bindings = bindings.clang_arg(format!("-I{}", include_path.to_str().unwrap()));
     if let Some(target) = target {
         bindings = bindings.clang_arg(format!("--target={}", target));
     }
 
-    for entry in fs::read_dir(source_dir).unwrap() {
+    for entry in fs::read_dir(lv2_dir).unwrap() {
         let spec_dir = if let Ok(spec_dir) = entry {
             spec_dir.path()
         } else {
@@ -50,6 +50,6 @@ pub fn generate_bindings(source_dir: &Path, out_dir: &Path, target: Option<&str>
 
     // Writing the bindings to a file.
     bindings
-        .write_to_file(out_dir.join("bindings.rs"))
+        .write_to_file(out_file)
         .expect("Couldn't write bindings!");
 }

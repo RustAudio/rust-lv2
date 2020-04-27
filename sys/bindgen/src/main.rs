@@ -38,7 +38,7 @@ fn main() {
     if get_target_enum("").unwrap().contains("32") {
         print!("Generating bindings...");
         io::stdout().flush().unwrap();
-        generate_bindings(&source_dir, &out_dir, target);
+        generate_bindings(&source_dir, &out_dir.join("bindings.rs"), target);
         println!(" Done");
         generate_valid_target(&out_dir);
     } else {
