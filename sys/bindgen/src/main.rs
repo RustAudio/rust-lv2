@@ -1,13 +1,15 @@
 extern crate bindgen;
 use lv2_sys_bindgen::*;
 use std::env;
+use std::env::Args;
 use std::error::Error;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 
 const USAGE: &str = "
-Usage: lv2-sys-bindgen -i LV2-DIR -o OUTPUT-FILE
+Usage: lv2-sys-bindgen generate -i LV2-DIR -o OUTPUT-FILE    Generate bindings
+   or: lv2-sys-bindgen compare FILE1 FILE2                   Compare bindings
 ";
 
 type DynError = Box<dyn Error>;
@@ -21,10 +23,24 @@ fn main() {
 }
 
 fn try_main() -> Result<(), DynError> {
+    let mut args = env::args();
+    let subcommand = args.nth(1);
+    if let Some(subcommand) = subcommand {
+        match subcommand.as_ref() {
+            "generate" => cmd_generate(args)?,
+            "compare" => cmd_compare(args)?,
+            _ => return Err(format!("Unknown subcommand: `{}`", subcommand).into()),
+        }
+    } else {
+        return Err("Subcommand expected".into());
+    }
+    Ok(())
+}
+
+fn cmd_generate(mut args: Args) -> Result<(), DynError> {
     let mut input: Option<_> = None;
     let mut output: Option<_> = None;
     let mut target: Option<_> = None;
-    let mut args = env::args();
 
     //parse the arguments
     while let Some(arg) = args.next() {
@@ -74,5 +90,20 @@ fn try_main() -> Result<(), DynError> {
         target,
     );
     println!(" Done");
+    Ok(())
+}
+
+fn cmd_compare(mut args: Args) -> Result<(), DynError> {
+    let file1 = if let Some(arg) = args.next() {
+        PathBuf::from(arg)
+    } else {
+        return Err("missing argument".into());
+    };
+    let file2 = if let Some(arg) = args.next() {
+        PathBuf::from(arg)
+    } else {
+        return Err("missing argument".into());
+    };
+    compare::compare(&file1, &file2);
     Ok(())
 }
