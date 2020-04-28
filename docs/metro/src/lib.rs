@@ -65,7 +65,7 @@ impl Plugin for Metro {
         Some(Self {
             urids: features.map.populate_collection()?,
             envelope,
-            sampler: sampler,
+            sampler,
         })
     }
 
