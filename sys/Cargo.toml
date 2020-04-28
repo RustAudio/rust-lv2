@@ -9,6 +9,8 @@ description = "rust-lv2's C header bindings"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 
+exclude = ["lv2", "tool"]
+
 [badges]
 travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
