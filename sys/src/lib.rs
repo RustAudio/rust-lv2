@@ -1,8 +1,10 @@
 //! Raw bindings of all LV2 specification headers.
 //!
-//! This crate contains all C headers of the LV2 specification. Please note that utility headers are not included. If you want to use utilities, you should use the "nice" LV2 crates or create your own.
+//! Bindings to the official [LV2](https://lv2plug.in/) API headers, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust. The crate uses the version 1.18.0 of the specification, as pulled from the [project's website](https://lv2plug.in/lv2-1-18-0.html).
 //!
-//! The bindings are generated at build time using [bindgen](https://crates.io/crates/bindgen), which requires clang to be installed. The installation process is described [here](https://rust-lang.github.io/rust-bindgen/requirements.html).
+//! ## Building
+//! 
+//! Since the bindings to the raw C headers are generated with bindgen, you need to have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't in your system's standard path, set the environment variable `LIBCLANG_PATH` to the path of `libClang`.
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
