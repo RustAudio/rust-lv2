@@ -16,6 +16,7 @@
 
 /**
    @defgroup options Options
+   @ingroup lv2
 
    Instantiation time options, see <http://lv2plug.in/ns/ext/options> for
    details.
@@ -85,7 +86,7 @@ typedef enum {
    with data pointed to an array of options terminated by a zeroed option, or
    accessed/manipulated using LV2_Options_Interface.
 */
-typedef struct _LV2_Options_Option {
+typedef struct {
 	LV2_Options_Context context;  /**< Context (type of subject). */
 	uint32_t            subject;  /**< Subject. */
 	LV2_URID            key;      /**< Key (property). */
@@ -106,7 +107,7 @@ typedef enum {
 /**
    Interface for dynamically setting options (LV2_OPTIONS__interface).
 */
-typedef struct _LV2_Options_Interface {
+typedef struct {
 	/**
 	   Get the given options.
 
