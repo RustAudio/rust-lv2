@@ -17,6 +17,7 @@
 
 /**
    @defgroup urid URID
+   @ingroup lv2
 
    Features for mapping URIs to and from integers, see
    <http://lv2plug.in/ns/ext/urid> for details.
@@ -60,7 +61,7 @@ typedef uint32_t LV2_URID;
 /**
    URID Map Feature (LV2_URID__map)
 */
-typedef struct _LV2_URID_Map {
+typedef struct {
 	/**
 	   Opaque pointer to host data.
 
@@ -97,7 +98,7 @@ typedef struct _LV2_URID_Map {
 /**
    URI Unmap Feature (LV2_URID__unmap)
 */
-typedef struct _LV2_URID_Unmap {
+typedef struct {
 	/**
 	   Opaque pointer to host data.
 

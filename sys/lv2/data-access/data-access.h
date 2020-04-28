@@ -17,9 +17,10 @@
 
 /**
    @defgroup data-access Data Access
+   @ingroup lv2
 
    Access to plugin extension_data() for UIs, see
-   <http://lv2plug.in/ns/ext/data-acess> for details.
+   <http://lv2plug.in/ns/ext/data-access> for details.
 
    @{
 */

@@ -18,6 +18,7 @@
 
 /**
    @defgroup ui User Interfaces
+   @ingroup lv2
 
    User interfaces of any type for plugins,
    <http://lv2plug.in/ns/extensions/ui> for details.
@@ -29,6 +30,7 @@
 #define LV2_UI_H
 
 #include "lv2/core/lv2.h"
+#include "lv2/urid/urid.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -58,6 +60,7 @@
 #define LV2_UI__portNotification LV2_UI_PREFIX "portNotification"  ///< http://lv2plug.in/ns/extensions/ui#portNotification
 #define LV2_UI__portSubscribe    LV2_UI_PREFIX "portSubscribe"     ///< http://lv2plug.in/ns/extensions/ui#portSubscribe
 #define LV2_UI__protocol         LV2_UI_PREFIX "protocol"          ///< http://lv2plug.in/ns/extensions/ui#protocol
+#define LV2_UI__requestValue     LV2_UI_PREFIX "requestValue"      ///< http://lv2plug.in/ns/extensions/ui#requestValue
 #define LV2_UI__floatProtocol    LV2_UI_PREFIX "floatProtocol"     ///< http://lv2plug.in/ns/extensions/ui#floatProtocol
 #define LV2_UI__peakProtocol     LV2_UI_PREFIX "peakProtocol"      ///< http://lv2plug.in/ns/extensions/ui#peakProtocol
 #define LV2_UI__resize           LV2_UI_PREFIX "resize"            ///< http://lv2plug.in/ns/extensions/ui#resize
@@ -66,6 +69,9 @@
 #define LV2_UI__ui               LV2_UI_PREFIX "ui"                ///< http://lv2plug.in/ns/extensions/ui#ui
 #define LV2_UI__updateRate       LV2_UI_PREFIX "updateRate"        ///< http://lv2plug.in/ns/extensions/ui#updateRate
 #define LV2_UI__windowTitle      LV2_UI_PREFIX "windowTitle"       ///< http://lv2plug.in/ns/extensions/ui#windowTitle
+#define LV2_UI__scaleFactor      LV2_UI_PREFIX "scaleFactor"       ///< http://lv2plug.in/ns/extensions/ui#scaleFactor
+#define LV2_UI__foregroundColor  LV2_UI_PREFIX "foregroundColor"   ///< http://lv2plug.in/ns/extensions/ui#foregroundColor
+#define LV2_UI__backgroundColor  LV2_UI_PREFIX "backgroundColor"   ///< http://lv2plug.in/ns/extensions/ui#backgroundColor
 
 /**
    The index returned by LV2UI_Port_Map::port_index() for unknown ports.
@@ -133,7 +139,7 @@ typedef void (*LV2UI_Write_Function)(LV2UI_Controller controller,
    A pointer to an object of this type is returned by the lv2ui_descriptor()
    function.
 */
-typedef struct _LV2UI_Descriptor {
+typedef struct LV2UI_Descriptor {
 	/**
 	   The URI for this UI (not for the plugin it controls).
 	*/
@@ -165,13 +171,13 @@ typedef struct _LV2UI_Descriptor {
 	   features are not necessarily the same.
 
 	*/
-	LV2UI_Handle (*instantiate)(const struct _LV2UI_Descriptor* descriptor,
-	                            const char*                     plugin_uri,
-	                            const char*                     bundle_path,
-	                            LV2UI_Write_Function            write_function,
-	                            LV2UI_Controller                controller,
-	                            LV2UI_Widget*                   widget,
-	                            const LV2_Feature* const*       features);
+	LV2UI_Handle (*instantiate)(const struct LV2UI_Descriptor* descriptor,
+	                            const char*                    plugin_uri,
+	                            const char*                    bundle_path,
+	                            LV2UI_Write_Function           write_function,
+	                            LV2UI_Controller               controller,
+	                            LV2UI_Widget*                  widget,
+	                            const LV2_Feature* const*      features);
 
 
 	/**
@@ -223,7 +229,7 @@ typedef struct _LV2UI_Descriptor {
    LV2UI_Descriptor::instantiate(), or as an interface provided by a UI via
    LV2UI_Descriptor::extension_data()).
 */
-typedef struct _LV2UI_Resize {
+typedef struct {
 	/**
 	   Pointer to opaque data which must be passed to ui_resize().
 	*/
@@ -251,7 +257,7 @@ typedef struct _LV2UI_Resize {
    symbol.  This makes it possible to implement and distribute a UI separately
    from the plugin (since symbol, unlike index, is a stable port identifier).
 */
-typedef struct _LV2UI_Port_Map {
+typedef struct {
 	/**
 	   Pointer to opaque data which must be passed to port_index().
 	*/
@@ -269,7 +275,7 @@ typedef struct _LV2UI_Port_Map {
 /**
    Feature to subscribe to port updates (LV2_UI__portSubscribe).
 */
-typedef struct _LV2UI_Port_Subscribe {
+typedef struct {
 	/**
 	   Pointer to opaque data which must be passed to subscribe() and
 	   unsubscribe().
@@ -320,7 +326,7 @@ typedef struct _LV2UI_Port_Subscribe {
 /**
    A feature to notify the host that the user has grabbed a UI control.
 */
-typedef struct _LV2UI_Touch {
+typedef struct {
 	/**
 	   Pointer to opaque data which must be passed to ui_resize().
 	*/
@@ -343,12 +349,100 @@ typedef struct _LV2UI_Touch {
 } LV2UI_Touch;
 
 /**
+   A status code for LV2UI_Request_Value::request().
+*/
+typedef enum {
+	/**
+	   Completed successfully.
+
+	   The host will set the parameter later if the user choses a new value.
+	*/
+	LV2UI_REQUEST_VALUE_SUCCESS,
+
+	/**
+	   Parameter already being requested.
+
+	   The host is already requesting a parameter from the user (for example, a
+	   dialog is visible), or the UI is otherwise busy and can not make this
+	   request.
+	*/
+	LV2UI_REQUEST_VALUE_BUSY,
+
+	/**
+	   Unknown parameter.
+
+	   The host is not aware of this parameter, and is not able to set a new
+	   value for it.
+	*/
+	LV2UI_REQUEST_VALUE_ERR_UNKNOWN,
+
+	/**
+	   Unsupported parameter.
+
+	   The host knows about this parameter, but does not support requesting a
+	   new value for it from the user.  This is likely because the host does
+	   not have UI support for choosing a value with the appropriate type.
+	*/
+	LV2UI_REQUEST_VALUE_ERR_UNSUPPORTED
+} LV2UI_Request_Value_Status;
+
+/**
+   A feature to request a new parameter value from the host.
+*/
+typedef struct {
+	/**
+	   Pointer to opaque data which must be passed to request().
+	*/
+	LV2UI_Feature_Handle handle;
+
+	/**
+	   Request a value for a parameter from the host.
+
+	   This is mainly used by UIs to request values for complex parameters that
+	   don't change often, such as file paths, but it may be used to request
+	   any parameter value.
+
+	   This function returns immediately, and the return value indicates
+	   whether the host can fulfill the request.  The host may notify the
+	   plugin about the new parameter value, for example when a file is
+	   selected by the user, via the usual mechanism.  Typically, the host will
+	   send a message to the plugin that sets the new parameter value, and the
+	   plugin will notify the UI via a message as usual for any other parameter
+	   change.
+
+	   To provide an appropriate UI, the host can determine details about the
+	   parameter from the plugin data as usual.  The additional parameters of
+	   this function provide support for more advanced use cases, but in the
+	   simple common case, the plugin will simply pass the key of the desired
+	   parameter and zero for everything else.
+
+	   @param handle The handle field of this struct.
+
+	   @param key The URID of the parameter.
+
+	   @param type The optional type of the value to request.  This can be used
+	   to request a specific value type for parameters that support several.
+	   If non-zero, it must be the URID of an instance of rdfs:Class or
+	   rdfs:Datatype.
+
+	   @param features Additional features for this request, or NULL.
+
+	   @return A status code which is 0 on success.
+	*/
+	LV2UI_Request_Value_Status (*request)(LV2UI_Feature_Handle      handle,
+	                                      LV2_URID                  key,
+	                                      LV2_URID                  type,
+	                                      const LV2_Feature* const* features);
+
+} LV2UI_Request_Value;
+
+/**
    UI Idle Interface (LV2_UI__idleInterface)
 
    UIs can provide this interface to have an idle() callback called by the host
    rapidly to update the UI.
 */
-typedef struct _LV2UI_Idle_Interface {
+typedef struct {
 	/**
 	   Run a single iteration of the UI's idle loop.
 
@@ -377,7 +471,7 @@ typedef struct _LV2UI_Idle_Interface {
    - If idle() returns non-zero, the host MUST call hide() and stop calling
      idle().  It MAY later call show() then resume calling idle().
 */
-typedef struct _LV2UI_Show_Interface {
+typedef struct {
 	/**
 	   Show a window for this UI.
 
@@ -400,7 +494,7 @@ typedef struct _LV2UI_Show_Interface {
 /**
    Peak data for a slice of time, the update format for ui:peakProtocol.
 */
-typedef struct _LV2UI_Peak_Data {
+typedef struct {
 	/**
 	   The start of the measurement period.  This is just a running counter
 	   that is only meaningful in comparison to previous values and must not be
