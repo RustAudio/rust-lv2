@@ -17,6 +17,7 @@
 
 /**
    @defgroup dynmanifest Dynamic Manifest
+   @ingroup lv2
 
    Support for dynamic data generation, see
    <http://lv2plug.in/ns/ext/dynmanifest> for details.
@@ -75,7 +76,7 @@ int lv2_dyn_manifest_open(LV2_Dyn_Manifest_Handle *  handle,
    example, if the plugin library exposes a regular LV2 plugin, it should
    output only a triple like the following:
 
-   <http://www.example.com/plugin/uri> a lv2:Plugin .
+   <http://example.org/plugin> a lv2:Plugin .
 
    The objects that are elegible for exposure are those that would need to be
    represented by a subject node in a static manifest.
@@ -85,8 +86,8 @@ int lv2_dyn_manifest_open(LV2_Dyn_Manifest_Handle *  handle,
    @param fp FILE * identifying the resource the host has to set up for the
    dynamic manifest generator. The host MUST pass a writable, empty resource to
    this function, and the dynamic manifest generator MUST ONLY perform write
-   operations on it at the end of the stream (e.g., using only fprintf(),
-   fwrite() and similar).
+   operations on it at the end of the stream (for example, using only
+   fprintf(), fwrite() and similar).
 
    @return 0 on success, otherwise a non-zero error code.
 */
@@ -99,11 +100,11 @@ int lv2_dyn_manifest_get_subjects(LV2_Dyn_Manifest_Handle handle,
    The dynamic manifest generator has to fill the resource with data related to
    object represented by the given URI. For example, if the library exposes a
    regular LV2 plugin whose URI, as retrieved by the host using
-   lv2_dyn_manifest_get_subjects() is http://www.example.com/plugin/uri, it
+   lv2_dyn_manifest_get_subjects() is http://example.org/plugin then it
    should output something like:
 
    <pre>
-   <http://www.example.com/plugin/uri>
+   <http://example.org/plugin>
        a lv2:Plugin ;
        doap:name "My Plugin" ;
        lv2:binary <mylib.so> ;
@@ -115,8 +116,8 @@ int lv2_dyn_manifest_get_subjects(LV2_Dyn_Manifest_Handle handle,
    @param fp FILE * identifying the resource the host has to set up for the
    dynamic manifest generator. The host MUST pass a writable resource to this
    function, and the dynamic manifest generator MUST ONLY perform write
-   operations on it at the current position of the stream (e.g. using only
-   fprintf(), fwrite() and similar).
+   operations on it at the current position of the stream (for example, using
+   only fprintf(), fwrite() and similar).
 
    @param uri URI to get data about (in the "plain" form, i.e., absolute URI
    without Turtle prefixes).

@@ -102,6 +102,7 @@ members = [
 lto = true
 
 [patch.crates-io]
+lv2 = { path = "." }
 lv2-atom = { path = "atom" }
 lv2-core = { path = "core" }
 lv2-core-derive = { path = "core/derive" }
