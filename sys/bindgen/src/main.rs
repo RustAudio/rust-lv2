@@ -112,15 +112,15 @@ fn cmd_compare(mut args: Args) -> Result<(), DynError> {
         CmpResult::Equivalent => println!("Bindings files are equivalent."),
         CmpResult::Different(diff) => {
             println!("Bindings files aren't equivalent:");
-            if let Some(items) = diff.file1 {
+            if !diff.file1.is_empty() {
                 println!("Item only present in '{}':", file1.to_string_lossy());
-                for item in items {
+                for item in diff.file1 {
                     println!("{}", item);
                 }
             }
-            if let Some(items) = diff.file2 {
+            if !diff.file2.is_empty() {
                 println!("Item only present in '{}':", file2.to_string_lossy());
-                for item in items {
+                for item in diff.file2 {
                     println!("{}", item);
                 }
             }

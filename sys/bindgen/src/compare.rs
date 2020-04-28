@@ -1,7 +1,7 @@
 use proc_macro2::Span;
-use std::error::Error;
 use quote::quote;
 use std::collections::HashSet;
+use std::error::Error;
 use std::fs;
 use std::path::Path;
 use syn::punctuated::{Pair, Punctuated};
@@ -17,8 +17,8 @@ pub enum CmpResult {
 }
 
 pub struct CmpDiff {
-    pub file1: Option<Vec<String>>,
-    pub file2: Option<Vec<String>>,
+    pub file1: Vec<String>,
+    pub file2: Vec<String>,
 }
 
 // this function allow to ignore some i32/u32 difference
@@ -121,29 +121,19 @@ pub fn compare(file1: &Path, file2: &Path) -> Result<CmpResult, DynError> {
         .collect();
 
     if h1 != h2 {
-        let diff1: HashSet<_> = h1.difference(&h2).collect();
-        let diff2: HashSet<_> = h2.difference(&h1).collect();
+        let diff1: Vec<String> = h1
+            .difference(&h2)
+            .map(|item| quote!(#item).to_string())
+            .collect();
+        let diff2: Vec<String> = h2
+            .difference(&h1)
+            .map(|item| quote!(#item).to_string())
+            .collect();
 
-        let file1_diff = if !diff1.is_empty() {
-            let mut vec = Vec::<String>::new();
-            for e in diff1 {
-                vec.push(quote!(#e).to_string());
-            }
-            Some(vec)
-        } else {
-            None
-        };
-
-        let file2_diff = if !diff2.is_empty() {
-            let mut vec = Vec::<String>::new();
-            for e in diff2 {
-                vec.push(quote!(#e).to_string());
-            }
-            Some(vec)
-        } else {
-            None
-        };
-        Ok(CmpResult::Different(CmpDiff{file1:file1_diff, file2:file2_diff}))
+        Ok(CmpResult::Different(CmpDiff {
+            file1: diff1,
+            file2: diff2,
+        }))
     } else {
         Ok(CmpResult::Equivalent)
     }
