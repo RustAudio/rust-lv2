@@ -1,4 +1,5 @@
 extern crate bindgen;
+use lv2_sys_bindgen::compare::*;
 use lv2_sys_bindgen::*;
 use std::env;
 use std::env::Args;
@@ -104,6 +105,26 @@ fn cmd_compare(mut args: Args) -> Result<(), DynError> {
     } else {
         return Err("missing argument".into());
     };
-    compare::compare(&file1, &file2);
+    match compare(
+        &env::current_dir()?.join(&file1),
+        &env::current_dir()?.join(&file2),
+    )? {
+        CmpResult::Equivalent => println!("Bindings files are equivalent."),
+        CmpResult::Different(diff) => {
+            println!("Bindings files aren't equivalent:");
+            if let Some(items) = diff.file1 {
+                println!("Item only present in '{}':", file1.to_string_lossy());
+                for item in items {
+                    println!("{}", item);
+                }
+            }
+            if let Some(items) = diff.file2 {
+                println!("Item only present in '{}':", file2.to_string_lossy());
+                for item in items {
+                    println!("{}", item);
+                }
+            }
+        }
+    }
     Ok(())
 }

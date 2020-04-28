@@ -1,13 +1,25 @@
 use proc_macro2::Span;
+use std::error::Error;
 use quote::quote;
 use std::collections::HashSet;
-use std::env;
 use std::fs;
 use std::path::Path;
 use syn::punctuated::{Pair, Punctuated};
 use syn::visit_mut;
 use syn::visit_mut::VisitMut;
 use syn::{AngleBracketedGenericArguments, Fields, Ident, Item, Type, TypeBareFn};
+
+type DynError = Box<dyn Error>;
+
+pub enum CmpResult {
+    Equivalent,
+    Different(CmpDiff),
+}
+
+pub struct CmpDiff {
+    pub file1: Option<Vec<String>>,
+    pub file2: Option<Vec<String>>,
+}
 
 // this function allow to ignore some i32/u32 difference
 fn i32_to_u32(mut item: Item) -> Item {
@@ -89,10 +101,9 @@ fn remove_comma(mut item: Item) -> Item {
 
 // the idea here is to represent a binding file as a unordonned collection of syn::Item. This to be
 // insensitive to formatting or definition order in the file.
-pub fn compare(file1: &Path, file2: &Path) {
-
-    let f1 = fs::read_to_string(env::current_dir().unwrap().join(file1)).unwrap();
-    let f1 = syn::parse_str::<syn::File>(&f1).unwrap();
+pub fn compare(file1: &Path, file2: &Path) -> Result<CmpResult, DynError> {
+    let f1 = fs::read_to_string(file1)?;
+    let f1 = syn::parse_str::<syn::File>(&f1)?;
     let h1: HashSet<_> = f1
         .items
         .into_iter()
@@ -100,8 +111,8 @@ pub fn compare(file1: &Path, file2: &Path) {
         .map(i32_to_u32)
         .collect();
 
-    let f2 = fs::read_to_string(env::current_dir().unwrap().join(file2)).unwrap();
-    let f2 = syn::parse_str::<syn::File>(&f2).unwrap();
+    let f2 = fs::read_to_string(file2)?;
+    let f2 = syn::parse_str::<syn::File>(&f2)?;
     let h2: HashSet<_> = f2
         .items
         .into_iter()
@@ -112,19 +123,28 @@ pub fn compare(file1: &Path, file2: &Path) {
     if h1 != h2 {
         let diff1: HashSet<_> = h1.difference(&h2).collect();
         let diff2: HashSet<_> = h2.difference(&h1).collect();
-        let mut message = String::from("Error, binding aren't equivalent\n");
-        if !diff1.is_empty() {
-            message.push_str("Item present only in file1 bindings:\n");
+
+        let file1_diff = if !diff1.is_empty() {
+            let mut vec = Vec::<String>::new();
             for e in diff1 {
-                message.push_str(&format!("{}\n", quote!(#e)));
+                vec.push(quote!(#e).to_string());
             }
-        }
-        if !diff2.is_empty() {
-            message.push_str("Item present only in file2 bindings:\n");
+            Some(vec)
+        } else {
+            None
+        };
+
+        let file2_diff = if !diff2.is_empty() {
+            let mut vec = Vec::<String>::new();
             for e in diff2 {
-                message.push_str(&format!("{}\n", quote!(#e)));
+                vec.push(quote!(#e).to_string());
             }
-        }
-        panic!(message);
+            Some(vec)
+        } else {
+            None
+        };
+        Ok(CmpResult::Different(CmpDiff{file1:file1_diff, file2:file2_diff}))
+    } else {
+        Ok(CmpResult::Equivalent)
     }
 }
