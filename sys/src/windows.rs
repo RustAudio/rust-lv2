@@ -544,6 +544,8 @@ pub const LV2_STATE__interface: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/state#interface\0";
 pub const LV2_STATE__loadDefaultState: &'static [u8; 48usize] =
     b"http://lv2plug.in/ns/ext/state#loadDefaultState\0";
+pub const LV2_STATE__freePath: &'static [u8; 40usize] =
+    b"http://lv2plug.in/ns/ext/state#freePath\0";
 pub const LV2_STATE__makePath: &'static [u8; 40usize] =
     b"http://lv2plug.in/ns/ext/state#makePath\0";
 pub const LV2_STATE__mapPath: &'static [u8; 39usize] = b"http://lv2plug.in/ns/ext/state#mapPath\0";
@@ -605,6 +607,8 @@ pub const LV2_UI__portSubscribe: &'static [u8; 49usize] =
     b"http://lv2plug.in/ns/extensions/ui#portSubscribe\0";
 pub const LV2_UI__protocol: &'static [u8; 44usize] =
     b"http://lv2plug.in/ns/extensions/ui#protocol\0";
+pub const LV2_UI__requestValue: &'static [u8; 48usize] =
+    b"http://lv2plug.in/ns/extensions/ui#requestValue\0";
 pub const LV2_UI__floatProtocol: &'static [u8; 49usize] =
     b"http://lv2plug.in/ns/extensions/ui#floatProtocol\0";
 pub const LV2_UI__peakProtocol: &'static [u8; 48usize] =
@@ -618,6 +622,12 @@ pub const LV2_UI__updateRate: &'static [u8; 46usize] =
     b"http://lv2plug.in/ns/extensions/ui#updateRate\0";
 pub const LV2_UI__windowTitle: &'static [u8; 47usize] =
     b"http://lv2plug.in/ns/extensions/ui#windowTitle\0";
+pub const LV2_UI__scaleFactor: &'static [u8; 47usize] =
+    b"http://lv2plug.in/ns/extensions/ui#scaleFactor\0";
+pub const LV2_UI__foregroundColor: &'static [u8; 51usize] =
+    b"http://lv2plug.in/ns/extensions/ui#foregroundColor\0";
+pub const LV2_UI__backgroundColor: &'static [u8; 51usize] =
+    b"http://lv2plug.in/ns/extensions/ui#backgroundColor\0";
 pub const LV2_UNITS_URI: &'static [u8; 38usize] = b"http://lv2plug.in/ns/extensions/units\0";
 pub const LV2_UNITS_PREFIX: &'static [u8; 39usize] = b"http://lv2plug.in/ns/extensions/units#\0";
 pub const LV2_UNITS__Conversion: &'static [u8; 49usize] =
@@ -776,7 +786,7 @@ pub struct LV2_Atom_Vector {
     #[doc = "< Body."]
     pub body: LV2_Atom_Vector_Body,
 }
-#[doc = " The body of an atom:Property (e.g. in an atom:Object)."]
+#[doc = " The body of an atom:Property (typically in an atom:Object)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LV2_Atom_Property_Body {
@@ -839,7 +849,7 @@ pub union LV2_Atom_Event__bindgen_ty_1 {
 #[doc = "LV2_Descriptor::run(), the default stamp type is audio frames."]
 #[doc = ""]
 #[doc = "The contents of a sequence is a series of LV2_Atom_Event, each aligned"]
-#[doc = "to 64-bits, e.g.:"]
+#[doc = "to 64-bits, for example:"]
 #[doc = "<pre>"]
 #[doc = "| Event 1 (size 6)                              | Event 2"]
 #[doc = "|       |       |       |       |       |       |       |       |"]
@@ -884,7 +894,7 @@ pub type LV2_URID = u32;
 #[doc = "URID Map Feature (LV2_URID__map)"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_URID_Map {
+pub struct LV2_URID_Map {
     #[doc = "Opaque pointer to host data."]
     #[doc = ""]
     #[doc = "This MUST be passed to map_uri() whenever it is called."]
@@ -916,11 +926,10 @@ pub struct _LV2_URID_Map {
         ) -> LV2_URID,
     >,
 }
-pub type LV2_URID_Map = _LV2_URID_Map;
 #[doc = "URI Unmap Feature (LV2_URID__unmap)"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_URID_Unmap {
+pub struct LV2_URID_Unmap {
     #[doc = "Opaque pointer to host data."]
     #[doc = ""]
     #[doc = "This MUST be passed to unmap() whenever it is called."]
@@ -946,7 +955,6 @@ pub struct _LV2_URID_Unmap {
         ) -> *const ::std::os::raw::c_char,
     >,
 }
-pub type LV2_URID_Unmap = _LV2_URID_Unmap;
 #[doc = " Handle for LV2_Atom_Forge_Sink."]
 pub type LV2_Atom_Forge_Sink_Handle = *mut ::std::os::raw::c_void;
 #[doc = " A reference to a chunk of written output."]
@@ -969,11 +977,10 @@ pub type LV2_Atom_Forge_Deref_Func = ::std::option::Option<
 #[doc = " A stack frame used for keeping track of nested Atom containers."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Atom_Forge_Frame {
-    pub parent: *mut _LV2_Atom_Forge_Frame,
+pub struct LV2_Atom_Forge_Frame {
+    pub parent: *mut LV2_Atom_Forge_Frame,
     pub ref_: LV2_Atom_Forge_Ref,
 }
-pub type LV2_Atom_Forge_Frame = _LV2_Atom_Forge_Frame;
 #[doc = " A \"forge\" for creating atoms by appending to a buffer."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1018,7 +1025,7 @@ pub type LV2_Handle = *mut ::std::os::raw::c_void;
 #[doc = "Some features, such as lv2:isLive, do not require the host to pass data."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Feature {
+pub struct LV2_Feature {
     #[doc = "A globally unique, case-sensitive identifier (URI) for this feature."]
     #[doc = ""]
     #[doc = "This MUST be a valid URI string as defined by RFC 3986."]
@@ -1029,14 +1036,13 @@ pub struct _LV2_Feature {
     #[doc = "feature with the given `URI`."]
     pub data: *mut ::std::os::raw::c_void,
 }
-pub type LV2_Feature = _LV2_Feature;
 #[doc = "Plugin Descriptor."]
 #[doc = ""]
 #[doc = "This structure provides the core functions necessary to instantiate and use"]
 #[doc = "a plugin."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Descriptor {
+pub struct LV2_Descriptor {
     #[doc = "A globally unique, case-sensitive identifier for this plugin."]
     #[doc = ""]
     #[doc = "This MUST be a valid URI string as defined by RFC 3986.  All plugins with"]
@@ -1054,9 +1060,8 @@ pub struct _LV2_Descriptor {
     #[doc = "@param sample_rate Sample rate, in Hz, for the new plugin instance."]
     #[doc = ""]
     #[doc = "@param bundle_path Path to the LV2 bundle which contains this plugin"]
-    #[doc = "binary. It MUST include the trailing directory separator (e.g. '/') so"]
-    #[doc = "that simply appending a filename will yield the path to that file in the"]
-    #[doc = "bundle."]
+    #[doc = "binary. It MUST include the trailing directory separator so that simply"]
+    #[doc = "appending a filename will yield the path to that file in the bundle."]
     #[doc = ""]
     #[doc = "@param features A NULL terminated array of LV2_Feature structs which"]
     #[doc = "represent the features the host supports. Plugins may refuse to"]
@@ -1071,7 +1076,7 @@ pub struct _LV2_Descriptor {
     #[doc = "has failed."]
     pub instantiate: ::std::option::Option<
         unsafe extern "C" fn(
-            descriptor: *const _LV2_Descriptor,
+            descriptor: *const LV2_Descriptor,
             sample_rate: f64,
             bundle_path: *const ::std::os::raw::c_char,
             features: *const *const LV2_Feature,
@@ -1105,7 +1110,7 @@ pub struct _LV2_Descriptor {
     #[doc = "it does, the plugin's behaviour is undefined (a crash is likely)."]
     #[doc = ""]
     #[doc = "@param data_location Pointer to data of the type defined by the port"]
-    #[doc = "type in the plugin's RDF data (e.g. an array of float for an"]
+    #[doc = "type in the plugin's RDF data (for example, an array of float for an"]
     #[doc = "lv2:AudioPort). This pointer must be stored by the plugin instance and"]
     #[doc = "used to read/write data when run() is called. Data present at the time"]
     #[doc = "of the connect_port() call MUST NOT be considered meaningful."]
@@ -1147,10 +1152,10 @@ pub struct _LV2_Descriptor {
     #[doc = "lv2core.ttl for details)."]
     #[doc = ""]
     #[doc = "As a special case, when `sample_count` is 0, the plugin should update"]
-    #[doc = "any output ports that represent a single instant in time (e.g. control"]
-    #[doc = "ports, but not audio ports). This is particularly useful for latent"]
-    #[doc = "plugins, which should update their latency output port so hosts can"]
-    #[doc = "pre-roll plugins to compute latency. Plugins MUST NOT crash when"]
+    #[doc = "any output ports that represent a single instant in time (for example,"]
+    #[doc = "control ports, but not audio ports). This is particularly useful for"]
+    #[doc = "latent plugins, which should update their latency output port so hosts"]
+    #[doc = "can pre-roll plugins to compute latency. Plugins MUST NOT crash when"]
     #[doc = "`sample_count` is 0."]
     #[doc = ""]
     #[doc = "@param instance Instance to be run."]
@@ -1200,7 +1205,6 @@ pub struct _LV2_Descriptor {
         unsafe extern "C" fn(uri: *const ::std::os::raw::c_char) -> *const ::std::os::raw::c_void,
     >,
 }
-pub type LV2_Descriptor = _LV2_Descriptor;
 #[doc = "Type of the lv2_descriptor() function in a library (old discovery API)."]
 pub type LV2_Descriptor_Function =
     ::std::option::Option<unsafe extern "C" fn(index: u32) -> *const LV2_Descriptor>;
@@ -1286,7 +1290,7 @@ pub struct LV2_Event {
     #[doc = "The frames portion of timestamp. The units used here can optionally be"]
     #[doc = "set for a port (with the lv2ev:timeUnits property), otherwise this is"]
     #[doc = "audio frames, corresponding to the sample_count parameter of the LV2 run"]
-    #[doc = "method (e.g. frame 0 is the first frame for that call to run)."]
+    #[doc = "method (frame 0 is the first frame for that call to run)."]
     pub frames: u32,
     #[doc = "The sub-frames portion of timestamp. The units used here can optionally"]
     #[doc = "be set for a port (with the lv2ev:timeUnits property), otherwise this is"]
@@ -1452,7 +1456,7 @@ pub struct LV2_Event_Feature {
 #[doc = " An iterator over an LV2_Event_Buffer."]
 #[doc = ""]
 #[doc = " Multiple simultaneous read iterators over a single buffer is fine,"]
-#[doc = " but changing the buffer invalidates all iterators (e.g. RW Lock)."]
+#[doc = " but changing the buffer invalidates all iterators."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LV2_Event_Iterator {
@@ -1464,7 +1468,7 @@ pub type LV2_Log_Handle = *mut ::std::os::raw::c_void;
 #[doc = "Log feature (LV2_LOG__log)"]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Log {
+pub struct LV2_Log_Log {
     #[doc = "Opaque pointer to host data."]
     #[doc = ""]
     #[doc = "This MUST be passed to methods in this struct whenever they are called."]
@@ -1499,7 +1503,6 @@ pub struct _LV2_Log {
         ) -> ::std::os::raw::c_int,
     >,
 }
-pub type LV2_Log_Log = _LV2_Log;
 #[doc = "Logger convenience API state."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -1727,7 +1730,7 @@ pub type LV2_Options_Context = i32;
 #[doc = "accessed/manipulated using LV2_Options_Interface."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Options_Option {
+pub struct LV2_Options_Option {
     #[doc = "< Context (type of subject)."]
     pub context: LV2_Options_Context,
     #[doc = "< Subject."]
@@ -1741,7 +1744,6 @@ pub struct _LV2_Options_Option {
     #[doc = "< Pointer to value (object)."]
     pub value: *const ::std::os::raw::c_void,
 }
-pub type LV2_Options_Option = _LV2_Options_Option;
 #[doc = "< Completed successfully."]
 pub const LV2_Options_Status_LV2_OPTIONS_SUCCESS: LV2_Options_Status = 0;
 #[doc = "< Unknown error."]
@@ -1757,7 +1759,7 @@ pub type LV2_Options_Status = i32;
 #[doc = "Interface for dynamically setting options (LV2_OPTIONS__interface)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Options_Interface {
+pub struct LV2_Options_Interface {
     #[doc = "Get the given options."]
     #[doc = ""]
     #[doc = "Each element of the passed options array MUST have type, subject, and"]
@@ -1781,7 +1783,6 @@ pub struct _LV2_Options_Interface {
         unsafe extern "C" fn(instance: LV2_Handle, options: *const LV2_Options_Option) -> u32,
     >,
 }
-pub type LV2_Options_Interface = _LV2_Options_Interface;
 #[doc = "< Completed successfully."]
 pub const LV2_Resize_Port_Status_LV2_RESIZE_PORT_SUCCESS: LV2_Resize_Port_Status = 0;
 #[doc = "< Unknown error."]
@@ -1819,6 +1820,7 @@ pub struct LV2_Resize_Port_Resize {
     >,
 }
 pub type LV2_State_Handle = *mut ::std::os::raw::c_void;
+pub type LV2_State_Free_Path_Handle = *mut ::std::os::raw::c_void;
 pub type LV2_State_Map_Path_Handle = *mut ::std::os::raw::c_void;
 pub type LV2_State_Make_Path_Handle = *mut ::std::os::raw::c_void;
 impl LV2_State_Flags {
@@ -1827,8 +1829,8 @@ impl LV2_State_Flags {
     #[doc = "Values with this flag contain no pointers or references to other areas"]
     #[doc = "of memory.  It is safe to copy POD values with a simple memcpy and store"]
     #[doc = "them for the duration of the process.  A POD value is not necessarily"]
-    #[doc = "safe to trasmit between processes or machines (e.g. filenames are POD),"]
-    #[doc = "see LV2_STATE_IS_PORTABLE for details."]
+    #[doc = "safe to trasmit between processes or machines (for example, filenames"]
+    #[doc = "are POD), see LV2_STATE_IS_PORTABLE for details."]
     #[doc = ""]
     #[doc = "Implementations MUST NOT attempt to copy or serialise a non-POD value if"]
     #[doc = "they do not understand its type (and thus know how to correctly do so)."]
@@ -1848,9 +1850,9 @@ impl LV2_State_Flags {
     #[doc = "Native data."]
     #[doc = ""]
     #[doc = "This flag is used by the host to indicate that the saved data is only"]
-    #[doc = "going to be used locally in the currently running process (e.g. for"]
-    #[doc = "instance duplication or snapshots), so the plugin should use the most"]
-    #[doc = "efficient representation possible and not worry about serialisation"]
+    #[doc = "going to be used locally in the currently running process (for things"]
+    #[doc = "like instance duplication or snapshots), so the plugin should use the"]
+    #[doc = "most efficient representation possible and not worry about serialisation"]
     #[doc = "and portability."]
     pub const LV2_STATE_IS_NATIVE: LV2_State_Flags = LV2_State_Flags(4);
 }
@@ -1919,7 +1921,7 @@ pub type LV2_State_Status = i32;
 #[doc = "DO NOT INVENT NONSENSE URI SCHEMES FOR THE KEY.  Best is to use keys from"]
 #[doc = "existing vocabularies.  If nothing appropriate is available, use http URIs"]
 #[doc = "that point to somewhere you can host documents so documentation can be made"]
-#[doc = "resolvable (e.g. a child of the plugin or project URI).  If this is not"]
+#[doc = "resolvable (typically a child of the plugin or project URI).  If this is not"]
 #[doc = "possible, invent a URN scheme, e.g. urn:myproj:whatever.  The plugin MUST"]
 #[doc = "NOT pass an invalid URI key."]
 #[doc = ""]
@@ -1987,7 +1989,7 @@ pub type LV2_State_Retrieve_Function = ::std::option::Option<
 #[doc = "with meaningful types to avoid such problems in the future."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_State_Interface {
+pub struct LV2_State_Interface {
     #[doc = "Save plugin state using a host-provided `store` callback."]
     #[doc = ""]
     #[doc = "@param instance The instance handle of the plugin."]
@@ -2010,10 +2012,10 @@ pub struct _LV2_State_Interface {
     #[doc = "This function has its own special threading class: it may not be called"]
     #[doc = "concurrently with any \"Instantiation\" function, but it may be called"]
     #[doc = "concurrently with functions in any other class, unless the definition of"]
-    #[doc = "that class prohibits it (e.g. it may not be called concurrently with a"]
-    #[doc = "\"Discovery\" function, but it may be called concurrently with an \"Audio\""]
-    #[doc = "function.  The plugin is responsible for any locking or lock-free"]
-    #[doc = "techniques necessary to make this possible."]
+    #[doc = "that class prohibits it (for example, it may not be called concurrently"]
+    #[doc = "with a \"Discovery\" function, but it may be called concurrently with an"]
+    #[doc = "\"Audio\" function.  The plugin is responsible for any locking or"]
+    #[doc = "lock-free techniques necessary to make this possible."]
     #[doc = ""]
     #[doc = "Note that in the simple case where state is only modified by restore(),"]
     #[doc = "there are no synchronization issues since save() is never called"]
@@ -2064,7 +2066,6 @@ pub struct _LV2_State_Interface {
         ) -> LV2_State_Status,
     >,
 }
-pub type LV2_State_Interface = _LV2_State_Interface;
 #[doc = "Feature data for state:mapPath (@ref LV2_STATE__mapPath)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2086,8 +2087,8 @@ pub struct LV2_State_Map_Path {
     #[doc = "not necessarily the same original path) using absolute_path()."]
     #[doc = ""]
     #[doc = "This function may only be called within the context of"]
-    #[doc = "LV2_State_Interface methods.  The caller is responsible for freeing the"]
-    #[doc = "returned value with free()."]
+    #[doc = "LV2_State_Interface methods.  The caller must free the returned value"]
+    #[doc = "with LV2_State_Free_Path.free_path()."]
     pub abstract_path: ::std::option::Option<
         unsafe extern "C" fn(
             handle: LV2_State_Map_Path_Handle,
@@ -2096,15 +2097,15 @@ pub struct LV2_State_Map_Path {
     >,
     #[doc = "Map an abstract path from plugin state to an absolute path."]
     #[doc = "@param handle MUST be the `handle` member of this struct."]
-    #[doc = "@param abstract_path An abstract path (e.g. a path from plugin state)."]
+    #[doc = "@param abstract_path An abstract path (typically from plugin state)."]
     #[doc = "@return An absolute file system path."]
     #[doc = ""]
     #[doc = "The plugin MUST use this function in order to actually open or otherwise"]
     #[doc = "use any paths loaded from plugin state."]
     #[doc = ""]
     #[doc = "This function may only be called within the context of"]
-    #[doc = "LV2_State_Interface methods.  The caller is responsible for freeing the"]
-    #[doc = "returned value with free()."]
+    #[doc = "LV2_State_Interface methods.  The caller must free the returned value"]
+    #[doc = "with LV2_State_Free_Path.free_path()."]
     pub absolute_path: ::std::option::Option<
         unsafe extern "C" fn(
             handle: LV2_State_Map_Path_Handle,
@@ -2130,20 +2131,39 @@ pub struct LV2_State_Make_Path {
     #[doc = "LV2_Descriptor.instantiate())."]
     #[doc = ""]
     #[doc = "The host MUST do whatever is necessary for the plugin to be able to"]
-    #[doc = "create a file at the returned path (e.g. using fopen), including"]
-    #[doc = "creating any leading directories."]
+    #[doc = "create a file at the returned path (for example, using fopen()),"]
+    #[doc = "including creating any leading directories."]
     #[doc = ""]
     #[doc = "If this function is passed to LV2_Descriptor.instantiate(), it may be"]
     #[doc = "called from any non-realtime context.  If it is passed to"]
     #[doc = "LV2_State_Interface.save(), it may only be called within the dynamic"]
     #[doc = "scope of that function call."]
     #[doc = ""]
-    #[doc = "The caller is responsible for freeing the returned value with free()."]
+    #[doc = "The caller must free the returned value with"]
+    #[doc = "LV2_State_Free_Path.free_path()."]
     pub path: ::std::option::Option<
         unsafe extern "C" fn(
             handle: LV2_State_Make_Path_Handle,
             path: *const ::std::os::raw::c_char,
         ) -> *mut ::std::os::raw::c_char,
+    >,
+}
+#[doc = "Feature data for state:freePath (@ref LV2_STATE__freePath)."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2_State_Free_Path {
+    #[doc = "Opaque host data."]
+    pub handle: LV2_State_Free_Path_Handle,
+    #[doc = "Free a path returned by a state feature."]
+    #[doc = ""]
+    #[doc = "@param handle MUST be the `handle` member of this struct."]
+    #[doc = "@param path The path previously returned by a state feature."]
+    #[doc = ""]
+    #[doc = "This function can be used by plugins to free paths allocated by the host"]
+    #[doc = "and returned by state features (LV2_State_Map_Path.abstract_path(),"]
+    #[doc = "LV2_State_Map_Path.absolute_path(), and LV2_State_Make_Path.path())."]
+    pub free_path: ::std::option::Option<
+        unsafe extern "C" fn(handle: LV2_State_Free_Path_Handle, path: *mut ::std::os::raw::c_char),
     >,
 }
 #[doc = "A pointer to some widget or other type of UI handle."]
@@ -2192,7 +2212,7 @@ pub type LV2UI_Write_Function = ::std::option::Option<
 #[doc = "function."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Descriptor {
+pub struct LV2UI_Descriptor {
     #[doc = "The URI for this UI (not for the plugin it controls)."]
     pub URI: *const ::std::os::raw::c_char,
     #[doc = "Create a new UI and return a handle to it.  This function works"]
@@ -2221,7 +2241,7 @@ pub struct _LV2UI_Descriptor {
     #[doc = ""]
     pub instantiate: ::std::option::Option<
         unsafe extern "C" fn(
-            descriptor: *const _LV2UI_Descriptor,
+            descriptor: *const LV2UI_Descriptor,
             plugin_uri: *const ::std::os::raw::c_char,
             bundle_path: *const ::std::os::raw::c_char,
             write_function: LV2UI_Write_Function,
@@ -2269,7 +2289,6 @@ pub struct _LV2UI_Descriptor {
         unsafe extern "C" fn(uri: *const ::std::os::raw::c_char) -> *const ::std::os::raw::c_void,
     >,
 }
-pub type LV2UI_Descriptor = _LV2UI_Descriptor;
 #[doc = "Feature/interface for resizable UIs (LV2_UI__resize)."]
 #[doc = ""]
 #[doc = "This structure is used in two ways: as a feature passed by the host via"]
@@ -2277,7 +2296,7 @@ pub type LV2UI_Descriptor = _LV2UI_Descriptor;
 #[doc = "LV2UI_Descriptor::extension_data())."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Resize {
+pub struct LV2UI_Resize {
     #[doc = "Pointer to opaque data which must be passed to ui_resize()."]
     pub handle: LV2UI_Feature_Handle,
     #[doc = "Request/advertise a size change."]
@@ -2298,7 +2317,6 @@ pub struct _LV2UI_Resize {
         ) -> ::std::os::raw::c_int,
     >,
 }
-pub type LV2UI_Resize = _LV2UI_Resize;
 #[doc = "Feature to map port symbols to UIs."]
 #[doc = ""]
 #[doc = "This can be used by the UI to get the index for a port with the given"]
@@ -2306,7 +2324,7 @@ pub type LV2UI_Resize = _LV2UI_Resize;
 #[doc = "from the plugin (since symbol, unlike index, is a stable port identifier)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Port_Map {
+pub struct LV2UI_Port_Map {
     #[doc = "Pointer to opaque data which must be passed to port_index()."]
     pub handle: LV2UI_Feature_Handle,
     #[doc = "Get the index for the port with the given `symbol`."]
@@ -2320,11 +2338,10 @@ pub struct _LV2UI_Port_Map {
         ) -> u32,
     >,
 }
-pub type LV2UI_Port_Map = _LV2UI_Port_Map;
 #[doc = "Feature to subscribe to port updates (LV2_UI__portSubscribe)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Port_Subscribe {
+pub struct LV2UI_Port_Subscribe {
     #[doc = "Pointer to opaque data which must be passed to subscribe() and"]
     #[doc = "unsubscribe()."]
     pub handle: LV2UI_Feature_Handle,
@@ -2371,11 +2388,10 @@ pub struct _LV2UI_Port_Subscribe {
         ) -> u32,
     >,
 }
-pub type LV2UI_Port_Subscribe = _LV2UI_Port_Subscribe;
 #[doc = "A feature to notify the host that the user has grabbed a UI control."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Touch {
+pub struct LV2UI_Touch {
     #[doc = "Pointer to opaque data which must be passed to ui_resize()."]
     pub handle: LV2UI_Feature_Handle,
     #[doc = "Notify the host that a control has been grabbed or released."]
@@ -2391,14 +2407,85 @@ pub struct _LV2UI_Touch {
         unsafe extern "C" fn(handle: LV2UI_Feature_Handle, port_index: u32, grabbed: bool),
     >,
 }
-pub type LV2UI_Touch = _LV2UI_Touch;
+#[doc = "Completed successfully."]
+#[doc = ""]
+#[doc = "The host will set the parameter later if the user choses a new value."]
+pub const LV2UI_Request_Value_Status_LV2UI_REQUEST_VALUE_SUCCESS: LV2UI_Request_Value_Status = 0;
+#[doc = "Parameter already being requested."]
+#[doc = ""]
+#[doc = "The host is already requesting a parameter from the user (for example, a"]
+#[doc = "dialog is visible), or the UI is otherwise busy and can not make this"]
+#[doc = "request."]
+pub const LV2UI_Request_Value_Status_LV2UI_REQUEST_VALUE_BUSY: LV2UI_Request_Value_Status = 1;
+#[doc = "Unknown parameter."]
+#[doc = ""]
+#[doc = "The host is not aware of this parameter, and is not able to set a new"]
+#[doc = "value for it."]
+pub const LV2UI_Request_Value_Status_LV2UI_REQUEST_VALUE_ERR_UNKNOWN: LV2UI_Request_Value_Status =
+    2;
+#[doc = "Unsupported parameter."]
+#[doc = ""]
+#[doc = "The host knows about this parameter, but does not support requesting a"]
+#[doc = "new value for it from the user.  This is likely because the host does"]
+#[doc = "not have UI support for choosing a value with the appropriate type."]
+pub const LV2UI_Request_Value_Status_LV2UI_REQUEST_VALUE_ERR_UNSUPPORTED:
+    LV2UI_Request_Value_Status = 3;
+#[doc = "A status code for LV2UI_Request_Value::request()."]
+pub type LV2UI_Request_Value_Status = i32;
+#[doc = "A feature to request a new parameter value from the host."]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LV2UI_Request_Value {
+    #[doc = "Pointer to opaque data which must be passed to request()."]
+    pub handle: LV2UI_Feature_Handle,
+    #[doc = "Request a value for a parameter from the host."]
+    #[doc = ""]
+    #[doc = "This is mainly used by UIs to request values for complex parameters that"]
+    #[doc = "don't change often, such as file paths, but it may be used to request"]
+    #[doc = "any parameter value."]
+    #[doc = ""]
+    #[doc = "This function returns immediately, and the return value indicates"]
+    #[doc = "whether the host can fulfill the request.  The host may notify the"]
+    #[doc = "plugin about the new parameter value, for example when a file is"]
+    #[doc = "selected by the user, via the usual mechanism.  Typically, the host will"]
+    #[doc = "send a message to the plugin that sets the new parameter value, and the"]
+    #[doc = "plugin will notify the UI via a message as usual for any other parameter"]
+    #[doc = "change."]
+    #[doc = ""]
+    #[doc = "To provide an appropriate UI, the host can determine details about the"]
+    #[doc = "parameter from the plugin data as usual.  The additional parameters of"]
+    #[doc = "this function provide support for more advanced use cases, but in the"]
+    #[doc = "simple common case, the plugin will simply pass the key of the desired"]
+    #[doc = "parameter and zero for everything else."]
+    #[doc = ""]
+    #[doc = "@param handle The handle field of this struct."]
+    #[doc = ""]
+    #[doc = "@param key The URID of the parameter."]
+    #[doc = ""]
+    #[doc = "@param type The optional type of the value to request.  This can be used"]
+    #[doc = "to request a specific value type for parameters that support several."]
+    #[doc = "If non-zero, it must be the URID of an instance of rdfs:Class or"]
+    #[doc = "rdfs:Datatype."]
+    #[doc = ""]
+    #[doc = "@param features Additional features for this request, or NULL."]
+    #[doc = ""]
+    #[doc = "@return A status code which is 0 on success."]
+    pub request: ::std::option::Option<
+        unsafe extern "C" fn(
+            handle: LV2UI_Feature_Handle,
+            key: LV2_URID,
+            type_: LV2_URID,
+            features: *const *const LV2_Feature,
+        ) -> LV2UI_Request_Value_Status,
+    >,
+}
 #[doc = "UI Idle Interface (LV2_UI__idleInterface)"]
 #[doc = ""]
 #[doc = "UIs can provide this interface to have an idle() callback called by the host"]
 #[doc = "rapidly to update the UI."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Idle_Interface {
+pub struct LV2UI_Idle_Interface {
     #[doc = "Run a single iteration of the UI's idle loop."]
     #[doc = ""]
     #[doc = "This will be called rapidly in the UI thread at a rate appropriate"]
@@ -2412,7 +2499,6 @@ pub struct _LV2UI_Idle_Interface {
     pub idle:
         ::std::option::Option<unsafe extern "C" fn(ui: LV2UI_Handle) -> ::std::os::raw::c_int>,
 }
-pub type LV2UI_Idle_Interface = _LV2UI_Idle_Interface;
 #[doc = "UI Show Interface (LV2_UI__showInterface)"]
 #[doc = ""]
 #[doc = "UIs can provide this interface to show and hide a window, which allows them"]
@@ -2426,7 +2512,7 @@ pub type LV2UI_Idle_Interface = _LV2UI_Idle_Interface;
 #[doc = "idle().  It MAY later call show() then resume calling idle()."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Show_Interface {
+pub struct LV2UI_Show_Interface {
     #[doc = "Show a window for this UI."]
     #[doc = ""]
     #[doc = "The window title MAY have been passed by the host to"]
@@ -2442,11 +2528,10 @@ pub struct _LV2UI_Show_Interface {
     pub hide:
         ::std::option::Option<unsafe extern "C" fn(ui: LV2UI_Handle) -> ::std::os::raw::c_int>,
 }
-pub type LV2UI_Show_Interface = _LV2UI_Show_Interface;
 #[doc = "Peak data for a slice of time, the update format for ui:peakProtocol."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2UI_Peak_Data {
+pub struct LV2UI_Peak_Data {
     #[doc = "The start of the measurement period.  This is just a running counter"]
     #[doc = "that is only meaningful in comparison to previous values and must not be"]
     #[doc = "interpreted as an absolute time."]
@@ -2457,7 +2542,6 @@ pub struct _LV2UI_Peak_Data {
     #[doc = "value for abs(sample) over all the samples in the period."]
     pub peak: f32,
 }
-pub type LV2UI_Peak_Data = _LV2UI_Peak_Data;
 #[doc = "The type of the lv2ui_descriptor() function."]
 pub type LV2UI_DescriptorFunction =
     ::std::option::Option<unsafe extern "C" fn(index: u32) -> *const LV2UI_Descriptor>;
@@ -2538,7 +2622,7 @@ pub type LV2_Worker_Respond_Function = ::std::option::Option<
 #[doc = "when called with LV2_WORKER__interface as its argument."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Worker_Interface {
+pub struct LV2_Worker_Interface {
     #[doc = "The worker method.  This is called by the host in a non-realtime context"]
     #[doc = "as requested, possibly with an arbitrary message to handle."]
     #[doc = ""]
@@ -2587,7 +2671,6 @@ pub struct _LV2_Worker_Interface {
     pub end_run:
         ::std::option::Option<unsafe extern "C" fn(instance: LV2_Handle) -> LV2_Worker_Status>,
 }
-pub type LV2_Worker_Interface = _LV2_Worker_Interface;
 #[doc = " Opaque handle for LV2_Worker_Schedule."]
 pub type LV2_Worker_Schedule_Handle = *mut ::std::os::raw::c_void;
 #[doc = "Schedule Worker Host Feature."]
@@ -2596,7 +2679,7 @@ pub type LV2_Worker_Schedule_Handle = *mut ::std::os::raw::c_void;
 #[doc = "the plugin can use to schedule a worker call from run()."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct _LV2_Worker_Schedule {
+pub struct LV2_Worker_Schedule {
     #[doc = "Opaque host data."]
     pub handle: LV2_Worker_Schedule_Handle,
     #[doc = "Request from run() that the host call the worker."]
@@ -2607,10 +2690,10 @@ pub struct _LV2_Worker_Schedule {
     #[doc = ""]
     #[doc = "This function is always safe to call from run(), but it is not"]
     #[doc = "guaranteed that the worker is actually called from a different thread."]
-    #[doc = "In particular, when free-wheeling (e.g. for offline rendering), the"]
-    #[doc = "worker may be executed immediately.  This allows single-threaded"]
-    #[doc = "processing with sample accuracy and avoids timing problems when run() is"]
-    #[doc = "executing much faster or slower than real-time."]
+    #[doc = "In particular, when free-wheeling (for example, during offline"]
+    #[doc = "rendering), the worker may be executed immediately.  This allows"]
+    #[doc = "single-threaded processing with sample accuracy and avoids timing"]
+    #[doc = "problems when run() is executing much faster or slower than real-time."]
     #[doc = ""]
     #[doc = "Plugins SHOULD be written in such a way that if the worker runs"]
     #[doc = "immediately, and responses from the worker are delivered immediately,"]
@@ -2631,4 +2714,3 @@ pub struct _LV2_Worker_Schedule {
         ) -> LV2_Worker_Status,
     >,
 }
-pub type LV2_Worker_Schedule = _LV2_Worker_Schedule;
