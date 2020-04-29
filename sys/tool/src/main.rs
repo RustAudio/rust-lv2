@@ -4,7 +4,11 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings and write them to out.
-pub fn generate_bindings(source_dir: &Path, out: &Path, target: Option<&str>) {
+pub fn generate_bindings<I>(source_dir: &Path, out: &Path, clang_args: I)
+where
+    I: IntoIterator,
+    I::Item: AsRef<str>,
+{
     let mut bindings = bindgen::Builder::default()
         .size_t_is_usize(true)
         .whitelist_type("LV2.*")
@@ -12,9 +16,7 @@ pub fn generate_bindings(source_dir: &Path, out: &Path, target: Option<&str>) {
         .whitelist_var("LV2.*")
         .layout_tests(false)
         .bitfield_enum("LV2_State_Flags");
-    if let Some(target) = target {
-        bindings = bindings.clang_arg(format!("--target={}", target));
-    }
+    bindings = bindings.clang_args(clang_args);
 
     // Adding the headers to the include path of clang.
     // Otherwise, included headers can not be found.
@@ -80,19 +82,18 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("target")
-                .help("The compiler target triple")
+            clap::Arg::with_name("clang args")
+                .help("Arguments passed to clang")
                 .required(false)
-                .short("t")
-                .long("target")
-                .value_name("TRIPLE")
-                .takes_value(true),
+                .value_name("CLANG-ARGS")
+                .multiple(true)
+                .last(true),
         )
         .get_matches();
 
     let headers = PathBuf::from(".").join(matches.value_of("LV2").unwrap());
     let out = PathBuf::from(".").join(matches.value_of("out").unwrap());
-    let target = matches.value_of("target");
+    let clang_args = matches.values_of("clang args").unwrap();
 
-    generate_bindings(&headers, &out, target);
+    generate_bindings(&headers, &out, clang_args);
 }
