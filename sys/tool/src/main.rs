@@ -60,7 +60,7 @@ where
 
 fn main() {
     let matches = clap::App::new("systool")
-        .author("© 2020 Amaury 'Yruama_Lairba' Abrail, Jan-Oliver 'Janonard' Opdenhövel")
+        .author("© 2020 Amaury 'Yruama_Lairba' Abrial, Jan-Oliver 'Janonard' Opdenhövel")
         .about("Generate Rust bindings of the LV2 C API")
         .version("0.1.0")
         .arg(
