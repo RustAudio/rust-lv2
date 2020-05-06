@@ -150,6 +150,9 @@ pub extern crate lv2_midi;
 #[cfg(feature = "lv2-state")]
 pub extern crate lv2_state;
 
+#[cfg(feature = "lv2-sys")]
+pub extern crate lv2_sys;
+
 #[cfg(feature = "lv2-time")]
 pub extern crate lv2_time;
 

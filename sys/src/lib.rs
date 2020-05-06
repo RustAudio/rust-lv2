@@ -11,7 +11,7 @@
 #![allow(clippy::all)]
 
 #[cfg_attr(target_os = "linux", path = "linux/mod.rs")]
-#[cfg_attr(all(target_os = "windows", experimental), path = "windows.rs")]
+#[cfg_attr(all(target_os = "windows", feature = "experimental"), path = "windows.rs")]
 mod unsupported;
 pub use unsupported::*;
 
