@@ -8,35 +8,21 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 #![allow(clippy::all)]
-#![allow(improper_ctypes)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-#[cfg(windows)]
+#[cfg_attr(target_os = "linux", path = "linux/mod.rs")]
+#[cfg_attr(all(target_os = "windows", experimental), path = "windows.rs")]
+mod unsupported;
+pub use unsupported::*;
+
 impl From<u32> for LV2_State_Flags {
     fn from(flags: u32) -> Self {
-        Self(flags as i32)
+        Self(flags as _)
     }
 }
 
-#[cfg(not(windows))]
-impl From<u32> for LV2_State_Flags {
-    fn from(flags: u32) -> Self {
-        Self(flags)
-    }
-}
-
-#[cfg(windows)]
 impl From<LV2_State_Flags> for u32 {
     fn from(flags: LV2_State_Flags) -> u32 {
         flags.0 as u32
-    }
-}
-
-#[cfg(not(windows))]
-impl From<LV2_State_Flags> for u32 {
-    fn from(flags: LV2_State_Flags) -> u32 {
-        flags.0
     }
 }

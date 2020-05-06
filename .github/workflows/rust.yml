@@ -14,7 +14,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         toolchain: [stable, beta, nightly]
 
     runs-on: ${{ matrix.os }}
@@ -46,3 +46,27 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all --all-features -- -D warnings
+
+  linux-bindings:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        target: i686-unknown-linux-gnu
+    - name: Install 32-bit libc
+      run: |
+        sudo apt-get update
+        sudo apt-get install libc6-dev-i386
+    - name: Generate
+      run: |
+        mkdir bindings
+        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86_64.rs -- -target x86_64-unknown-linux-gnu
+        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86.rs -- -target i686-unknown-linux-gnu
+    - uses: actions/upload-artifact@v1
+      with:
+        name: linux-bindings
+        path: bindings
