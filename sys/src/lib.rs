@@ -8,15 +8,12 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 #![allow(clippy::all)]
-#![allow(improper_ctypes)]
 
-#[cfg_attr(unix, path = "unix/mod.rs")]
-#[cfg_attr(windows, path = "windows.rs")]
-#[cfg_attr(not(any(unix, windows)), path = "unsupported.rs")]
-mod bindings;
-pub use bindings::*;
+#[cfg_attr(any(unix, target_env = "gnu"), path = "unix/mod.rs")]
+#[cfg_attr(target_env = "msvc", path = "windows.rs")]
+mod unsupported;
+pub use unsupported::*;
 
 impl From<u32> for LV2_State_Flags {
     fn from(flags: u32) -> Self {
