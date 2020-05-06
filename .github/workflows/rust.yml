@@ -64,8 +64,8 @@ jobs:
     - name: Generate
       run: |
         mkdir bindings
-        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86_64.rs --target x86_64-unknown-linux-gnu
-        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86.rs --target i686-unknown-linux-gnu
+        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86_64.rs -- -target x86_64-unknown-linux-gnu
+        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86.rs -- -target i686-unknown-linux-gnu
     - uses: actions/upload-artifact@v1
       with:
         name: linux-bindings
@@ -83,7 +83,7 @@ jobs:
     - name: Generate 64-bit
       run: |
         mkdir bindings
-        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86_64.rs --target x86_64-apple-darwin
+        cargo run -p systool -- -I ./sys/lv2/ -o bindings/x86_64.rs -- -target x86_64-apple-darwin
     - uses: actions/upload-artifact@v1
       with:
         name: macos-bindings
