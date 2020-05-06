@@ -224,7 +224,7 @@ where
     fn retrieve_next_event(&mut self) {
         self.next_event = None;
         if let Some((index, item)) = self.sequence.next() {
-            if index > self.index {
+            if index >= self.index {
                 self.next_event = Some((index, item));
             }
         }
