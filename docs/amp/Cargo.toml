@@ -10,7 +10,7 @@ edition = "2018"
 
 # Plugins are dynamic libraries. This setting tells cargo to export it this way.
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 # Rust-LV2 is a network of individual sub-crates with different version numbers and histories.
 # However, most plugins don't need to deal with them directly. Instead, they use the re-export crate

@@ -6,7 +6,7 @@ license = "ISC"
 edition = "2018"
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 # This is the first time we need a non-default LV2 feature. In this case, this is the `lv2-time` crate.
 [dependencies]
