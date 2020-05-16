@@ -61,11 +61,6 @@
 //! # Internals
 //!
 //! Internally, all atoms are powered by the structs in the [`space`](space/index.html) module. They safely abstract the reading and writing process and assure that no memory is improperly accessed or leaked and that alignments are upheld. If you simply want to use the atoms in this crate, you don't need to deal with. They are only interesting if you want to create your own atom types.
-//!
-//! # Non-Rust requirements
-//!
-//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
-//! you need to have clang installed on your machine.
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
