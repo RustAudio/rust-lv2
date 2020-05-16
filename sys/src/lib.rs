@@ -8,7 +8,7 @@
 
 #[cfg_attr(target_os = "linux", path = "linux/mod.rs")]
 #[cfg_attr(
-    all(target_os = "windows", feature = "experimental"),
+    all(target_os = "windows", feature = "experimental-targets"),
     path = "windows.rs"
 )]
 mod unsupported;

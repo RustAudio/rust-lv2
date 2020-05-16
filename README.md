@@ -122,7 +122,7 @@ There are also feature sets that account for common scenarios:
 * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
 * `full`: All sub-crates.
 
-Some build targets are not fully supported yet. Use the `experimental-targets` feature to enable them. For more information on target support, please read our [targets list.](targets.md)
+Some build targets are not fully supported yet. Use the `experimental-targets` feature to enable them.
 
 ## Supported targets
 
@@ -130,7 +130,7 @@ Rust-LV2 uses pregenerated LV2 API bindings for different targets in order to in
 
 A target is supported by Rust-LV2 if a binding was generated for it. This however requires that there is a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who has access to a machine that runs this target and who can generate and verify bindings on this machine. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
 
-There are some targets that have a binding and a maintainer, but that haven't been verified yet. These targets have only experimental support and are gated behind optional crate features.
+There are some targets that have a binding and a maintainer, but that haven't been verified yet. These targets have only experimental support and are gated behind  the `experimental-targets` feature. 
 
 ### Supported targets
 
