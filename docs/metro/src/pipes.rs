@@ -31,6 +31,13 @@ where
     }
 }
 
+impl<T> ResetablePipe for Sampler<T>
+where
+    T: Copy,
+{
+    fn reset(&mut self) {}
+}
+
 // We try to test as much of the individual parts as possible to reduce the error cases.
 #[test]
 fn test_sampler() {
@@ -77,6 +84,12 @@ impl Pipe for Envelope {
         } else {
             0.0
         }
+    }
+}
+
+impl ResetablePipe for Envelope {
+    fn reset(&mut self) {
+        self.impulse_index = std::usize::MAX;
     }
 }
 
@@ -158,6 +171,15 @@ impl Pipe for PulseGenerator {
         }
 
         self.frames_per_beat != 0 && self.elapsed_frames % self.frames_per_beat == 0
+    }
+}
+
+impl ResetablePipe for PulseGenerator {
+    fn reset(&mut self) {
+        self.beats_per_minute = 120.0;
+        self.speed_coefficient = 0.0;
+        self.frames_per_beat = 0;
+        self.elapsed_frames = 0;
     }
 }
 
