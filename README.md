@@ -92,7 +92,21 @@ impl Plugin for Amp {
 lv2_descriptors!(Amp);
 ```
 
-## Using this framework
+## About this framework
+
+### Q&A
+
+#### Does my host program support it?
+
+Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
+
+#### Can I host plugins with `rust-lv2`?
+
+Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
+
+However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
+
+A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
 
 ### Documentation
 
@@ -136,29 +150,9 @@ There are some targets that have a binding and a maintainer, but that haven't be
 
 | Target | Maintainer | Status | Last Verification |
 |--------|------------|--------|-------------------|
-| `x86_64-unknown-linux-gnu` | @Janonard | Supported | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1 |
-| `x86-unknown-linux-gnu` | @Janonard | Supported | TODO |
+| `x86_64-unknown-linux-gnu` | @Janonard | Supported | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
+| `x86-unknown-linux-gnu` | @Janonard | Supported | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
 | `x86_64-pc-windows-msvc` | @Janonard | Experimental | TODO |
-
-## Q&A
-
-### Does my host program support it?
-
-Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
-
-### What targets are supported?
-
-We currently only support x86_64 and x86 Linux systems. For more information, please checkout the [targets page](targets.md).
-
-We would like to also support Windows as well as ARM-based embedded devices like Raspberry Pis. If you can help us with these targets, please do so!
-
-### Can I host plugins with `rust-lv2`?
-
-Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
-
-However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
-
-A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
 
 ## License
 
