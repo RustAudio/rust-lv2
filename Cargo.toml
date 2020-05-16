@@ -122,4 +122,3 @@ urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }
 lv2-worker = { path = "worker" }
-iterpipes = { git = "https://github.com/Janonard/pipes" }
