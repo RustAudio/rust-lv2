@@ -7,3 +7,4 @@ pub use crate::plugin::{
 };
 pub use crate::port::*;
 pub use crate::sys::LV2_Descriptor;
+pub use crate::uris::*;
