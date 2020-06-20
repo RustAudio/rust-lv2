@@ -1,6 +1,5 @@
-
-use std::slice;
 use std::collections::HashMap;
+use std::slice;
 
 use core::feature::Feature;
 use core::prelude::*;
@@ -14,7 +13,7 @@ use urid::*;
 /// Add an `LV2Options` field to your plugin's `Feature` struct. Then use the `::retrieve_option()` method to get the information about the option.
 pub struct LV2Options {
     slice_map: HashMap<u32, (usize, usize)>,
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
 unsafe impl UriBound for LV2Options {
@@ -40,33 +39,31 @@ impl LV2Options {
             let start = data.len();
             data.extend_from_slice(slice::from_raw_parts(
                 &(*ptr).size as *const u32 as *const u8,
-                std::mem::size_of::<u32>()));
+                std::mem::size_of::<u32>(),
+            ));
             data.extend_from_slice(slice::from_raw_parts(
                 &(*ptr).type_ as *const u32 as *const u8,
-                std::mem::size_of::<u32>()));
+                std::mem::size_of::<u32>(),
+            ));
             data.extend_from_slice(slice::from_raw_parts(
                 (*ptr).value as *const u8,
-                (*ptr).size as usize));
+                (*ptr).size as usize,
+            ));
             slice_map.insert((*ptr).key, (start, data.len()));
 
             ptr = ptr.offset(1);
         }
 
-        Some(Self {
-            slice_map,
-            data
-        })
+        Some(Self { slice_map, data })
     }
 
     /// Tries to retrieve the option specified by `urid`.
     ///
     /// Returns an `lv2_atom::UnidentifiedAtom` from which the option can be read using the `::read()` method.
     pub fn retrieve_option<'a, T>(&'a self, urid: URID<T>) -> Option<atom::UnidentifiedAtom<'a>> {
-        self.slice_map.get(&urid.get())
-            .and_then(|(start, end)| {
-                let space = atom::space::Space::from_slice(&self.data[*start..*end]);
-                Some(atom::UnidentifiedAtom::new(space))
-            })
+        self.slice_map.get(&urid.get()).and_then(|(start, end)| {
+            let space = atom::space::Space::from_slice(&self.data[*start..*end]);
+            Some(atom::UnidentifiedAtom::new(space))
+        })
     }
-
 }
