@@ -6,9 +6,12 @@
 //! you need to have clang installed on your machine.
 extern crate lv2_core as core;
 extern crate lv2_sys as sys;
+extern crate lv2_atom as atom;
 
 mod feature;
 mod mapper;
+mod options;
 
 pub use feature::*;
 pub use mapper::*;
+pub use options::*;
