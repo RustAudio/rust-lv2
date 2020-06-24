@@ -13,4 +13,6 @@ pub mod prelude {
     pub use plugin_ui::*;
     pub use port::*;
     pub use uris::*;
+    pub use lv2_ui_derive::*;
+    pub use lv2_sys::LV2UI_Descriptor;
 }
