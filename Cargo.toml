@@ -55,6 +55,10 @@ optional = true
 version = "0.1.0"
 optional = true
 
+[dependencies.lv2-ui]
+path = "ui" #version = "0.1.0"
+optional = true
+
 [features]
 default = ["plugin"]
 minimal_plugin = [
@@ -68,6 +72,7 @@ plugin = [
     "lv2-atom",
     "wmidi",
     "lv2-midi",
+    "lv2-ui"
 ]
 full = [
     "lv2-atom",
@@ -80,6 +85,7 @@ full = [
     "lv2-state",
     "lv2-sys",
     "lv2-worker",
+    "lv2-ui"
 ]
 wmidi = ["lv2-midi", "lv2-midi/wmidi"]
 experimental-targets = ["lv2-sys/experimental"]
@@ -99,6 +105,7 @@ members = [
     "urid/derive",
     "urid/lv2-urid",
     "worker",
+    "ui",
     "docs/amp",
     "docs/fifths",
     "docs/metro",
@@ -118,6 +125,7 @@ lv2-state = { path = "state" }
 lv2-sys = { path = "sys" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
+#lv2-ui = { path = "ui" }
 urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }
