@@ -154,7 +154,7 @@ impl UIPort for UIAtomPort {
 }
 
 /// Trait for a UIPort collection
-pub trait UIPortsTrait: Sized {
+pub trait UIPortCollection: Sized {
     fn port_event(
         &mut self,
         port_index: u32,

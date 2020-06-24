@@ -7,6 +7,7 @@ extern crate syn;
 extern crate quote;
 
 mod lv2ui_descriptors;
+mod uiport_collection_derive;
 
 use proc_macro::TokenStream;
 
@@ -14,4 +15,10 @@ use proc_macro::TokenStream;
 #[proc_macro]
 pub fn lv2ui_descriptors(input: TokenStream) -> TokenStream {
     lv2ui_descriptors::lv2_ui_descriptors_impl(input)
+}
+
+/// Implement the `UIPortCollection` trait for a port struct.
+#[proc_macro_derive(UIPortCollection)]
+pub fn uiport_collection_derive(input: TokenStream) -> TokenStream {
+    uiport_collection_derive::uiport_collection_derive_impl(input)
 }

@@ -105,7 +105,7 @@ impl<'a> PluginUIInfo<'a> {
 ///
 pub trait PluginUI: Sized + 'static {
     /// The type of the port collection
-    type UIPorts: UIPortsTrait;
+    type UIPorts: UIPortCollection;
 
     /// The host features used by this plugin UI
     ///
