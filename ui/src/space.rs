@@ -31,7 +31,7 @@ impl SelfAllocatingSpace {
     }
 
     pub fn take(&mut self) -> Option<atom::space::Space> {
-        if self.data.len() == 0 || self.already_read {
+        if self.data.is_empty() || self.already_read {
             return None;
         }
         let space = atom::space::Space::from_slice(&self.data);

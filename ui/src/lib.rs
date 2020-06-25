@@ -10,9 +10,9 @@ pub mod uris;
 
 pub mod prelude {
     use crate::*;
+    pub use lv2_sys::LV2UI_Descriptor;
+    pub use lv2_ui_derive::*;
     pub use plugin_ui::*;
     pub use port::*;
     pub use uris::*;
-    pub use lv2_ui_derive::*;
-    pub use lv2_sys::LV2UI_Descriptor;
 }

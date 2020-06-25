@@ -56,12 +56,11 @@ impl UIControlPort {
     /// Returns the changed value if it has been changed, otherwise None.
     ///
     pub fn changed_value(&mut self) -> Option<f32> {
-        match self.changed {
-            false => None,
-            true => {
-                self.changed = false;
-                Some(self.value)
-            }
+        if self.changed {
+            self.changed = false;
+            Some(self.value)
+        } else {
+            None
         }
     }
 }

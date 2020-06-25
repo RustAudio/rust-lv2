@@ -48,7 +48,9 @@ pub struct PluginUIInfo<'a> {
 }
 
 impl<'a> PluginUIInfo<'a> {
-    pub unsafe fn from_raw(
+    /// Instanciate a PluginUIInfo from a set of raw pointers
+    ///
+    unsafe fn from_raw(
         descriptor: *const sys::LV2UI_Descriptor,
         plugin_uri: *const c_char,
         bundle_path: *const c_char,
@@ -184,6 +186,15 @@ fn retrieve_parent_window(features: *const *const sys::LV2_Feature) -> *mut std:
 }
 
 impl<T: PluginUI> PluginUIInstance<T> {
+    /// The `instatiate()` function of the LV2UI_Descriptor stcuct
+    ///
+    /// Instanciates the UI instance and the UI itself
+    ///
+    /// Only to be called by the host.
+    ///
+    /// # Safety
+    ///
+    /// Unsafe because it derefenrences raw pointers reveived from the host.
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2UI_Descriptor,
         plugin_uri: *const c_char,
@@ -249,11 +260,32 @@ impl<T: PluginUI> PluginUIInstance<T> {
         }
     }
 
+    /// The `cleanup()` function of the LV2UI_Descriptor stcuct
+    ///
+    /// Forwards the port event to the UI
+    ///
+    /// Only to be called by the host.
+    ///
+    /// # Safety
+    ///
+    /// Unsafe because it derefenrences a raw pointer to the UI
+    /// reveived from the host.
     pub unsafe extern "C" fn cleanup(handle: sys::LV2UI_Handle) {
         let handle = handle as *mut Self;
         (*handle).instance.cleanup();
     }
 
+    /// The `port_event()` function of the LV2UI_Descriptor stcuct
+    ///
+    /// Forwards the port event to the UI instantce so that the pords
+    /// get updated.
+    ///
+    /// Only to be called by the host.
+    ///
+    /// # Safety
+    ///
+    /// Unsafe because it derefenrences a raw pointer to the UI
+    /// reveived from the host.
     pub unsafe extern "C" fn port_event(
         handle: sys::LV2UI_Handle,
         port_index: u32,
@@ -267,6 +299,19 @@ impl<T: PluginUI> PluginUIInstance<T> {
             .port_event(port_index, buffer_size, format, buffer);
     }
 
+    /// The `extension_data()` function of the LV2UI_Descriptor stcuct
+    ///
+    /// Only to be called by the host
+    ///
+    /// # Safety
+    ///
+    /// Unsafe because it derefenrences a raw pointer to the UI
+    /// reveived from the host.
+    ///
+    /// # Todo
+    ///
+    /// needs to be forwared to the UI so that the UI can hand back
+    /// its extensions.
     pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const std::ffi::c_void {
         if CStr::from_ptr(uri) == CStr::from_bytes_with_nul_unchecked(sys::LV2_UI__idleInterface) {
             let interface = Box::new(sys::LV2UI_Idle_Interface {
@@ -278,10 +323,19 @@ impl<T: PluginUI> PluginUIInstance<T> {
         }
     }
 
+    /// The `idle()` function of the LV2UI_Descriptor stcuct
+    ///
+    /// Forwarded to the UI
+    ///
+    /// Only to be called by the host
+    ///
+    /// # Safety
+    ///
+    /// Unsafe because it derefenrences a raw pointer to the UI
+    /// reveived from the host.
     pub unsafe extern "C" fn idle(handle: sys::LV2UI_Handle) -> i32 {
         let handle = handle as *mut Self;
-        let r = (*handle).instance.idle();
-        r
+        (*handle).instance.idle()
     }
 }
 
