@@ -59,7 +59,7 @@ impl<'a> MutSpace<'a> for SelfAllocatingSpace {
         let start_point = self.data.len();
         self.data.resize(start_point + size, 0);
         let return_slice = &mut self.data[start_point..];
-        Some((0, unsafe {
+        Some((padding, unsafe {
             std::slice::from_raw_parts_mut(return_slice.as_mut_ptr(), size)
         }))
     }
