@@ -72,7 +72,6 @@ plugin = [
     "lv2-atom",
     "wmidi",
     "lv2-midi",
-    "lv2-ui"
 ]
 full = [
     "lv2-atom",
@@ -125,7 +124,7 @@ lv2-state = { path = "state" }
 lv2-sys = { path = "sys" }
 lv2-time = { path = "time" }
 lv2-units = { path = "units" }
-#lv2-ui = { path = "ui" }
+lv2-ui = { path = "ui" }
 urid = { path = "urid" }
 urid-derive = { path = "urid/derive" }
 lv2-urid = { path = "urid/lv2-urid" }

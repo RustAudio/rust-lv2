@@ -128,6 +128,8 @@ pub mod prelude {
     pub use ::lv2_state::*;
     #[cfg(feature = "lv2-time")]
     pub use ::lv2_time::prelude::*;
+    #[cfg(feature = "lv2-ui")]
+    pub use ::lv2_ui::prelude::*;
     #[cfg(feature = "lv2-units")]
     pub use ::lv2_units::prelude::*;
     #[cfg(feature = "lv2-urid")]
