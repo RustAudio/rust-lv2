@@ -10,8 +10,6 @@ extern crate lv2_sys as sys;
 
 mod feature;
 mod mapper;
-mod options;
 
 pub use feature::*;
 pub use mapper::*;
-pub use options::*;

@@ -1,3 +1,12 @@
+/// Host feature to communicate options to the plugin
+///
+/// https://lv2plug.in/ns/ext/options
+///
+/// Add an `LV2Options` field to your plugin's `Feature` struct. Then use the `::retrieve_option()` method to get the information about the option.
+extern crate lv2_atom as atom;
+extern crate lv2_core as core;
+extern crate lv2_sys as sys;
+
 use std::collections::HashMap;
 use std::slice;
 
@@ -6,11 +15,6 @@ use core::prelude::*;
 use std::ffi::c_void;
 use urid::*;
 
-/// Host feature to communicate options to the plugin
-///
-/// https://lv2plug.in/ns/ext/options
-///
-/// Add an `LV2Options` field to your plugin's `Feature` struct. Then use the `::retrieve_option()` method to get the information about the option.
 pub struct LV2Options {
     slice_map: HashMap<u32, (usize, usize)>,
     data: Vec<u8>,
