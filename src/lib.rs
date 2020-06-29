@@ -161,6 +161,9 @@ pub extern crate lv2_time;
 #[cfg(feature = "urid")]
 pub extern crate urid;
 
+#[cfg(feature = "lv2-ui")]
+pub extern crate lv2_ui;
+
 #[cfg(feature = "lv2-units")]
 pub extern crate lv2_units;
 
