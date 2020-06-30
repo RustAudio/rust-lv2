@@ -76,6 +76,7 @@ pub mod sequence;
 pub mod space;
 pub mod string;
 pub mod tuple;
+pub mod uris;
 pub mod vector;
 
 #[cfg(feature = "lv2-core")]
@@ -94,6 +95,7 @@ pub mod prelude {
     pub use space::{FramedMutSpace, MutSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
+    pub use uris::*;
     pub use vector::Vector;
 }
 
@@ -118,6 +120,14 @@ pub struct AtomURIDCollection {
     pub string: URID<string::String>,
     pub tuple: URID<tuple::Tuple>,
     pub sequence: URID<sequence::Sequence>,
+    pub atom_transfer: URID<uris::AtomTransfer>,
+    pub beat_time: URID<uris::BeatTime>,
+    pub buffer_type: URID<uris::BufferType>,
+    pub child_type: URID<uris::ChildType>,
+    pub event_transfer: URID<uris::EventTransfer>,
+    pub frame_time: URID<uris::FrameTime>,
+    pub supports: URID<uris::Supports>,
+    pub time_unit: URID<uris::TimeUnit>,
 }
 
 impl AtomURIDCollection {
