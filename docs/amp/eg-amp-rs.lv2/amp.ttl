@@ -41,7 +41,7 @@
                         "Aumento"@es ,
                         "Gain"@fr ,
                         "Guadagno"@it ,
-                        "利益"@jp ,
+                        "ゲイン"@jp ,
                         "Увеличение"@ru ;
 # An lv2:ControlPort should always describe its default value, and usually a
 # minimum and maximum value.  Defining a range is not strictly required, but
