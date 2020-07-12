@@ -92,7 +92,21 @@ impl Plugin for Amp {
 lv2_descriptors!(Amp);
 ```
 
-## Using this framework
+## About this framework
+
+### Q&A
+
+#### Does my host program support it?
+
+Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
+
+#### Can I host plugins with `rust-lv2`?
+
+Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
+
+However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
+
+A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
 
 ### Documentation
 
@@ -122,37 +136,23 @@ There are also feature sets that account for common scenarios:
 * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
 * `full`: All sub-crates.
 
-### Building
+Some build targets are not fully supported yet. Use the `experimental-targets` feature to enable them.
 
-Since the bindings to the raw C headers are generated with bindgen, you need to have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't in your system's standard path, set the environment variable `LIBCLANG_PATH` to the path of `libClang`.
+## Supported targets
 
-## Q&A
+Rust-LV2 uses pregenerated LV2 API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported.
 
-### Does my host program support it?
+A target is supported by Rust-LV2 if a binding was generated for it. This however requires that there is a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who has access to a machine that runs this target and who can generate and verify bindings on this machine. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
 
-Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
+There are some targets that have a binding and a maintainer, but that haven't been verified yet. These targets have only experimental support and are gated behind  the `experimental-targets` feature. 
 
-### What targets are supported?
+### Supported targets
 
-We currently support stable and beta Rust running on macOS and Linux. Windows will probably work too, but the Windows build environment of Travis CI is currently broken and we therefore can not support it.
-
-We would like to also support Windows as well as ARM-based embedded devices like Raspberry Pis. If you can help us with these targets, please do so!
-
-### Can I host plugins with `rust-lv2`?
-
-Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
-
-However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
-
-A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
-
-### Why `bindgen`?
-
-`lv2-sys` uses `bindgen` to generate the Rust representation of the LV2 C API. Rust can not handle verbatim C code, but is able to define type and function definitions that exactly match those from the C headers. However, since serveral importants details in C aren't properly defined, these bindings need to be different for every platform. One example: While Rust's `u32` is always an unsigned, 32-bit wide integer, C's `int` may be 16 to 64 bits wide and may be signed or unsigned; It depends on the platform.
-
-One solution would be to generate bindings for every supported target, but if we would only support stable, beta and nightly Rust on [tier 1 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-1), we would still have to maintain 21 different versions of the same crate. If we would add [tier 2 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-2) too (which would include e.g. the Raspberry Pis), there would be 216(!) different versions.
-
-I guess it's obvious that this isn't a maintainable situation. Therefore, the bindings need to be generated every time they are build, which requires the build dependency to `bindgen`.
+| Target | Maintainer | Status | Last Verification |
+|--------|------------|--------|-------------------|
+| `x86_64-unknown-linux-gnu` | @Janonard | Supported | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
+| `x86-unknown-linux-gnu` | @Janonard | Supported | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
+| `x86_64-pc-windows-msvc` | @Janonard | Experimental | TODO |
 
 ## License
 
