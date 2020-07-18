@@ -10,9 +10,13 @@ the path of `libClang`.
 ## Usage
 
 Usage (anywhere is rust-lv2 workspace):
-* `cargo run -p lv2-sys-bindgen -- [OPTIONS]`
-* `cargo make-bindings [OPTIONS]` (alias of the first)
+* `cargo run -p systool -- --lv2 <DIR> --out <OUT> [-- <CLANG-ARGS>...]`
+* `cargo systool --lv2 <DIR> --out <OUT> [-- <CLANG-ARGS>...]` (alias of the
+  first)
 
 Options:
 * `-I, --lv2 <DIR>`: The path to the LV2 C API
 * `-o, --out <OUT>`: The file to write the bindings to
+
+Args:
+* `<CLANG-ARGS>...`:   Arguments passed to clang
