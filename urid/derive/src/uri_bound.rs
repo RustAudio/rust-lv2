@@ -1,8 +1,6 @@
-use lazy_static::lazy_static;
 use proc_macro::TokenStream;
 use proc_macro2::Literal;
 use quote::quote;
-use regex::Regex;
 use syn::{parse, Ident, Item};
 
 /// Get the identity of the item we have to implement `UriBound` for.
@@ -30,19 +28,21 @@ fn get_type_ident(item: TokenStream) -> Ident {
 ///
 /// This includes multiple checks to assure that the literal is formatted correctly.
 fn get_uri(attr: TokenStream) -> Literal {
-    lazy_static! {
-        static ref GET_STRING_RE: Regex = Regex::new(r#"^"(.*)"$"#).unwrap();
-    }
-
     const PARSING_ERROR: &str = "A URI has to be a string literal";
 
     if parse::<Literal>(attr.clone()).is_err() {
         panic!(PARSING_ERROR);
     }
-
+    //check if it's a litteral string
     let attr = attr.to_string();
-    let captures = GET_STRING_RE.captures(attr.as_str()).expect(PARSING_ERROR);
-    let uri = captures.get(1).expect(PARSING_ERROR).as_str();
+    if !attr.starts_with('"') || !attr.ends_with('"') {
+        panic!(PARSING_ERROR);
+    }
+    //Remove the enclosing "" to get the uri
+    let uri = String::from(attr.get(1..attr.len() - 1).expect(PARSING_ERROR));
+    if uri.contains(|c: char| c.is_ascii_whitespace()) {
+        panic!("A URI can't contain whitespace");
+    }
     if !uri.is_ascii() {
         panic!("A URI has to be an ASCII string");
     }
