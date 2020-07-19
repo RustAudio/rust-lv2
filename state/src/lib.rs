@@ -88,8 +88,7 @@ pub use raw::*;
 mod storage;
 pub use storage::Storage;
 
-mod features;
-pub use features::*;
+pub mod path;
 
 /// Kinds of errors that may occur in the crate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
