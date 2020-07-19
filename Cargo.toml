@@ -87,7 +87,7 @@ full = [
     "lv2-ui"
 ]
 wmidi = ["lv2-midi", "lv2-midi/wmidi"]
-experimental-targets = ["lv2-sys/experimental"]
+experimental-targets = ["lv2-sys/experimental-targets"]
 
 [workspace]
 members = [

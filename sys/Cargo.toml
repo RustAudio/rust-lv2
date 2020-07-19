@@ -16,4 +16,4 @@ travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [features]
-experimental = []
+experimental-targets = []
