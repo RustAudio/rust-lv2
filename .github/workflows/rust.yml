@@ -5,10 +5,12 @@ on:
     branches: 
     - master
     - develop
+    - ui-develop
   pull_request:
     branches: 
     - master
     - develop
+    - ui-develop
 
 jobs:
   build:
