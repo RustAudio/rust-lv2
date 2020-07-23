@@ -13,7 +13,7 @@ A safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/
 
 It provides the following features, through the [LV2 Core specification](http://lv2plug.in/ns/lv2core/lv2core.html):
 
-* Lightweight, realtime non-blocking and allocation-free audio processing.
+* Lightweight, real-time non-blocking and allocation-free audio processing.
 * Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host.
 * Any number of ports / Any channel mapping, which can be different for input and output.  
   This obviously includes Mono, Stereo, Surround, etc., any configuration your CPU can handle.
@@ -102,7 +102,7 @@ Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to t
 
 #### Can I host plugins with `rust-lv2`?
 
-Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
+Currently, hosting plugins is not supported. This project was initially started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
 
 However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
 
@@ -140,19 +140,29 @@ Some build targets are not fully supported yet. Use the `experimental-targets` f
 
 ## Supported targets
 
-Rust-LV2 uses pregenerated LV2 API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported.
+Rust-LV2 uses pre-generated LV2 API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported.
 
-A target is supported by Rust-LV2 if a binding was generated for it. This however requires that there is a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who has access to a machine that runs this target and who can generate and verify bindings on this machine. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
+A target is supported by Rust-LV2 if a compatible binding was generated and verified for it. This requires a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who can generate a compatible binding and a tester who can verify binding for that target. Bindings are generated with the [LV2 systool](sys/tool/) and verification is done by building the [example plugins of the book](docs) and testing them with a host of that target.
 
-There are some targets that have a binding and a maintainer, but that haven't been verified yet. These targets have only experimental support and are gated behind  the `experimental-targets` feature. 
+Some targets have a compatible binding but haven't been verified, these targets are usable but may not work and aren't officially supported.
+
+Some bindings have a maintainer, but haven't been verified yet on any target. These binding are experimental and are gated behind the `experimental-targets` feature.
+
+### Bindings
+
+| Binding | Maintainer | Experimental | Compatibility |
+|---------|------------|--------------|---------------|
+| `linux/arm.rs`| @Yruama_Lairba | Yes | `arm*-*-linux-*` and `aarch64-*-linux-*` |
+| `linux/x86_64.rs` | @Janonard | No | `x86_64-*-linux-*` |
+| `linux/x86.rs` | @Janonard | No | `x86-*-linux-*`|
+| `windows.rs` | @Janonard | Yes | `*-windows-*` |
 
 ### Supported targets
 
-| Target | Maintainer | Status | Last Verification |
-|--------|------------|--------|-------------------|
-| `x86_64-unknown-linux-gnu` | @Janonard | Supported | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
-| `x86-unknown-linux-gnu` | @Janonard | Supported | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
-| `x86_64-pc-windows-msvc` | @Janonard | Experimental | TODO |
+| Target | Tester | Last Verification |
+|--------|--------|-------------------|
+| `x86_64-unknown-linux-gnu` | @Janonard | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
+| `x86-unknown-linux-gnu` | @Janonard | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
 
 ## License
 
