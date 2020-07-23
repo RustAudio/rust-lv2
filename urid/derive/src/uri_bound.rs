@@ -40,11 +40,8 @@ fn get_uri(attr: TokenStream) -> Literal {
     }
     //Remove the enclosing "" to get the uri
     let uri = String::from(attr.get(1..attr.len() - 1).expect(PARSING_ERROR));
-    if uri.contains(|c: char| c.is_ascii_whitespace()) {
-        panic!("A URI can't contain whitespace");
-    }
-    if !uri.is_ascii() {
-        panic!("A URI has to be an ASCII string");
+    if uri.contains("\\0") {
+        panic!("Unexpected Null terminator");
     }
 
     let mut uri_vec: Vec<u8> = Vec::with_capacity(uri.len() + 1);
