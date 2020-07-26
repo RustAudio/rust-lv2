@@ -2,83 +2,16 @@ use lv2_core::feature::Feature;
 use lv2_core::prelude::*;
 use lv2_sys as sys;
 use std::ffi::*;
-use std::fs::*;
 use std::iter::once;
 use std::marker::PhantomData;
 use std::os::raw::c_char;
 use std::path::*;
-use std::rc::Rc;
-use std::sync::Mutex;
 use urid::*;
 
 #[derive(Debug)]
 pub enum HostManagedPathError {
     PathNotUTF8,
     HostError,
-    OpenError(std::io::Error),
-    FeatureNotPresent,
-}
-
-pub struct HostManagedPath<'a> {
-    path: PathBuf,
-    free_path: FreePath<'a>,
-}
-
-impl<'a> HostManagedPath<'a> {
-    pub fn open_file<'b>(&'b self) -> Result<HostManagedFile<'b, 'a>, std::io::Error> {
-        Ok(HostManagedFile {
-            path: self,
-            file: File::open(self.path.as_path())?,
-        })
-    }
-
-    pub fn create_file<'b>(&'b self) -> Result<HostManagedFile<'b, 'a>, std::io::Error> {
-        Ok(HostManagedFile {
-            path: self,
-            file: File::create(self.path.as_path())?,
-        })
-    }
-
-    pub fn open_with_options<'b>(
-        &'b self,
-        options: &OpenOptions,
-    ) -> Result<HostManagedFile<'b, 'a>, std::io::Error> {
-        Ok(HostManagedFile {
-            path: self,
-            file: options.open(self.path.as_path())?,
-        })
-    }
-}
-
-impl<'a> Drop for HostManagedPath<'a> {
-    fn drop(&mut self) {
-        self.free_path.free_path(self.path.as_path());
-    }
-}
-
-pub struct HostManagedFile<'a, 'b> {
-    path: &'a HostManagedPath<'b>,
-    file: File,
-}
-
-impl<'a, 'b> HostManagedFile<'a, 'b> {
-    pub fn path(&self) -> &'a HostManagedPath<'b> {
-        self.path
-    }
-}
-
-impl<'a, 'b> std::ops::Deref for HostManagedFile<'a, 'b> {
-    type Target = File;
-
-    fn deref(&self) -> &File {
-        &self.file
-    }
-}
-
-impl<'a, 'b> std::ops::DerefMut for HostManagedFile<'a, 'b> {
-    fn deref_mut(&mut self) -> &mut File {
-        &mut self.file
-    }
 }
 
 pub struct MakePath<'a> {
@@ -106,7 +39,7 @@ unsafe impl<'a> Feature for MakePath<'a> {
 }
 
 impl<'a> MakePath<'a> {
-    fn make_path(&mut self, path: &Path) -> Result<PathBuf, HostManagedPathError> {
+    pub fn to_absolute_path(&mut self, path: &Path) -> Result<PathBuf, HostManagedPathError> {
         let path: Vec<c_char> = path
             .to_str()
             .ok_or(HostManagedPathError::PathNotUTF8)?
@@ -161,7 +94,10 @@ unsafe impl<'a> Feature for MapPath<'a> {
 }
 
 impl<'a> MapPath<'a> {
-    fn abstract_path(&mut self, path: &Path) -> Result<String, HostManagedPathError> {
+    pub fn absolute_to_abstract_path(
+        &mut self,
+        path: &Path,
+    ) -> Result<String, HostManagedPathError> {
         let path: Vec<c_char> = path
             .to_str()
             .ok_or(HostManagedPathError::PathNotUTF8)?
@@ -182,7 +118,10 @@ impl<'a> MapPath<'a> {
             .map_err(|_| HostManagedPathError::HostError)
     }
 
-    fn absolute_path(&mut self, path: &str) -> Result<PathBuf, HostManagedPathError> {
+    pub fn abstract_to_absolute_path(
+        &mut self,
+        path: &str,
+    ) -> Result<PathBuf, HostManagedPathError> {
         let path: Vec<c_char> = path.bytes().chain(once(0)).map(|b| b as c_char).collect();
 
         let path = unsafe { (self.absolute_path)(self.handle, path.as_ptr()) };
@@ -198,15 +137,10 @@ impl<'a> MapPath<'a> {
     }
 }
 
-struct FreePathImpl<'a> {
+pub struct FreePath<'a> {
     handle: sys::LV2_State_Free_Path_Handle,
     free_path: unsafe extern "C" fn(sys::LV2_State_Free_Path_Handle, *mut c_char),
     lifetime: PhantomData<&'a mut c_void>,
-}
-
-#[derive(Clone)]
-pub struct FreePath<'a> {
-    internal: Rc<Mutex<FreePathImpl<'a>>>,
 }
 
 unsafe impl<'a> UriBound for FreePath<'a> {
@@ -219,19 +153,16 @@ unsafe impl<'a> Feature for FreePath<'a> {
             .as_ref()
             .and_then(|internal| {
                 Some(Self {
-                    internal: Rc::new(Mutex::new(FreePathImpl {
-                        handle: internal.handle,
-                        free_path: internal.free_path?,
-                        lifetime: PhantomData,
-                    })),
+                    handle: internal.handle,
+                    free_path: internal.free_path?,
+                    lifetime: PhantomData,
                 })
             })
     }
 }
 
 impl<'a> FreePath<'a> {
-    fn free_path(&self, path: &Path) {
-        let internal = self.internal.lock().unwrap();
+    pub fn free_absolute_path(&self, path: &Path) {
         let mut path: Vec<c_char> = path
             .to_str()
             .unwrap()
@@ -239,71 +170,6 @@ impl<'a> FreePath<'a> {
             .chain(std::iter::once(0))
             .map(|c| c as c_char)
             .collect();
-        unsafe { (internal.free_path)(internal.handle, path.as_mut_ptr()) }
-    }
-}
-
-pub struct PathManager<'a> {
-    make_path: MakePath<'a>,
-    map_path: Option<MapPath<'a>>,
-    free_path: FreePath<'a>,
-}
-
-impl<'a> PathManager<'a> {
-    pub fn new(make_path: MakePath<'a>, free_path: FreePath<'a>) -> Self {
-        Self {
-            make_path,
-            free_path,
-            map_path: None,
-        }
-    }
-
-    pub fn with_map(
-        make_path: MakePath<'a>,
-        free_path: FreePath<'a>,
-        map_path: MapPath<'a>,
-    ) -> Self {
-        Self {
-            make_path,
-            free_path,
-            map_path: Some(map_path),
-        }
-    }
-
-    pub fn add_map_feature(&mut self, map_path: MapPath<'a>) {
-        self.map_path = Some(map_path);
-    }
-
-    pub fn allocate_path<P: AsRef<Path>>(
-        &mut self,
-        path: P,
-    ) -> Result<HostManagedPath<'a>, HostManagedPathError> {
-        Ok(HostManagedPath {
-            path: self.make_path.make_path(path.as_ref())?,
-            free_path: self.free_path.clone(),
-        })
-    }
-
-    pub fn map_path(&mut self, path: &HostManagedPath) -> Result<String, HostManagedPathError> {
-        let feature = self
-            .map_path
-            .as_mut()
-            .ok_or(HostManagedPathError::FeatureNotPresent)?;
-        feature.abstract_path(path.path.as_ref())
-    }
-
-    pub fn unmap_path(
-        &mut self,
-        mapped_path: &str,
-    ) -> Result<HostManagedPath<'a>, HostManagedPathError> {
-        let feature = self
-            .map_path
-            .as_mut()
-            .ok_or(HostManagedPathError::FeatureNotPresent)?;
-        let path = feature.absolute_path(mapped_path)?;
-        Ok(HostManagedPath {
-            path,
-            free_path: self.free_path.clone(),
-        })
+        unsafe { (self.free_path)(self.handle, path.as_mut_ptr()) }
     }
 }
