@@ -2,6 +2,10 @@
 //!
 //! This is a rather classic extension to LV2 plugins: There is a trait called [`State`](trait.State.html) which requires the methods [`save`](trait.State.html#tymethod.save) and [`restore`](trait.State.html#tymethiod.restore) to be implemented. These methods will be called by the host to save and restore the state of the plugin.
 //!
+//! ## Refering to files
+//!
+//! This crate also includes features to create files in a unique namespace for the plugin instance. However, these files will not persist across `save`/`restore` calls and therefore need to be safed together with the state as well. For more information, see the documentation of the [`path` module](path/index.html).
+//!
 //! ## Example usage
 //!
 //! ```
