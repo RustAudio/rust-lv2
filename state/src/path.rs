@@ -299,7 +299,7 @@ mod tests {
     use crate::path::*;
 
     unsafe extern "C" fn make_path_impl(
-        _: sys::LV2_State_Make_Path_Handle,
+        temp_dir: sys::LV2_State_Make_Path_Handle,
         relative_path: *const c_char,
     ) -> *mut c_char {
         let relative_path = match CStr::from_ptr(relative_path).to_str() {
@@ -307,44 +307,29 @@ mod tests {
             _ => return std::ptr::null_mut(),
         };
 
-        let mut absolute_path = String::from("/tmp/");
-        absolute_path.push_str(relative_path);
+        let temp_dir = temp_dir as *const mktemp::Temp;
+        let mut absolute_path = (*temp_dir).as_path().to_path_buf();
+        absolute_path.push(relative_path);
 
-        CString::new(absolute_path)
+        CString::new(absolute_path.to_str().unwrap())
             .map(CString::into_raw)
             .unwrap_or(std::ptr::null_mut())
     }
 
     unsafe extern "C" fn abstract_path_impl(
-        _: sys::LV2_State_Map_Path_Handle,
+        temp_dir: sys::LV2_State_Map_Path_Handle,
         absolute_path: *const c_char,
     ) -> *mut c_char {
         let absolute_path = match CStr::from_ptr(absolute_path).to_str() {
-            Ok(path) => path,
+            Ok(path) => Path::new(path),
             _ => return std::ptr::null_mut(),
         };
 
-        let mut abstract_path = String::from("file://");
-        abstract_path.push_str(absolute_path.strip_prefix("/tmp/").unwrap());
+        let temp_dir = temp_dir as *const mktemp::Temp;
+        let temp_dir = (*temp_dir).as_path();
+        let abstract_path = absolute_path.strip_prefix(temp_dir).unwrap();
 
-        CString::new(abstract_path)
-            .map(CString::into_raw)
-            .unwrap_or(std::ptr::null_mut())
-    }
-
-    unsafe extern "C" fn absolute_path_impl(
-        _: sys::LV2_State_Map_Path_Handle,
-        abstract_path: *const c_char,
-    ) -> *mut c_char {
-        let abstract_path = match CStr::from_ptr(abstract_path).to_str() {
-            Ok(path) => path,
-            _ => return std::ptr::null_mut(),
-        };
-
-        let mut absolute_path = String::from("/tmp/");
-        absolute_path.push_str(abstract_path.strip_prefix("file://").unwrap());
-
-        CString::new(absolute_path)
+        CString::new(abstract_path.to_str().unwrap())
             .map(CString::into_raw)
             .unwrap_or(std::ptr::null_mut())
     }
@@ -359,8 +344,10 @@ mod tests {
 
     #[test]
     fn test_path() {
+        let temp_dir = mktemp::Temp::new_dir().unwrap();
+
         let make_path_feature = sys::LV2_State_Make_Path {
-            handle: std::ptr::null_mut(),
+            handle: &temp_dir as *const _ as *mut c_void,
             path: Some(make_path_impl),
         };
         let make_path = unsafe {
@@ -372,9 +359,9 @@ mod tests {
         .unwrap();
 
         let map_path_feature = sys::LV2_State_Map_Path {
-            handle: std::ptr::null_mut(),
+            handle: &temp_dir as *const _ as *mut c_void,
             abstract_path: Some(abstract_path_impl),
-            absolute_path: Some(absolute_path_impl),
+            absolute_path: Some(make_path_impl),
         };
         let map_path = unsafe {
             MapPath::from_feature_ptr(
@@ -397,19 +384,19 @@ mod tests {
         }
         .unwrap();
 
+        let mut manager = PathManager::new_with_map(make_path, map_path, free_path);
+        let relative_path = Path::new("sample.wav");
+        let ref_absolute_path: PathBuf = [temp_dir.as_path(), relative_path].iter().collect();
+
         {
-            let mut manager = PathManager::new_with_map(make_path, map_path, free_path);
-
-            let relative_path = Path::new("sample.wav");
-
             let absolute_path = manager.relative_to_absolute_path(relative_path).unwrap();
-            assert_eq!(Path::new("/tmp/sample.wav"), &*absolute_path);
+            assert_eq!(ref_absolute_path, &*absolute_path);
 
             let abstract_path = manager.absolute_to_abstract_path(&absolute_path).unwrap();
-            assert_eq!("file://sample.wav", &*abstract_path);
+            assert_eq!(relative_path.to_str().unwrap(), &*abstract_path);
 
             let absolute_path = manager.abstract_to_absolute_path(&abstract_path).unwrap();
-            assert_eq!(Path::new("/tmp/sample.wav"), &*absolute_path);
+            assert_eq!(ref_absolute_path, &*absolute_path);
         }
 
         assert_eq!(free_counter, 3);
