@@ -296,12 +296,122 @@ impl<'a> PathManager<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::raw::c_char;
+    use crate::path::*;
 
     unsafe extern "C" fn make_path_impl(
-        handle: sys::LV2_State_Make_Path_Handle,
+        _: sys::LV2_State_Make_Path_Handle,
         relative_path: *const c_char,
     ) -> *mut c_char {
-        std::ptr::null_mut()
+        let relative_path = match CStr::from_ptr(relative_path).to_str() {
+            Ok(path) => path,
+            _ => return std::ptr::null_mut(),
+        };
+
+        let mut absolute_path = String::from("/tmp/");
+        absolute_path.push_str(relative_path);
+
+        CString::new(absolute_path)
+            .map(CString::into_raw)
+            .unwrap_or(std::ptr::null_mut())
+    }
+
+    unsafe extern "C" fn abstract_path_impl(
+        _: sys::LV2_State_Map_Path_Handle,
+        absolute_path: *const c_char,
+    ) -> *mut c_char {
+        let absolute_path = match CStr::from_ptr(absolute_path).to_str() {
+            Ok(path) => path,
+            _ => return std::ptr::null_mut(),
+        };
+
+        let mut abstract_path = String::from("file://");
+        abstract_path.push_str(absolute_path.strip_prefix("/tmp/").unwrap());
+
+        CString::new(abstract_path)
+            .map(CString::into_raw)
+            .unwrap_or(std::ptr::null_mut())
+    }
+
+    unsafe extern "C" fn absolute_path_impl(
+        _: sys::LV2_State_Map_Path_Handle,
+        abstract_path: *const c_char,
+    ) -> *mut c_char {
+        let abstract_path = match CStr::from_ptr(abstract_path).to_str() {
+            Ok(path) => path,
+            _ => return std::ptr::null_mut(),
+        };
+
+        let mut absolute_path = String::from("/tmp/");
+        absolute_path.push_str(abstract_path.strip_prefix("file://").unwrap());
+
+        CString::new(absolute_path)
+            .map(CString::into_raw)
+            .unwrap_or(std::ptr::null_mut())
+    }
+
+    unsafe extern "C" fn free_path_impl(
+        free_counter: sys::LV2_State_Free_Path_Handle,
+        path: *mut c_char,
+    ) {
+        *(free_counter as *mut u32).as_mut().unwrap() += 1;
+        CString::from_raw(path);
+    }
+
+    #[test]
+    fn test_path() {
+        let make_path_feature = sys::LV2_State_Make_Path {
+            handle: std::ptr::null_mut(),
+            path: Some(make_path_impl),
+        };
+        let make_path = unsafe {
+            MakePath::from_feature_ptr(
+                &make_path_feature as *const _ as *const c_void,
+                ThreadingClass::Other,
+            )
+        }
+        .unwrap();
+
+        let map_path_feature = sys::LV2_State_Map_Path {
+            handle: std::ptr::null_mut(),
+            abstract_path: Some(abstract_path_impl),
+            absolute_path: Some(absolute_path_impl),
+        };
+        let map_path = unsafe {
+            MapPath::from_feature_ptr(
+                &map_path_feature as *const _ as *const c_void,
+                ThreadingClass::Other,
+            )
+        }
+        .unwrap();
+
+        let mut free_counter: u32 = 0;
+        let free_path_feature = sys::LV2_State_Free_Path {
+            handle: &mut free_counter as *mut _ as *mut c_void,
+            free_path: Some(free_path_impl),
+        };
+        let free_path = unsafe {
+            FreePath::from_feature_ptr(
+                &free_path_feature as *const _ as *const c_void,
+                ThreadingClass::Other,
+            )
+        }
+        .unwrap();
+
+        {
+            let mut manager = PathManager::new_with_map(make_path, map_path, free_path);
+
+            let relative_path = Path::new("sample.wav");
+
+            let absolute_path = manager.relative_to_absolute_path(relative_path).unwrap();
+            assert_eq!(Path::new("/tmp/sample.wav"), &*absolute_path);
+
+            let abstract_path = manager.absolute_to_abstract_path(&absolute_path).unwrap();
+            assert_eq!("file://sample.wav", &*abstract_path);
+
+            let absolute_path = manager.abstract_to_absolute_path(&abstract_path).unwrap();
+            assert_eq!(Path::new("/tmp/sample.wav"), &*absolute_path);
+        }
+
+        assert_eq!(free_counter, 3);
     }
 }
