@@ -15,6 +15,8 @@ use std::iter::once;
 use std::marker::PhantomData;
 use std::os::raw::c_char;
 use std::path::*;
+use std::rc::Rc;
+use std::sync::Mutex;
 use urid::*;
 
 /// An error that may occur when handling paths.
@@ -28,6 +30,7 @@ pub enum PathError {
     PathNotUTF8,
     /// The host does not comply to the specification.
     HostError,
+    FeatureMissing,
 }
 
 /// A host feature to make absolute paths.
@@ -56,21 +59,7 @@ unsafe impl<'a> Feature for MakePath<'a> {
 }
 
 impl<'a> MakePath<'a> {
-    /// Convert a relative path to an absolute path.
-    ///
-    /// The returned absolute path will be within a namespace unique to the plugin instance and the relative path will be the suffix of the absolute path. The leading directory will already be prepared for the creation of files and directories under the the returned path.
-    ///
-    /// This method may fail if the relative path isn't relative, it it's not encoded in UTF-8, or if the host does not return a valid absolute path.
-    ///
-    /// # Persistance
-    ///
-    /// The returned path will not be valid across plugin instances, even across save/restore calls. To save files along with the plugin state, use the [`MapPath`](struct.MapPath.html) feature to map the absolute path to an abstract one that can be saved.
-    ///
-    /// If a path isn't needed anymore, you should free it with the [`FreePath`](struct.FreePath.html) feature.
-    pub fn relative_to_absolute_path(
-        &mut self,
-        relative_path: &Path,
-    ) -> Result<PathBuf, PathError> {
+    fn relative_to_absolute_path(&mut self, relative_path: &Path) -> Result<&'a Path, PathError> {
         if !relative_path.is_relative() {
             return Err(PathError::PathNotRelative);
         }
@@ -91,7 +80,7 @@ impl<'a> MakePath<'a> {
 
         unsafe { CStr::from_ptr(absolute_path) }
             .to_str()
-            .map(PathBuf::from)
+            .map(Path::new)
             .map_err(|_| PathError::HostError)
     }
 }
@@ -130,14 +119,7 @@ unsafe impl<'a> Feature for MapPath<'a> {
 }
 
 impl<'a> MapPath<'a> {
-    /// Mark a file for storage and retrieve an abstract path to it.
-    ///
-    /// Calling this method in the context of [`save`](../trait.State.html#tymethod.save) tells the host that the file or directory with the given path should be stored along the state of the plugin. The host will then create an abstract path that can be saved as a string property and converted back to an absolute path when restoring the state.
-    ///
-    /// However, the returned abstract path may or may not a be a valid path and therefore is only returned as a string.
-    ///
-    /// The method may fail if the given path isn't absolute, if it's not encoded in UTF-8, or if the host does not return a valid string.
-    pub fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<String, PathError> {
+    fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<&'a str, PathError> {
         if !path.is_absolute() {
             return Err(PathError::PathNotAbsolute);
         }
@@ -158,16 +140,10 @@ impl<'a> MapPath<'a> {
 
         unsafe { CStr::from_ptr(path) }
             .to_str()
-            .map(|path| path.to_owned())
             .map_err(|_| PathError::HostError)
     }
 
-    /// Retrieve the absolute path to a stored file.
-    ///
-    /// Calling this method in the context of [`restore`](../trait.State.html#tymethod.restore) will retrieve the absolute path to a file that was stored using the [`absolute_to_abstract_path`](#method.absolute_to_abstract_path) method. All guarantees of [`MakePath::relative_to_absolute_path`](struct.MakePath.html#method.relative_to_absolute_path) apply here too.
-    ///
-    /// The method only fails if the host does not return a valid path.
-    pub fn abstract_to_absolute_path(&mut self, path: &str) -> Result<PathBuf, PathError> {
+    fn abstract_to_absolute_path(&mut self, path: &str) -> Result<&'a Path, PathError> {
         let path: Vec<c_char> = path.bytes().chain(once(0)).map(|b| b as c_char).collect();
 
         let path = unsafe { (self.absolute_path)(self.handle, path.as_ptr()) };
@@ -178,16 +154,21 @@ impl<'a> MapPath<'a> {
 
         unsafe { CStr::from_ptr(path) }
             .to_str()
-            .map(PathBuf::from)
+            .map(Path::new)
             .map_err(|_| PathError::HostError)
     }
 }
 
 /// A host feature to a previously allocated path.
-pub struct FreePath<'a> {
+struct FreePathImpl<'a> {
     handle: sys::LV2_State_Free_Path_Handle,
     free_path: unsafe extern "C" fn(sys::LV2_State_Free_Path_Handle, *mut c_char),
     lifetime: PhantomData<&'a mut c_void>,
+}
+
+#[derive(Clone)]
+pub struct FreePath<'a> {
+    internal: Rc<Mutex<FreePathImpl<'a>>>,
 }
 
 unsafe impl<'a> UriBound for FreePath<'a> {
@@ -200,26 +181,127 @@ unsafe impl<'a> Feature for FreePath<'a> {
             .as_ref()
             .and_then(|internal| {
                 Some(Self {
-                    handle: internal.handle,
-                    free_path: internal.free_path?,
-                    lifetime: PhantomData,
+                    internal: Rc::new(Mutex::new(FreePathImpl {
+                        handle: internal.handle,
+                        free_path: internal.free_path?,
+                        lifetime: PhantomData,
+                    })),
                 })
             })
     }
 }
 
 impl<'a> FreePath<'a> {
-    /// Tell the host that the files under the absolute path aren't used anymore.
-    ///
-    /// This method may be called with paths returned by [`MakePath::relative_to_absolute_path`](struct.MakePath.html#method.relative_to_absolute_path) and [`MapPath::abstract_to_absolute_path`](struct.MapPath.html#method.abstract_to_absolute_path)
-    pub fn free_absolute_path(&self, path: &Path) {
-        let mut path: Vec<c_char> = path
-            .to_str()
-            .unwrap()
-            .bytes()
-            .chain(std::iter::once(0))
-            .map(|c| c as c_char)
-            .collect();
-        unsafe { (self.free_path)(self.handle, path.as_mut_ptr()) }
+    fn free_path(&self, path: &str) {
+        let internal = self.internal.lock().unwrap();
+        unsafe { (internal.free_path)(internal.handle, path.as_ptr() as *mut c_char) }
+    }
+}
+
+pub struct ManagedPath<'a> {
+    path: &'a Path,
+    free_path: FreePath<'a>,
+}
+
+impl<'a> std::ops::Deref for ManagedPath<'a> {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        self.path
+    }
+}
+
+impl<'a> Drop for ManagedPath<'a> {
+    fn drop(&mut self) {
+        self.free_path.free_path(self.path.to_str().unwrap())
+    }
+}
+
+pub struct ManagedStr<'a> {
+    str: &'a str,
+    free_path: FreePath<'a>,
+}
+
+impl<'a> std::ops::Deref for ManagedStr<'a> {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.str
+    }
+}
+
+impl<'a> Drop for ManagedStr<'a> {
+    fn drop(&mut self) {
+        self.free_path.free_path(self.str)
+    }
+}
+
+pub struct PathManager<'a> {
+    make: MakePath<'a>,
+    map: Option<MapPath<'a>>,
+    free: FreePath<'a>,
+}
+
+impl<'a> PathManager<'a> {
+    pub fn new(make: MakePath<'a>, free: FreePath<'a>) -> Self {
+        Self {
+            make,
+            map: None,
+            free,
+        }
+    }
+
+    pub fn new_with_map(make: MakePath<'a>, map: MapPath<'a>, free: FreePath<'a>) -> Self {
+        Self {
+            make,
+            map: Some(map),
+            free,
+        }
+    }
+
+    pub fn relative_to_absolute_path(
+        &mut self,
+        relative_path: &Path,
+    ) -> Result<ManagedPath<'a>, PathError> {
+        self.make
+            .relative_to_absolute_path(relative_path)
+            .map(|path| ManagedPath {
+                path,
+                free_path: self.free.clone(),
+            })
+    }
+
+    pub fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<ManagedStr<'a>, PathError> {
+        self.map
+            .as_mut()
+            .ok_or(PathError::FeatureMissing)
+            .and_then(|map| map.absolute_to_abstract_path(path))
+            .map(|str| ManagedStr {
+                str,
+                free_path: self.free.clone(),
+            })
+    }
+
+    pub fn abstract_to_absolute_path(&mut self, path: &str) -> Result<ManagedPath<'a>, PathError> {
+        self.map
+            .as_mut()
+            .ok_or(PathError::FeatureMissing)
+            .and_then(|map| map.abstract_to_absolute_path(path))
+            .map(|path| ManagedPath {
+                path,
+                free_path: self.free.clone(),
+            })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::raw::c_char;
+
+    unsafe extern "C" fn make_path_impl(
+        handle: sys::LV2_State_Make_Path_Handle,
+        relative_path: *const c_char,
+    ) -> *mut c_char {
+        std::ptr::null_mut()
     }
 }
