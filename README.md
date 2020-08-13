@@ -142,11 +142,11 @@ Some build targets are not fully supported yet. Use the `experimental-targets` f
 
 Rust-LV2 uses pre-generated LV2 API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported.
 
-A target is supported by Rust-LV2 if a compatible binding was generated and verified for it. This requires a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who can generate a compatible binding and a tester who can verify binding for that target. Bindings are generated with the [LV2 systool](sys/tool/) and verification is done by building the [example plugins of the book](docs) and testing them with a host of that target.
+A target is supported by Rust-LV2 if a compatible binding was generated and verified for it. This requires a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who can generate a compatible binding and who can verify this binding for that target. Bindings are generated with the [LV2 systool](sys/tool/) and verification is done by building the [example plugins of the book](docs) and testing them with a host of that target.
 
 Some targets have a compatible binding but haven't been verified, these targets are usable but may not work and aren't officially supported.
 
-Some bindings have a maintainer, but haven't been verified yet on any target. These binding are experimental and are gated behind the `experimental-targets` feature.
+Some bindings are provided but haven't been verified yet on any target. These binding are experimental and are gated behind the `experimental-targets` feature.
 
 ### Bindings
 
@@ -159,7 +159,7 @@ Some bindings have a maintainer, but haven't been verified yet on any target. Th
 
 ### Supported targets
 
-| Target | Tester | Last Verification |
+| Target | Maintainer | Last Verification |
 |--------|--------|-------------------|
 | `x86_64-unknown-linux-gnu` | @Janonard | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
 | `x86-unknown-linux-gnu` | @Janonard | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
