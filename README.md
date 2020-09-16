@@ -136,8 +136,6 @@ There are also feature sets that account for common scenarios:
 * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
 * `full`: All sub-crates.
 
-Some build targets are not fully supported yet. Use the `experimental-targets` feature to enable them.
-
 ## Supported targets
 
 Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which give you a general understanding on how well `rust-lv2` will run on a given target. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
