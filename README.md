@@ -140,19 +140,24 @@ Some build targets are not fully supported yet. Use the `experimental-targets` f
 
 ## Supported targets
 
-Rust-LV2 uses pregenerated LV2 API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported.
+Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which give you a general understanding on how well `rust-lv2` will run on a given target. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
 
-A target is supported by Rust-LV2 if a binding was generated for it. This however requires that there is a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) who has access to a machine that runs this target and who can generate and verify bindings on this machine. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
+### Tier 1
 
-There are some targets that have a binding and a maintainer, but that haven't been verified yet. These targets have only experimental support and are gated behind  the `experimental-targets` feature. 
+A Tier 1 target for `rust-lv2` also has to be a Tier 1 target of rustc. You can check the [platform support page](https://doc.rust-lang.org/nightly/rustc/platform-support.html) to see which targets are included and what they provide. Additionally, there has to be a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) of `rust-lv2` who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 1 target, there will be a maintainer who can help you.
 
-### Supported targets
+| Target                     | Maintainer | Last Verification                                                                                        |
+|----------------------------|------------|----------------------------------------------------------------------------------------------------------|
+| `x86_64-unknown-linux-gnu` | @Janonard  | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux              |
+| `x86-unknown-linux-gnu`    | @Janonard  | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
 
-| Target | Maintainer | Status | Last Verification |
-|--------|------------|--------|-------------------|
-| `x86_64-unknown-linux-gnu` | @Janonard | Supported | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux |
-| `x86-unknown-linux-gnu` | @Janonard | Supported | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
-| `x86_64-pc-windows-msvc` | @Janonard | Experimental | TODO |
+### Tier 2
+
+A Tier 2 target is a target that is at least in Tier 2 of rustc and has a generated binding. However, it might not work (well) and there might not be a maintainer who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 2 target, you're stepping into uncharted territory.
+
+| Target                   |
+|--------------------------|
+| `x86_64-pc-windows-msvc` |
 
 ## License
 
