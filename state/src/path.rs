@@ -26,7 +26,6 @@ pub enum PathError {
     PathNotUTF8,
     /// The host does not comply to the specification.
     HostError,
-    FeatureMissing,
 }
 
 /// A host feature to make absolute paths.
@@ -221,23 +220,15 @@ impl<'a> Drop for ManagedStr<'a> {
 
 pub struct PathManager<'a> {
     make: MakePath<'a>,
-    map: Option<MapPath<'a>>,
+    map: MapPath<'a>,
     free: Rc<Mutex<FreePath<'a>>>,
 }
 
 impl<'a> PathManager<'a> {
-    pub fn new(make: MakePath<'a>, free: FreePath<'a>) -> Self {
+    pub fn new(make: MakePath<'a>, map: MapPath<'a>, free: FreePath<'a>) -> Self {
         Self {
             make,
-            map: None,
-            free: Rc::new(Mutex::new(free)),
-        }
-    }
-
-    pub fn new_with_map(make: MakePath<'a>, map: MapPath<'a>, free: FreePath<'a>) -> Self {
-        Self {
-            make,
-            map: Some(map),
+            map,
             free: Rc::new(Mutex::new(free)),
         }
     }
@@ -256,9 +247,7 @@ impl<'a> PathManager<'a> {
 
     pub fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<ManagedStr<'a>, PathError> {
         self.map
-            .as_mut()
-            .ok_or(PathError::FeatureMissing)
-            .and_then(|map| map.absolute_to_abstract_path(path))
+            .absolute_to_abstract_path(path)
             .map(|str| ManagedStr {
                 str,
                 free_path: self.free.clone(),
@@ -267,9 +256,7 @@ impl<'a> PathManager<'a> {
 
     pub fn abstract_to_absolute_path(&mut self, path: &str) -> Result<ManagedPath<'a>, PathError> {
         self.map
-            .as_mut()
-            .ok_or(PathError::FeatureMissing)
-            .and_then(|map| map.abstract_to_absolute_path(path))
+            .abstract_to_absolute_path(path)
             .map(|path| ManagedPath {
                 path,
                 free_path: self.free.clone(),
@@ -367,7 +354,7 @@ mod tests {
         }
         .unwrap();
 
-        let mut manager = PathManager::new_with_map(make_path, map_path, free_path);
+        let mut manager = PathManager::new(make_path, map_path, free_path);
         let relative_path = Path::new("sample.wav");
         let ref_absolute_path: PathBuf = [temp_dir.as_path(), relative_path].iter().collect();
 
