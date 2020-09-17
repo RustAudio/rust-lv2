@@ -22,10 +22,6 @@ use urid::*;
 /// An error that may occur when handling paths.
 #[derive(Debug)]
 pub enum PathError {
-    /// The path to convert is not relative.
-    PathNotRelative,
-    /// The path to convert is not absolute.
-    PathNotAbsolute,
     /// The path to convert is not encoded in UTF-8.
     PathNotUTF8,
     /// The host does not comply to the specification.
@@ -60,10 +56,6 @@ unsafe impl<'a> Feature for MakePath<'a> {
 
 impl<'a> MakePath<'a> {
     fn relative_to_absolute_path(&mut self, relative_path: &Path) -> Result<&'a Path, PathError> {
-        if !relative_path.is_relative() {
-            return Err(PathError::PathNotRelative);
-        }
-
         let relative_path: Vec<c_char> = relative_path
             .to_str()
             .ok_or(PathError::PathNotUTF8)?
@@ -120,10 +112,6 @@ unsafe impl<'a> Feature for MapPath<'a> {
 
 impl<'a> MapPath<'a> {
     fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<&'a str, PathError> {
-        if !path.is_absolute() {
-            return Err(PathError::PathNotAbsolute);
-        }
-
         let path: Vec<c_char> = path
             .to_str()
             .ok_or(PathError::PathNotUTF8)?
@@ -160,15 +148,10 @@ impl<'a> MapPath<'a> {
 }
 
 /// A host feature to a previously allocated path.
-struct FreePathImpl<'a> {
+pub struct FreePath<'a> {
     handle: sys::LV2_State_Free_Path_Handle,
     free_path: unsafe extern "C" fn(sys::LV2_State_Free_Path_Handle, *mut c_char),
     lifetime: PhantomData<&'a mut c_void>,
-}
-
-#[derive(Clone)]
-pub struct FreePath<'a> {
-    internal: Rc<Mutex<FreePathImpl<'a>>>,
 }
 
 unsafe impl<'a> UriBound for FreePath<'a> {
@@ -181,11 +164,9 @@ unsafe impl<'a> Feature for FreePath<'a> {
             .as_ref()
             .and_then(|internal| {
                 Some(Self {
-                    internal: Rc::new(Mutex::new(FreePathImpl {
-                        handle: internal.handle,
-                        free_path: internal.free_path?,
-                        lifetime: PhantomData,
-                    })),
+                    handle: internal.handle,
+                    free_path: internal.free_path?,
+                    lifetime: PhantomData,
                 })
             })
     }
@@ -193,14 +174,13 @@ unsafe impl<'a> Feature for FreePath<'a> {
 
 impl<'a> FreePath<'a> {
     fn free_path(&self, path: &str) {
-        let internal = self.internal.lock().unwrap();
-        unsafe { (internal.free_path)(internal.handle, path.as_ptr() as *mut c_char) }
+        unsafe { (self.free_path)(self.handle, path.as_ptr() as *mut c_char) }
     }
 }
 
 pub struct ManagedPath<'a> {
     path: &'a Path,
-    free_path: FreePath<'a>,
+    free_path: Rc<Mutex<FreePath<'a>>>,
 }
 
 impl<'a> std::ops::Deref for ManagedPath<'a> {
@@ -213,13 +193,16 @@ impl<'a> std::ops::Deref for ManagedPath<'a> {
 
 impl<'a> Drop for ManagedPath<'a> {
     fn drop(&mut self) {
-        self.free_path.free_path(self.path.to_str().unwrap())
+        self.free_path
+            .lock()
+            .unwrap()
+            .free_path(self.path.to_str().unwrap())
     }
 }
 
 pub struct ManagedStr<'a> {
     str: &'a str,
-    free_path: FreePath<'a>,
+    free_path: Rc<Mutex<FreePath<'a>>>,
 }
 
 impl<'a> std::ops::Deref for ManagedStr<'a> {
@@ -232,14 +215,14 @@ impl<'a> std::ops::Deref for ManagedStr<'a> {
 
 impl<'a> Drop for ManagedStr<'a> {
     fn drop(&mut self) {
-        self.free_path.free_path(self.str)
+        self.free_path.lock().unwrap().free_path(self.str)
     }
 }
 
 pub struct PathManager<'a> {
     make: MakePath<'a>,
     map: Option<MapPath<'a>>,
-    free: FreePath<'a>,
+    free: Rc<Mutex<FreePath<'a>>>,
 }
 
 impl<'a> PathManager<'a> {
@@ -247,7 +230,7 @@ impl<'a> PathManager<'a> {
         Self {
             make,
             map: None,
-            free,
+            free: Rc::new(Mutex::new(free)),
         }
     }
 
@@ -255,7 +238,7 @@ impl<'a> PathManager<'a> {
         Self {
             make,
             map: Some(map),
-            free,
+            free: Rc::new(Mutex::new(free)),
         }
     }
 
