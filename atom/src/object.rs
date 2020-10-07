@@ -61,7 +61,7 @@
 //!     ).unwrap();
 //!
 //!     // Write a property to the object.
-//!     object_writer.init(urids.property_a, None, urids.atom.int, 42).unwrap();
+//!     object_writer.init(urids.property_a, urids.atom.int, 42).unwrap();
 //! }
 //! ```
 //!
@@ -190,17 +190,32 @@ pub struct ObjectWriter<'a, 'b> {
 }
 
 impl<'a, 'b> ObjectWriter<'a, 'b> {
-    /// Initialize a new property.
+    /// Initialize a new property with a context.
     ///
-    /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
-    pub fn init<'c, G: ?Sized, A: Atom<'a, 'c>>(
+    /// This method does the same as [`init`](#method.init), but also sets the context URID.
+    pub fn init_with_context<'c, K: ?Sized, T: ?Sized, A: Atom<'a, 'c>>(
         &'c mut self,
-        key: URID<G>,
-        context: Option<URID>,
+        key: URID<K>,
+        context: URID<T>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        Property::write_header(&mut self.frame, key.into_general(), context)?;
+        Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
+        (&mut self.frame as &mut dyn MutSpace).init(child_urid, parameter)
+    }
+
+    /// Initialize a new property.
+    ///
+    /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
+    ///
+    /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
+    pub fn init<'c, K: ?Sized, A: Atom<'a, 'c>>(
+        &'c mut self,
+        key: URID<K>,
+        child_urid: URID<A>,
+        parameter: A::WriteParameter,
+    ) -> Option<A::WriteHandle> {
+        Property::write_header::<K, ()>(&mut self.frame, key, None)?;
         (&mut self.frame as &mut dyn MutSpace).init(child_urid, parameter)
     }
 }
@@ -254,7 +269,11 @@ impl Property {
     /// Write out the header of a property atom.
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
-    fn write_header(space: &mut dyn MutSpace, key: URID, context: Option<URID>) -> Option<()> {
+    fn write_header<K: ?Sized, C: ?Sized>(
+        space: &mut dyn MutSpace,
+        key: URID<K>,
+        context: Option<URID<C>>,
+    ) -> Option<()> {
         space.write(&key.get(), true)?;
         space.write(&context.map(|urid| urid.get()).unwrap_or(0), false)?;
         Some(())
@@ -302,14 +321,10 @@ mod tests {
             )
             .unwrap();
             {
-                writer
-                    .init(first_key, None, urids.int, first_value)
-                    .unwrap();
+                writer.init(first_key, urids.int, first_value).unwrap();
             }
             {
-                writer
-                    .init(second_key, None, urids.float, second_value)
-                    .unwrap();
+                writer.init(second_key, urids.float, second_value).unwrap();
             }
         }
 
