@@ -34,7 +34,8 @@ impl<'a> StoreHandle<'a> {
     /// This will return a new handle to create a property. Once the property is completely written, you can commit it by calling [`commit`](#method.commit) or [`commit_all`](#method.commit_all). Then, and only then, it will be saved by the host.
     ///
     /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
-    pub fn draft(&mut self, property_key: URID) -> StatePropertyWriter {
+    pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
+        let property_key = property_key.into_general();
         self.properties
             .insert(property_key, SpaceElement::default());
         StatePropertyWriter::new(SpaceHead::new(
@@ -43,10 +44,10 @@ impl<'a> StoreHandle<'a> {
     }
 
     /// Internal helper function to store a property.
-    pub fn commit_pair(
+    pub fn commit_pair<K: ?Sized>(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
-        key: URID,
+        key: URID<K>,
         space: SpaceElement,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
@@ -83,7 +84,8 @@ impl<'a> StoreHandle<'a> {
     /// Commit one specific property.
     ///
     /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occured while storing the property.
-    pub fn commit(&mut self, key: URID) -> Option<Result<(), StateErr>> {
+    pub fn commit<K: ?Sized>(&mut self, key: URID<K>) -> Option<Result<(), StateErr>> {
+        let key = key.into_general();
         let space = self.properties.remove(&key)?;
         Some(Self::commit_pair(self.store_fn, self.handle, key, space))
     }
@@ -96,8 +98,8 @@ impl<'a> StoreHandle<'a> {
     /// Discard a drafted property.
     ///
     /// If no property with the given key was drafted before, this is a no-op.
-    pub fn discard(&mut self, key: URID) {
-        self.properties.remove(&key);
+    pub fn discard<K: ?Sized>(&mut self, key: URID<K>) {
+        self.properties.remove(&key.into_general());
     }
 }
 
@@ -158,7 +160,7 @@ impl<'a> RetrieveHandle<'a> {
     /// Try to retrieve a property from the host.
     ///
     /// This method calls the internal retrieve callback with the given URID. If there's no property with the given URID, `Err(StateErr::NoProperty)` is returned. Otherwise, a reading handle is returned that contains the type and the data of the property and can interpret it as an atom.
-    pub fn retrieve(&self, key: URID) -> Result<StatePropertyReader, StateErr> {
+    pub fn retrieve<K: ?Sized>(&self, key: URID<K>) -> Result<StatePropertyReader, StateErr> {
         let mut size: usize = 0;
         let mut type_: u32 = 0;
         let property_ptr: *const std::ffi::c_void = unsafe {
@@ -192,8 +194,11 @@ pub struct StatePropertyReader<'a> {
 
 impl<'a> StatePropertyReader<'a> {
     /// Create a new reading handle with the given type and data.
-    pub fn new(type_: URID, body: Space<'a>) -> Self {
-        Self { type_, body }
+    pub fn new<T: ?Sized>(type_: URID<T>, body: Space<'a>) -> Self {
+        Self {
+            type_: type_.into_general(),
+            body,
+        }
     }
 
     /// Return the type of the property.
