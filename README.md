@@ -138,24 +138,26 @@ There are also feature sets that account for common scenarios:
 
 ## Supported targets
 
-Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which give you a general understanding on how well `rust-lv2` will run on a given target. The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
+Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which gives you a general understanding of what to expect of a target. The tables below list the supported targets, the used binding in the [`lv2-sys`](sys/) crate, and, if applicable, the maintainer and the last verification of that target.
+
+The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
 
 ### Tier 1
 
 A Tier 1 target for `rust-lv2` also has to be a Tier 1 target of rustc. You can check the [platform support page](https://doc.rust-lang.org/nightly/rustc/platform-support.html) to see which targets are included and what they provide. Additionally, there has to be a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) of `rust-lv2` who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 1 target, there will be a maintainer who can help you.
 
-| Target                     | Maintainer | Last Verification                                                                                        |
-|----------------------------|------------|----------------------------------------------------------------------------------------------------------|
-| `x86_64-unknown-linux-gnu` | @Janonard  | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux              |
-| `x86-unknown-linux-gnu`    | @Janonard  | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
+| Target                     | Binding           | Maintainer | Last Verification                                                                                        |
+|----------------------------|-------------------|------------|----------------------------------------------------------------------------------------------------------|
+| `x86_64-unknown-linux-gnu` | `linux/x86_64.rs` | @Janonard  | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux              |
+| `x86-unknown-linux-gnu`    | `linux/x86.rs`    | @Janonard  | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
 
 ### Tier 2
 
 A Tier 2 target is a target that is at least in Tier 2 of rustc and has a generated binding. However, it might not work (well) and there might not be a maintainer who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 2 target, you're stepping into uncharted territory.
 
-| Target                   |
-|--------------------------|
-| `x86_64-pc-windows-msvc` |
+| Target                   | Binding      |
+|--------------------------|--------------|
+| `x86_64-pc-windows-msvc` | `windows.rs` |
 
 ## License
 
