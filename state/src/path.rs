@@ -1,4 +1,76 @@
-//! Miscellaneous host features for path handling.
+//! Host features for file path managment.
+//!
+//! There are cases where a plugin needs to store a complete file in it's state. For example, a sampler might want to store the recorded sample in a .wav file. However, chosing a valid path for this file is a delicate problem: First of all, different operating systems have different naming schemes for file paths. This means that the system has to be independent of naming schemes. Secondly, there might be multiple instances of the same plugin, other plugins, or even different hosts competing for a file path. Therefore, the system has to avoid collisions with other programs. Lastly, a path that was available when the state was saved might not be available when the state has to be restored. Therefore, the new absolute path to the file has to be retrievable.
+//!
+//! LV2 handles this problem by leaving it to the host implementors and specifying an interface for it. There are three distinct host features which are necessary to fulfill the tasks from above: [`MakePath`](struct.MakePath.html), which "makes" an absolute file path from a relative path, [`MapPath`](struct.MapPath), which maps an absolute path to/from an abstract string that can be stored as a property, and [`FreePath`](struct.FreePath.html), which frees the strings/paths created by the features above.
+//!
+//! Since these features are strongly tied, they can only be used via a [`PathManager`](struct.PathManager.html). The best way to understand this system is to have an example:
+//!
+//! ```
+//! use lv2_core::prelude::*;
+//! use lv2_state::*;
+//! use lv2_state::path::*;
+//! use lv2_atom::prelude::*;
+//! use urid::*;
+//! use std::fs::File;
+//! use std::path::Path;
+//! use std::io::Write;
+//!
+//! #[derive(FeatureCollection)]
+//! struct Features<'a> {
+//!     makePath: MakePath<'a>,
+//!     mapPath: MapPath<'a>,
+//!     freePath: FreePath<'a>,
+//! }
+//!
+//! #[uri("urn:my-plugin")]
+//! struct Sampler {
+//!     sample: Vec<u8>, // A vector of bytes, for simplicity's sake.
+//! }
+//!
+//! // Plugin implementation omitted...
+//! # impl Plugin for Sampler {
+//! #     type Ports = ();
+//! #     type InitFeatures = ();
+//! #     type AudioFeatures = ();
+//! #  
+//! #     fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
+//! #         Some(Self {
+//! #             sample: Vec::new(),
+//! #         })
+//! #     }
+//! #  
+//! #     fn run(&mut self, _: &mut (), _: &mut ()) {}
+//! # }
+//!
+//! impl State for Sampler {
+//!     type StateFeatures = Features<'static>;
+//!
+//!     fn save(&self, store: StoreHandle, features: Features) -> Result<(), StateErr> {
+//!         let mut manager = PathManager::new(
+//!             features.makePath,
+//!             features.mapPath,
+//!             features.freePath
+//!         );
+//!
+//!         let (absolute_path, abstract_path) = manager
+//!             .allocate_path(Path::new("sample.wav"))
+//!             .map_err(|_| StateErr::Unknown)?;
+//! 
+//!         let mut file = File::create(abs_path).map_err(|_| StateErr::Unknown)?;
+//!         file.write_all(self.sample.as_ref()).map_err(|_| StateErr::Unknown)?;
+//! 
+//!         let mut path_writer = store.draft::<String>(URID::new(42).unwrap());
+//!         path_writer.init()
+//!         
+//!         Ok(())
+//!     }
+//!
+//!     fn restore(&mut self, store: RetrieveHandle, features: Features) -> Result<(), StateErr> {
+//!         Ok(())
+//!     }
+//! }
+//! ```
 //!
 //! This module contains three important host features: `MakePath`, `MapPath`, and `FreePath`.
 //!
@@ -190,6 +262,12 @@ impl<'a> std::ops::Deref for ManagedPath<'a> {
     }
 }
 
+impl<'a> AsRef<Path> for ManagedPath<'a> {
+    fn as_ref(&self) -> &Path {
+        self.path
+    }
+}
+
 impl<'a> Drop for ManagedPath<'a> {
     fn drop(&mut self) {
         self.free_path
@@ -218,6 +296,12 @@ impl<'a> Drop for ManagedStr<'a> {
     }
 }
 
+impl<'a> AsRef<str> for ManagedStr<'a> {
+    fn as_ref(&self) -> &str {
+        self.str
+    }
+}
+
 pub struct PathManager<'a> {
     make: MakePath<'a>,
     map: MapPath<'a>,
@@ -233,28 +317,30 @@ impl<'a> PathManager<'a> {
         }
     }
 
-    pub fn relative_to_absolute_path(
+    pub fn allocate_path(
         &mut self,
         relative_path: &Path,
-    ) -> Result<ManagedPath<'a>, PathError> {
-        self.make
+    ) -> Result<(ManagedPath<'a>, ManagedStr<'a>), PathError> {
+        let absolute_path = self
+            .make
             .relative_to_absolute_path(relative_path)
             .map(|path| ManagedPath {
                 path,
                 free_path: self.free.clone(),
-            })
-    }
+            })?;
 
-    pub fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<ManagedStr<'a>, PathError> {
-        self.map
-            .absolute_to_abstract_path(path)
+        let abstract_path = self
+            .map
+            .absolute_to_abstract_path(absolute_path.as_ref())
             .map(|str| ManagedStr {
                 str,
                 free_path: self.free.clone(),
-            })
+            })?;
+
+        Ok((absolute_path, abstract_path))
     }
 
-    pub fn abstract_to_absolute_path(&mut self, path: &str) -> Result<ManagedPath<'a>, PathError> {
+    pub fn deabstract_path(&mut self, path: &str) -> Result<ManagedPath<'a>, PathError> {
         self.map
             .abstract_to_absolute_path(path)
             .map(|path| ManagedPath {
@@ -359,13 +445,11 @@ mod tests {
         let ref_absolute_path: PathBuf = [temp_dir.as_path(), relative_path].iter().collect();
 
         {
-            let absolute_path = manager.relative_to_absolute_path(relative_path).unwrap();
+            let (absolute_path, abstract_path) = manager.allocate_path(relative_path).unwrap();
             assert_eq!(ref_absolute_path, &*absolute_path);
-
-            let abstract_path = manager.absolute_to_abstract_path(&absolute_path).unwrap();
             assert_eq!(relative_path.to_str().unwrap(), &*abstract_path);
 
-            let absolute_path = manager.abstract_to_absolute_path(&abstract_path).unwrap();
+            let absolute_path = manager.deabstract_path(&abstract_path).unwrap();
             assert_eq!(ref_absolute_path, &*absolute_path);
         }
 
