@@ -4,8 +4,8 @@
 //!
 //! LV2 handles this problem by leaving it to the host implementors and specifying an interface for it. There are three distinct host features which are necessary to fulfill the tasks from above: [`MakePath`](struct.MakePath.html), which "makes" an absolute file path from a relative path, [`MapPath`](struct.MapPath), which maps an absolute path to/from an abstract string that can be stored as a property, and [`FreePath`](struct.FreePath.html), which frees the strings/paths created by the features above.
 //!
-//! Since all of these features need each other in order to be safe and sound, none of them can be used on their own. Instead, you use them to construct a [`PathManager`](struct.PathManager.html), which exposes all of their interfaces. 
-//! 
+//! Since all of these features need each other in order to be safe and sound, none of them can be used on their own. Instead, you use them to construct a [`PathManager`](struct.PathManager.html), which exposes all of their interfaces.
+//!
 //! The best way to understand this system is to have an example:
 //!
 //! ```
@@ -83,8 +83,7 @@
 //!         // The absolute path is the "real" path of the file we may write to
 //!         // and the abstract path is the path we may store in a property.
 //!         let (absolute_path, abstract_path) = manager
-//!             .allocate_path(Path::new("sample.wav"))
-//!             .map_err(|_| StateErr::Unknown)?;
+//!             .allocate_path(Path::new("sample.wav"))?;
 //!
 //!         // Store the sample. This isn't the correct way to save WAVs!
 //!         let mut file = File::create(absolute_path).map_err(|_| StateErr::Unknown)?;
@@ -113,15 +112,13 @@
 //!
 //!         // Retrieve the abstract path from the property store.
 //!         let abstract_path = store
-//!             .retrieve(self.urids.sample)
-//!             .map_err(|_| StateErr::Unknown)?
+//!             .retrieve(self.urids.sample)?
 //!             .read(self.urids.atom.string, ())
 //!             .map_err(|_| StateErr::Unknown)?;
 //!
 //!         // Get the absolute path to the referenced file.
 //!         let absolute_path = manager
-//!             .deabstract_path(abstract_path)
-//!             .map_err(|_| StateErr::Unknown)?;
+//!             .deabstract_path(abstract_path)?;
 //!
 //!         // Open the file.
 //!         let mut file = File::open(absolute_path)
@@ -135,6 +132,7 @@
 //!     }
 //! }
 //! ```
+use crate::StateErr;
 use lv2_core::feature::Feature;
 use lv2_core::prelude::*;
 use lv2_sys as sys;
@@ -146,15 +144,6 @@ use std::path::*;
 use std::rc::Rc;
 use std::sync::Mutex;
 use urid::*;
-
-/// An error that may occur when handling paths.
-#[derive(Debug)]
-pub enum PathError {
-    /// The path to convert is not encoded in UTF-8.
-    PathNotUTF8,
-    /// The host does not comply to the specification.
-    HostError,
-}
 
 /// A host feature to make absolute paths.
 pub struct MakePath<'a> {
@@ -182,10 +171,10 @@ unsafe impl<'a> Feature for MakePath<'a> {
 }
 
 impl<'a> MakePath<'a> {
-    fn relative_to_absolute_path(&mut self, relative_path: &Path) -> Result<&'a Path, PathError> {
+    fn relative_to_absolute_path(&mut self, relative_path: &Path) -> Result<&'a Path, StateErr> {
         let relative_path: Vec<c_char> = relative_path
             .to_str()
-            .ok_or(PathError::PathNotUTF8)?
+            .ok_or(StateErr::PathNotUTF8)?
             .bytes()
             .chain(once(0))
             .map(|b| b as c_char)
@@ -194,13 +183,13 @@ impl<'a> MakePath<'a> {
         let absolute_path = unsafe { (self.function)(self.handle, relative_path.as_ptr()) };
 
         if absolute_path.is_null() {
-            return Err(PathError::HostError);
+            return Err(StateErr::HostError);
         }
 
         unsafe { CStr::from_ptr(absolute_path) }
             .to_str()
             .map(Path::new)
-            .map_err(|_| PathError::HostError)
+            .map_err(|_| StateErr::HostError)
     }
 }
 
@@ -238,10 +227,10 @@ unsafe impl<'a> Feature for MapPath<'a> {
 }
 
 impl<'a> MapPath<'a> {
-    fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<&'a str, PathError> {
+    fn absolute_to_abstract_path(&mut self, path: &Path) -> Result<&'a str, StateErr> {
         let path: Vec<c_char> = path
             .to_str()
-            .ok_or(PathError::PathNotUTF8)?
+            .ok_or(StateErr::PathNotUTF8)?
             .bytes()
             .chain(once(0))
             .map(|b| b as c_char)
@@ -250,27 +239,27 @@ impl<'a> MapPath<'a> {
         let path = unsafe { (self.abstract_path)(self.handle, path.as_ptr()) };
 
         if path.is_null() {
-            return Err(PathError::HostError);
+            return Err(StateErr::HostError);
         }
 
         unsafe { CStr::from_ptr(path) }
             .to_str()
-            .map_err(|_| PathError::HostError)
+            .map_err(|_| StateErr::HostError)
     }
 
-    fn abstract_to_absolute_path(&mut self, path: &str) -> Result<&'a Path, PathError> {
+    fn abstract_to_absolute_path(&mut self, path: &str) -> Result<&'a Path, StateErr> {
         let path: Vec<c_char> = path.bytes().chain(once(0)).map(|b| b as c_char).collect();
 
         let path = unsafe { (self.absolute_path)(self.handle, path.as_ptr()) };
 
         if path.is_null() {
-            return Err(PathError::HostError);
+            return Err(StateErr::HostError);
         }
 
         unsafe { CStr::from_ptr(path) }
             .to_str()
             .map(Path::new)
-            .map_err(|_| PathError::HostError)
+            .map_err(|_| StateErr::HostError)
     }
 }
 
@@ -376,7 +365,7 @@ impl<'a> PathManager<'a> {
     pub fn allocate_path(
         &mut self,
         relative_path: &Path,
-    ) -> Result<(ManagedPath<'a>, ManagedStr<'a>), PathError> {
+    ) -> Result<(ManagedPath<'a>, ManagedStr<'a>), StateErr> {
         let absolute_path = self
             .make
             .relative_to_absolute_path(relative_path)
@@ -396,7 +385,7 @@ impl<'a> PathManager<'a> {
         Ok((absolute_path, abstract_path))
     }
 
-    pub fn deabstract_path(&mut self, path: &str) -> Result<ManagedPath<'a>, PathError> {
+    pub fn deabstract_path(&mut self, path: &str) -> Result<ManagedPath<'a>, StateErr> {
         self.map
             .abstract_to_absolute_path(path)
             .map(|path| ManagedPath {

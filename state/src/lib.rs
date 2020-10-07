@@ -113,6 +113,10 @@ pub enum StateErr {
     NoProperty,
     /// There isn't enough memory available to execute the task.
     NoSpace,
+    /// A path that's been used as a parameter is not encoded in UTF-8.
+    PathNotUTF8,
+    /// The host does not comply to the specification.
+    HostError,
 }
 
 impl StateErr {
