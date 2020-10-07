@@ -4,81 +4,137 @@
 //!
 //! LV2 handles this problem by leaving it to the host implementors and specifying an interface for it. There are three distinct host features which are necessary to fulfill the tasks from above: [`MakePath`](struct.MakePath.html), which "makes" an absolute file path from a relative path, [`MapPath`](struct.MapPath), which maps an absolute path to/from an abstract string that can be stored as a property, and [`FreePath`](struct.FreePath.html), which frees the strings/paths created by the features above.
 //!
-//! Since these features are strongly tied, they can only be used via a [`PathManager`](struct.PathManager.html). The best way to understand this system is to have an example:
+//! Since all of these features need each other in order to be safe and sound, none of them can be used on their own. Instead, you use them to construct a [`PathManager`](struct.PathManager.html), which exposes all of their interfaces. 
+//! 
+//! The best way to understand this system is to have an example:
 //!
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_state::*;
 //! use lv2_state::path::*;
 //! use lv2_atom::prelude::*;
+//! use lv2_urid::*;
 //! use urid::*;
 //! use std::fs::File;
 //! use std::path::Path;
-//! use std::io::Write;
+//! use std::io::{Read, Write};
 //!
+//! // First, we need to write out some boilerplate code
+//! // to define a proper plugin. There's no way around it. 😕
+//!
+//! /// The plugin we're outlining.
+//! #[uri("urn:my-plugin")]
+//! struct Sampler {
+//!     // A vector of bytes, for simplicity's sake.
+//!     // In a proper sampler, this would be a vector of floats.
+//!     sample: Vec<u8>,
+//!     urids: URIDs,
+//! }
+//!
+//! /// The features we need.
 //! #[derive(FeatureCollection)]
 //! struct Features<'a> {
 //!     makePath: MakePath<'a>,
 //!     mapPath: MapPath<'a>,
 //!     freePath: FreePath<'a>,
+//!     uridMap: LV2Map<'a>,
 //! }
 //!
-//! #[uri("urn:my-plugin")]
-//! struct Sampler {
-//!     sample: Vec<u8>, // A vector of bytes, for simplicity's sake.
+//! // A quick definition to identify the sample
+//! // path in the state property store.
+//! #[uri("urn:my-plugin:sample")]
+//! struct Sample;
+//!
+//! /// Some URIDs we need.
+//! #[derive(URIDCollection)]
+//! struct URIDs {
+//!     atom: AtomURIDCollection,
+//!     sample: URID<Sample>,
 //! }
 //!
 //! // Plugin implementation omitted...
 //! # impl Plugin for Sampler {
 //! #     type Ports = ();
-//! #     type InitFeatures = ();
+//! #     type InitFeatures = Features<'static>;
 //! #     type AudioFeatures = ();
-//! #  
-//! #     fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
+//! #
+//! #     fn new(_: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
 //! #         Some(Self {
 //! #             sample: Vec::new(),
+//! #             urids: features.uridMap.populate_collection()?,
 //! #         })
 //! #     }
-//! #  
+//! #
 //! #     fn run(&mut self, _: &mut (), _: &mut ()) {}
 //! # }
 //!
 //! impl State for Sampler {
 //!     type StateFeatures = Features<'static>;
 //!
-//!     fn save(&self, store: StoreHandle, features: Features) -> Result<(), StateErr> {
+//!     fn save(&self, mut store: StoreHandle, features: Features) -> Result<(), StateErr> {
+//!         // Create a path manager, it manages all paths!
 //!         let mut manager = PathManager::new(
 //!             features.makePath,
 //!             features.mapPath,
 //!             features.freePath
 //!         );
 //!
+//!         // Allocate a path to store the sample to.
+//!         // The absolute path is the "real" path of the file we may write to
+//!         // and the abstract path is the path we may store in a property.
 //!         let (absolute_path, abstract_path) = manager
 //!             .allocate_path(Path::new("sample.wav"))
 //!             .map_err(|_| StateErr::Unknown)?;
-//! 
-//!         let mut file = File::create(abs_path).map_err(|_| StateErr::Unknown)?;
+//!
+//!         // Store the sample. This isn't the correct way to save WAVs!
+//!         let mut file = File::create(absolute_path).map_err(|_| StateErr::Unknown)?;
 //!         file.write_all(self.sample.as_ref()).map_err(|_| StateErr::Unknown)?;
-//! 
-//!         let mut path_writer = store.draft::<String>(URID::new(42).unwrap());
-//!         path_writer.init()
-//!         
-//!         Ok(())
+//!
+//!         // Draft a new property to store the abstract path of the sample.
+//!         {
+//!             let mut path_writer = store.draft(self.urids.sample);
+//!             let mut path_writer = path_writer
+//!                 .init(self.urids.atom.string, ())
+//!                 .map_err(|_| StateErr::Unknown)?;
+//!             path_writer.append(&*abstract_path);
+//!         }
+//!
+//!         // Commit everything!
+//!         store.commit_all()
 //!     }
 //!
 //!     fn restore(&mut self, store: RetrieveHandle, features: Features) -> Result<(), StateErr> {
-//!         Ok(())
+//!         // Again, create a path a path manager.
+//!         let mut manager = PathManager::new(
+//!             features.makePath,
+//!             features.mapPath,
+//!             features.freePath
+//!         );
+//!
+//!         // Retrieve the abstract path from the property store.
+//!         let abstract_path = store
+//!             .retrieve(self.urids.sample)
+//!             .map_err(|_| StateErr::Unknown)?
+//!             .read(self.urids.atom.string, ())
+//!             .map_err(|_| StateErr::Unknown)?;
+//!
+//!         // Get the absolute path to the referenced file.
+//!         let absolute_path = manager
+//!             .deabstract_path(abstract_path)
+//!             .map_err(|_| StateErr::Unknown)?;
+//!
+//!         // Open the file.
+//!         let mut file = File::open(absolute_path)
+//!             .map_err(|_| StateErr::Unknown)?;
+//!
+//!         // Write it to the sample.
+//!         self.sample.clear();
+//!         file.read_to_end(&mut self.sample)
+//!             .map(|_| ())
+//!             .map_err(|_| StateErr::Unknown)
 //!     }
 //! }
 //! ```
-//!
-//! This module contains three important host features: `MakePath`, `MapPath`, and `FreePath`.
-//!
-//! [`MakePath`](struct.MakePath.html) extends a relative path to an abstract path contained in a unique namespace for the plugin and the plugin instance. However, files stored under this path are not guaranteed to persist after the plugin instance has been saved and restored.
-//!
-//! In order to save a file together with the plugin state, it's absolute path has to be mapped to an abstract one using [`MapPath`](struct.MapPath.html). This tells the host to store this file along with the state and provides something the plugin can store as a property. When the state is restored, the `MapPath` feature has to be used again to retrieve the absolute path to the restored file.
-//!
-//! [`FreePath`](struct.FreePath.html) is used to tell the host that a certain file or folder isn't used anymore and that it should be freed by the host.
 use lv2_core::feature::Feature;
 use lv2_core::prelude::*;
 use lv2_sys as sys;

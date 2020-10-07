@@ -37,9 +37,11 @@ impl<'a> StoreHandle<'a> {
     pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
         let property_key = property_key.into_general();
         self.properties
-            .insert(property_key, SpaceElement::default());
+            .insert(property_key.into_general(), SpaceElement::default());
         StatePropertyWriter::new(SpaceHead::new(
-            self.properties.get_mut(&property_key).unwrap(),
+            self.properties
+                .get_mut(&property_key.into_general())
+                .unwrap(),
         ))
     }
 
