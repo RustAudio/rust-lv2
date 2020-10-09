@@ -679,6 +679,11 @@ pub const LV2_WORKER__interface: &'static [u8; 42usize] =
     b"http://lv2plug.in/ns/ext/worker#interface\0";
 pub const LV2_WORKER__schedule: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/worker#schedule\0";
+pub type __uint8_t = ::std::os::raw::c_uchar;
+pub type __uint16_t = ::std::os::raw::c_ushort;
+pub type __int32_t = ::std::os::raw::c_int;
+pub type __uint32_t = ::std::os::raw::c_uint;
+pub type __int64_t = ::std::os::raw::c_longlong;
 #[doc = " The header of an atom:Atom."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -872,6 +877,7 @@ pub struct LV2_Atom_Sequence {
     #[doc = "< Body."]
     pub body: LV2_Atom_Sequence_Body,
 }
+pub type va_list = __builtin_va_list;
 #[doc = " A single entry in an Object query."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
