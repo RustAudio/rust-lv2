@@ -23,8 +23,9 @@ impl Default for Storage {
 
 impl Storage {
     /// Store a property.
-    pub fn store(&mut self, key: URID, type_: URID, value: &[u8]) {
-        self.items.insert(key, (type_, value.to_owned()));
+    pub fn store<K: ?Sized, T: ?Sized>(&mut self, key: URID<K>, type_: URID<T>, value: &[u8]) {
+        self.items
+            .insert(key.into_general(), (type_.into_general(), value.to_owned()));
     }
 
     /// External version of [`store`](#method.store).
@@ -60,9 +61,9 @@ impl Storage {
     /// Try to retrieve a property.
     ///
     /// If the property doesn't exist, `None` is returned.
-    pub fn retrieve(&self, key: URID) -> Option<(URID, &[u8])> {
+    pub fn retrieve<K: ?Sized>(&self, key: URID<K>) -> Option<(URID, &[u8])> {
         self.items
-            .get(&key)
+            .get(&key.into_general())
             .map(|(urid, data)| (*urid, data.as_ref()))
     }
 

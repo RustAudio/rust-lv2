@@ -1,5 +1,6 @@
 //! Procedural macros for `urid`.
 #![recursion_limit = "128"]
+extern crate proc_macro;
 
 mod uri_bound;
 mod urid_collection_derive;
