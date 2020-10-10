@@ -155,9 +155,16 @@ A Tier 1 target for `rust-lv2` also has to be a Tier 1 target of rustc. You can 
 
 A Tier 2 target is a target that is at least in Tier 2 of rustc and has a generated binding. However, it might not work (well) and there might not be a maintainer who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 2 target, you're stepping into uncharted territory.
 
-| Target                   | Binding      |
-|--------------------------|--------------|
-| `x86_64-pc-windows-msvc` | `windows.rs` |
+| Target                                | Binding      |
+|---------------------------------------|--------------|
+| `aarch64-unknown-linux-gnu`           | `aarch64.rs` |
+| `arm-unknown-linux-gnueabi`           | `arm.rs`     |
+| `arm-unknown-linux-gnueabihf`         | `arm.rs`     |
+| `armv5te-unknown-linux-gnueabi`       | `arm.rs`     |
+| `armv7-unknown-linux-gnueabi`         | `arm.rs`     |
+| `armv7-unknown-linux-gnueabihf`       | `arm.rs`     |
+| `thumbv7neon-unknown-linux-gnueabihf` | `arm.rs`     |
+| `x86_64-pc-windows-msvc`              | `windows.rs` |
 
 ## License
 
