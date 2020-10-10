@@ -132,6 +132,10 @@
 //!     }
 //! }
 //! ```
+//!
+//! # A note on availability
+//!
+//! Originally, these path handling features are also meant to be usable outside of the context of `save` and `restore`, for example to create a temporary audio file. However, the specification does not define whether the `FreePath` feature only deallocates the path string or if it deallocates the files pointed by the path too. Therefore, we can not guarantee that files and strings live outside of the scope of a trait function call and had to restrict the usage to `save` and `restore`.
 use crate::StateErr;
 use lv2_core::feature::Feature;
 use lv2_core::prelude::*;
@@ -145,7 +149,11 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use urid::*;
 
-/// A host feature to make absolute paths.
+/// A host feature that allocates absolute file paths.
+///
+/// This is only useful in conjunction with the [`FreePath`](struct.FreePath.html) and [`MapPath`](struct.MapPath.html) features. Therefore, the interface of this feature is private and only exposed by a [`PathManager`](struct.PathManager.html), which is constructed from these three host features.
+///
+/// Please take a look at the [module documentation](index.html) for a usage example.
 pub struct MakePath<'a> {
     handle: sys::LV2_State_Make_Path_Handle,
     function: unsafe extern "C" fn(sys::LV2_State_Make_Path_Handle, *const c_char) -> *mut c_char,
@@ -193,7 +201,11 @@ impl<'a> MakePath<'a> {
     }
 }
 
-/// A host feature to save and restore files.
+/// A host feature that maps absolute file paths to and from abstract file paths.
+///
+/// This is only useful in conjunction with the [`FreePath`](struct.FreePath.html) and [`MakePath`](struct.MakePath.html) features. Therefore, the interface of this feature is private and only exposed by a [`PathManager`](struct.PathManager.html), which is constructed from these three host features.
+///
+/// Please take a look at the [module documentation](index.html) for a usage example.
 pub struct MapPath<'a> {
     handle: sys::LV2_State_Map_Path_Handle,
     abstract_path: unsafe extern "C" fn(
@@ -263,7 +275,11 @@ impl<'a> MapPath<'a> {
     }
 }
 
-/// A host feature to a previously allocated path.
+/// A host feature that deallocates absolute and abstract file paths.
+///
+/// This is only useful in conjunction with the [`MapPath`](struct.MapPath.html) and [`MakePath`](struct.MakePath.html) features. Therefore, the interface of this feature is private and only exposed by a [`PathManager`](struct.PathManager.html), which is constructed from these three host features.
+///
+/// Please take a look at the [module documentation](index.html) for a usage example.
 pub struct FreePath<'a> {
     handle: sys::LV2_State_Free_Path_Handle,
     free_path: unsafe extern "C" fn(sys::LV2_State_Free_Path_Handle, *mut c_char),
@@ -294,6 +310,11 @@ impl<'a> FreePath<'a> {
     }
 }
 
+/// A path that has been allocated by the host.
+///
+/// An instance of this struct can be used just like a [`Path`](https://doc.rust-lang.org/stable/std/path/struct.Path.html) instance.
+///
+/// This path has been allocated by the host via a [`PathManager`](struct.PathManager.html) and will be deallocated by the host when dropped. Since it contains an `Rc<Mutex<>>`, it is neither `Send` nor `Sync` and shouldn't be used outside of the scope of a [`save`](../trait.State.html#tymethod.save) or [`restore`](../trait.State.html#tymethod.restore) call.
 pub struct ManagedPath<'a> {
     path: &'a Path,
     free_path: Rc<Mutex<FreePath<'a>>>,
@@ -322,6 +343,11 @@ impl<'a> Drop for ManagedPath<'a> {
     }
 }
 
+/// A string that has been allocated by the host.
+///
+/// An instance of this struct can be used just like a [`str`](https://doc.rust-lang.org/stable/std/primitive.str.html) reference.
+///
+/// This string has been allocated by the host via a [`PathManager`](struct.PathManager.html) and will be deallocated by the host when dropped. Since it contains an `Rc<Mutex<>>`, it is neither `Send` nor `Sync` and shouldn't be used outside of the scope of a [`save`](../trait.State.html#tymethod.save) or [`restore`](../trait.State.html#tymethod.restore) call.
 pub struct ManagedStr<'a> {
     str: &'a str,
     free_path: Rc<Mutex<FreePath<'a>>>,
@@ -347,6 +373,11 @@ impl<'a> AsRef<str> for ManagedStr<'a> {
     }
 }
 
+/// A safe interface to the path handling features.
+///
+/// This struct is constructed from the three path handling features, [`MakePath`](struct.MakePath.html), [`MapPath`](struct.MapPath.html), and [`FreePath`](struct.FreePath.html), and exposes them as one safe interface.
+///
+/// Please take a look at the [module documentation](index.html) for a usage example.
 pub struct PathManager<'a> {
     make: MakePath<'a>,
     map: MapPath<'a>,
@@ -354,6 +385,7 @@ pub struct PathManager<'a> {
 }
 
 impl<'a> PathManager<'a> {
+    /// Create a new path manager from the three path handling features.
     pub fn new(make: MakePath<'a>, map: MapPath<'a>, free: FreePath<'a>) -> Self {
         Self {
             make,
@@ -362,6 +394,13 @@ impl<'a> PathManager<'a> {
         }
     }
 
+    /// Allocate a new path.
+    ///
+    /// This function maps the given relative file path to an absolute file path as well as an abstract file path. The absolute file path can be used to access the new file and the abstract file path is used to reference it in the state of the plugin. Storing the absolute file path in the plugin state will not work since it might have changed when the state is restored.
+    ///
+    /// The relative file path will be the suffix of the absolute file path and will be contained in a namespace unique to the plugin instance. This means that allocations of the same relative path by different plugin instances will not collide. Apart from that, you can not make any other assumptions about the absolute and abstract file paths.
+    ///
+    /// An abstract file path that has been read from the plugin state can be mapped back to an absolute file path with the [`deabstract_path`](#method.deabstract_path) method.
     pub fn allocate_path(
         &mut self,
         relative_path: &Path,
@@ -385,6 +424,9 @@ impl<'a> PathManager<'a> {
         Ok((absolute_path, abstract_path))
     }
 
+    /// Map an abstract file path back to an absolute one.
+    ///
+    /// After reading an abstract file path from the state, you have to map it back to an absolute file path in order to read the file. This is what this method does.
     pub fn deabstract_path(&mut self, path: &str) -> Result<ManagedPath<'a>, StateErr> {
         self.map
             .abstract_to_absolute_path(path)
