@@ -77,7 +77,7 @@ impl Plugin for Midigate {
     // This pattern of iterating over input events and writing output along the way is a common idiom for writing sample accurate output based on event input.
     //
     // Note that this simple example simply writes input or zero for each sample based on the gate. A serious implementation would need to envelope the transition to avoid aliasing.
-    fn run(&mut self, ports: &mut Ports, _: &mut ()) {
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         let mut offset: usize = 0;
 
         let control_sequence = ports

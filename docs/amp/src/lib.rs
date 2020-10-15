@@ -23,7 +23,7 @@ impl Plugin for Amp {
         Some(Self)
     }
     // The `run()` method is the main process function of the plugin. It processes a block of audio in the audio context. Since this plugin is `lv2:hardRTCapable`, `run()` must be real-time safe, so blocking (e.g. with a mutex) or memory allocation are not allowed.
-    fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+    fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
         let coef = if *(ports.gain) > -90.0 {
             10.0_f32.powf(*(ports.gain) * 0.05)
         } else {

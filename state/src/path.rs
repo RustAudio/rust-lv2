@@ -65,7 +65,7 @@
 //! #         })
 //! #     }
 //! #
-//! #     fn run(&mut self, _: &mut (), _: &mut ()) {}
+//! #     fn run(&mut self, _: &mut (), _: &mut (), _: u32) {}
 //! # }
 //!
 //! impl State for Sampler {

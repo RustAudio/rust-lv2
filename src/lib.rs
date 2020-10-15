@@ -68,7 +68,7 @@
 //!
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
-//!     fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+//!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
 //!         let coef = if *(ports.gain) > -90.0 {
 //!             10.0_f32.powf(*(ports.gain) * 0.05)
 //!         } else {

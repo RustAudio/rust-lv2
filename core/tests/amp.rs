@@ -53,7 +53,7 @@ impl Plugin for Amp {
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _: &mut ()) {
+    fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
         assert!(self.activated);
 
         let coef = *(ports.gain);

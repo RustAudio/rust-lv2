@@ -59,7 +59,7 @@
 //!         })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut (), _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut (), _: u32) {
 //!         // Set the float to a different value than the previous one.
 //!         self.internal += 1.0;
 //!     }

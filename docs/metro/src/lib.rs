@@ -74,7 +74,7 @@ impl Plugin for Metro {
         self.sampler.reset();
     }
 
-    fn run(&mut self, ports: &mut Ports, _: &mut ()) {
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         if let Some(control) = ports
             .control
             .read(self.urids.atom.sequence, self.urids.unit.beat)

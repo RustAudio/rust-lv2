@@ -45,7 +45,12 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// Run a processing step.
     ///
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
-    fn run(&mut self, ports: &mut Self::Ports, features: &mut Self::AudioFeatures);
+    fn run(
+        &mut self,
+        ports: &mut Self::Ports,
+        features: &mut Self::AudioFeatures,
+        sample_count: u32,
+    );
 
     /// Reset and initialize the complete internal state of the plugin.
     ///
@@ -228,7 +233,7 @@ impl<T: Plugin> PluginInstance<T> {
         if let Some(mut ports) = instance.ports(sample_count) {
             instance
                 .instance
-                .run(&mut ports, &mut instance.audio_features);
+                .run(&mut ports, &mut instance.audio_features, sample_count);
         }
     }
 
