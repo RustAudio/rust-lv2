@@ -38,7 +38,7 @@ impl Plugin for Fifths {
     }
 
     // This plugin works similar to the previous one: It iterates over the events in the input port. However, it only needs to write one or two messages instead of blocks of audio.
-    fn run(&mut self, ports: &mut Ports, _: &mut ()) {
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         // Get the reading handle of the input sequence.
         let input_sequence = ports
             .input

@@ -79,7 +79,7 @@
 //!         Some(Self { internal: 0 })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut (), _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut (), _: u32) {
 //!         self.internal += 1;
 //!     }
 //!

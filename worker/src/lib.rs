@@ -54,7 +54,7 @@
 //!        })
 //!    }
 //!
-//!    fn run(&mut self, _ports: &mut Ports, features: &mut Self::AudioFeatures) {
+//!    fn run(&mut self, _ports: &mut Ports, features: &mut Self::AudioFeatures, _: u32) {
 //!        self.cycle += 1;
 //!        let cycle = self.cycle;
 //!        println!("cycle {} started", cycle);
@@ -531,7 +531,7 @@ mod tests {
             Some(Self {})
         }
 
-        fn run(&mut self, _ports: &mut Ports, _features: &mut Self::InitFeatures) {}
+        fn run(&mut self, _ports: &mut Ports, _features: &mut Self::InitFeatures, _: u32) {}
     }
 
     impl Worker for TestDropWorker {
