@@ -19,4 +19,4 @@ crate-type = ["cdylib"]
 # The default feature set includes everything to create a simple plugin for audio and MIDI processing.
 # Therefore, we don't need to enable extra features here.
 [dependencies]
-lv2 = "0.5.0"
+lv2 = "0.6.0"

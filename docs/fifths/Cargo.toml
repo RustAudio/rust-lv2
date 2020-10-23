@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wmidi = "3.1.0"
-lv2 = "0.5.0"
+lv2 = "0.6.0"
