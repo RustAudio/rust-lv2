@@ -16,6 +16,7 @@
 
 /**
    @defgroup worker Worker
+   @ingroup lv2
 
    Support for non-realtime plugin operations, see
    <http://lv2plug.in/ns/ext/worker> for details.
@@ -71,7 +72,7 @@ typedef LV2_Worker_Status (*LV2_Worker_Respond_Function)(
    The plugin's extension_data() method should return an LV2_Worker_Interface
    when called with LV2_WORKER__interface as its argument.
 */
-typedef struct _LV2_Worker_Interface {
+typedef struct {
 	/**
 	   The worker method.  This is called by the host in a non-realtime context
 	   as requested, possibly with an arbitrary message to handle.
@@ -129,7 +130,7 @@ typedef void* LV2_Worker_Schedule_Handle;
    The host passes this feature to provide a schedule_work() function, which
    the plugin can use to schedule a worker call from run().
 */
-typedef struct _LV2_Worker_Schedule {
+typedef struct {
 	/**
 	   Opaque host data.
 	*/
@@ -144,10 +145,10 @@ typedef struct _LV2_Worker_Schedule {
 
 	   This function is always safe to call from run(), but it is not
 	   guaranteed that the worker is actually called from a different thread.
-	   In particular, when free-wheeling (e.g. for offline rendering), the
-	   worker may be executed immediately.  This allows single-threaded
-	   processing with sample accuracy and avoids timing problems when run() is
-	   executing much faster or slower than real-time.
+	   In particular, when free-wheeling (for example, during offline
+	   rendering), the worker may be executed immediately.  This allows
+	   single-threaded processing with sample accuracy and avoids timing
+	   problems when run() is executing much faster or slower than real-time.
 
 	   Plugins SHOULD be written in such a way that if the worker runs
 	   immediately, and responses from the worker are delivered immediately,

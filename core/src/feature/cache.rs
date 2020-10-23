@@ -8,6 +8,7 @@ use std::iter::Map;
 /// At initialization time, a raw LV2 plugin receives a null-terminated array containing all requested host features. Obviously, this is not suited for safe Rust code and therefore, it needs an abstraction layer.
 ///
 /// Internally, this struct contains a hash map which is filled the raw LV2 feature descriptors. Using this map, methods are defined to identify and retrieve features.
+#[derive(Clone)]
 pub struct FeatureCache<'a> {
     internal: HashMap<&'a CStr, *const c_void>,
 }

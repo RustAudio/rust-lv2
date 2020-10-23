@@ -1,6 +1,6 @@
 [package]
 name = "lv2-sys"
-version = "1.1.0"
+version = "2.0.0"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -9,9 +9,8 @@ description = "rust-lv2's C header bindings"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
 
+exclude = ["lv2", "tool"]
+
 [badges]
 travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
-
-[build-dependencies]
-bindgen = "0.53.1"

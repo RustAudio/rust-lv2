@@ -1,4 +1,4 @@
-# rust-lv2's library to implement LV2 Worker extension.
+# Rust-LV2's library to implement LV2 Worker extension.
 
 Work scheduling library that allows real-time capable LV2 plugins to execute
 non-real-time actions. This is a part of
@@ -13,13 +13,6 @@ The original LV2 API (in the `C` programming language) is documented by
 being translated to Rust along with the development of `rust-lv2`
 [(link)](https://janonard.github.io/rust-lv2-book/) and describes how to
 properly use `rust-lv2`.
-
-## Building
-
-Since the bindings to the raw C headers are generated with bindgen, you need to
-have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't
-in your system's standard path, set the environment variable `LIBCLANG_PATH` to
-the path of `libClang`.
 
 ## License
 

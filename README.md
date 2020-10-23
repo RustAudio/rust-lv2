@@ -1,4 +1,4 @@
-# rust-lv2
+# Rust-LV2
 
 [![Build Status][travis-badge]][travis-url] [![Current Crates.io Version][crates-badge]][crates-url]
 
@@ -92,12 +92,26 @@ impl Plugin for Amp {
 lv2_descriptors!(Amp);
 ```
 
-## Using this framework
+## About this framework
+
+### Q&A
+
+#### Does my host program support it?
+
+Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
+
+#### Can I host plugins with `rust-lv2`?
+
+Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
+
+However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
+
+A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
 
 ### Documentation
 
 There are multiple valuable sources of documentation:
-* ["The rust-lv2 book"](https://janonard.github.io/rust-lv2-book/) describes how to use rust-lv2 in general, broad terms. It's the ideal point to get started and is updated with every new version of rust-lv2.
+* ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in general, broad terms. It's the ideal point to get started and is updated with every new version of Rust-LV2.
 * [The API documentation](https://docs.rs/lv2).
 * [The LV2 specification reference](https://lv2plug.in/ns/).
 
@@ -122,37 +136,35 @@ There are also feature sets that account for common scenarios:
 * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
 * `full`: All sub-crates.
 
-### Building
+## Supported targets
 
-Since the bindings to the raw C headers are generated with bindgen, you need to have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't in your system's standard path, set the environment variable `LIBCLANG_PATH` to the path of `libClang`.
+Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which gives you a general understanding of what to expect of a target. The tables below list the supported targets, the used binding in the [`lv2-sys`](sys/) crate, and, if applicable, the maintainer and the last verification of that target.
 
-## Q&A
+The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
 
-### Does my host program support it?
+### Tier 1
 
-Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
+A Tier 1 target for `rust-lv2` also has to be a Tier 1 target of rustc. You can check the [platform support page](https://doc.rust-lang.org/nightly/rustc/platform-support.html) to see which targets are included and what they provide. Additionally, there has to be a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) of `rust-lv2` who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 1 target, there will be a maintainer who can help you.
 
-### What targets are supported?
+| Target                     | Binding           | Maintainer | Last Verification                                                                                        |
+|----------------------------|-------------------|------------|----------------------------------------------------------------------------------------------------------|
+| `x86_64-unknown-linux-gnu` | `linux/x86_64.rs` | @Janonard  | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux              |
+| `x86-unknown-linux-gnu`    | `linux/x86.rs`    | @Janonard  | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
 
-We currently support stable and beta Rust running on macOS and Linux. Windows will probably work too, but the Windows build environment of Travis CI is currently broken and we therefore can not support it.
+### Tier 2
 
-We would like to also support Windows as well as ARM-based embedded devices like Raspberry Pis. If you can help us with these targets, please do so!
+A Tier 2 target is a target that is at least in Tier 2 of rustc and has a generated binding. However, it might not work (well) and there might not be a maintainer who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 2 target, you're stepping into uncharted territory.
 
-### Can I host plugins with `rust-lv2`?
-
-Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
-
-However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
-
-A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
-
-### Why `bindgen`?
-
-`lv2-sys` uses `bindgen` to generate the Rust representation of the LV2 C API. Rust can not handle verbatim C code, but is able to define type and function definitions that exactly match those from the C headers. However, since serveral importants details in C aren't properly defined, these bindings need to be different for every platform. One example: While Rust's `u32` is always an unsigned, 32-bit wide integer, C's `int` may be 16 to 64 bits wide and may be signed or unsigned; It depends on the platform.
-
-One solution would be to generate bindings for every supported target, but if we would only support stable, beta and nightly Rust on [tier 1 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-1), we would still have to maintain 21 different versions of the same crate. If we would add [tier 2 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-2) too (which would include e.g. the Raspberry Pis), there would be 216(!) different versions.
-
-I guess it's obvious that this isn't a maintainable situation. Therefore, the bindings need to be generated every time they are build, which requires the build dependency to `bindgen`.
+| Target                                | Binding      |
+|---------------------------------------|--------------|
+| `aarch64-unknown-linux-gnu`           | `aarch64.rs` |
+| `arm-unknown-linux-gnueabi`           | `arm.rs`     |
+| `arm-unknown-linux-gnueabihf`         | `arm.rs`     |
+| `armv5te-unknown-linux-gnueabi`       | `arm.rs`     |
+| `armv7-unknown-linux-gnueabi`         | `arm.rs`     |
+| `armv7-unknown-linux-gnueabihf`       | `arm.rs`     |
+| `thumbv7neon-unknown-linux-gnueabihf` | `arm.rs`     |
+| `x86_64-pc-windows-msvc`              | `windows.rs` |
 
 ## License
 

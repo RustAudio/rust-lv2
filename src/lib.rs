@@ -68,7 +68,7 @@
 //!
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
-//!     fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+//!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
 //!         let coef = if *(ports.gain) > -90.0 {
 //!             10.0_f32.powf(*(ports.gain) * 0.05)
 //!         } else {
@@ -87,7 +87,7 @@
 //! ## Documentation
 //!
 //! There are multiple valuable sources of documentation:
-//! * ["The rust-lv2 book"](https://janonard.github.io/rust-lv2-book/) describes how to use rust-lv2 in general, broad terms. It's the ideal point to get started and is updated with every new version of rust-lv2.
+//! * ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in general, broad terms. It's the ideal point to get started and is updated with every new version of Rust-LV2.
 //! * [The API documentation](https://docs.rs/lv2).
 //! * [The LV2 specification reference](https://lv2plug.in/ns/).
 //!
@@ -149,6 +149,9 @@ pub extern crate lv2_midi;
 
 #[cfg(feature = "lv2-state")]
 pub extern crate lv2_state;
+
+#[cfg(feature = "lv2-sys")]
+pub extern crate lv2_sys;
 
 #[cfg(feature = "lv2-time")]
 pub extern crate lv2_time;

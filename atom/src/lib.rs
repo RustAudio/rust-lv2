@@ -61,11 +61,6 @@
 //! # Internals
 //!
 //! Internally, all atoms are powered by the structs in the [`space`](space/index.html) module. They safely abstract the reading and writing process and assure that no memory is improperly accessed or leaked and that alignments are upheld. If you simply want to use the atoms in this crate, you don't need to deal with. They are only interesting if you want to create your own atom types.
-//!
-//! # Non-Rust requirements
-//!
-//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
-//! you need to have clang installed on your machine.
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
@@ -103,6 +98,7 @@ use urid::*;
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
 pub struct AtomURIDCollection {
+    pub blank: URID<object::Blank>,
     pub double: URID<scalar::Double>,
     pub float: URID<scalar::Float>,
     pub int: URID<scalar::Int>,
@@ -203,5 +199,14 @@ impl<'a> UnidentifiedAtom<'a> {
             .split_atom_body(urid)
             .map(|(body, _)| body)
             .and_then(|body| A::read(body, parameter))
+    }
+
+    /// Retrieve the type URID of the atom.
+    ///
+    /// This can be used to identify atoms without actually reading them.
+    pub fn type_urid(self) -> Option<URID> {
+        self.space
+            .split_type::<sys::LV2_Atom>()
+            .and_then(|(header, _)| URID::new(header.type_))
     }
 }

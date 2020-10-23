@@ -2,9 +2,6 @@
 //!
 //! This crate forms the foundation of the LV2 experience for Rust: It contains the plugin trait and ports, as well as means to retrieve features from the host and to extend the interface of the plugin.
 //!
-//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
-//! you need to have clang installed on your machine.
-//!
 //! # Example
 //!
 //! ```
@@ -46,7 +43,7 @@
 //!
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
-//!     fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+//!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
 //!         let coef = if *(ports.gain) > -90.0 {
 //!             10.0_f32.powf(*(ports.gain) * 0.05)
 //!         } else {

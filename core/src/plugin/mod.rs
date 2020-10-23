@@ -45,7 +45,14 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// Run a processing step.
     ///
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
-    fn run(&mut self, ports: &mut Self::Ports, features: &mut Self::AudioFeatures);
+    ///
+    /// The sample count is the number of frames covered by this `run` call. Audio and CV ports will contain exactly `sample_count` frames. Please note that `sample_count` may be differ between calls.
+    fn run(
+        &mut self,
+        ports: &mut Self::Ports,
+        features: &mut Self::AudioFeatures,
+        sample_count: u32,
+    );
 
     /// Reset and initialize the complete internal state of the plugin.
     ///
@@ -77,13 +84,13 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 #[repr(C)]
 pub struct PluginInstance<T: Plugin> {
     /// The plugin instance.
-    pub instance: T,
+    instance: T,
     /// A temporary storage for all ports of the plugin.
-    pub connections: <T::Ports as PortCollection>::Cache,
+    connections: <T::Ports as PortCollection>::Cache,
     /// All features that may be used in the initialization threading class.
-    pub init_features: T::InitFeatures,
+    init_features: T::InitFeatures,
     /// All features that may be used in the audio threading class.
-    pub audio_features: T::AudioFeatures,
+    audio_features: T::AudioFeatures,
 }
 
 impl<T: Plugin> PluginInstance<T> {
@@ -131,17 +138,21 @@ impl<T: Plugin> PluginInstance<T> {
         };
 
         // Collect the supported features.
-        let mut feature_cache = FeatureCache::from_raw(features);
-        let mut init_features =
-            match T::InitFeatures::from_cache(&mut feature_cache, ThreadingClass::Instantiation) {
-                Ok(f) => f,
-                Err(e) => {
-                    eprintln!("{}", e);
-                    return std::ptr::null_mut();
-                }
-            };
+        let mut init_features_cache = FeatureCache::from_raw(features);
+        let mut audio_features_cache = init_features_cache.clone();
+
+        let mut init_features = match T::InitFeatures::from_cache(
+            &mut init_features_cache,
+            ThreadingClass::Instantiation,
+        ) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("{}", e);
+                return std::ptr::null_mut();
+            }
+        };
         let audio_features =
-            match T::AudioFeatures::from_cache(&mut feature_cache, ThreadingClass::Audio) {
+            match T::AudioFeatures::from_cache(&mut audio_features_cache, ThreadingClass::Audio) {
                 Ok(f) => f,
                 Err(e) => {
                     eprintln!("{}", e);
@@ -224,7 +235,7 @@ impl<T: Plugin> PluginInstance<T> {
         if let Some(mut ports) = instance.ports(sample_count) {
             instance
                 .instance
-                .run(&mut ports, &mut instance.audio_features);
+                .run(&mut ports, &mut instance.audio_features, sample_count);
         }
     }
 
@@ -242,6 +253,25 @@ impl<T: Plugin> PluginInstance<T> {
         } else {
             std::ptr::null()
         }
+    }
+
+    /// Retrieve the internal plugin.
+    pub fn plugin_handle(&mut self) -> &mut T {
+        &mut self.instance
+    }
+
+    /// Retrieve the required handles to execute an Initialization class method.
+    ///
+    /// This method can be used by extensions to call an extension method in the Initialization threading class and provide it the host features for that class.
+    pub fn init_class_handle(&mut self) -> (&mut T, &mut T::InitFeatures) {
+        (&mut self.instance, &mut self.init_features)
+    }
+
+    /// Retrieve the required handles to execute an Audio class method.
+    ///
+    /// This method can be used by extensions to call an extension method in the Audio threading class and provide it the host features for that class.
+    pub fn audio_class_handle(&mut self) -> (&mut T, &mut T::AudioFeatures) {
+        (&mut self.instance, &mut self.audio_features)
     }
 }
 
