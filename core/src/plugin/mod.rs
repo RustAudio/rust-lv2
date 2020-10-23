@@ -45,6 +45,8 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// Run a processing step.
     ///
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
+    ///
+    /// The sample count is the number of frames covered by this `run` call. Audio and CV ports will contain exactly `sample_count` frames. Please note that `sample_count` may be differ between calls.
     fn run(
         &mut self,
         ports: &mut Self::Ports,
