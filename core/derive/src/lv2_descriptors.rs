@@ -72,9 +72,9 @@ impl Parse for Lv2InstanceDescriptorList {
 
 impl Lv2InstanceDescriptorList {
     /// Implement `PluginInstanceDescriptor` for all plugin instances.
-    fn make_instance_descriptor_impls<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = impl ::quote::ToTokens> + 'a {
+    fn make_instance_descriptor_impls(
+        &self,
+    ) -> impl Iterator<Item = impl ::quote::ToTokens> + '_ {
         self.descriptors
             .iter()
             .map(Lv2InstanceDescriptor::make_instance_descriptor_impl)
