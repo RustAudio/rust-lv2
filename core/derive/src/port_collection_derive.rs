@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::export::Span;
+use proc_macro2::Span;
 use syn::DeriveInput;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
