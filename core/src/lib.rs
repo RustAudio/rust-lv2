@@ -63,3 +63,4 @@ pub mod feature;
 pub mod plugin;
 pub mod port;
 pub mod prelude;
+pub mod cell;

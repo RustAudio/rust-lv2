@@ -9,7 +9,7 @@
 	doap:name "Example Fifths (Rust Edition)" ;
 	doap:license <http://opensource.org/licenses/isc> ;
     lv2:project <https://github.com/RustAudio/rust-lv2> ;
-	lv2:requiredFeature urid:map , lv2:inPlaceBroken ;
+	lv2:requiredFeature urid:map ;
 	lv2:optionalFeature lv2:hardRTCapable ;
 	lv2:port [
 		a lv2:InputPort ,

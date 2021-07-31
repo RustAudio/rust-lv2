@@ -7,6 +7,7 @@ use std::ptr::NonNull;
 use urid::UriBound;
 
 pub use lv2_core_derive::*;
+use crate::cell::{ReadCell, WriteCell};
 
 /// Generalization of port types.
 ///
@@ -16,6 +17,11 @@ pub trait PortType {
     type InputPortType: Sized;
     /// The type of output reference created by the port.
     type OutputPortType: Sized;
+
+    /// The type of input read by the port.
+    type InPlaceInputPortType: Sized;
+    /// The type of output reference created by the port.
+    type InPlaceOutputPortType: Sized;
 
     /// Read data from the pointer or create a reference to the input.
     ///
@@ -34,6 +40,9 @@ pub trait PortType {
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
+
+    unsafe fn in_place_input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceInputPortType;
+    unsafe fn in_place_output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceOutputPortType;
 }
 
 /// Audio port type.
@@ -48,6 +57,8 @@ unsafe impl UriBound for Audio {
 impl PortType for Audio {
     type InputPortType = &'static [f32];
     type OutputPortType = &'static mut [f32];
+    type InPlaceInputPortType = &'static [ReadCell<f32>];
+    type InPlaceOutputPortType = &'static [WriteCell<f32>];
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
@@ -57,6 +68,16 @@ impl PortType for Audio {
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
         std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
+    }
+
+    #[inline]
+    unsafe fn in_place_input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceInputPortType {
+        ReadCell::from_ref(std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)).as_slice_of_cells()
+    }
+
+    #[inline]
+    unsafe fn in_place_output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceOutputPortType {
+        WriteCell::from_mut(std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)).as_slice_of_cells()
     }
 }
 
@@ -74,14 +95,27 @@ unsafe impl UriBound for Control {
 impl PortType for Control {
     type InputPortType = f32;
     type OutputPortType = &'static mut f32;
+    type InPlaceInputPortType = &'static ReadCell<f32>;
+    type InPlaceOutputPortType = &'static WriteCell<f32>;
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> f32 {
         *(pointer.cast().as_ref())
     }
 
+    #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> &'static mut f32 {
         (pointer.as_ptr() as *mut f32).as_mut().unwrap()
+    }
+
+    #[inline]
+    unsafe fn in_place_input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InPlaceInputPortType {
+        ReadCell::from_ref(&mut *(pointer.as_ptr() as *mut f32))
+    }
+
+    #[inline]
+    unsafe fn in_place_output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InPlaceOutputPortType {
+        WriteCell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
     }
 }
 
@@ -97,6 +131,8 @@ unsafe impl UriBound for CV {
 impl PortType for CV {
     type InputPortType = &'static [f32];
     type OutputPortType = &'static mut [f32];
+    type InPlaceInputPortType = &'static [ReadCell<f32>];
+    type InPlaceOutputPortType = &'static [WriteCell<f32>];
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
@@ -106,6 +142,16 @@ impl PortType for CV {
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
         std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
+    }
+
+    #[inline]
+    unsafe fn in_place_input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceInputPortType {
+        ReadCell::from_ref(std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)).as_slice_of_cells()
+    }
+
+    #[inline]
+    unsafe fn in_place_output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InPlaceOutputPortType {
+        WriteCell::from_mut(std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)).as_slice_of_cells()
     }
 }
 
@@ -140,13 +186,9 @@ impl<T: PortType> Deref for InputPort<T> {
 impl<T: PortType> PortHandle for InputPort<T> {
     #[inline]
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
-        if let Some(pointer) = NonNull::new(pointer) {
-            Some(Self {
-                port: T::input_from_raw(pointer, sample_count),
-            })
-        } else {
-            None
-        }
+        Some(Self {
+            port: T::input_from_raw( NonNull::new(pointer)?, sample_count),
+        })
     }
 }
 
@@ -176,19 +218,65 @@ impl<T: PortType> DerefMut for OutputPort<T> {
 impl<T: PortType> PortHandle for OutputPort<T> {
     #[inline]
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
-        if let Some(pointer) = NonNull::new(pointer) {
-            Some(Self {
-                port: T::output_from_raw(pointer, sample_count),
-            })
-        } else {
-            None
-        }
+        Some(Self {
+            port: T::output_from_raw(NonNull::new(pointer)?, sample_count),
+        })
     }
 }
 
 impl<T: PortHandle> PortHandle for Option<T> {
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
         Some(T::from_raw(pointer, sample_count))
+    }
+}
+
+/// Handle for input ports.
+///
+/// Fields of this type can be dereferenced to the input type of the port type.
+pub struct InPlaceInputPort<T: PortType> {
+    port: T::InPlaceInputPortType,
+}
+
+impl<T: PortType> Deref for InPlaceInputPort<T> {
+    type Target = T::InPlaceInputPortType;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.port
+    }
+}
+
+impl<T: PortType> PortHandle for InPlaceInputPort<T> {
+    #[inline]
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        Some(Self {
+            port: T::in_place_input_from_raw(NonNull::new(pointer)?, sample_count),
+        })
+    }
+}
+
+/// Handle for output ports.
+///
+/// Fields of this type can be dereferenced to the output type of the port type.
+pub struct InPlaceOutputPort<T: PortType> {
+    port: T::InPlaceOutputPortType,
+}
+
+impl<T: PortType> Deref for InPlaceOutputPort<T> {
+    type Target = T::InPlaceOutputPortType;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.port
+    }
+}
+
+impl<T: PortType> PortHandle for InPlaceOutputPort<T> {
+    #[inline]
+    unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+        Some(Self {
+            port: T::in_place_output_from_raw(NonNull::new(pointer)?, sample_count),
+        })
     }
 }
 

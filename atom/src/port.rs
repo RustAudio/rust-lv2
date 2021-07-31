@@ -101,18 +101,34 @@ impl<'a> PortWriter<'a> {
 /// [See also the module documentation.](index.html)
 pub struct AtomPort;
 
+const ATOM_IN_PLACE_ERROR: &'static str = "Atom ports cannot be used in-place";
+
 impl PortType for AtomPort {
     type InputPortType = PortReader<'static>;
     type OutputPortType = PortWriter<'static>;
+    type InPlaceInputPortType = ();
+    type InPlaceOutputPortType = ();
 
+    #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
         let space = Space::from_atom(pointer.cast().as_ref());
         PortReader::new(space)
     }
 
+    #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
         let space = RootMutSpace::from_atom(pointer.cast().as_mut());
         PortWriter::new(space)
+    }
+
+    #[inline]
+    unsafe fn in_place_input_from_raw(_pointer: NonNull<c_void>, _sample_count: u32) -> Self::InPlaceInputPortType {
+        panic!("{}", ATOM_IN_PLACE_ERROR);
+    }
+
+    #[inline]
+    unsafe fn in_place_output_from_raw(_pointer: NonNull<c_void>, _sample_count: u32) -> Self::InPlaceOutputPortType {
+        panic!("{}", ATOM_IN_PLACE_ERROR);
     }
 }
 
