@@ -6,8 +6,8 @@ use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 use urid::UriBound;
 
-use crate::cell::{ReadCell, WriteCell};
 pub use lv2_core_derive::*;
+use std::cell::Cell;
 
 /// Generalization of port types.
 ///
@@ -63,15 +63,15 @@ unsafe impl UriBound for Audio {
 }
 
 impl InPlacePortType for Audio {
-    type InPlaceInputPortType = &'static [ReadCell<f32>];
-    type InPlaceOutputPortType = &'static [WriteCell<f32>];
+    type InPlaceInputPortType = &'static [Cell<f32>];
+    type InPlaceOutputPortType = &'static [Cell<f32>];
 
     #[inline]
     unsafe fn in_place_input_from_raw(
         pointer: NonNull<c_void>,
         sample_count: u32,
     ) -> Self::InPlaceInputPortType {
-        ReadCell::from_ref(std::slice::from_raw_parts_mut(
+        Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
         ))
@@ -83,7 +83,7 @@ impl InPlacePortType for Audio {
         pointer: NonNull<c_void>,
         sample_count: u32,
     ) -> Self::InPlaceOutputPortType {
-        WriteCell::from_mut(std::slice::from_raw_parts_mut(
+        Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
         ))
@@ -118,15 +118,15 @@ unsafe impl UriBound for Control {
 }
 
 impl InPlacePortType for Control {
-    type InPlaceInputPortType = &'static ReadCell<f32>;
-    type InPlaceOutputPortType = &'static WriteCell<f32>;
+    type InPlaceInputPortType = &'static Cell<f32>;
+    type InPlaceOutputPortType = &'static Cell<f32>;
 
     #[inline]
     unsafe fn in_place_input_from_raw(
         pointer: NonNull<c_void>,
         _sample_count: u32,
     ) -> Self::InPlaceInputPortType {
-        ReadCell::from_ref(&mut *(pointer.as_ptr() as *mut f32))
+        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
     }
 
     #[inline]
@@ -134,7 +134,7 @@ impl InPlacePortType for Control {
         pointer: NonNull<c_void>,
         _sample_count: u32,
     ) -> Self::InPlaceOutputPortType {
-        WriteCell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
+        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
     }
 }
 
@@ -163,15 +163,15 @@ unsafe impl UriBound for CV {
 }
 
 impl InPlacePortType for CV {
-    type InPlaceInputPortType = &'static [ReadCell<f32>];
-    type InPlaceOutputPortType = &'static [WriteCell<f32>];
+    type InPlaceInputPortType = &'static [Cell<f32>];
+    type InPlaceOutputPortType = &'static [Cell<f32>];
 
     #[inline]
     unsafe fn in_place_input_from_raw(
         pointer: NonNull<c_void>,
         sample_count: u32,
     ) -> Self::InPlaceInputPortType {
-        ReadCell::from_ref(std::slice::from_raw_parts_mut(
+        Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
         ))
@@ -183,7 +183,7 @@ impl InPlacePortType for CV {
         pointer: NonNull<c_void>,
         sample_count: u32,
     ) -> Self::InPlaceOutputPortType {
-        WriteCell::from_mut(std::slice::from_raw_parts_mut(
+        Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
         ))
