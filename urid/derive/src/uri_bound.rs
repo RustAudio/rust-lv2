@@ -15,11 +15,11 @@ fn get_type_ident(item: TokenStream) -> Ident {
         Item::Struct(definition) => (definition.ident, definition.generics),
         Item::Type(definition) => (definition.ident, definition.generics),
         Item::Union(definition) => (definition.ident, definition.generics),
-        _ => panic!(PARSING_ERROR),
+        _ => panic!("{}", PARSING_ERROR),
     };
 
     if !generics.params.is_empty() {
-        panic!("The uri attribute does not support generic types");
+        panic!("{}", "The uri attribute does not support generic types");
     }
     ident
 }
@@ -31,12 +31,12 @@ fn get_uri(attr: TokenStream) -> Literal {
     const PARSING_ERROR: &str = "A URI has to be a string literal";
 
     if parse::<Literal>(attr.clone()).is_err() {
-        panic!(PARSING_ERROR);
+        panic!("{}", PARSING_ERROR);
     }
     //check if it's a litteral string
     let attr = attr.to_string();
     if !attr.starts_with('"') || !attr.ends_with('"') {
-        panic!(PARSING_ERROR);
+        panic!("{}", PARSING_ERROR);
     }
     //Remove the enclosing "" to get the uri
     let uri = String::from(attr.get(1..attr.len() - 1).expect(PARSING_ERROR));

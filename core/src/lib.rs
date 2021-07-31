@@ -58,9 +58,9 @@
 //! ```
 extern crate lv2_sys as sys;
 
+pub mod cell;
 pub mod extension;
 pub mod feature;
 pub mod plugin;
 pub mod port;
 pub mod prelude;
-pub mod cell;

@@ -29,7 +29,9 @@ impl<T> ReadCell<T> {
     /// ```
     #[inline]
     pub const fn new(value: T) -> ReadCell<T> {
-        ReadCell { value: Cell::new(value) }
+        ReadCell {
+            value: Cell::new(value),
+        }
     }
 }
 
@@ -50,7 +52,7 @@ impl<T: ?Sized> ReadCell<T> {
     #[inline]
     pub fn from_ref(t: &T) -> &ReadCell<T> {
         // SAFETY: `&mut` ensures unique access.
-        unsafe { &*(t as *const T as  *const ReadCell<T>) }
+        unsafe { &*(t as *const T as *const ReadCell<T>) }
     }
 }
 
@@ -132,7 +134,9 @@ impl<T> WriteCell<T> {
     /// ```
     #[inline]
     pub const fn new(value: T) -> WriteCell<T> {
-        WriteCell { value: Cell::new(value) }
+        WriteCell {
+            value: Cell::new(value),
+        }
     }
 
     /// Sets the contained value.
