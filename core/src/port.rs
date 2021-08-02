@@ -72,10 +72,7 @@ impl PortType for InPlaceAudio {
     type OutputPortType = &'static [Cell<f32>];
 
     #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> Self::InputPortType {
+    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
         Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
@@ -84,10 +81,7 @@ impl PortType for InPlaceAudio {
     }
 
     #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> Self::OutputPortType {
+    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
         Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
@@ -133,10 +127,7 @@ impl PortType for InPlaceControl {
     type OutputPortType = &'static Cell<f32>;
 
     #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        _sample_count: u32,
-    ) -> Self::InputPortType {
+    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InputPortType {
         Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
     }
 
@@ -148,7 +139,6 @@ impl PortType for InPlaceControl {
         Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
     }
 }
-
 
 /// CV port type.
 ///
@@ -185,10 +175,7 @@ impl PortType for InPlaceCV {
     type OutputPortType = &'static [Cell<f32>];
 
     #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> Self::InputPortType {
+    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
         Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
@@ -197,10 +184,7 @@ impl PortType for InPlaceCV {
     }
 
     #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> Self::OutputPortType {
+    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
         Cell::from_mut(std::slice::from_raw_parts_mut(
             pointer.as_ptr() as *mut f32,
             sample_count as usize,
