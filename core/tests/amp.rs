@@ -12,9 +12,9 @@ struct Amp {
 
 #[derive(PortCollection)]
 struct AmpPorts {
-    gain: InputPort<Control>,
-    input: InPlaceInputPort<Audio>,
-    output: InPlaceOutputPort<Audio>,
+    gain: InputPort<InPlaceControl>,
+    input: InputPort<InPlaceAudio>,
+    output: OutputPort<InPlaceAudio>,
 }
 
 #[derive(FeatureCollection)]
@@ -62,7 +62,7 @@ impl Plugin for Amp {
         let output = ports.output.iter();
 
         for (input_sample, output_sample) in input.zip(output) {
-            output_sample.set(input_sample.get() * coef);
+            output_sample.set(input_sample.get() * coef.get());
         }
     }
 
