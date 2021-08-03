@@ -1,13 +1,19 @@
 //! Types to declare derivable port collections.
 //!
 //! Every plugin has a type of [`PortCollection`](trait.PortCollection.html) which is used to handle input/output ports. In order to make the creation of these port collection types easier, `PortCollection` can simply be derived. However, the macro that implements `PortCollection` requires the fields of the struct to have specific types. These types are provided in this module.
+mod audio;
+mod control;
+mod cv;
+
+pub use audio::*;
+pub use control::*;
+pub use cv::*;
+
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
-use urid::UriBound;
 
 pub use lv2_core_derive::*;
-use std::cell::Cell;
 
 /// Generalization of port types.
 ///
@@ -35,162 +41,6 @@ pub trait PortType {
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
-}
-
-/// Audio port type.
-///
-/// Audio ports are the most common type of input/output ports: Their input is a slice of audio samples, as well as their output.
-pub struct Audio;
-
-unsafe impl UriBound for Audio {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__AudioPort;
-}
-
-impl PortType for Audio {
-    type InputPortType = &'static [f32];
-    type OutputPortType = &'static mut [f32];
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
-        std::slice::from_raw_parts(pointer.as_ptr() as *const f32, sample_count as usize)
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
-        std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
-    }
-}
-
-pub struct InPlaceAudio;
-
-unsafe impl UriBound for InPlaceAudio {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__AudioPort;
-}
-
-impl PortType for InPlaceAudio {
-    type InputPortType = &'static [Cell<f32>];
-    type OutputPortType = &'static [Cell<f32>];
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
-        Cell::from_mut(std::slice::from_raw_parts_mut(
-            pointer.as_ptr() as *mut f32,
-            sample_count as usize,
-        ))
-        .as_slice_of_cells()
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
-        Cell::from_mut(std::slice::from_raw_parts_mut(
-            pointer.as_ptr() as *mut f32,
-            sample_count as usize,
-        ))
-        .as_slice_of_cells()
-    }
-}
-
-/// Control value port type.
-///
-/// Control ports in general are used to control the behaviour of the plugin. These control value ports only have one value per `run` call and therefore don't have a fixed sampling rate.
-///
-/// Therefore, their input is a floating-point number and their output is a mutable reference to a floating-point number.
-pub struct Control;
-
-unsafe impl UriBound for Control {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
-}
-
-impl PortType for Control {
-    type InputPortType = f32;
-    type OutputPortType = &'static mut f32;
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> f32 {
-        *(pointer.cast().as_ref())
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> &'static mut f32 {
-        (pointer.as_ptr() as *mut f32).as_mut().unwrap()
-    }
-}
-
-pub struct InPlaceControl;
-
-unsafe impl UriBound for InPlaceControl {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
-}
-
-impl PortType for InPlaceControl {
-    type InputPortType = &'static Cell<f32>;
-    type OutputPortType = &'static Cell<f32>;
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        _sample_count: u32,
-    ) -> Self::OutputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
-    }
-}
-
-/// CV port type.
-///
-/// Control ports in general are used to control the behaviour of the plugin. CV ports are sampled just like [audio data](struct.Audio.html). This means that audio data is often valid CV data, but CV data generally is not audio data, because it may not be within the audio bounds of -1.0 to 1.0.
-pub struct CV;
-
-unsafe impl UriBound for CV {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__CVPort;
-}
-
-impl PortType for CV {
-    type InputPortType = &'static [f32];
-    type OutputPortType = &'static mut [f32];
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
-        std::slice::from_raw_parts(pointer.as_ptr() as *const f32, sample_count as usize)
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
-        std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
-    }
-}
-
-pub struct InPlaceCV;
-
-unsafe impl UriBound for InPlaceCV {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__CVPort;
-}
-
-impl PortType for InPlaceCV {
-    type InputPortType = &'static [Cell<f32>];
-    type OutputPortType = &'static [Cell<f32>];
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
-        Cell::from_mut(std::slice::from_raw_parts_mut(
-            pointer.as_ptr() as *mut f32,
-            sample_count as usize,
-        ))
-        .as_slice_of_cells()
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
-        Cell::from_mut(std::slice::from_raw_parts_mut(
-            pointer.as_ptr() as *mut f32,
-            sample_count as usize,
-        ))
-        .as_slice_of_cells()
-    }
 }
 
 /// Abstraction of safe port handles.
@@ -287,7 +137,7 @@ impl<T: PortHandle> PortHandle for Option<T> {
 ///         optional_control_input: Option<InputPort<Control>>,
 ///     }
 ///
-/// Please note that port indices are mapped in the order of occurence; In our example, the implementation will treat `audio_input` as port `0`, `audio_output` as port `1` and so on. Therefore, your plugin definition and your port collection have to match. Otherwise, undefined behaviour will occur.
+/// Please note that port indices are mapped in the order of occurrence; In our example, the implementation will treat `audio_input` as port `0`, `audio_output` as port `1` and so on. Therefore, your plugin definition and your port collection have to match. Otherwise, undefined behaviour will occur.
 pub trait PortCollection: Sized {
     /// The type of the port pointer cache.
     ///
