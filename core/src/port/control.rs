@@ -41,7 +41,7 @@ use urid::UriBound;
 ///         let output = ports.output.iter_mut();
 ///
 ///         for (input_sample, output_sample) in input.zip(output) {
-///             *output_sample = *input_sample * *factor;
+///             *output_sample = *input_sample * factor;
 ///         }
 ///     }
 /// }
@@ -116,7 +116,7 @@ impl PortType for Control {
 ///         let output = ports.output.iter();
 ///
 ///         for (input_sample, output_sample) in input.zip(output) {
-///             output_sample.set(input_sample.get()) * factor;
+///             output_sample.set(input_sample.get() * factor);
 ///         }
 ///     }
 /// }

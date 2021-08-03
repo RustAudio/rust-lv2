@@ -144,7 +144,7 @@ impl PortType for CV {
 ///         let output = ports.output.iter();
 ///
 ///         for ((input_sample, output_sample), amp_factor) in input.zip(output).zip(factor) {
-///             output_sample.set(input_sample * amp_factor);
+///             output_sample.set(input_sample.get() * amp_factor.get());
 ///         }
 ///     }
 /// }
