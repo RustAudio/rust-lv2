@@ -102,8 +102,8 @@ where
     type WriteParameter = ObjectHeader;
     type WriteHandle = ObjectWriter<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
-        let (header, body) = body.split_type::<sys::LV2_Atom_Object_Body>()?;
+    unsafe fn read(body: Space<'a>, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
+        let (header, body) = body.split_for_type::<sys::LV2_Atom_Object_Body>()?;
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
             otype: URID::try_from(header.otype).ok()?,
@@ -153,7 +153,7 @@ where
     type WriteHandle = <Object as Atom<'a, 'b>>::WriteHandle;
 
     #[allow(clippy::unit_arg)]
-    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
+    unsafe fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
         Object::read(body, parameter)
     }
 
@@ -176,9 +176,11 @@ impl<'a> Iterator for ObjectReader<'a> {
     type Item = (PropertyHeader, UnidentifiedAtom<'a>);
 
     fn next(&mut self) -> Option<(PropertyHeader, UnidentifiedAtom<'a>)> {
-        let (header, value, space) = Property::read_body(self.space)?;
+        // SAFETY: The fact that this contains a valid property is guaranteed by this type.
+        let (header, value, space) = unsafe { Property::read_body(self.space) }?;
         self.space = space;
-        Some((header, UnidentifiedAtom::new(value)))
+        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
+        Some((header, unsafe { UnidentifiedAtom::new_unchecked(value) }))
     }
 }
 
@@ -243,8 +245,12 @@ pub struct PropertyHeader {
 impl Property {
     /// Read the body of a property atom from a space.
     ///
-    /// This method assumes that the space actually contains the body of a property atom, without the header. It returns the property header, containing the key and optional context of the property, the body of the actual atom, and the space behind the atom.
-    fn read_body(space: Space) -> Option<(PropertyHeader, Space, Space)> {
+    /// It returns the property header, containing the key and optional context of the property, the body of the actual atom, and the remaining space behind the atom.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the given Space actually contains a valid property.
+    unsafe fn read_body(space: Space) -> Option<(PropertyHeader, Space, Space)> {
         #[repr(C)]
         #[derive(Clone, Copy)]
         /// A custom version of the property body that does not include the value atom header.
@@ -255,7 +261,7 @@ impl Property {
             context: u32,
         }
 
-        let (header, space) = space.split_type::<StrippedPropertyBody>()?;
+        let (header, space) = space.split_for_type::<StrippedPropertyBody>()?;
 
         let header = PropertyHeader {
             key: URID::try_from(header.key).ok()?,
@@ -377,10 +383,10 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.object).unwrap();
+            let space = Space::from_bytes(raw_space.as_ref());
+            let (body, _) = unsafe { space.split_atom_body(urids.object) }.unwrap();
 
-            let (header, iter) = Object::read(body, ()).unwrap();
+            let (header, iter) = unsafe { Object::read(body, ()) }.unwrap();
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 

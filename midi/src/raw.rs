@@ -25,7 +25,7 @@ where
     type WriteHandle = FramedMutSpace<'a, 'b>;
 
     fn read(body: Space<'a>, _: ()) -> Option<&'a [u8]> {
-        body.data()
+        body.as_bytes()
     }
 
     fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {

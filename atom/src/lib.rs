@@ -150,17 +150,22 @@ where
     /// It may contain a reference to a `MutSpace` and therefore may not outlive it.
     type WriteHandle: 'b;
 
-    /// Read the body of the atom.
+    /// Reads the body of the atom.
     ///
-    /// The passed space exactly covers the body of the atom, excluding the header. You may assume that the body is actually of your atom type, since the URID of the atom was checked beforehand.
+    /// The passed space exactly covers the body of the atom, excluding the header.
     ///
-    /// If the atom is malformed, you may not panic and return `None` instead.
-    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
+    /// If the atom is malformed, this method returns `None`.
+    ///
+    /// # Safety
+    ///
+    /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
+    /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
+    unsafe fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
 
     /// Initialize the body of the atom.
     ///
     /// In this method, the atom is prepared for the writing handle. Usually, the atom will not be
-    /// valid when initializied; Users have to use the write handle to make it valid.
+    /// valid when initialized; Users have to use the write handle to make it valid.
     ///
     /// The frame of the atom was already initialized, containing the URID.
     ///
@@ -182,8 +187,11 @@ pub struct UnidentifiedAtom<'a> {
 impl<'a> UnidentifiedAtom<'a> {
     /// Construct a new unidentified atom.
     ///
-    /// The space actually has to contain an atom. If it doesn't, crazy (but not undefined) things can happen.
-    pub fn new(space: Space<'a>) -> Self {
+    /// # Safety
+    ///
+    /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.x
+    #[inline]
+    pub unsafe fn new_unchecked(space: Space<'a>) -> Self {
         Self { space }
     }
 
@@ -195,18 +203,18 @@ impl<'a> UnidentifiedAtom<'a> {
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {
-        self.space
-            .split_atom_body(urid)
-            .map(|(body, _)| body)
-            .and_then(|body| A::read(body, parameter))
+        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
+        let (body, _rest) = unsafe { self.space.split_atom_body(urid) }?;
+        // SAFETY: the fact that this contains a valid instance of A is checked by split_atom_body above.
+        unsafe { A::read(body, parameter) }
     }
 
     /// Retrieve the type URID of the atom.
     ///
     /// This can be used to identify atoms without actually reading them.
     pub fn type_urid(self) -> Option<URID> {
-        self.space
-            .split_type::<sys::LV2_Atom>()
+        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
+        unsafe { self.space.split_for_type::<sys::LV2_Atom>() }
             .and_then(|(header, _)| URID::new(header.type_))
     }
 }

@@ -89,8 +89,8 @@ where
     type WriteParameter = TimeStampURID;
     type WriteHandle = SequenceWriter<'a, 'b>;
 
-    fn read(body: Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
-        let (header, body) = body.split_type::<sys::LV2_Atom_Sequence_Body>()?;
+    unsafe fn read(body: Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
+        let (header, body) = body.split_for_type::<sys::LV2_Atom_Sequence_Body>()?;
         let unit = if header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
         } else {
@@ -184,14 +184,14 @@ impl<'a> Iterator for SequenceIterator<'a> {
     type Item = (TimeStamp, UnidentifiedAtom<'a>);
 
     fn next(&mut self) -> Option<(TimeStamp, UnidentifiedAtom<'a>)> {
-        let (raw_stamp, space) = self.space.split_type::<RawTimeStamp>()?;
+        let (raw_stamp, space) = self.space.split_for_type::<RawTimeStamp>()?;
         let stamp = match self.unit {
             TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
             TimeStampUnit::BeatsPerMinute => unsafe { TimeStamp::BeatsPerMinute(raw_stamp.beats) },
         };
         let (atom, space) = space.split_atom()?;
         self.space = space;
-        Some((stamp, UnidentifiedAtom::new(atom)))
+        Some((stamp, UnidentifiedAtom::new_unchecked(atom)))
     }
 }
 
@@ -255,7 +255,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
-        let data = atom.space.data()?;
+        let data = atom.space.as_bytes();
         self.write_time_stamp(stamp)?;
         self.frame.write_raw(data, true).map(|_| ())
     }
@@ -338,7 +338,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
+            let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.atom.sequence).unwrap();
             let mut reader = Sequence::read(body, urids.units.beat).unwrap();
 

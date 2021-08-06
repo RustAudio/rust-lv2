@@ -167,7 +167,7 @@ fn main() {
     }
 
     // Asserting the result
-    let (sequence, _) = Space::from_slice(output_atom_space.as_ref())
+    let (sequence, _) = Space::from_bytes(output_atom_space.as_ref())
         .split_atom_body(urids.atom.sequence)
         .unwrap();
     for (stamp, atom) in Sequence::read(sequence, urids.units.beat).unwrap() {

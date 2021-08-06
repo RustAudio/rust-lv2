@@ -54,12 +54,12 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
-        let space = Space::from_slice(space.as_ref());
+        let space = Space::from_bytes(space.as_ref());
         let (header, data) = space
-            .split_type::<sys::LV2_Atom>()
+            .split_for_type::<sys::LV2_Atom>()
             .ok_or(StateErr::BadData)?;
         let data = data
-            .split_raw(header.size as usize)
+            .split_bytes_at(header.size as usize)
             .map(|(data, _)| data)
             .ok_or(StateErr::BadData)?;
 
@@ -182,7 +182,7 @@ impl<'a> RetrieveHandle<'a> {
             return Err(StateErr::NoProperty);
         };
 
-        Ok(StatePropertyReader::new(type_, Space::from_slice(space)))
+        Ok(StatePropertyReader::new(type_, Space::from_bytes(space)))
     }
 }
 
@@ -316,7 +316,7 @@ mod tests {
                 }
                 3 => {
                     assert_eq!(urids.vector::<Int>(), *type_);
-                    let space = Space::from_slice(value.as_slice());
+                    let space = Space::from_bytes(value.as_slice());
                     let data = Vector::read(space, urids.int).unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }

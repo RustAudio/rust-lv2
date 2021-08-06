@@ -31,7 +31,7 @@ where
 
     fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
         space
-            .data()
+            .as_bytes()
             .and_then(|bytes| wmidi::MidiMessage::try_from(bytes).ok())
     }
 
@@ -145,7 +145,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_reference(raw_space.as_ref());
+            let space = Space::from_ref(raw_space.as_ref());
 
             let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
             assert_eq!(message, reference_message);
@@ -179,7 +179,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_reference(raw_space.as_ref());
+            let space = Space::from_ref(raw_space.as_ref());
 
             let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
             assert_eq!(

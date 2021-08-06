@@ -52,7 +52,7 @@ where
     type WriteParameter = ();
     type WriteHandle = TupleWriter<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<TupleIterator<'a>> {
+    unsafe fn read(body: Space<'a>, _: ()) -> Option<TupleIterator<'a>> {
         Some(TupleIterator { space: body })
     }
 
@@ -74,7 +74,7 @@ impl<'a> Iterator for TupleIterator<'a> {
     fn next(&mut self) -> Option<UnidentifiedAtom<'a>> {
         let (atom, space) = self.space.split_atom()?;
         self.space = space;
-        Some(UnidentifiedAtom::new(atom))
+        Some(UnidentifiedAtom::new_unchecked(atom))
     }
 }
 
@@ -160,7 +160,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
+            let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.tuple).unwrap();
             let items: Vec<UnidentifiedAtom> = Tuple::read(body, ()).unwrap().collect();
             assert_eq!(items[0].read(urids.vector, urids.int).unwrap(), [17; 9]);
