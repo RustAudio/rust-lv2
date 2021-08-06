@@ -13,15 +13,45 @@ use std::marker::Unpin;
 use std::mem::{size_of, size_of_val};
 use urid::URID;
 
-/// Specialized smart pointer to retrieve struct instances from a slice of memory.
+#[inline]
+fn pad_slice(data: &[u8]) -> Option<&[u8]> {
+    let start = data.as_ptr() as usize;
+    let padding = if start % 8 == 0 { 0 } else { 8 - start % 8 };
+
+    data.get(padding..)
+}
+
+#[inline]
+fn as_bytes<T: ?Sized>(value: &T) -> &[u8] {
+    // SAFETY: any type can safely be transmuted to a byte slice
+    unsafe {
+        std::slice::from_raw_parts(value as *const T as *const u8, size_of_val(value))
+    }
+}
+
+#[inline]
+fn as_bytes_mut<T: ?Sized>(value: &mut T) -> &mut [u8] {
+    // SAFETY: any type can safely be transmuted to a byte slice
+    unsafe {
+        std::slice::from_raw_parts_mut(value as *mut T as *mut u8, size_of_val(value))
+    }
+}
+
+/// A 64-bit aligned slice of bytes that is designed to contain Atoms.
 ///
 /// The accessor methods of this struct all behave in a similar way: If the internal slice is big enough, they create a reference to the start of the slice with the desired type and create a new space object that contains the space after the references instance.
 #[derive(Clone, Copy)]
-pub struct Space<'a> {
-    data: Option<&'a [u8]>,
+pub struct Space {
+    data: [u8],
 }
 
-impl<'a> Space<'a> {
+impl Space {
+    /// Creates an empty Space.
+    #[inline]
+    pub const fn empty() -> &'static Space {
+        &Space { data: *&[][..] }
+    }
+
     /// Create a new space from an atom pointer.
     ///
     /// The method creates a space that contains the atom as well as it's body.
@@ -30,62 +60,84 @@ impl<'a> Space<'a> {
     ///
     /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
     #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> Self {
-        let size = atom.size as usize;
+    pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> &Self {
         let data = std::slice::from_raw_parts(
             atom as *const sys::LV2_Atom as *const u8,
-            size + size_of::<sys::LV2_Atom>(),
+            atom.size as usize + size_of::<sys::LV2_Atom>(),
         );
-        Self::from_slice(data)
+        Self::from_bytes(data)
     }
 
-    /// Create a new space from a slice.
+    /// Creates a new space from a slice of bytes.
     ///
-    /// Since everything regarding atoms is 64-bit-aligned, this method panics if the data slice is not 64-bit-aligned.
-    pub fn from_slice(data: &'a [u8]) -> Self {
-        Space { data: Some(data) }
+    /// # Panics
+    ///
+    /// This method panics if the given slice's offset is not 64-bit aligned
+    /// (i.e. if it's pointer's value is not a multiple of 8 bytes).
+    ///
+    /// For a non-panicking version, see [`Space::try_from_bytes`].
+    #[inline]
+    pub fn from_bytes(data: &[u8]) -> &Self {
+        Space::try_from_bytes(data).unwrap()
+    }
+
+    /// Creates a new space from a slice of bytes.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's offset is not 64-bit aligned
+    /// (i.e. if it's pointer's value is not a multiple of 8 bytes).
+    ///
+    /// This is the non-panicking version of [`Space::from_bytes`].
+    #[inline]
+    pub fn try_from_bytes(data: &[u8]) -> Option<&Self> {
+        if data.as_ptr() as usize % 8 != 0 {
+            return None;
+        }
+
+        Some(&Space { data: *data })
+    }
+
+    /// Creates a new space from a slice of bytes.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's offset is not 64-bit aligned
+    /// (i.e. if it's pointer's value is not a multiple of 8 bytes).
+    ///
+    /// This is the non-panicking version of [`Space::from_bytes`].
+    #[inline]
+    pub fn try_from_bytes_padded(data: &[u8]) -> Option<&Self> {
+        pad_slice(data).map(|data| &Self { data: *data })
     }
 
     /// Try to retrieve a slice of bytes.
     ///
     /// This method basically splits off the lower part of the internal bytes slice and creates a new atom space pointer of the upper part. Since atoms have to be 64-bit-aligned, there might be a padding space that's neither in the lower nor in the upper part.
-    pub fn split_raw(self, size: usize) -> Option<(&'a [u8], Self)> {
-        let data = self.data?;
-
-        if size > data.len() {
+    pub fn split_bytes_at(&self, size: usize) -> Option<(&[u8], &Space)> {
+        if size > self.data.len() {
             return None;
         }
-        let (lower_space, upper_space) = data.split_at(size);
 
-        // Apply padding.
-        let padding = if size % 8 == 0 { 0 } else { 8 - size % 8 };
-        let upper_space = if padding <= upper_space.len() {
-            let upper_space = upper_space.split_at(padding).1;
-            Some(upper_space)
-        } else {
-            None
-        };
-        let upper_space = Self { data: upper_space };
-
+        let (lower_space, upper_space) = self.data.split_at(size);
+        let upper_space = Self::try_from_bytes_padded(upper_space).unwrap_or(Space::empty());
         Some((lower_space, upper_space))
     }
 
     /// Try to retrieve space.
     ///
     /// This method calls [`split_raw`](#method.split_raw) and wraps the returned slice in an atom space. The second space is the space after the first one.
-    pub fn split_space(self, size: usize) -> Option<(Self, Self)> {
-        self.split_raw(size)
-            .map(|(data, rhs)| (Self::from_slice(data), rhs))
+    pub fn split_at(&self, size: usize) -> Option<(&Space, &Space)> {
+        self.split_bytes_at(size)
+            .map(|(data, rhs)| (Self::from_bytes(data), rhs))
     }
 
     /// Try to retrieve a reference to a sized type.
     ///
     /// This method retrieves a slice of memory using the [`split_raw`](#method.split_raw) method and interprets it as an instance of `T`. Since there is no way to check that the memory is actually a valid instance of `T`, this method is unsafe. The second return value is the space after the instance of `T`.
-    pub fn split_type<T>(self) -> Option<(&'a T, Self)>
-    where
-        T: Unpin + Copy + Send + Sync + Sized + 'static,
+    pub unsafe fn split_for_type<'a, T>(&'a self) -> Option<(&'a T, &'a Space)> where T: 'a,
     {
-        self.split_raw(size_of::<T>())
+        self.split_bytes_at(size_of::<T>())
             .map(|(data, rhs)| (unsafe { &*(data.as_ptr() as *const T) }, rhs))
     }
 
@@ -94,9 +146,9 @@ impl<'a> Space<'a> {
     /// This method assumes that the space contains an atom and retrieves the space occupied by the atom, including the atom header. The second return value is the rest of the space behind the atom.
     ///
     /// The difference to [`split_atom_body`](#method.split_atom_body) is that the returned space contains the header of the atom and that the type of the atom is not checked.
-    pub fn split_atom(self) -> Option<(Self, Self)> {
-        let (header, _) = self.split_type::<sys::LV2_Atom>()?;
-        self.split_space(size_of::<sys::LV2_Atom>() + header.size as usize)
+    pub unsafe fn split_atom(&self) -> Option<(&Self, &Self)> {
+        let (header, _) = self.split_for_type::<sys::LV2_Atom>()?;
+        self.split_at(size_of::<sys::LV2_Atom>() + header.size as usize)
     }
 
     /// Try to retrieve the body of the atom.
@@ -104,52 +156,27 @@ impl<'a> Space<'a> {
     /// This method retrieves the header of the atom. If the type URID in the header matches the given URID, it returns the body of the atom. If not, it returns `None`. The first space is the body of the atom, the second one is the space behind it.
     ///
     /// The difference to [`split_atom`](#method.split_atom) is that the returned space does not contain the header of the atom and that the type of the atom is checked.
-    pub fn split_atom_body<T: ?Sized>(self, urid: URID<T>) -> Option<(Self, Self)> {
-        let (header, space) = self.split_type::<sys::LV2_Atom>()?;
+    pub unsafe fn split_atom_body<T: ?Sized>(&self, urid: URID<T>) -> Option<(&Self, &Self)> {
+        let (header, space) = self.split_for_type::<sys::LV2_Atom>()?;
         if header.type_ != urid.get() {
             return None;
         }
-        space.split_space(header.size as usize)
+        space.split_at(header.size as usize)
     }
 
     /// Create a space from a reference.
-    pub fn from_reference<T: ?Sized>(instance: &'a T) -> Self {
-        let data = unsafe {
-            std::slice::from_raw_parts(instance as *const T as *const u8, size_of_val(instance))
-        };
-        assert_eq!(data.as_ptr() as usize % 8, 0);
-        Space { data: Some(data) }
-    }
-
-    /// Concatenate two spaces.
     ///
-    /// There are situations where a space is split too often and you might want to reunite these two adjacent spaces. This method checks if the given spaces are adjacent, which means that the left space has to end exactly where the right one begins. In this case, the concatenated space is returned. If this is not the case, this method returns `None`.
-    pub fn concat(lhs: Self, rhs: Self) -> Option<Self> {
-        let lhs_data = match lhs.data {
-            Some(data) => data,
-            None => return Some(rhs),
-        };
-        let rhs_data = match rhs.data {
-            Some(data) => data,
-            None => return Some(lhs),
-        };
-        if unsafe { lhs_data.as_ptr().add(lhs_data.len()) } == rhs_data.as_ptr() {
-            Some(Self::from_slice(unsafe {
-                std::slice::from_raw_parts(lhs_data.as_ptr(), lhs_data.len() + rhs_data.len())
-            }))
-        } else {
-            None
-        }
+    /// # Panics
+    ///
+    /// This method panics if the given instance pointer isn't 64-bit aligned.
+    pub fn from_ref<T: ?Sized>(instance: &T) -> &Self {
+        Space::try_from_bytes_padded(as_bytes(instance)).unwrap()
     }
 
     /// Return the internal slice of the space.
-    pub fn data(&self) -> Option<&'a [u8]> {
-        self.data
-    }
-
-    /// Return a mutable reference to the internal slice of the space.
-    pub fn mut_data(&mut self) -> &mut Option<&'a [u8]> {
-        &mut self.data
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.data
     }
 }
 
@@ -162,12 +189,20 @@ pub trait MutSpace<'a> {
     /// If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned. The first return value is the number of padding bytes that has been used and the second return value is a mutable slice referencing the allocated data.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
-    fn allocate(&mut self, size: usize, apply_padding: bool) -> Option<(usize, &'a mut [u8])>;
+    fn allocate(&mut self, size: usize) -> Option<(usize, &'a mut Space)>;
+
+    fn allocate_unpadded(&mut self, size: usize) -> Option<&'a mut [u8]>;
+
+    fn write_raw_unpadded(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
+        let space = self.allocate_unpadded(data.len())?;
+        space.copy_from_slice(data);
+        Some(space)
+    }
 
     /// Try to write data to the internal data slice.
     ///
     /// The method allocates a slice with the [`allocate`](#tymethod.allocate) method and copies the data to the slice.
-    fn write_raw(&mut self, data: &[u8], apply_padding: bool) -> Option<&'a mut [u8]> {
+    fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut Space> {
         self.allocate(data.len(), apply_padding).map(|(_, space)| {
             space.copy_from_slice(data);
             space
@@ -314,7 +349,7 @@ impl SpaceElement {
 ///
 /// // Retrieving a continuos vector with the written data and verifying it's contents.
 /// let written_data: Vec<u8> = element.to_vec();
-/// let atom = UnidentifiedAtom::new(Space::from_slice(written_data.as_ref()));
+/// let atom = unsafe { UnidentifiedAtom::new_unchecked(Space::from_slice(written_data.as_ref())) };
 /// assert_eq!(42, atom.read(urids.int, ()).unwrap());
 /// ```
 pub struct SpaceHead<'a> {
@@ -432,13 +467,13 @@ mod tests {
             *(ptr) = 0x42424242;
         }
 
-        let space = Space::from_slice(vector.as_slice());
-        let (lower_space, space) = space.split_raw(128).unwrap();
+        let space = Space::from_bytes(vector.as_slice());
+        let (lower_space, space) = space.split_bytes_at(128).unwrap();
         for i in 0..128 {
             assert_eq!(lower_space[i], i as u8);
         }
 
-        let (integer, _) = space.split_type::<u32>().unwrap();
+        let (integer, _) = unsafe { space.split_for_type::<u32>() }.unwrap();
         assert_eq!(*integer, 0x42424242);
     }
 
@@ -455,39 +490,23 @@ mod tests {
                     type_: urid.get(),
                 },
                 body: 42,
-            }
+            };
+
+            let space = Space::from_ref(data.as_ref());
+            let (atom, _) = space.split_atom().unwrap();
+            let (body, _) = atom.split_atom_body(urid).unwrap();
+            let body = body.as_bytes();
+
+            assert_eq!(size_of::<i32>(), size_of_val(body));
+            assert_eq!(42, unsafe { *(body.as_ptr() as *const i32) });
         }
-
-        let space = Space::from_reference(data.as_ref());
-        let (atom, _) = space.split_atom().unwrap();
-        let (body, _) = atom.split_atom_body(urid).unwrap();
-        let body = body.data().unwrap();
-
-        assert_eq!(size_of::<i32>(), size_of_val(body));
-        assert_eq!(42, unsafe { *(body.as_ptr() as *const i32) });
     }
 
     #[test]
     fn test_from_reference() {
         let value: u64 = 0x42424242;
-        let space = Space::from_reference(&value);
-        assert_eq!(value, *space.split_type::<u64>().unwrap().0);
-    }
-
-    #[test]
-    fn test_concat() {
-        let data: Box<[u64]> = Box::new([0; 64]);
-        let space = Space::from_reference(data.as_ref());
-        let (lhs, rhs) = space.split_space(8).unwrap();
-        let concated_space = Space::concat(lhs, rhs).unwrap();
-        assert_eq!(
-            space.data().unwrap().as_ptr(),
-            concated_space.data().unwrap().as_ptr()
-        );
-        assert_eq!(
-            space.data().unwrap().len(),
-            concated_space.data().unwrap().len()
-        );
+        let space = Space::from_ref(&value);
+        assert_eq!(value, *unsafe { space.split_for_type::<u64>() }.unwrap().0);
     }
 
     fn test_mut_space<'a, S: MutSpace<'a>>(mut space: S) {

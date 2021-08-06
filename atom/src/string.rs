@@ -56,8 +56,8 @@ where
     type WriteParameter = LiteralInfo;
     type WriteHandle = StringWriter<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<(LiteralInfo, &'a str)> {
-        let (header, body) = body.split_type::<sys::LV2_Atom_Literal_Body>()?;
+    unsafe fn read(body: Space<'a>, _: ()) -> Option<(LiteralInfo, &'a str)> {
+        let (header, body) = body.split_for_type::<sys::LV2_Atom_Literal_Body>()?;
         let info = if header.lang != 0 && header.datatype == 0 {
             LiteralInfo::Language(URID::new(header.lang)?)
         } else if header.lang == 0 && header.datatype != 0 {
@@ -65,7 +65,7 @@ where
         } else {
             return None;
         };
-        let data = body.data()?;
+        let data = body.as_bytes();
         std::str::from_utf8(&data[0..data.len() - 1])
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
             .ok()
@@ -108,10 +108,10 @@ where
     type WriteParameter = ();
     type WriteHandle = StringWriter<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<&'a str> {
-        body.data()
-            .and_then(|data| std::str::from_utf8(data).ok())
-            .map(|string| &string[..string.len() - 1]) // removing the null-terminator
+    unsafe fn read(body: Space<'a>, _: ()) -> Option<&'a str> {
+        let data = body.as_bytes();
+        let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
+        Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
     fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
@@ -212,7 +212,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
+            let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.atom.literal).unwrap();
             let (info, text) = Literal::read(body, ()).unwrap();
 
@@ -252,7 +252,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
+            let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.string).unwrap();
             let string = String::read(body, ()).unwrap();
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);

@@ -58,8 +58,8 @@ where
     type WriteParameter = URID<C>;
     type WriteHandle = VectorWriter<'a, 'b, C>;
 
-    fn read(body: Space<'a>, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
-        let (header, body) = body.split_type::<sys::LV2_Atom_Vector_Body>()?;
+    unsafe fn read(body: Space<'a>, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
+        let (header, body) = body.split_for_type::<sys::LV2_Atom_Vector_Body>()?;
 
         if header.child_type != child_urid
             || header.child_size as usize != size_of::<C::InternalType>()
@@ -67,7 +67,7 @@ where
             return None;
         }
 
-        let data = body.data()?;
+        let data = body.as_bytes();
 
         assert_eq!(data.len() % size_of::<C::InternalType>(), 0);
         let children_count = data.len() / size_of::<C::InternalType>();
@@ -186,7 +186,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
+            let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.vector).unwrap();
             let children: &[i32] = Vector::<Int>::read(body, urids.int).unwrap();
 

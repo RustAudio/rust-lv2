@@ -46,8 +46,8 @@ where
     type WriteParameter = ();
     type WriteHandle = FramedMutSpace<'a, 'b>;
 
-    fn read(space: Space<'a>, _: ()) -> Option<&'a [u8]> {
-        space.data()
+    unsafe fn read(space: Space<'a>, _: ()) -> Option<&'a [u8]> {
+        Some(space.as_bytes())
     }
 
     fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
@@ -109,7 +109,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_reference(raw_space.as_ref());
+            let space = Space::from_ref(raw_space.as_ref());
 
             let data = Chunk::read(space.split_atom_body(urids.chunk).unwrap().0, ()).unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
