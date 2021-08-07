@@ -29,13 +29,13 @@ where
     type WriteParameter = wmidi::MidiMessage<'static>;
     type WriteHandle = ();
 
-    fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
+    fn read(space: &'a Space, _: ()) -> Option<wmidi::MidiMessage<'a>> {
         space
             .as_bytes()
             .and_then(|bytes| wmidi::MidiMessage::try_from(bytes).ok())
     }
 
-    fn init(mut frame: FramedMutSpace<'a, 'b>, message: wmidi::MidiMessage<'b>) -> Option<()> {
+    fn init(mut frame: AtomSpace<'a, 'b>, message: wmidi::MidiMessage<'b>) -> Option<()> {
         frame
             .allocate(message.bytes_size(), false)
             .and_then(|(_, space)| message.copy_to_slice(space).ok())
@@ -63,11 +63,11 @@ where
     type WriteParameter = ();
     type WriteHandle = Writer<'a, 'b>;
 
-    fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
+    fn read(space: &'a Space, _: ()) -> Option<wmidi::MidiMessage<'a>> {
         WMidiEvent::read(space, ())
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<Writer<'a, 'b>> {
+    fn init(frame: AtomSpace<'a, 'b>, _: ()) -> Option<Writer<'a, 'b>> {
         let mut writer = Writer { frame };
         writer.write::<u8>(&0xf0);
         Some(writer)
@@ -80,7 +80,7 @@ where
 ///
 /// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
 pub struct Writer<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+    frame: AtomSpace<'a, 'b>,
 }
 
 impl<'a, 'b> Writer<'a, 'b> {
@@ -96,7 +96,7 @@ impl<'a, 'b> Writer<'a, 'b> {
     where
         T: Unpin + Copy + Send + Sync + Sized + 'static,
     {
-        (&mut self.frame as &mut dyn MutSpace).write(instance, false)
+        (&mut self.frame as &mut dyn AllocateSpace).write(instance, false)
     }
 }
 
@@ -109,7 +109,7 @@ impl<'a, 'b> Drop for Writer<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
-    use atom::space::RootMutSpace;
+    use atom::space::SpaceWriter;
     use std::convert::TryFrom;
     use std::mem::size_of;
     use wmidi::*;
@@ -125,8 +125,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            (&mut space as &mut dyn MutSpace)
+            let mut space = SpaceWriter::new(raw_space.as_mut());
+            (&mut space as &mut dyn AllocateSpace)
                 .init(urid, reference_message.clone())
                 .unwrap();
         }
@@ -161,8 +161,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace).init(urid, ()).unwrap();
+            let mut space = SpaceWriter::new(raw_space.as_mut());
+            let mut writer = (&mut space as &mut dyn AllocateSpace).init(urid, ()).unwrap();
             writer.write_raw(&[1, 2, 3, 4]);
         }
 

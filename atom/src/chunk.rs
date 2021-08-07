@@ -15,7 +15,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
-//!     let mut out_chunk: FramedMutSpace = ports.output.init(urids.chunk, ()).unwrap();
+//!     let mut out_chunk: AtomSpace = ports.output.init(urids.chunk, ()).unwrap();
 //!
 //!     out_chunk.write_raw(in_chunk, false).unwrap();
 //! }
@@ -44,13 +44,13 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+    type WriteHandle = AtomSpace<'a>;
 
-    unsafe fn read(space: Space<'a>, _: ()) -> Option<&'a [u8]> {
+    unsafe fn read(space: &'a Space, _: ()) -> Option<&'a [u8]> {
         Some(space.as_bytes())
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
+    fn init(frame: AtomSpace<'a>, _: ()) -> Option<AtomSpace<'a>> {
         Some(frame)
     }
 }
@@ -73,28 +73,19 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
-                .init(urids.chunk, ())
-                .unwrap();
+            let mut space = raw_space.as_mut();
+            let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
+            let data = writer.allocate_unaligned(SLICE_LENGTH - 1).unwrap();
 
-            for (i, value) in writer
-                .allocate(SLICE_LENGTH - 1, false)
-                .map(|(_, data)| data)
-                .unwrap()
-                .into_iter()
-                .enumerate()
-            {
+            for (i, value) in data.into_iter().enumerate() {
                 *value = i as u8;
             }
-            (&mut writer as &mut dyn MutSpace)
-                .write(&41u8, false)
-                .unwrap();
+
+            space::write_value(&mut space, 41u8).unwrap();
         }
 
         // verifying
         {
-            let raw_space = raw_space.as_ref();
             let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>());
 
             let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
@@ -109,9 +100,9 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_ref(raw_space.as_ref());
+            let space = Space::from_bytes(&raw_space);
 
-            let data = Chunk::read(space.split_atom_body(urids.chunk).unwrap().0, ()).unwrap();
+            let data = unsafe { Chunk::read(space.split_atom_body(urids.chunk).unwrap().0, ()) }.unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {

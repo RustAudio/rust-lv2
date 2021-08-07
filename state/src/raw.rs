@@ -12,7 +12,7 @@ use urid::*;
 ///
 /// The written properties a buffered and flushed when requested. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle<'a> {
-    properties: HashMap<URID, SpaceElement>,
+    properties: HashMap<URID, SpaceList>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
@@ -37,7 +37,7 @@ impl<'a> StoreHandle<'a> {
     pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
         let property_key = property_key.into_general();
         self.properties
-            .insert(property_key.into_general(), SpaceElement::default());
+            .insert(property_key.into_general(), SpaceList::default());
         StatePropertyWriter::new(SpaceHead::new(
             self.properties
                 .get_mut(&property_key.into_general())
@@ -50,7 +50,7 @@ impl<'a> StoreHandle<'a> {
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID<K>,
-        space: SpaceElement,
+        space: SpaceList,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
@@ -130,7 +130,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            (&mut self.head as &mut dyn MutSpace)
+            (&mut self.head as &mut dyn AllocateSpace)
                 .init(urid, parameter)
                 .ok_or(StateErr::Unknown)
         } else {
@@ -191,12 +191,12 @@ impl<'a> RetrieveHandle<'a> {
 /// This handle contains the type and the data of a property retrieved from the [`RetrieveHandle`](struct.RetrieveHandle.html).
 pub struct StatePropertyReader<'a> {
     type_: URID,
-    body: Space<'a>,
+    body: &'a Space,
 }
 
 impl<'a> StatePropertyReader<'a> {
     /// Create a new reading handle with the given type and data.
-    pub fn new<T: ?Sized>(type_: URID<T>, body: Space<'a>) -> Self {
+    pub fn new<T: ?Sized>(type_: URID<T>, body: &'a Space) -> Self {
         Self {
             type_: type_.into_general(),
             body,

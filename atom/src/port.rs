@@ -33,12 +33,12 @@ use urid::URID;
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to read atoms.
 pub struct PortReader<'a> {
-    space: Space<'a>,
+    space: &'a Space,
 }
 
 impl<'a> PortReader<'a> {
     /// Create a new port reader.
-    fn new(space: Space<'a>) -> Self {
+    fn new(space: &'a Space) -> Self {
         Self { space }
     }
 
@@ -60,13 +60,13 @@ impl<'a> PortReader<'a> {
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
 pub struct PortWriter<'a> {
-    space: RootMutSpace<'a>,
+    space: &'a mut Space,
     has_been_written: bool,
 }
 
 impl<'a> PortWriter<'a> {
     /// Create a new port writer.
-    fn new(space: RootMutSpace<'a>) -> Self {
+    fn new(space: &'a mut Space) -> Self {
         Self {
             space,
             has_been_written: false,
@@ -87,7 +87,7 @@ impl<'a> PortWriter<'a> {
     ) -> Option<A::WriteHandle> {
         if !self.has_been_written {
             self.has_been_written = true;
-            (&mut self.space as &mut dyn MutSpace).init(urid, parameter)
+            crate::space::init_atom(self.space, urid, parameter)
         } else {
             None
         }
@@ -113,7 +113,7 @@ impl PortType for AtomPort {
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
-        let space = RootMutSpace::from_atom(pointer.cast().as_mut());
+        let space = Space::from_atom_mut(pointer.cast().as_mut());
         PortWriter::new(space)
     }
 }
@@ -136,8 +136,8 @@ mod tests {
 
         // writing a chunk to indicate the size of the space.
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
+            let mut space = raw_space.as_mut();
+            let mut writer = (&mut space as &mut dyn AllocateSpace)
                 .init(urids.chunk, ())
                 .unwrap();
             writer

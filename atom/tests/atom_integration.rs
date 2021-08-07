@@ -100,8 +100,8 @@ fn main() {
     // Preparing the input atom.
     let mut input_atom_space: Box<[u8]> = Box::new([0; 256]);
     {
-        let mut space = RootMutSpace::new(input_atom_space.as_mut());
-        let mut writer = (&mut space as &mut dyn MutSpace)
+        let mut space = SpaceWriter::new(input_atom_space.as_mut());
+        let mut writer = (&mut space as &mut dyn AllocateSpace)
             .init(
                 urids.atom.sequence,
                 TimeStampURID::Frames(urids.units.frame),
@@ -121,8 +121,8 @@ fn main() {
     // preparing the output atom.
     let mut output_atom_space: Box<[u8]> = Box::new([0; 256]);
     {
-        let mut space = RootMutSpace::new(output_atom_space.as_mut());
-        (&mut space as &mut dyn MutSpace)
+        let mut space = SpaceWriter::new(output_atom_space.as_mut());
+        (&mut space as &mut dyn AllocateSpace)
             .init(urids.atom.chunk, ())
             .unwrap()
             .allocate(256 - size_of::<sys::LV2_Atom>(), false)

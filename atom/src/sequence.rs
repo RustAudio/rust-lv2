@@ -87,9 +87,9 @@ where
     type ReadParameter = URID<Beat>;
     type ReadHandle = SequenceIterator<'a>;
     type WriteParameter = TimeStampURID;
-    type WriteHandle = SequenceWriter<'a, 'b>;
+    type WriteHandle = SequenceWriter<'a>;
 
-    unsafe fn read(body: Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
+    unsafe fn read(body: &Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
         let (header, body) = body.split_for_type::<sys::LV2_Atom_Sequence_Body>()?;
         let unit = if header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
@@ -100,11 +100,11 @@ where
     }
 
     fn init(
-        mut frame: FramedMutSpace<'a, 'b>,
+        mut frame: AtomSpace<'a>,
         unit: TimeStampURID,
-    ) -> Option<SequenceWriter<'a, 'b>> {
+    ) -> Option<SequenceWriter<'a>> {
         {
-            let frame = &mut frame as &mut dyn MutSpace;
+            let frame = &mut frame as &mut dyn AllocateSpace;
             let header = sys::LV2_Atom_Sequence_Body {
                 unit: match unit {
                     TimeStampURID::BeatsPerMinute(urid) => urid.get(),
@@ -170,7 +170,7 @@ impl TimeStamp {
 
 /// An iterator over all events in a sequence.
 pub struct SequenceIterator<'a> {
-    space: Space<'a>,
+    space: &'a Space,
     unit: TimeStampUnit,
 }
 
@@ -196,13 +196,13 @@ impl<'a> Iterator for SequenceIterator<'a> {
 }
 
 /// The writing handle for sequences.
-pub struct SequenceWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct SequenceWriter<'a> {
+    frame: AtomSpace<'a>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
 
-impl<'a, 'b> SequenceWriter<'a, 'b> {
+impl<'a, 'b> SequenceWriter<'a> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:
@@ -231,9 +231,9 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
             }
         };
         self.last_stamp = Some(stamp);
-        (&mut self.frame as &mut dyn MutSpace)
-            .write(&raw_stamp, true)
-            .map(|_| ())
+        space::write_value(&mut self.frame, raw_stamp)?;
+
+        Some(())
     }
 
     /// Initialize an event.
@@ -246,7 +246,7 @@ impl<'a, 'b> SequenceWriter<'a, 'b> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
-        (&mut self.frame as &mut dyn MutSpace).init(urid, parameter)
+        (&mut self.frame as &mut dyn AllocateSpace).init(urid, parameter)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -283,13 +283,9 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
-                .init(
-                    urids.atom.sequence,
-                    TimeStampURID::Frames(urids.units.frame),
-                )
-                .unwrap();
+            let mut space = raw_space.as_mut();
+            let mut writer = space::init_atom(space, urids.atom.sequence,  TimeStampURID::Frames(urids.units.frame)).unwrap();
+
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
                 .unwrap();

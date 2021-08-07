@@ -57,10 +57,10 @@ pub trait ScalarAtom: UriBound {
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     fn write_scalar<'a, 'b>(
-        mut frame: FramedMutSpace<'a, 'b>,
+        mut frame: AtomSpace<'a>,
         value: Self::InternalType,
     ) -> Option<&'a mut Self::InternalType> {
-        (&mut frame as &mut dyn MutSpace).write(&value, true)
+        (&mut frame as &mut dyn AllocateSpace).write(&value, true)
     }
 }
 
@@ -73,12 +73,12 @@ where
     type WriteParameter = A::InternalType;
     type WriteHandle = &'a mut A::InternalType;
 
-    unsafe fn read(body: Space<'a>, _: ()) -> Option<A::InternalType> {
+    unsafe fn read(body: &'a Space, _: ()) -> Option<A::InternalType> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
     fn init(
-        frame: FramedMutSpace<'a, 'b>,
+        frame: AtomSpace<'a>,
         value: A::InternalType,
     ) -> Option<&'a mut A::InternalType> {
         <A as ScalarAtom>::write_scalar(frame, value)
@@ -181,14 +181,14 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            (&mut space as &mut dyn MutSpace).init(urid, value).unwrap();
+            let mut space = raw_space.as_mut();
+            crate::space::init_atom(&mut space, urid, value).unwrap();
         }
 
         // verifying
         {
             /// Generic version of the scalar atom structs.
-            #[repr(C)]
+            #[repr(C, align(8))]
             struct Scalar<B: Sized> {
                 atom: sys::LV2_Atom,
                 body: B,
