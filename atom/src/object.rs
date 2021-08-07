@@ -100,10 +100,10 @@ where
     type ReadParameter = ();
     type ReadHandle = (ObjectHeader, ObjectReader<'a>);
     type WriteParameter = ObjectHeader;
-    type WriteHandle = ObjectWriter<'a>;
+    type WriteHandle = ObjectWriter<'b>;
 
     unsafe fn read(body: &'a Space, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
-        let (header, body) = body.split_for_type::<sys::LV2_Atom_Object_Body>()?;
+        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()?;
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
             otype: URID::try_from(header.otype).ok()?,
@@ -115,9 +115,9 @@ where
     }
 
     fn init(
-        mut frame: AtomSpace<'a>,
+        mut frame: AtomSpaceWriter<'b>,
         header: ObjectHeader,
-    ) -> Option<ObjectWriter<'a>> {
+    ) -> Option<ObjectWriter<'b>> {
         {
             space::write_value(&mut frame, sys::LV2_Atom_Object_Body {
                 id: header.id.map(URID::get).unwrap_or(0),
@@ -154,7 +154,7 @@ where
     }
 
     fn init(
-        frame: AtomSpace<'a>,
+        frame: AtomSpaceWriter<'b>,
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle> {
         Object::init(frame, parameter)
@@ -173,10 +173,10 @@ impl<'a> Iterator for ObjectReader<'a> {
 
     fn next(&mut self) -> Option<(PropertyHeader, UnidentifiedAtom<'a>)> {
         // SAFETY: The fact that this contains a valid property is guaranteed by this type.
-        let (header, value, space) = unsafe { Property::read_body(self.space) }?;
+        let (header, atom, space) = unsafe { Property::read_body(self.space) }?;
         self.space = space;
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
-        Some((header, unsafe { UnidentifiedAtom::new_unchecked(value) }))
+        Some((header, atom))
     }
 }
 
@@ -184,22 +184,22 @@ impl<'a> Iterator for ObjectReader<'a> {
 ///
 /// This handle is a safeguard to assure that a object is always a series of properties.
 pub struct ObjectWriter<'a> {
-    frame: AtomSpace<'a>,
+    frame: AtomSpaceWriter<'a>,
 }
 
 impl<'a> ObjectWriter<'a> {
     /// Initialize a new property with a context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
-    pub fn init_with_context<'c, K: ?Sized, T: ?Sized, A: Atom<'a, 'c>>(
-        &'c mut self,
+    pub fn init_with_context<'c, K: ?Sized, T: ?Sized, A: Atom<'c, 'a>>(
+        &'a mut self,
         key: URID<K>,
         context: URID<T>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, parameter)
+        space::init_atom(&mut self.frame, child_urid, parameter)
     }
 
     /// Initialize a new property.
@@ -207,14 +207,14 @@ impl<'a> ObjectWriter<'a> {
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<'c, K: ?Sized, A: Atom<'a, 'c>>(
-        &'c mut self,
+    pub fn init<'c, K: ?Sized, A: Atom<'c, 'a>>(
+        &'a mut self,
         key: URID<K>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        Property::write_header::<K, ()>(&mut self.frame, key, None)?;
-        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, parameter)
+        Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
+        space::init_atom(&mut self.frame, child_urid, parameter)
     }
 }
 
@@ -246,7 +246,7 @@ impl Property {
     /// # Safety
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
-    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, &Space, &Space)> {
+    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, UnidentifiedAtom, &Space)> {
         #[repr(C)]
         #[derive(Clone, Copy)]
         /// A custom version of the property body that does not include the value atom header.
@@ -257,7 +257,7 @@ impl Property {
             context: u32,
         }
 
-        let (header, space) = space.split_for_type::<StrippedPropertyBody>()?;
+        let (header, space) = space.split_for_value_as_unchecked::<StrippedPropertyBody>()?;
 
         let header = PropertyHeader {
             key: URID::try_from(header.key).ok()?,
@@ -313,7 +313,7 @@ mod tests {
         // writing
         {
             let mut space = raw_space.as_mut();
-            let frame = AtomSpace::write_new(&mut space as &mut dyn AllocateSpace, urids.object).unwrap();
+            let frame = AtomSpaceWriter::write_new(&mut space as &mut dyn AllocateSpace, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
                 ObjectHeader {

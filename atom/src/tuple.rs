@@ -43,20 +43,17 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Tuple
-where
-    'a: 'b,
-{
+impl<'a, 'b> Atom<'a, 'b> for Tuple {
     type ReadParameter = ();
     type ReadHandle = TupleIterator<'a>;
     type WriteParameter = ();
-    type WriteHandle = TupleWriter<'a>;
+    type WriteHandle = TupleWriter<'b>;
 
     unsafe fn read(body: &'a Space, _: ()) -> Option<TupleIterator<'a>> {
         Some(TupleIterator { space: body })
     }
 
-    fn init(frame: AtomSpace<'a>, _: ()) -> Option<TupleWriter<'a>> {
+    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<TupleWriter<'b>> {
         Some(TupleWriter { frame })
     }
 }
@@ -72,25 +69,26 @@ impl<'a> Iterator for TupleIterator<'a> {
     type Item = UnidentifiedAtom<'a>;
 
     fn next(&mut self) -> Option<UnidentifiedAtom<'a>> {
-        let (atom, space) = self.space.split_atom()?;
+        // SAFETY: The validity of the space is guaranteed by this type.
+        let (atom, space) = unsafe { self.space.split_atom() }?;
         self.space = space;
-        Some(unsafe { UnidentifiedAtom::new_unchecked(atom) })
+        Some(atom)
     }
 }
 
 /// The writing handle to add atoms to a tuple.
 pub struct TupleWriter<'a> {
-    frame: AtomSpace<'a>,
+    frame: AtomSpaceWriter<'a>,
 }
 
 impl<'a, 'b> TupleWriter<'a> {
     /// Initialize a new tuple element.
-    pub fn init<'c, A: Atom<'a, 'c>>(
-        &'c mut self,
+    pub fn init<'c, A: Atom<'c, 'a>>(
+        &'a mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, child_parameter)
+        space::init_atom(&mut self.frame, child_urid, child_parameter)
     }
 }
 
@@ -106,14 +104,12 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = Space::boxed(256);
 
         // writing
         {
-            let mut space =raw_space.as_mut();
-            let mut writer = (&mut space as &mut dyn AllocateSpace)
-                .init(urids.tuple, ())
-                .unwrap();
+            let mut space = raw_space.as_bytes_mut();
+            let mut writer = crate::space::init_atom(&mut space, urids.tuple, ()).unwrap();
             {
                 let mut vector_writer =
                     writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();
@@ -124,19 +120,18 @@ mod tests {
 
         // verifying
         {
-            let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
-            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(atom.type_, urids.tuple);
+            let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
+            let header = atom.header().unwrap();
+            assert_eq!(header.type_, urids.tuple);
             assert_eq!(
-                atom.size as usize,
+                header.size as usize,
                 size_of::<sys::LV2_Atom_Vector>()
                     + size_of::<i32>() * 9
                     + 4
                     + size_of::<sys::LV2_Atom_Int>()
             );
 
-            let (vector, space) = space.split_at(size_of::<sys::LV2_Atom_Vector>());
-            let vector = unsafe { &*(vector.as_ptr() as *const sys::LV2_Atom_Vector) };
+            let (vector, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
             assert_eq!(vector.atom.type_, urids.vector);
             assert_eq!(
                 vector.atom.size as usize,
@@ -145,14 +140,11 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int);
 
-            let (vector_items, space) = space.split_at(size_of::<i32>() * 9);
-            let vector_items =
-                unsafe { std::slice::from_raw_parts(vector_items.as_ptr() as *const i32, 9) };
+            let (vector_items, space) = space.split_at(size_of::<i32>() * 9).unwrap();
+            let vector_items = unsafe { std::slice::from_raw_parts(vector_items.as_bytes().as_ptr() as *const i32, 9) };
             assert_eq!(vector_items, &[17; 9]);
-            let (_, space) = space.split_at(4);
 
-            let (int, _) = space.split_at(size_of::<sys::LV2_Atom_Int>());
-            let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Int) };
+            let (int, _) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);
@@ -160,9 +152,8 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.tuple).unwrap();
-            let items: Vec<UnidentifiedAtom> = Tuple::read(body, ()).unwrap().collect();
+            let (body, _) = unsafe { raw_space.split_atom_body(urids.tuple) }.unwrap();
+            let items: Vec<UnidentifiedAtom> = unsafe { Tuple::read(body, ()) }.unwrap().collect();
             assert_eq!(items[0].read(urids.vector, urids.int).unwrap(), [17; 9]);
             assert_eq!(items[1].read(urids.int, ()).unwrap(), 42);
         }

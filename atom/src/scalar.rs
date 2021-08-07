@@ -48,19 +48,16 @@ pub trait ScalarAtom: UriBound {
     /// Try to read the atom from a space.
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
-    fn read_scalar(body: Space) -> Option<Self::InternalType> {
-        body.split_for_type::<Self::InternalType>()
-            .map(|(value, _)| *value)
+    #[inline]
+    unsafe fn read_scalar(body: &Space) -> Option<Self::InternalType> {
+        body.read_as_unchecked().copied()
     }
 
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar<'a, 'b>(
-        mut frame: AtomSpace<'a>,
-        value: Self::InternalType,
-    ) -> Option<&'a mut Self::InternalType> {
-        (&mut frame as &mut dyn AllocateSpace).write(&value, true)
+    fn write_scalar(mut frame: AtomSpaceWriter, value: Self::InternalType) -> Option<&mut Self::InternalType> {
+        space::write_value(&mut frame, value)
     }
 }
 
@@ -71,16 +68,13 @@ where
     type ReadParameter = ();
     type ReadHandle = A::InternalType;
     type WriteParameter = A::InternalType;
-    type WriteHandle = &'a mut A::InternalType;
+    type WriteHandle = &'b mut A::InternalType;
 
     unsafe fn read(body: &'a Space, _: ()) -> Option<A::InternalType> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(
-        frame: AtomSpace<'a>,
-        value: A::InternalType,
-    ) -> Option<&'a mut A::InternalType> {
+    fn init(frame: AtomSpaceWriter, value: A::InternalType) -> Option<&mut A::InternalType> {
         <A as ScalarAtom>::write_scalar(frame, value)
     }
 }

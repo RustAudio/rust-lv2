@@ -107,4 +107,9 @@ impl<'a> AllocateSpace<'a> for SpaceHead<'a> {
     fn as_bytes(&self) -> &[u8] {
         &[]
     }
+
+    #[inline]
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        &mut []
+    }
 }
