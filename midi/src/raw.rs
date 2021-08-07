@@ -22,13 +22,13 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+    type WriteHandle = AtomSpace<'a, 'b>;
 
-    fn read(body: Space<'a>, _: ()) -> Option<&'a [u8]> {
+    fn read(body: &'a Space, _: ()) -> Option<&'a [u8]> {
         body.as_bytes()
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
+    fn init(frame: AtomSpace<'a, 'b>, _: ()) -> Option<AtomSpace<'a, 'b>> {
         Some(frame)
     }
 }

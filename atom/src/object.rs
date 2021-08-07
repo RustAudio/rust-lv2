@@ -100,9 +100,9 @@ where
     type ReadParameter = ();
     type ReadHandle = (ObjectHeader, ObjectReader<'a>);
     type WriteParameter = ObjectHeader;
-    type WriteHandle = ObjectWriter<'a, 'b>;
+    type WriteHandle = ObjectWriter<'a>;
 
-    unsafe fn read(body: Space<'a>, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
+    unsafe fn read(body: &'a Space, _: ()) -> Option<(ObjectHeader, ObjectReader<'a>)> {
         let (header, body) = body.split_for_type::<sys::LV2_Atom_Object_Body>()?;
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
@@ -115,18 +115,14 @@ where
     }
 
     fn init(
-        mut frame: FramedMutSpace<'a, 'b>,
+        mut frame: AtomSpace<'a>,
         header: ObjectHeader,
-    ) -> Option<ObjectWriter<'a, 'b>> {
+    ) -> Option<ObjectWriter<'a>> {
         {
-            let frame = &mut frame as &mut dyn MutSpace;
-            frame.write(
-                &sys::LV2_Atom_Object_Body {
-                    id: header.id.map(|urid| urid.get()).unwrap_or(0),
-                    otype: header.otype.get(),
-                },
-                true,
-            );
+            space::write_value(&mut frame, sys::LV2_Atom_Object_Body {
+                id: header.id.map(URID::get).unwrap_or(0),
+                otype: header.otype.get(),
+            });
         }
         Some(ObjectWriter { frame })
     }
@@ -153,12 +149,12 @@ where
     type WriteHandle = <Object as Atom<'a, 'b>>::WriteHandle;
 
     #[allow(clippy::unit_arg)]
-    unsafe fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
+    unsafe fn read(body: &'a Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
         Object::read(body, parameter)
     }
 
     fn init(
-        frame: FramedMutSpace<'a, 'b>,
+        frame: AtomSpace<'a>,
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle> {
         Object::init(frame, parameter)
@@ -169,7 +165,7 @@ where
 ///
 /// Each iteration item is the header of the property, as well as the space occupied by the value atom. You can use normal `read` methods on the returned space.
 pub struct ObjectReader<'a> {
-    space: Space<'a>,
+    space: &'a Space,
 }
 
 impl<'a> Iterator for ObjectReader<'a> {
@@ -187,11 +183,11 @@ impl<'a> Iterator for ObjectReader<'a> {
 /// Writing handle for object properties.
 ///
 /// This handle is a safeguard to assure that a object is always a series of properties.
-pub struct ObjectWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct ObjectWriter<'a> {
+    frame: AtomSpace<'a>,
 }
 
-impl<'a, 'b> ObjectWriter<'a, 'b> {
+impl<'a> ObjectWriter<'a> {
     /// Initialize a new property with a context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
@@ -203,7 +199,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        (&mut self.frame as &mut dyn MutSpace).init(child_urid, parameter)
+        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, parameter)
     }
 
     /// Initialize a new property.
@@ -218,7 +214,7 @@ impl<'a, 'b> ObjectWriter<'a, 'b> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header::<K, ()>(&mut self.frame, key, None)?;
-        (&mut self.frame as &mut dyn MutSpace).init(child_urid, parameter)
+        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, parameter)
     }
 }
 
@@ -250,7 +246,7 @@ impl Property {
     /// # Safety
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
-    unsafe fn read_body(space: Space) -> Option<(PropertyHeader, Space, Space)> {
+    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, &Space, &Space)> {
         #[repr(C)]
         #[derive(Clone, Copy)]
         /// A custom version of the property body that does not include the value atom header.
@@ -275,13 +271,13 @@ impl Property {
     /// Write out the header of a property atom.
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
-    fn write_header<K: ?Sized, C: ?Sized>(
-        space: &mut dyn MutSpace,
+    fn write_header<'a, K: ?Sized, C: ?Sized>(
+        space: &mut impl AllocateSpace<'a>,
         key: URID<K>,
         context: Option<URID<C>>,
     ) -> Option<()> {
-        space.write(&key.get(), true)?;
-        space.write(&context.map(|urid| urid.get()).unwrap_or(0), false)?;
+        space::write_value(space, key.get())?;
+        space::write_value(space, context.map(URID::get).unwrap_or(0))?;
         Some(())
     }
 }
@@ -316,8 +312,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let frame = FramedMutSpace::new(&mut space as &mut dyn MutSpace, urids.object).unwrap();
+            let mut space = raw_space.as_mut();
+            let frame = AtomSpace::write_new(&mut space as &mut dyn AllocateSpace, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
                 ObjectHeader {

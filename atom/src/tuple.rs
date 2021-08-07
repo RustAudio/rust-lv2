@@ -50,13 +50,13 @@ where
     type ReadParameter = ();
     type ReadHandle = TupleIterator<'a>;
     type WriteParameter = ();
-    type WriteHandle = TupleWriter<'a, 'b>;
+    type WriteHandle = TupleWriter<'a>;
 
-    unsafe fn read(body: Space<'a>, _: ()) -> Option<TupleIterator<'a>> {
+    unsafe fn read(body: &'a Space, _: ()) -> Option<TupleIterator<'a>> {
         Some(TupleIterator { space: body })
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<TupleWriter<'a, 'b>> {
+    fn init(frame: AtomSpace<'a>, _: ()) -> Option<TupleWriter<'a>> {
         Some(TupleWriter { frame })
     }
 }
@@ -65,7 +65,7 @@ where
 ///
 /// The item of this iterator is simply the space a single atom occupies.
 pub struct TupleIterator<'a> {
-    space: Space<'a>,
+    space: &'a Space,
 }
 
 impl<'a> Iterator for TupleIterator<'a> {
@@ -74,23 +74,23 @@ impl<'a> Iterator for TupleIterator<'a> {
     fn next(&mut self) -> Option<UnidentifiedAtom<'a>> {
         let (atom, space) = self.space.split_atom()?;
         self.space = space;
-        Some(UnidentifiedAtom::new_unchecked(atom))
+        Some(unsafe { UnidentifiedAtom::new_unchecked(atom) })
     }
 }
 
 /// The writing handle to add atoms to a tuple.
-pub struct TupleWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct TupleWriter<'a> {
+    frame: AtomSpace<'a>,
 }
 
-impl<'a, 'b> TupleWriter<'a, 'b> {
+impl<'a, 'b> TupleWriter<'a> {
     /// Initialize a new tuple element.
     pub fn init<'c, A: Atom<'a, 'c>>(
         &'c mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        (&mut self.frame as &mut dyn MutSpace).init(child_urid, child_parameter)
+        (&mut self.frame as &mut dyn AllocateSpace).init(child_urid, child_parameter)
     }
 }
 
@@ -110,8 +110,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
+            let mut space =raw_space.as_mut();
+            let mut writer = (&mut space as &mut dyn AllocateSpace)
                 .init(urids.tuple, ())
                 .unwrap();
             {

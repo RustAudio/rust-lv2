@@ -54,9 +54,9 @@ where
     type ReadParameter = ();
     type ReadHandle = (LiteralInfo, &'a str);
     type WriteParameter = LiteralInfo;
-    type WriteHandle = StringWriter<'a, 'b>;
+    type WriteHandle = StringWriter<'a>;
 
-    unsafe fn read(body: Space<'a>, _: ()) -> Option<(LiteralInfo, &'a str)> {
+    unsafe fn read(body: &'a Space, _: ()) -> Option<(LiteralInfo, &'a str)> {
         let (header, body) = body.split_for_type::<sys::LV2_Atom_Literal_Body>()?;
         let info = if header.lang != 0 && header.datatype == 0 {
             LiteralInfo::Language(URID::new(header.lang)?)
@@ -72,9 +72,9 @@ where
             .map(|string| (info, string))
     }
 
-    fn init(mut frame: FramedMutSpace<'a, 'b>, info: LiteralInfo) -> Option<StringWriter<'a, 'b>> {
-        (&mut frame as &mut dyn MutSpace).write(
-            &match info {
+    fn init(mut frame: AtomSpace<'a>, info: LiteralInfo) -> Option<StringWriter<'a>> {
+        crate::space::write_value(&mut frame,
+            match info {
                 LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                     lang: lang.get(),
                     datatype: 0,
@@ -83,8 +83,7 @@ where
                     lang: 0,
                     datatype: datatype.get(),
                 },
-            },
-            true,
+            }
         )?;
         Some(StringWriter { frame })
     }
@@ -106,25 +105,25 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a str;
     type WriteParameter = ();
-    type WriteHandle = StringWriter<'a, 'b>;
+    type WriteHandle = StringWriter<'a>;
 
-    unsafe fn read(body: Space<'a>, _: ()) -> Option<&'a str> {
+    unsafe fn read(body: &'a Space, _: ()) -> Option<&'a str> {
         let data = body.as_bytes();
         let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
         Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<StringWriter<'a, 'b>> {
+    fn init(frame: AtomSpace<'a>, _: ()) -> Option<StringWriter<'a>> {
         Some(StringWriter { frame })
     }
 }
 
 /// Handle to append strings to a string or literal.
-pub struct StringWriter<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct StringWriter<'a> {
+    frame: AtomSpace<'a>,
 }
 
-impl<'a, 'b> StringWriter<'a, 'b> {
+impl<'a, 'b> StringWriter<'a> {
     /// Append a string.
     ///
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
@@ -137,10 +136,11 @@ impl<'a, 'b> StringWriter<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Drop for StringWriter<'a, 'b> {
+impl<'a, 'b> Drop for StringWriter<'a> {
     fn drop(&mut self) {
         // Null terminator.
-        (&mut self.frame as &mut dyn MutSpace).write(&0u8, false);
+        // FIXME: this seems unsafe if the value could not be written for some reason.
+        let _ = self::write_value(&mut self.frame, 0u8);
     }
 }
 
@@ -175,8 +175,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
+            let mut space = raw_space.as_mut();
+            let mut writer = (&mut space as &mut dyn AllocateSpace)
                 .init(
                     urids.atom.literal,
                     LiteralInfo::Language(urids.german.into_general()),
@@ -214,7 +214,7 @@ mod tests {
         {
             let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.atom.literal).unwrap();
-            let (info, text) = Literal::read(body, ()).unwrap();
+            let (info, text) = unsafe { Literal::read(body, ()) }.unwrap();
 
             assert_eq!(info, LiteralInfo::Language(urids.german.into_general()));
             assert_eq!(text, SAMPLE0.to_owned() + SAMPLE1);
@@ -230,8 +230,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
+            let mut space = raw_space.as_mut();
+            let mut writer = (&mut space as &mut dyn AllocateSpace)
                 .init(urids.string, ())
                 .unwrap();
             writer.append(SAMPLE0).unwrap();
@@ -254,7 +254,7 @@ mod tests {
         {
             let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.string).unwrap();
-            let string = String::read(body, ()).unwrap();
+            let string = unsafe { String::read(body, ()) }.unwrap();
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);
         }
     }

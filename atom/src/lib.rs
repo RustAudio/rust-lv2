@@ -86,7 +86,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{FramedMutSpace, MutSpace, Space};
+    pub use space::{AtomSpace, AllocateSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
@@ -160,7 +160,7 @@ where
     ///
     /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
-    unsafe fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
+    unsafe fn read(body: &'a Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
 
     /// Initialize the body of the atom.
     ///
@@ -171,7 +171,7 @@ where
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
     fn init(
-        frame: FramedMutSpace<'a, 'b>,
+        frame: AtomSpace<'a>,
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle>;
 }
@@ -181,7 +181,7 @@ where
 /// This is used by reading handles that have to return a reference to an atom, but can not check it's type. This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
 #[derive(Clone, Copy)]
 pub struct UnidentifiedAtom<'a> {
-    space: Space<'a>,
+    space: &'a Space,
 }
 
 impl<'a> UnidentifiedAtom<'a> {
@@ -191,7 +191,7 @@ impl<'a> UnidentifiedAtom<'a> {
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.x
     #[inline]
-    pub unsafe fn new_unchecked(space: Space<'a>) -> Self {
+    pub unsafe fn new_unchecked(space: &'a Space) -> Self {
         Self { space }
     }
 

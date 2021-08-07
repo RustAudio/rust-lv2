@@ -56,9 +56,9 @@ where
     type ReadParameter = URID<C>;
     type ReadHandle = &'a [C::InternalType];
     type WriteParameter = URID<C>;
-    type WriteHandle = VectorWriter<'a, 'b, C>;
+    type WriteHandle = VectorWriter<'a, C>;
 
-    unsafe fn read(body: Space<'a>, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
+    unsafe fn read(body: &'a Space, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
         let (header, body) = body.split_for_type::<sys::LV2_Atom_Vector_Body>()?;
 
         if header.child_type != child_urid
@@ -79,14 +79,14 @@ where
     }
 
     fn init(
-        mut frame: FramedMutSpace<'a, 'b>,
+        mut frame: AtomSpace<'a>,
         child_urid: URID<C>,
-    ) -> Option<VectorWriter<'a, 'b, C>> {
+    ) -> Option<VectorWriter<'a, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
-        (&mut frame as &mut dyn MutSpace).write(&body, false)?;
+        space::write_value(&mut frame, body)?;
 
         Some(VectorWriter {
             frame,
@@ -98,15 +98,16 @@ where
 /// Handle to append elements to a vector.
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
-pub struct VectorWriter<'a, 'b, A: ScalarAtom> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct VectorWriter<'a, A: ScalarAtom> {
+    frame: AtomSpace<'a>,
     type_: PhantomData<A>,
 }
 
-impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
+impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, A> {
     /// Push a single value to the vector.
+    #[inline]
     pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
-        (&mut self.frame as &mut dyn MutSpace).write(&child, false)
+        space::write_value(&mut self.frame, child)
     }
 
     /// Append a slice of undefined memory to the vector.
@@ -155,8 +156,8 @@ mod tests {
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
+            let mut space = raw_space.as_mut();
+            let mut writer = (&mut space as &mut dyn AllocateSpace)
                 .init(urids.vector(), urids.int)
                 .unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
@@ -188,7 +189,7 @@ mod tests {
         {
             let space = Space::from_bytes(raw_space.as_ref());
             let (body, _) = space.split_atom_body(urids.vector).unwrap();
-            let children: &[i32] = Vector::<Int>::read(body, urids.int).unwrap();
+            let children: &[i32] = unsafe { Vector::<Int>::read(body, urids.int) }.unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {
