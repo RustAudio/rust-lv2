@@ -52,7 +52,8 @@ impl<'a> PortReader<'a> {
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {
-        A::read(self.space.split_atom_body(urid)?.0, parameter)
+        // SAFETY: The port's space has been initialized by the host
+        unsafe { A::read(self.space.split_atom_body(urid)?.0, parameter) }
     }
 }
 
@@ -60,7 +61,7 @@ impl<'a> PortReader<'a> {
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
 pub struct PortWriter<'a> {
-    space: &'a mut Space,
+    space: &'a mut [u8],
     has_been_written: bool,
 }
 
@@ -68,7 +69,7 @@ impl<'a> PortWriter<'a> {
     /// Create a new port writer.
     fn new(space: &'a mut Space) -> Self {
         Self {
-            space,
+            space: space.as_bytes_mut(),
             has_been_written: false,
         }
     }
@@ -80,14 +81,16 @@ impl<'a> PortWriter<'a> {
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
     /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn init<'b, A: crate::Atom<'a, 'b>>(
-        &'b mut self,
+    pub fn init<'b, 'read, 'write, A: crate::Atom<'read, 'write>>(
+        &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         if !self.has_been_written {
             self.has_been_written = true;
-            crate::space::init_atom(self.space, urid, parameter)
+            // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
+            let space: &'write mut &'write mut [u8] = unsafe { ::core::mem::transmute::<_, &'write mut &'write mut [u8]>(&mut self.space) };
+            crate::space::init_atom(space, urid, parameter)
         } else {
             None
         }
@@ -107,13 +110,13 @@ impl PortType for AtomPort {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
-        let space = Space::from_atom(pointer.cast().as_ref());
+        let space = Space::from_atom(*pointer.cast().as_ref());
         PortReader::new(space)
     }
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
-        let space = Space::from_atom_mut(pointer.cast().as_mut());
+        let space = Space::from_atom_mut(&mut *pointer.cast().as_ptr());
         PortWriter::new(space)
     }
 }

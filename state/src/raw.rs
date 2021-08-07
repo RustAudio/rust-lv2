@@ -54,14 +54,8 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
-        let space = Space::from_bytes(space.as_ref());
-        let (header, data) = space
-            .split_for_type::<sys::LV2_Atom>()
-            .ok_or(StateErr::BadData)?;
-        let data = data
-            .split_bytes_at(header.size as usize)
-            .map(|(data, _)| data)
-            .ok_or(StateErr::BadData)?;
+        let space = Space::<sys::LV2_Atom>::from_bytes(&space);
+        let (header, data) = unsafe { space.to_atom() }.and_then(|a| a.header_and_body()).ok_or(StateErr::BadData)?;
 
         let key = key.get();
         let data_ptr = data as *const _ as *const c_void;
@@ -123,15 +117,14 @@ impl<'a> StatePropertyWriter<'a> {
     /// Initialize the property.
     ///
     /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `Err(StateErr::Unknown)` is returned.
-    pub fn init<'b, A: Atom<'a, 'b>>(
-        &'b mut self,
+    pub fn init<'read, A: Atom<'read, 'a>>(
+        &'a mut self,
         urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            (&mut self.head as &mut dyn AllocateSpace)
-                .init(urid, parameter)
+            lv2_atom::space::init_atom(&mut self.head, urid, parameter)
                 .ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
@@ -209,7 +202,7 @@ impl<'a> StatePropertyReader<'a> {
     }
 
     /// Return the data of the property.
-    pub fn body(&self) -> Space {
+    pub fn body(&self) -> &Space {
         self.body
     }
 
@@ -224,7 +217,7 @@ impl<'a> StatePropertyReader<'a> {
         parameter: A::ReadParameter,
     ) -> Result<A::ReadHandle, StateErr> {
         if urid == self.type_ {
-            A::read(self.body, parameter).ok_or(StateErr::Unknown)
+            unsafe { A::read(self.body, parameter) }.ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::BadType)
         }
@@ -317,7 +310,7 @@ mod tests {
                 3 => {
                     assert_eq!(urids.vector::<Int>(), *type_);
                     let space = Space::from_bytes(value.as_slice());
-                    let data = Vector::read(space, urids.int).unwrap();
+                    let data = unsafe { Vector::read(space, urids.int) }.unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }
                 _ => panic!("Invalid key!"),

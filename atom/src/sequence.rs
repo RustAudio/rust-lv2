@@ -80,17 +80,14 @@ unsafe impl UriBound for Sequence {
     const URI: &'static [u8] = sys::LV2_ATOM__Sequence;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Sequence
-where
-    'a: 'b,
-{
+impl<'a, 'b> Atom<'a, 'b> for Sequence {
     type ReadParameter = URID<Beat>;
     type ReadHandle = SequenceIterator<'a>;
     type WriteParameter = TimeStampURID;
-    type WriteHandle = SequenceWriter<'a>;
+    type WriteHandle = SequenceWriter<'b>;
 
     unsafe fn read(body: &Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
-        let (header, body) = body.split_for_type::<sys::LV2_Atom_Sequence_Body>()?;
+        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence_Body>()?;
         let unit = if header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
         } else {
@@ -99,21 +96,16 @@ where
         Some(SequenceIterator { space: body, unit })
     }
 
-    fn init(
-        mut frame: AtomSpace<'a>,
-        unit: TimeStampURID,
-    ) -> Option<SequenceWriter<'a>> {
-        {
-            let frame = &mut frame as &mut dyn AllocateSpace;
-            let header = sys::LV2_Atom_Sequence_Body {
-                unit: match unit {
-                    TimeStampURID::BeatsPerMinute(urid) => urid.get(),
-                    TimeStampURID::Frames(urid) => urid.get(),
-                },
-                pad: 0,
-            };
-            frame.write(&header, true)?;
-        }
+    fn init(mut frame: AtomSpaceWriter<'b>, unit: TimeStampURID) -> Option<SequenceWriter<'b>> {
+        let header = sys::LV2_Atom_Sequence_Body {
+            unit: match unit {
+                TimeStampURID::BeatsPerMinute(urid) => urid.get(),
+                TimeStampURID::Frames(urid) => urid.get(),
+            },
+            pad: 0,
+        };
+        space::write_value(&mut frame, header)?;
+
         Some(SequenceWriter {
             frame,
             unit: unit.into(),
@@ -184,25 +176,28 @@ impl<'a> Iterator for SequenceIterator<'a> {
     type Item = (TimeStamp, UnidentifiedAtom<'a>);
 
     fn next(&mut self) -> Option<(TimeStamp, UnidentifiedAtom<'a>)> {
-        let (raw_stamp, space) = self.space.split_for_type::<RawTimeStamp>()?;
+        // SAFETY: The validity of the space's contents is guaranteed by this type.
+        let (raw_stamp, space) = unsafe { self.space.split_for_value_as_unchecked::<RawTimeStamp>() }?;
         let stamp = match self.unit {
             TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
             TimeStampUnit::BeatsPerMinute => unsafe { TimeStamp::BeatsPerMinute(raw_stamp.beats) },
         };
-        let (atom, space) = space.split_atom()?;
+
+        // SAFETY: The validity of the space's contents is guaranteed by this type.
+        let (atom, space) = unsafe { space.split_atom() }?;
         self.space = space;
-        Some((stamp, UnidentifiedAtom::new_unchecked(atom)))
+        Some((stamp, atom))
     }
 }
 
 /// The writing handle for sequences.
 pub struct SequenceWriter<'a> {
-    frame: AtomSpace<'a>,
+    frame: AtomSpaceWriter<'a>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
 
-impl<'a, 'b> SequenceWriter<'a> {
+impl<'a> SequenceWriter<'a> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:
@@ -239,14 +234,14 @@ impl<'a, 'b> SequenceWriter<'a> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'c, A: Atom<'a, 'c>>(
-        &'c mut self,
+    pub fn init<'c, A: Atom<'c, 'a>>(
+        &'a mut self,
         stamp: TimeStamp,
         urid: URID<A>,
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
-        (&mut self.frame as &mut dyn AllocateSpace).init(urid, parameter)
+        space::init_atom(&mut self.frame, urid, parameter)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -257,7 +252,9 @@ impl<'a, 'b> SequenceWriter<'a> {
     pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
         let data = atom.space.as_bytes();
         self.write_time_stamp(stamp)?;
-        self.frame.write_raw(data, true).map(|_| ())
+        space::write_bytes(&mut self.frame, data)?;
+
+        Some(())
     }
 }
 
@@ -279,12 +276,12 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = TestURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = Space::boxed(256);
 
         // writing
         {
-            let mut space = raw_space.as_mut();
-            let mut writer = space::init_atom(space, urids.atom.sequence,  TimeStampURID::Frames(urids.units.frame)).unwrap();
+            let mut space = raw_space.as_bytes_mut();
+            let mut writer = space::init_atom(&mut space, urids.atom.sequence,  TimeStampURID::Frames(urids.units.frame)).unwrap();
 
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
@@ -296,8 +293,7 @@ mod tests {
 
         // verifying
         {
-            let (sequence, space) = raw_space.split_at(size_of::<sys::LV2_Atom_Sequence>());
-            let sequence = unsafe { &*(sequence.as_ptr() as *const sys::LV2_Atom_Sequence) };
+            let (sequence, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }.unwrap();
             assert_eq!(sequence.atom.type_, urids.atom.sequence);
             assert_eq!(
                 sequence.atom.size as usize,
@@ -310,23 +306,18 @@ mod tests {
             );
             assert_eq!(sequence.body.unit, urids.units.frame);
 
-            let (stamp, space) = space.split_at(size_of::<RawTimeStamp>());
-            let stamp = unsafe { *(stamp.as_ptr() as *const RawTimeStamp) };
-            assert_eq!(unsafe { stamp.frames }, 0);
+            let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            assert_eq!(stamp.frames, 0);
 
-            let (int, space) = space.split_at(size_of::<sys::LV2_Atom_Int>());
-            let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Int) };
+            let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);
-            let (_, space) = space.split_at(4);
 
-            let (stamp, space) = space.split_at(size_of::<RawTimeStamp>());
-            let stamp = unsafe { *(stamp.as_ptr() as *const RawTimeStamp) };
-            assert_eq!(unsafe { stamp.frames }, 1);
+            let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            assert_eq!(stamp.frames, 1);
 
-            let (int, _) = space.split_at(size_of::<sys::LV2_Atom_Long>());
-            let int = unsafe { &*(int.as_ptr() as *const sys::LV2_Atom_Long) };
+            let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.long);
             assert_eq!(int.atom.size as usize, size_of::<i64>());
             assert_eq!(int.body, 17);
@@ -334,9 +325,8 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.atom.sequence).unwrap();
-            let mut reader = Sequence::read(body, urids.units.beat).unwrap();
+            let body = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }.body().unwrap();
+            let mut reader = unsafe { Sequence::read(body, urids.units.beat) }.unwrap();
 
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 

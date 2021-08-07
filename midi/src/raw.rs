@@ -22,13 +22,13 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = AtomSpace<'a, 'b>;
+    type WriteHandle = AtomSpaceWriter<'b>;
 
-    fn read(body: &'a Space, _: ()) -> Option<&'a [u8]> {
-        body.as_bytes()
+    unsafe fn read(body: &'a Space, _: ()) -> Option<&'a [u8]> {
+        Some(body.as_bytes())
     }
 
-    fn init(frame: AtomSpace<'a, 'b>, _: ()) -> Option<AtomSpace<'a, 'b>> {
+    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<AtomSpaceWriter<'b>> {
         Some(frame)
     }
 }

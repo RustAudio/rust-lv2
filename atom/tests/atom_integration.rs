@@ -47,6 +47,7 @@ impl Plugin for AtomPlugin {
             .input
             .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)
             .unwrap();
+
         let mut sequence_writer = ports
             .output
             .init::<Sequence>(
@@ -98,18 +99,15 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space: Box<[u8]> = Box::new([0; 256]);
+    let mut input_atom_space = AtomSpace::boxed(256);
     {
-        let mut space = SpaceWriter::new(input_atom_space.as_mut());
-        let mut writer = (&mut space as &mut dyn AllocateSpace)
-            .init(
-                urids.atom.sequence,
-                TimeStampURID::Frames(urids.units.frame),
-            )
-            .unwrap();
-        writer
+        let mut space = input_atom_space.as_bytes_mut();
+        let mut writer = lv2_atom::space::init_atom(&mut space,
+                                                    urids.atom.sequence,
+                                                    TimeStampURID::Frames(urids.units.frame)).unwrap();
+        {writer
             .init(TimeStamp::Frames(0), urids.atom.int, 42)
-            .unwrap();
+            .unwrap();}
         writer
             .init(TimeStamp::Frames(1), urids.atom.long, 17)
             .unwrap();
@@ -119,13 +117,13 @@ fn main() {
     }
 
     // preparing the output atom.
-    let mut output_atom_space: Box<[u8]> = Box::new([0; 256]);
+    let mut output_atom_space = Space::boxed(256);
     {
-        let mut space = SpaceWriter::new(output_atom_space.as_mut());
-        (&mut space as &mut dyn AllocateSpace)
-            .init(urids.atom.chunk, ())
-            .unwrap()
-            .allocate(256 - size_of::<sys::LV2_Atom>(), false)
+        let mut space = output_atom_space.as_bytes_mut();
+        lv2_atom::space::init_atom(&mut space,
+                                                    urids.atom.chunk,
+                                                    ()).unwrap()
+            .allocate_unaligned(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
     }
 
@@ -149,12 +147,12 @@ fn main() {
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             0,
-            input_atom_space.as_mut_ptr() as *mut c_void,
+            input_atom_space.as_bytes().as_mut_ptr() as *mut c_void,
         );
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             1,
-            output_atom_space.as_mut_ptr() as *mut c_void,
+            output_atom_space.as_bytes().as_mut_ptr() as *mut c_void,
         );
 
         // Activate, run, deactivate.
@@ -167,10 +165,8 @@ fn main() {
     }
 
     // Asserting the result
-    let (sequence, _) = Space::from_bytes(output_atom_space.as_ref())
-        .split_atom_body(urids.atom.sequence)
-        .unwrap();
-    for (stamp, atom) in Sequence::read(sequence, urids.units.beat).unwrap() {
+    let (sequence, _) = unsafe { output_atom_space.split_atom_body(urids.atom.sequence)}.unwrap();
+    for (stamp, atom) in unsafe { Sequence::read(sequence, urids.units.beat) }.unwrap() {
         let stamp = stamp.as_frames().unwrap();
         match stamp {
             0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),

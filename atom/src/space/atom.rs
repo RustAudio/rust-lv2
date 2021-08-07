@@ -1,31 +1,31 @@
 use crate::space::AllocateSpace;
 use urid::URID;
 
-/// A `MutSpace` that notes the amount of allocated space in an atom header.
-pub struct AtomSpace<'a> {
+/// A `MutSpace` that tracks the amount of allocated space in an atom header.
+pub struct AtomSpaceWriter<'a> {
     atom: &'a mut sys::LV2_Atom,
     parent: &'a mut dyn AllocateSpace<'a>,
 }
 
-impl<'a> AtomSpace<'a> {
+impl<'a> AtomSpaceWriter<'a> {
     #[inline]
-    pub fn atom(&self) -> &'a mut sys::LV2_Atom {
+    pub fn atom(&'a self) -> &'a sys::LV2_Atom {
         self.atom
     }
 
     /// Create a new framed space with the given parent and type URID.
-    pub fn write_new<A: ?Sized>(parent: &mut dyn AllocateSpace<'a>, urid: URID<A>) -> Option<Self> {
+    pub fn write_new<A: ?Sized>(mut parent: &'a mut dyn AllocateSpace<'a>, urid: URID<A>) -> Option<Self> {
         let atom = sys::LV2_Atom {
             size: 0,
             type_: urid.get(),
         };
 
-        let atom: &'a mut sys::LV2_Atom = crate::space::write_value(parent, atom)?;
+        let atom = crate::space::write_value(&mut parent, atom)?;
         Some(Self { atom, parent })
     }
 }
 
-impl<'a, 'b> AllocateSpace<'a> for AtomSpace<'a> {
+impl<'a> AllocateSpace<'a> for AtomSpaceWriter<'a> {
     #[inline]
     fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]> {
         let result = self.parent.allocate_unaligned(size);
@@ -39,5 +39,10 @@ impl<'a, 'b> AllocateSpace<'a> for AtomSpace<'a> {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         self.parent.as_bytes()
+    }
+
+    #[inline]
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        self.parent.as_bytes_mut()
     }
 }

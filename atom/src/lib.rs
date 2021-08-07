@@ -86,7 +86,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{AtomSpace, AllocateSpace, Space};
+    pub use space::{AtomSpaceWriter, AllocateSpace, AtomSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
@@ -126,9 +126,7 @@ impl AtomURIDCollection {
 /// This is the foundation of this crate: Types that implement `Atom` define the reading and writing functions for an atom type. However, these types will never be constructed; They are only names to be used for generic type arguments.
 ///
 /// This trait has two lifetime parameters: The first one is the lifetime of the atom in memory. In practice, this will often be `'static`, but it's good to keep it generic for testing purposes. The second parameter is the lifetime of the `MutSpace` borrowed by the `FramedMutSpace` parameter in the `write` method. Since the `WriteParameter` may contain this `FramedMutSpace`, it has to be assured that it lives long enough. Since the referenced `MutSpace` also has to borrow the atom, it may not live longer than the atom.
-pub trait Atom<'a, 'b>: UriBound
-where
-    'a: 'b,
+pub trait Atom<'read, 'write>: UriBound
 {
     /// The atom-specific parameter of the `read` function.
     ///
@@ -138,7 +136,7 @@ where
     /// The return value of the `read` function.
     ///
     /// It may contain a reference to the atom and therefore may not outlive it.
-    type ReadHandle: 'a;
+    type ReadHandle: 'read;
 
     /// The atom-specific parameter of the `write` function.
     ///
@@ -148,7 +146,7 @@ where
     /// The return value of the `write` function.
     ///
     /// It may contain a reference to a `MutSpace` and therefore may not outlive it.
-    type WriteHandle: 'b;
+    type WriteHandle: 'write;
 
     /// Reads the body of the atom.
     ///
@@ -160,7 +158,7 @@ where
     ///
     /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
-    unsafe fn read(body: &'a Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
+    unsafe fn read(body: &'read Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
 
     /// Initialize the body of the atom.
     ///
@@ -171,7 +169,7 @@ where
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
     fn init(
-        frame: AtomSpace<'a>,
+        frame: AtomSpaceWriter<'write>,
         parameter: Self::WriteParameter,
     ) -> Option<Self::WriteHandle>;
 }
@@ -180,8 +178,9 @@ where
 ///
 /// This is used by reading handles that have to return a reference to an atom, but can not check it's type. This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
 #[derive(Clone, Copy)]
+// TODO: refactor this so it directly contains the atom and is not a fat pointer to the space that has to be re-checked every time
 pub struct UnidentifiedAtom<'a> {
-    space: &'a Space,
+    space: &'a AtomSpace,
 }
 
 impl<'a> UnidentifiedAtom<'a> {
@@ -191,7 +190,7 @@ impl<'a> UnidentifiedAtom<'a> {
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.x
     #[inline]
-    pub unsafe fn new_unchecked(space: &'a Space) -> Self {
+    pub unsafe fn new_unchecked(space: &'a AtomSpace) -> Self {
         Self { space }
     }
 
@@ -199,22 +198,42 @@ impl<'a> UnidentifiedAtom<'a> {
     ///
     /// To identify the atom, it's URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
     pub fn read<'b, A: Atom<'a, 'b>>(
-        self,
+        &'a self,
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {
-        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
-        let (body, _rest) = unsafe { self.space.split_atom_body(urid) }?;
-        // SAFETY: the fact that this contains a valid instance of A is checked by split_atom_body above.
+        let (header, body) = self.header_and_body()?;
+
+        if header.type_ != urid {
+            return None;
+        }
+
+        // SAFETY: the fact that this contains a valid instance of A is checked above.
         unsafe { A::read(body, parameter) }
     }
 
-    /// Retrieve the type URID of the atom.
-    ///
-    /// This can be used to identify atoms without actually reading them.
-    pub fn type_urid(self) -> Option<URID> {
+    #[inline]
+    pub fn as_space(&self) -> &'a AtomSpace {
+        self.space
+    }
+
+    #[inline]
+    pub fn header_and_body(&self) -> Option<(&'a sys::LV2_Atom, &'a Space)> {
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
-        unsafe { self.space.split_for_type::<sys::LV2_Atom>() }
-            .and_then(|(header, _)| URID::new(header.type_))
+        let (header, body) = unsafe { self.space.split_for_value_unchecked() }?;
+        let body = body.slice(header.size as usize)?;
+
+        Some((header, body))
+    }
+
+    #[inline]
+    pub fn header(&self) -> Option<&'a sys::LV2_Atom> {
+        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
+        unsafe { self.space.read_unchecked() }
+    }
+
+    #[inline]
+    pub fn body(&self) -> Option<&'a Space> {
+        self.header_and_body().map(|(_header, body)| body)
     }
 }

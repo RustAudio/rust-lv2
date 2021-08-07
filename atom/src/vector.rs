@@ -34,7 +34,7 @@ use crate::scalar::ScalarAtom;
 use crate::space::*;
 use crate::*;
 use std::marker::PhantomData;
-use std::mem::size_of;
+use std::mem::{size_of, MaybeUninit};
 use urid::*;
 
 /// An atom containg an array of scalar atom bodies.
@@ -48,40 +48,26 @@ unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C>
-where
-    'a: 'b,
-    C: 'b,
-{
+impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where C: 'b, {
     type ReadParameter = URID<C>;
     type ReadHandle = &'a [C::InternalType];
     type WriteParameter = URID<C>;
-    type WriteHandle = VectorWriter<'a, C>;
+    type WriteHandle = VectorWriter<'b, C>;
 
     unsafe fn read(body: &'a Space, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
-        let (header, body) = body.split_for_type::<sys::LV2_Atom_Vector_Body>()?;
+        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Vector_Body>()?;
 
-        if header.child_type != child_urid
-            || header.child_size as usize != size_of::<C::InternalType>()
-        {
+        if header.child_type != child_urid || header.child_size as usize != size_of::<C::InternalType>() {
             return None;
         }
 
-        let data = body.as_bytes();
+        let data = body.aligned::<C::InternalType>()?.as_uninit_slice();
 
-        assert_eq!(data.len() % size_of::<C::InternalType>(), 0);
-        let children_count = data.len() / size_of::<C::InternalType>();
-
-        let children = unsafe {
-            std::slice::from_raw_parts(data.as_ptr() as *const C::InternalType, children_count)
-        };
-        Some(children)
+        // SAFETY: Assume Init: We can assume this data was properly initialized by the host.
+        Some(&*(data as *const _ as *const [C::InternalType]))
     }
 
-    fn init(
-        mut frame: AtomSpace<'a>,
-        child_urid: URID<C>,
-    ) -> Option<VectorWriter<'a, C>> {
+    fn init(mut frame: AtomSpaceWriter<'b>, child_urid: URID<C>) -> Option<VectorWriter<'b, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -99,7 +85,7 @@ where
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
 pub struct VectorWriter<'a, A: ScalarAtom> {
-    frame: AtomSpace<'a>,
+    frame: AtomSpaceWriter<'a>,
     type_: PhantomData<A>,
 }
 
@@ -113,28 +99,15 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, A> {
     /// Append a slice of undefined memory to the vector.
     ///
     /// Using this method, you don't need to have the elements in memory before you can write them.
-    pub fn allocate(&mut self, size: usize) -> Option<&mut [A::InternalType]> {
-        self.frame
-            .allocate(size_of::<A::InternalType>() * size, false)
-            .map(|(_, data)| unsafe {
-                std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut A::InternalType, size)
-            })
+    #[inline]
+    pub fn allocate_uninit(&mut self, count: usize) -> Option<&mut [MaybeUninit<A::InternalType>]> {
+        space::allocate_values(&mut self.frame, count)
     }
 
     /// Append multiple elements to the vector.
+    #[inline]
     pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
-        let raw_data = unsafe {
-            std::slice::from_raw_parts(data.as_ptr() as *const u8, std::mem::size_of_val(data))
-        };
-        self.frame
-            .allocate(raw_data.len(), false)
-            .map(|(_, space)| unsafe {
-                space.copy_from_slice(raw_data);
-                std::slice::from_raw_parts_mut(
-                    space.as_mut_ptr() as *mut A::InternalType,
-                    data.len(),
-                )
-            })
+        space::write_values(&mut self.frame, data)
     }
 }
 

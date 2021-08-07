@@ -15,7 +15,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
-//!     let mut out_chunk: AtomSpace = ports.output.init(urids.chunk, ()).unwrap();
+//!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
 //!     out_chunk.write_raw(in_chunk, false).unwrap();
 //! }
@@ -44,13 +44,13 @@ where
     type ReadParameter = ();
     type ReadHandle = &'a [u8];
     type WriteParameter = ();
-    type WriteHandle = AtomSpace<'a>;
+    type WriteHandle = AtomSpaceWriter<'b>;
 
     unsafe fn read(space: &'a Space, _: ()) -> Option<&'a [u8]> {
         Some(space.as_bytes())
     }
 
-    fn init(frame: AtomSpace<'a>, _: ()) -> Option<AtomSpace<'a>> {
+    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<AtomSpaceWriter<'b>> {
         Some(frame)
     }
 }
