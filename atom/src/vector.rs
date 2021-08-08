@@ -124,7 +124,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = AtomSpace::boxed_broken(256);
+        let mut raw_space = AtomSpace::boxed(256);
 
         // writing
         {
