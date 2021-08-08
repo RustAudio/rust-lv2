@@ -171,11 +171,11 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid: URID<A> = map.map_type().unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AtomSpace::boxed(256);
 
         // writing
         {
-            let mut space = raw_space.as_mut();
+            let mut space = raw_space.as_bytes_mut();
             crate::space::init_atom(&mut space, urid, value).unwrap();
         }
 
@@ -188,7 +188,7 @@ mod tests {
                 body: B,
             }
 
-            let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>()).unwrap();
 
             let scalar = unsafe { &*(scalar.as_ptr() as *const Scalar<A::InternalType>) };
             assert_eq!(scalar.atom.type_, urid);
@@ -198,8 +198,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = unsafe { space.split_atom_body(urid) }.unwrap();
+            let (body, _) = unsafe { raw_space.split_atom_body(urid) }.unwrap();
             unsafe { assert_eq!(A::read(body, ()).unwrap(), value); }
         }
     }

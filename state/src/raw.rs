@@ -54,7 +54,7 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
-        let space = AtomSpace::from_bytes(&space);
+        let space = AtomSpace::try_from_bytes(&space).ok_or(StateErr::BadData)?;
         let (header, data) = unsafe { space.to_atom() }.and_then(|a| a.header_and_body()).ok_or(StateErr::BadData)?;
 
         let key = key.get();
@@ -175,7 +175,7 @@ impl<'a> RetrieveHandle<'a> {
             return Err(StateErr::NoProperty);
         };
 
-        Ok(StatePropertyReader::new(type_, Space::from_bytes(space)))
+        Ok(StatePropertyReader::new(type_, Space::try_from_bytes(space).ok_or(StateErr::BadData)?))
     }
 }
 
@@ -309,7 +309,7 @@ mod tests {
                 }
                 3 => {
                     assert_eq!(urids.vector::<Int>(), *type_);
-                    let space = Space::from_bytes(value.as_slice());
+                    let space = Space::try_from_bytes(value.as_slice()).unwrap();
                     let data = unsafe { Vector::read(space, urids.int) }.unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }

@@ -123,9 +123,10 @@ impl<'a, 'b> StringWriter<'a> {
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
-    pub fn append(&'a mut self, string: &str) -> Option<&'a mut str> {
+    pub fn append(&mut self, string: &str) -> Option<&'a mut str> {
         let data = string.as_bytes();
         let space = crate::space::write_bytes(&mut self.frame, data)?;
+        // FIXME: make a "rewind" function to write the nul byte later
         unsafe { Some(std::str::from_utf8_unchecked_mut(space)) }
     }
 }
@@ -171,9 +172,8 @@ mod tests {
         {
             let mut space = raw_space.as_bytes_mut();
             let mut writer = crate::space::init_atom(&mut space, urids.atom.literal, LiteralInfo::Language(urids.german.into_general())).unwrap();
-            todo!()
-            /*writer.append(SAMPLE0).unwrap();
-            writer.append(SAMPLE1).unwrap();*/
+            writer.append(SAMPLE0).unwrap();
+            writer.append(SAMPLE1).unwrap();
         }
 
         // verifying

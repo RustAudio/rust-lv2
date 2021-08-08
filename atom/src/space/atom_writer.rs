@@ -11,8 +11,8 @@ pub struct AtomSpaceWriter<'a> {
 
 impl<'a> AtomSpaceWriter<'a> {
     #[inline]
-    pub fn atom(&'a self) -> &'a AtomHeader {
-        self.atom
+    pub fn atom(&self) -> AtomHeader {
+        *self.atom
     }
 
     /// Create a new framed space with the given parent and type URID.
