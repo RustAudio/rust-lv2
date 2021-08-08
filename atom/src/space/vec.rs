@@ -1,4 +1,4 @@
-use std::mem::{MaybeUninit, transmute};
+use std::mem::MaybeUninit;
 use crate::space::{AllocateSpace, Space};
 use std::ops::Range;
 
@@ -23,7 +23,7 @@ impl<T: Copy + 'static> VecSpace<T> {
     }
 
     #[inline]
-    fn get_or_allocate_bytes_mut<'a>(&'a mut self, byte_range: Range<usize>) -> Option<&'a mut [u8]> {
+    fn get_or_allocate_bytes_mut(&mut self, byte_range: Range<usize>) -> Option<&mut [u8]> {
         let byte_len = self.inner.len() * ::core::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -47,11 +47,9 @@ pub struct VecSpaceCursor<'vec, T> {
 }
 
 impl<'vec, T: Copy + 'static> AllocateSpace<'vec> for VecSpaceCursor<'vec, T> {
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&'vec mut [u8]> {
+    fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]> {
         let end = self.byte_index.checked_add(size)?;
-        // FIXME: this is really ugly
-        let vec: &'vec mut VecSpace<T> = todo!();
-        VecSpace::<T>::get_or_allocate_bytes_mut(vec, self.byte_index..end)
+        VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.byte_index..end)
     }
 
     #[inline]
@@ -72,16 +70,14 @@ mod tests {
     #[test]
     pub fn test_lifetimes () {
         let mut buffer = VecSpace::<u8>::with_capacity(16);
-        let mut bytes = {
+
+        {
             let mut cursor = buffer.cursor();
             let buf1 = cursor.allocate_unaligned(2).unwrap();
-            let buf2 = cursor.allocate_unaligned(2).unwrap();
-            buf1[0] = 5;
-        };
-/*
-        let other_cursor2 = buffer.cursor();
-        let other_cursor = buffer.cursor();*/
-        // We can't do this:
-        //bytes[0] = 5;
+            buf1[0] = 5
+        }
+
+        let _other_cursor = buffer.cursor();
+        let _other_cursor2 = buffer.cursor();
     }
 }
