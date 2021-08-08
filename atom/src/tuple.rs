@@ -43,17 +43,17 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Tuple {
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
     type ReadParameter = ();
-    type ReadHandle = TupleIterator<'a>;
+    type ReadHandle = TupleIterator<'handle>;
     type WriteParameter = ();
-    type WriteHandle = TupleWriter<'b>;
+    type WriteHandle = TupleWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'a Space, _: ()) -> Option<TupleIterator<'a>> {
+    unsafe fn read(body: &'space Space, _: ()) -> Option<TupleIterator<'space>> {
         Some(TupleIterator { space: body })
     }
 
-    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<TupleWriter<'b>> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<TupleWriter<'handle, 'space>> {
         Some(TupleWriter { frame })
     }
 }
@@ -77,14 +77,14 @@ impl<'a> Iterator for TupleIterator<'a> {
 }
 
 /// The writing handle to add atoms to a tuple.
-pub struct TupleWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+pub struct TupleWriter<'handle, 'space> {
+    frame: AtomSpaceWriter<'handle, 'space>,
 }
 
-impl<'a, 'b> TupleWriter<'a> {
+impl<'handle, 'space> TupleWriter<'handle, 'space> {
     /// Initialize a new tuple element.
-    pub fn init<'read, 'write, A: Atom<'read, 'write>>(
-        &'write mut self,
+    pub fn init<A: Atom<'handle, 'space>>(
+        &'handle mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
@@ -115,8 +115,7 @@ mod tests {
                     writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            todo!()
-            //writer.init::<Int>(urids.int, 42).unwrap();
+            writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // verifying

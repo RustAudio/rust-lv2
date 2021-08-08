@@ -56,25 +56,22 @@ pub trait ScalarAtom: UriBound {
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar(mut frame: AtomSpaceWriter, value: Self::InternalType) -> Option<&mut Self::InternalType> {
+    fn write_scalar<'handle, 'space: 'handle>(mut frame: AtomSpaceWriter<'handle, 'space>, value: Self::InternalType) -> Option<&'handle mut Self::InternalType> {
         space::write_value(&mut frame, value)
     }
 }
 
-impl<'a, 'b, A: ScalarAtom> Atom<'a, 'b> for A
-where
-    'a: 'b,
-{
+impl<'handle, 'space: 'handle, A: ScalarAtom> Atom<'handle, 'space> for A {
     type ReadParameter = ();
     type ReadHandle = A::InternalType;
     type WriteParameter = A::InternalType;
-    type WriteHandle = &'b mut A::InternalType;
+    type WriteHandle = &'handle mut A::InternalType;
 
-    unsafe fn read(body: &'a Space, _: ()) -> Option<A::InternalType> {
+    unsafe fn read(body: &'space Space, _: ()) -> Option<A::InternalType> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(frame: AtomSpaceWriter, value: A::InternalType) -> Option<&mut A::InternalType> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, value: A::InternalType) -> Option<&'handle mut A::InternalType> {
         <A as ScalarAtom>::write_scalar(frame, value)
     }
 }

@@ -37,20 +37,17 @@ unsafe impl UriBound for Chunk {
     const URI: &'static [u8] = sys::LV2_ATOM__Chunk;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Chunk
-where
-    'a: 'b,
-{
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
     type ReadParameter = ();
-    type ReadHandle = &'a [u8];
+    type ReadHandle = &'handle [u8];
     type WriteParameter = ();
-    type WriteHandle = AtomSpaceWriter<'b>;
+    type WriteHandle = AtomSpaceWriter<'handle, 'space>;
 
-    unsafe fn read(space: &'a Space, _: ()) -> Option<&'a [u8]> {
+    unsafe fn read(space: &'handle Space, _: ()) -> Option<&'handle [u8]> {
         Some(space.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<AtomSpaceWriter<'b>> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<AtomSpaceWriter<'handle, 'space>> {
         Some(frame)
     }
 }

@@ -80,11 +80,11 @@ unsafe impl UriBound for Sequence {
     const URI: &'static [u8] = sys::LV2_ATOM__Sequence;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Sequence {
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
     type ReadParameter = URID<Beat>;
-    type ReadHandle = SequenceIterator<'a>;
+    type ReadHandle = SequenceIterator<'handle>;
     type WriteParameter = TimeStampURID;
-    type WriteHandle = SequenceWriter<'b>;
+    type WriteHandle = SequenceWriter<'handle, 'space>;
 
     unsafe fn read(body: &Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
         let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence_Body>()?;
@@ -96,7 +96,7 @@ impl<'a, 'b> Atom<'a, 'b> for Sequence {
         Some(SequenceIterator { space: body, unit })
     }
 
-    fn init(mut frame: AtomSpaceWriter<'b>, unit: TimeStampURID) -> Option<SequenceWriter<'b>> {
+    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, unit: TimeStampURID) -> Option<SequenceWriter<'handle, 'space>> {
         let header = sys::LV2_Atom_Sequence_Body {
             unit: match unit {
                 TimeStampURID::BeatsPerMinute(urid) => urid.get(),
@@ -191,20 +191,20 @@ impl<'a> Iterator for SequenceIterator<'a> {
 }
 
 /// The writing handle for sequences.
-pub struct SequenceWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+pub struct SequenceWriter<'handle, 'space> {
+    frame: AtomSpaceWriter<'handle, 'space>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
 
-impl<'a> SequenceWriter<'a> {
+impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:
     /// * The time stamp is not measured in our unit.
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
-    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Option<()> {
+    fn write_time_stamp(&'handle mut self, stamp: TimeStamp) -> Option<()> {
         let raw_stamp = match self.unit {
             TimeStampUnit::Frames => {
                 let frames = stamp.as_frames()?;
@@ -234,8 +234,8 @@ impl<'a> SequenceWriter<'a> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'read, 'write, A: Atom<'read, 'write>>(
-        &'write mut self,
+    pub fn init<A: Atom<'handle, 'space>>(
+        &'handle mut self,
         stamp: TimeStamp,
         urid: URID<A>,
         parameter: A::WriteParameter,
@@ -249,7 +249,7 @@ impl<'a> SequenceWriter<'a> {
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
+    pub fn forward(&'handle mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
         let data = atom.space.as_bytes();
         self.write_time_stamp(stamp)?;
         space::write_bytes(&mut self.frame, data)?;

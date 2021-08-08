@@ -8,13 +8,13 @@ use std::mem::MaybeUninit;
 /// A smart pointer that writes atom data to an internal slice.
 ///
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
-pub trait AllocateSpace<'a>: 'a {
+pub trait AllocateSpace<'a> {
     /// Try to allocate memory on the internal data slice.
     ///
     /// If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned. The first return value is the number of padding bytes that has been used and the second return value is a mutable slice referencing the allocated data.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]>;
+    fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]>;
 
     fn as_bytes(&self) -> &[u8];
     fn as_bytes_mut(&mut self) -> &mut [u8];
@@ -52,7 +52,7 @@ pub fn realign<'a, T: 'static, S: AllocateSpace<'a>>(space: &mut S) -> Option<()
 }
 
 #[inline]
-pub fn allocate<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, size: usize) -> Option<&'a mut Space<T>> {
+pub fn allocate<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl AllocateSpace<'space>, size: usize) -> Option<&'handle mut Space<T>> {
     let required_padding = Space::<T>::padding_for(space.as_bytes());
     let raw = space.allocate_unaligned(size + required_padding)?;
 
@@ -60,26 +60,26 @@ pub fn allocate<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, size: usize)
 }
 
 #[inline]
-pub fn allocate_values<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, count: usize) -> Option<&'a mut [MaybeUninit<T>]> {
+pub fn allocate_values<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl AllocateSpace<'space>, count: usize) -> Option<&'handle mut [MaybeUninit<T>]> {
     let space = allocate(space, count * ::core::mem::size_of::<T>())?;
     Some(space.as_uninit_slice_mut())
 }
 
 #[inline]
-pub fn init_atom<'space: 'write, 'read, 'write, A: Atom<'read, 'write>>(space: &'write mut impl AllocateSpace<'space>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
-    let space: AtomSpaceWriter<'write> = AtomSpaceWriter::write_new(space, atom_type)?;
+pub fn init_atom<'handle, 'space: 'handle, A: Atom<'handle, 'space>>(space: &'handle mut impl AllocateSpace<'space>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
+    let space: AtomSpaceWriter<'handle, 'space> = AtomSpaceWriter::write_new(space, atom_type)?;
     A::init(space, write_parameter)
 }
 
 #[inline]
-pub fn write_bytes<'a>(space: &mut impl AllocateSpace<'a>, bytes: &[u8]) -> Option<&'a mut [u8]> {
+pub fn write_bytes<'handle, 'space: 'handle>(space: &'handle mut impl AllocateSpace<'space>, bytes: &[u8]) -> Option<&'handle mut [u8]> {
     let space = space.allocate_unaligned(bytes.len())?;
     space.copy_from_slice(bytes);
     Some(space)
 }
 
 #[inline]
-pub fn write_value<'a, T>(space: &mut impl AllocateSpace<'a>, value: T) -> Option<&'a mut T>
+pub fn write_value<'handle, 'space: 'handle, T>(space: &'handle mut impl AllocateSpace<'space>, value: T) -> Option<&'handle mut T>
     where T: Copy + Sized + 'static {
     let space = allocate(space, size_of_val(&value))?;
     // SAFETY: We used size_of_val, so we are sure that the allocated space is exactly big enough for T.
@@ -90,7 +90,7 @@ pub fn write_value<'a, T>(space: &mut impl AllocateSpace<'a>, value: T) -> Optio
     Some (unsafe { &mut *(space.as_mut_ptr()) })
 }
 
-pub fn write_values<'a, T>(space: &mut impl AllocateSpace<'a>, values: &[T]) -> Option<&'a mut [T]>
+pub fn write_values<'handle, 'space: 'handle, T>(space: &'handle mut impl AllocateSpace<'space>, values: &[T]) -> Option<&'handle mut [T]>
     where T: Copy + Sized + 'static {
     let space: &mut Space<T> = allocate(space, size_of_val(values))?;
     let space = space.as_uninit_slice_mut();

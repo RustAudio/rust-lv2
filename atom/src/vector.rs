@@ -48,13 +48,13 @@ unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where C: 'b, {
+impl<'handle, 'space: 'handle, C: ScalarAtom> Atom<'handle, 'space> for Vector<C> where C: 'space, {
     type ReadParameter = URID<C>;
-    type ReadHandle = &'a [C::InternalType];
+    type ReadHandle = &'space [C::InternalType];
     type WriteParameter = URID<C>;
-    type WriteHandle = VectorWriter<'b, C>;
+    type WriteHandle = VectorWriter<'handle, 'space, C>;
 
-    unsafe fn read(body: &'a Space, child_urid: URID<C>) -> Option<&'a [C::InternalType]> {
+    unsafe fn read(body: &'space Space, child_urid: URID<C>) -> Option<&'space [C::InternalType]> {
         let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Vector_Body>()?;
 
         if header.child_type != child_urid || header.child_size as usize != size_of::<C::InternalType>() {
@@ -65,7 +65,7 @@ impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where C: 'b, {
         Some(body.aligned()?.assume_init())
     }
 
-    fn init(mut frame: AtomSpaceWriter<'b>, child_urid: URID<C>) -> Option<VectorWriter<'b, C>> {
+    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, child_urid: URID<C>) -> Option<VectorWriter<'handle, 'space, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -82,15 +82,15 @@ impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where C: 'b, {
 /// Handle to append elements to a vector.
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
-pub struct VectorWriter<'a, A: ScalarAtom> {
-    frame: AtomSpaceWriter<'a>,
+pub struct VectorWriter<'handle, 'space, A: ScalarAtom> {
+    frame: AtomSpaceWriter<'handle, 'space>,
     type_: PhantomData<A>,
 }
 
-impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, A> {
+impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
     /// Push a single value to the vector.
     #[inline]
-    pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
+    pub fn push(&'handle mut self, child: A::InternalType) -> Option<&'handle mut A::InternalType> {
         space::write_value(&mut self.frame, child)
     }
 
@@ -98,13 +98,13 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, A> {
     ///
     /// Using this method, you don't need to have the elements in memory before you can write them.
     #[inline]
-    pub fn allocate_uninit(&mut self, count: usize) -> Option<&mut [MaybeUninit<A::InternalType>]> {
+    pub fn allocate_uninit(&'handle mut self, count: usize) -> Option<&'handle mut [MaybeUninit<A::InternalType>]> {
         space::allocate_values(&mut self.frame, count)
     }
 
     /// Append multiple elements to the vector.
     #[inline]
-    pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
+    pub fn append(&'handle mut self, data: &[A::InternalType]) -> Option<&'handle mut [A::InternalType]> {
         space::write_values(&mut self.frame, data)
     }
 }

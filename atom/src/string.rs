@@ -47,13 +47,13 @@ pub enum LiteralInfo {
     Datatype(URID),
 }
 
-impl<'a, 'b> Atom<'a, 'b> for Literal {
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
     type ReadParameter = ();
-    type ReadHandle = (LiteralInfo, &'a str);
+    type ReadHandle = (LiteralInfo, &'handle str);
     type WriteParameter = LiteralInfo;
-    type WriteHandle = StringWriter<'b>;
+    type WriteHandle = StringWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'a Space, _: ()) -> Option<(LiteralInfo, &'a str)> {
+    unsafe fn read(body: &'handle Space, _: ()) -> Option<(LiteralInfo, &'handle str)> {
         let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Literal_Body>()?;
         let info = if header.lang != 0 && header.datatype == 0 {
             LiteralInfo::Language(URID::new(header.lang)?)
@@ -69,7 +69,7 @@ impl<'a, 'b> Atom<'a, 'b> for Literal {
             .map(|string| (info, string))
     }
 
-    fn init(mut frame: AtomSpaceWriter<'b>, info: LiteralInfo) -> Option<StringWriter<'b>> {
+    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, info: LiteralInfo) -> Option<StringWriter<'handle, 'space>> {
         crate::space::write_value(&mut frame,
             match info {
                 LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
@@ -95,35 +95,35 @@ unsafe impl UriBound for String {
     const URI: &'static [u8] = sys::LV2_ATOM__String;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for String {
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
     type ReadParameter = ();
-    type ReadHandle = &'a str;
+    type ReadHandle = &'handle str;
     type WriteParameter = ();
-    type WriteHandle = StringWriter<'b>;
+    type WriteHandle = StringWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'a Space, _: ()) -> Option<&'a str> {
+    unsafe fn read(body: &'space Space, _: ()) -> Option<&'handle str> {
         let data = body.as_bytes();
         let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
         Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
-    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<StringWriter<'b>> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<StringWriter<'handle, 'space>> {
         Some(StringWriter { frame })
     }
 }
 
 /// Handle to append strings to a string or literal.
-pub struct StringWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+pub struct StringWriter<'a, 'space> {
+    frame: AtomSpaceWriter<'a, 'space>,
 }
 
-impl<'a, 'b> StringWriter<'a> {
+impl<'a, 'space> StringWriter<'a, 'space> {
     /// Append a string.
     ///
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
-    pub fn append(&mut self, string: &str) -> Option<&'a mut str> {
+    pub fn append(&'a mut self, string: &str) -> Option<&'a mut str> {
         let data = string.as_bytes();
         let space = crate::space::write_bytes(&mut self.frame, data)?;
         // FIXME: make a "rewind" function to write the nul byte later
@@ -131,10 +131,11 @@ impl<'a, 'b> StringWriter<'a> {
     }
 }
 
-impl<'a> Drop for StringWriter<'a> {
+impl<'a, 'space> Drop for StringWriter<'a, 'space> {
     fn drop(&mut self) {
         // Null terminator.
         // FIXME: this seems unsafe if the value could not be written for some reason.
+        // todo!()
         let _ = crate::space::write_value(&mut self.frame, 0u8);
     }
 }
@@ -221,9 +222,8 @@ mod tests {
             let mut space = raw_space.as_bytes_mut();
 
             let mut writer = crate::space::init_atom(&mut space, urids.string, ()).unwrap();
-            todo!()
-            /*writer.append(SAMPLE0).unwrap();
-            writer.append(SAMPLE1).unwrap();*/
+            writer.append(SAMPLE0).unwrap();
+            writer.append(SAMPLE1).unwrap();
         }
 
         // verifying
