@@ -47,7 +47,7 @@ impl<T: 'static> Space<T> {
         align_of::<T>()
     }
 
-    pub fn boxed(size: usize) -> impl DerefMut<Target=Self> where T: Copy {
+    pub fn boxed(size: usize) -> impl Deref<Target=Self> + DerefMut<Target=Self> where T: Copy {
         crate::space::boxed::BoxedSpace::new_zeroed(size)
     }
 
@@ -207,7 +207,9 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub fn slice(&self, length: usize) -> Option<&Self>  {
         // SAFETY: The data is part of the original slice which was aligned already.
-        Some(unsafe { Self::from_bytes_unchecked(self.data.get(..length)?) })
+        &self.data[..length-1];
+        let d = self.data.get(..(length - 1));
+        Some(unsafe { Self::from_bytes_unchecked(d?) })
     }
 
     #[inline]
@@ -393,13 +395,13 @@ impl AtomSpace {
     pub unsafe fn to_atom(&self) -> Option<UnidentifiedAtom> {
         let header = self.read_unchecked()?; // Try to read to ensure there is enough room
         // SAFETY: we just read and sliced to ensure this space is big enough for an atom header and its contents
-        Some(UnidentifiedAtom::new_unchecked(self.slice(header.size())?))
+        Some(UnidentifiedAtom::new_unchecked(self.slice(header.size_of_atom())?))
     }
 
     #[inline]
     pub unsafe fn split_atom(&self) -> Option<(UnidentifiedAtom, &Self)> {
         let header = self.read_unchecked()?;
-        let (atom, rest) = self.split_at(header.size())?;
+        let (atom, rest) = self.split_at(header.size_of_atom())?;
         let atom = UnidentifiedAtom::new_unchecked(atom);
 
         Some((atom, rest))
@@ -415,7 +417,7 @@ impl AtomSpace {
             return None
         }
 
-        body.split_at(header.size())
+        body.split_at(header.size_of_body())
     }
 }
 

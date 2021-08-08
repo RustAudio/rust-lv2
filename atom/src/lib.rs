@@ -222,8 +222,10 @@ impl<'a> UnidentifiedAtom<'a> {
     #[inline]
     pub fn header_and_body(&self) -> Option<(&'a AtomHeader, &'a Space)> {
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
+        let sl = self.space.as_bytes();
         let (header, body) = unsafe { self.space.split_for_value_unchecked() }?;
-        let body = body.slice(header.size())?;
+        let bo = self.space.as_bytes();
+        let body = body.slice(header.size_of_body())?;
 
         Some((&header, body))
     }

@@ -59,7 +59,7 @@ impl<'a> StoreHandle<'a> {
 
         let key = key.get();
         let data_ptr = data as *const _ as *const c_void;
-        let data_size = header.size();
+        let data_size = header.size_of_body();
         let data_type = header.urid();
         let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
             | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)

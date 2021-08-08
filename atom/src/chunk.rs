@@ -81,8 +81,7 @@ mod tests {
                 *value = i as u8;
             }
 
-            todo!()
-            // space::write_value(&mut space, 41u8).unwrap();
+            space::write_value(&mut space, 41u8).unwrap();
         }
 
         // verifying

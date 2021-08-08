@@ -17,8 +17,13 @@ impl AtomHeader {
     }
 
     #[inline]
-    pub fn size(self) -> usize {
+    pub fn size_of_body(self) -> usize {
         self.inner.size as usize
+    }
+
+    #[inline]
+    pub fn size_of_atom(self) -> usize {
+        self.size_of_body() + ::core::mem::size_of::<AtomHeader>()
     }
 
     #[inline]

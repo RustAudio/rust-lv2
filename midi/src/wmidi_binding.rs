@@ -124,8 +124,8 @@ mod tests {
         // verifying
         {
             let (header, space) = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }.header_and_body().unwrap();
-            assert_eq!(header.type_, urid);
-            assert_eq!(header.size as usize, 3);
+            assert_eq!(header.urid(), urid);
+            assert_eq!(header.size_of_body(), 3);
 
             let message = space.slice(3).unwrap().as_bytes();
             let message = MidiMessage::try_from(message).unwrap();
@@ -158,8 +158,8 @@ mod tests {
         // verifying
         {
             let (header, body) = unsafe { raw_space.to_atom() }.unwrap().header_and_body().unwrap();
-            assert_eq!(header.type_, urid);
-            assert_eq!(header.size as usize, 6);
+            assert_eq!(header.urid(), urid);
+            assert_eq!(header.size_of_body(), 6);
             assert_eq!(&body.as_bytes()[..6], &[0xf0, 1, 2, 3, 4, 0xf7]);
         }
 
