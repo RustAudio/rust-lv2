@@ -51,23 +51,6 @@ impl<T: 'static> Space<T> {
         crate::space::boxed::BoxedSpace::new_zeroed(size)
     }
 
-    pub fn boxed_broken(size: usize) -> Box<Self> where T: Copy {
-        todo!();
-        let type_size = size_of::<T>();
-        let size = if type_size == 0 {
-            0
-        } else {
-            size / type_size + if size % type_size > 0 { 1 } else { 0 }
-        };
-
-        let boxed = vec![MaybeUninit::<T>::zeroed(); size].into_boxed_slice();
-
-        // SAFETY: The slice is properly aligned as we allocated it as an array of T.
-        // SAFETY: Casting from zeroed memory to [u8] is safe.
-        // SAFETY: Casting from [u8] to Space is safe because the Space struct is repr(transparent).
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Self) }
-    }
-
     /// Creates a new space from a slice of bytes, without checking for padding correctness.
     ///
     /// # Safety
@@ -193,6 +176,7 @@ impl<T: 'static> Space<T> {
 
     #[inline]
     fn split_bytes_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
+        let l = self.data.len();
         if mid > self.data.len() {
             return None;
         }
@@ -207,8 +191,7 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub fn slice(&self, length: usize) -> Option<&Self>  {
         // SAFETY: The data is part of the original slice which was aligned already.
-        &self.data[..length-1];
-        let d = self.data.get(..(length - 1));
+        let d = self.data.get(..length);
         Some(unsafe { Self::from_bytes_unchecked(d?) })
     }
 
@@ -253,9 +236,11 @@ impl<T: 'static> Space<T> {
 
     #[inline]
     pub unsafe fn split_for_value_as_unchecked<U: 'static>(&self) -> Option<(&U, &Self)> {
-        let (value, rest) = self.realign()?.split_for_value_unchecked()?;
+        let l = self.as_bytes().len();
+        let (value, rest) = self.realign()?
+            .split_for_value_unchecked()?;
 
-        Some((value, rest.realign()?))
+        Some((value, rest.realign().unwrap_or(Self::empty())))
     }
 
     #[inline]

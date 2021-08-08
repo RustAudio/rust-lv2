@@ -99,7 +99,7 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space = AtomSpace::boxed_broken(256);
+    let mut input_atom_space = AtomSpace::boxed(256);
     {
         let mut space = input_atom_space.as_bytes_mut();
         let mut writer = lv2_atom::space::init_atom(&mut space,
@@ -118,7 +118,7 @@ fn main() {
     }
 
     // preparing the output atom.
-    let mut output_atom_space = Space::boxed_broken(256);
+    let mut output_atom_space = AtomSpace::boxed(256);
     {
         let mut space = output_atom_space.as_bytes_mut();
         lv2_atom::space::init_atom(&mut space,

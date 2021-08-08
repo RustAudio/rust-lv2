@@ -135,7 +135,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = AtomSpace::boxed_broken(256);
+        let mut raw_space = AtomSpace::boxed(256);
 
         // writing a chunk to indicate the size of the space.
         {
@@ -149,14 +149,14 @@ mod tests {
         // Getting a writer with the port.
         {
             let mut writer =
-                unsafe { AtomPort::output_from_raw(NonNull::from(raw_space.as_mut()).cast(), 0) };
+                unsafe { AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0) };
             writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // Reading
         {
             let reader =
-                unsafe { AtomPort::input_from_raw(NonNull::from(raw_space.as_mut()).cast(), 0) };
+                unsafe { AtomPort::input_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0) };
             assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);
         }
     }

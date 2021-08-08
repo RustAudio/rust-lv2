@@ -681,7 +681,7 @@ pub const LV2_WORKER__schedule: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/worker#schedule\0";
 pub type va_list = *mut ::std::os::raw::c_char;
 #[doc = " The header of an atom:Atom."]
-#[repr(C)]
+#[repr(C, align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct LV2_Atom {
     #[doc = "< Size in bytes, not including type and size."]

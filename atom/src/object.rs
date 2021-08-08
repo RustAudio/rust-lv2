@@ -238,6 +238,16 @@ pub struct PropertyHeader {
     pub context: Option<URID>,
 }
 
+#[repr(C, align(8))]
+#[derive(Clone, Copy)]
+/// A custom version of the property body that does not include the value atom header.
+///
+/// We will retrieve/store it separately.
+struct StrippedPropertyHeader {
+    key: u32,
+    context: u32,
+}
+
 impl Property {
     /// Read the body of a property atom from a space.
     ///
@@ -247,17 +257,7 @@ impl Property {
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
     unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, UnidentifiedAtom, &Space)> {
-        #[repr(C)]
-        #[derive(Clone, Copy)]
-        /// A custom version of the property body that does not include the value atom header.
-        ///
-        /// We will retrieve it separately.
-        struct StrippedPropertyBody {
-            key: u32,
-            context: u32,
-        }
-
-        let (header, space) = space.split_for_value_as_unchecked::<StrippedPropertyBody>()?;
+        let (header, space) = space.split_for_value_as_unchecked::<StrippedPropertyHeader>()?;
 
         let header = PropertyHeader {
             key: URID::try_from(header.key).ok()?,
@@ -271,13 +271,18 @@ impl Property {
     /// Write out the header of a property atom.
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
+    #[inline]
     fn write_header<'a, K: ?Sized, C: ?Sized>(
         space: &mut impl AllocateSpace<'a>,
         key: URID<K>,
         context: Option<URID<C>>,
     ) -> Option<()> {
-        space::write_value(space, key.get())?;
-        space::write_value(space, context.map(URID::get).unwrap_or(0))?;
+        let header = StrippedPropertyHeader {
+            key: key.get(),
+            context: context.map(URID::get).unwrap_or(0)
+        };
+
+        space::write_value(space, header)?;
         Some(())
     }
 }
@@ -331,6 +336,16 @@ mod tests {
             }
         }
 
+        // Atom header: size: u32, type: u32
+        // Object header: id: u32 = None, otype: u32 = object_type
+            // Object prop header1: key: u32 = first_key, context: u32 = 0
+            // Object prop body atom: size: u32 = 4 type: u32 = int
+                // Int atom value: i32 = 17, padding(4)
+            // Object prop header12 key: u32 = first_key, context: u32 = 0
+            // Object prop body atom: size: u32 = 4 type: u32 = int
+                // Float atom value: i32 = 69, padding(4)
+
+
         println!("{:?}", raw_space.as_bytes());
 
         // verifying
@@ -339,7 +354,7 @@ mod tests {
             let s = raw_space.deref();
             let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
             let header = atom.header().unwrap();
-            let x = atom.as_space().as_bytes().len();
+            let x = atom.body().unwrap().as_bytes().len();
             assert_eq!(header.urid(), urids.object);
             assert_eq!(
                 header.size_of_body(),
@@ -364,7 +379,6 @@ mod tests {
 
             let (value, space) = unsafe { space.split_for_value_as_unchecked::<i32>() }.unwrap();
             assert_eq!(*value, first_value);
-            let (_, space) = unsafe { space.split_for_value_as_unchecked::<i32>() }.unwrap();
 
             // Second property.
             let (property, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }.unwrap();

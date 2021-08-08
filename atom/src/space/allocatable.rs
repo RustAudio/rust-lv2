@@ -45,6 +45,13 @@ impl<'a> AllocateSpace<'a> for &'a mut [u8] {
 }
 
 #[inline]
+pub fn realign<'a, T: 'static, S: AllocateSpace<'a>>(space: &mut S) -> Option<()> {
+    let required_padding = Space::<T>::padding_for(space.as_bytes());
+    let _ = space.allocate_unaligned(required_padding)?;
+    Some(())
+}
+
+#[inline]
 pub fn allocate<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, size: usize) -> Option<&'a mut Space<T>> {
     let required_padding = Space::<T>::padding_for(space.as_bytes());
     let raw = space.allocate_unaligned(size + required_padding)?;
