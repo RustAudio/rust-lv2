@@ -73,7 +73,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_mut();
+            let mut space: &mut _ = raw_space.as_mut();
             let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
             let data = writer.allocate_unaligned(SLICE_LENGTH - 1).unwrap();
 
@@ -81,7 +81,8 @@ mod tests {
                 *value = i as u8;
             }
 
-            space::write_value(&mut space, 41u8).unwrap();
+            todo!()
+            // space::write_value(&mut space, 41u8).unwrap();
         }
 
         // verifying

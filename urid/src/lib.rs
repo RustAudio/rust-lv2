@@ -182,7 +182,7 @@ impl<T: ?Sized> URID<T> {
     /// A URID may not be 0 since this value is reserved for the `None` value of `Option<URID<T>>`, which therefore has the same size as a `URID<T>`. If `T` is also a URI bound, the URID may only be the one that is mapped to the bounded URI.
     ///
     /// Since these constraints aren't checked by this method, it is unsafe. Using this method is technically sound as long as `raw_urid` is not zero, but might still result in bad behaviour if its the wrong URID for the bound `T`.
-    pub unsafe fn new_unchecked(raw_urid: u32) -> Self {
+    pub const unsafe fn new_unchecked(raw_urid: u32) -> Self {
         Self(NonZeroU32::new_unchecked(raw_urid), PhantomData)
     }
 

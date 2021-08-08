@@ -234,8 +234,8 @@ impl<'a> SequenceWriter<'a> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'c, A: Atom<'c, 'a>>(
-        &'a mut self,
+    pub fn init<'read, 'write: 'a, A: Atom<'read, 'write>>(
+        &'write mut self,
         stamp: TimeStamp,
         urid: URID<A>,
         parameter: A::WriteParameter,
@@ -262,7 +262,6 @@ impl<'a> SequenceWriter<'a> {
 mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
-    use std::mem::size_of;
     use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 
     #[derive(URIDCollection)]
@@ -276,7 +275,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = TestURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = Space::boxed(256);
+        let mut raw_space = AtomSpace::boxed_broken(256);
 
         // writing
         {
@@ -286,13 +285,17 @@ mod tests {
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
                 .unwrap();
-            writer
+
+            todo!()
+            /*writer
                 .init::<Long>(TimeStamp::Frames(1), urids.atom.long, 17)
-                .unwrap();
+                .unwrap();*/
         }
 
         // verifying
-        {
+
+        todo!()
+        /*{
             let (sequence, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }.unwrap();
             assert_eq!(sequence.atom.type_, urids.atom.sequence);
             assert_eq!(
@@ -345,6 +348,6 @@ mod tests {
             assert_eq!(atom.read::<Long>(urids.atom.long, ()).unwrap(), 17);
 
             assert!(reader.next().is_none());
-        }
+        }*/
     }
 }

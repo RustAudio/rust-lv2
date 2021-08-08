@@ -111,7 +111,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<WMidiEvent>().unwrap();
 
-        let mut raw_space = Space::boxed(256);
+        let mut raw_space = Space::boxed_broken(256);
         let reference_message =
             MidiMessage::NoteOn(Channel::Ch1, Note::A0, Velocity::try_from(125).unwrap());
 
@@ -146,7 +146,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = AtomSpace::boxed_broken(256);
 
         // writing
         {

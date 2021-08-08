@@ -113,7 +113,6 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use crate::space::*;
     use std::mem::size_of;
     use urid::*;
@@ -125,23 +124,19 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AtomSpace::boxed_broken(256);
 
         // writing
         {
-            let mut space = raw_space.as_mut();
-            let mut writer = (&mut space as &mut dyn AllocateSpace)
-                .init(urids.vector(), urids.int)
-                .unwrap();
+            let mut space = raw_space.as_bytes_mut();
+            let mut writer = crate::space::init_atom(&mut space, urids.vector(), urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }
 
         // verifying
         {
-            let (vector, children) = raw_space.split_at(size_of::<sys::LV2_Atom_Vector>());
-
-            let vector = unsafe { &*(vector.as_ptr() as *const sys::LV2_Atom_Vector) };
+            let (vector, children) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
             assert_eq!(vector.atom.type_, urids.vector.get());
             assert_eq!(
                 vector.atom.size as usize,
@@ -151,7 +146,7 @@ mod tests {
             assert_eq!(vector.body.child_type, urids.int.get());
 
             let children =
-                unsafe { std::slice::from_raw_parts(children.as_ptr() as *const i32, CHILD_COUNT) };
+                unsafe { std::slice::from_raw_parts(children.as_bytes().as_ptr() as *const i32, CHILD_COUNT) };
             for value in &children[0..children.len() - 1] {
                 assert_eq!(*value, 42);
             }
@@ -160,9 +155,8 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urids.vector).unwrap();
-            let children: &[i32] = unsafe { Vector::<Int>::read(body, urids.int) }.unwrap();
+            let atom = unsafe { raw_space.to_atom() }.unwrap();
+            let children: &[i32] = atom.read(urids.vector, urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {

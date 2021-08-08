@@ -54,13 +54,13 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
-        let space = Space::<sys::LV2_Atom>::from_bytes(&space);
+        let space = AtomSpace::from_bytes(&space);
         let (header, data) = unsafe { space.to_atom() }.and_then(|a| a.header_and_body()).ok_or(StateErr::BadData)?;
 
         let key = key.get();
         let data_ptr = data as *const _ as *const c_void;
-        let data_size = header.size as usize;
-        let data_type = header.type_;
+        let data_size = header.size();
+        let data_type = header.urid();
         let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
             | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
             .into();

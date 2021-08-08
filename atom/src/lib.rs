@@ -75,6 +75,7 @@ pub mod vector;
 
 #[cfg(feature = "lv2-core")]
 pub mod port;
+mod header;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
@@ -94,6 +95,7 @@ pub mod prelude {
 
 use space::*;
 use urid::*;
+use crate::header::AtomHeader;
 
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
@@ -204,7 +206,7 @@ impl<'a> UnidentifiedAtom<'a> {
     ) -> Option<A::ReadHandle> {
         let (header, body) = self.header_and_body()?;
 
-        if header.type_ != urid {
+        if header.urid() != urid {
             return None;
         }
 
@@ -218,16 +220,16 @@ impl<'a> UnidentifiedAtom<'a> {
     }
 
     #[inline]
-    pub fn header_and_body(&self) -> Option<(&'a sys::LV2_Atom, &'a Space)> {
+    pub fn header_and_body(&self) -> Option<(&'a AtomHeader, &'a Space)> {
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
         let (header, body) = unsafe { self.space.split_for_value_unchecked() }?;
-        let body = body.slice(header.size as usize)?;
+        let body = body.slice(header.size())?;
 
-        Some((header, body))
+        Some((&header, body))
     }
 
     #[inline]
-    pub fn header(&self) -> Option<&'a sys::LV2_Atom> {
+    pub fn header(&self) -> Option<&'a AtomHeader> {
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
         unsafe { self.space.read_unchecked() }
     }

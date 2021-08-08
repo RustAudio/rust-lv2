@@ -44,22 +44,6 @@ impl<'a> AllocateSpace<'a> for &'a mut [u8] {
     }
 }
 
-impl<'a> AllocateSpace<'a> for &'a mut dyn AllocateSpace<'a> {
-    #[inline]
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]> {
-        (*self).allocate_unaligned(size)
-    }
-
-    #[inline]
-    fn as_bytes(&self) -> &[u8] {
-        let s = Clone::clone(&self);
-        s.as_bytes()
-    }
-
-    #[inline]
-    fn as_bytes_mut(&mut self) -> &mut [u8] { (*self).as_bytes_mut() }
-}
-
 #[inline]
 pub fn allocate<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, size: usize) -> Option<&'a mut Space<T>> {
     let required_padding = Space::<T>::padding_for(space.as_bytes());
@@ -75,9 +59,9 @@ pub fn allocate_values<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, count
 }
 
 #[inline]
-pub fn init_atom<'a, 'b, A: Atom<'a, 'b>>(space: &'b mut impl AllocateSpace<'b>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
-    let space = AtomSpaceWriter::write_new(space, atom_type)?;
-    A::init(space, write_parameter)
+pub fn init_atom<'a: 'write, 'read, 'write, A: Atom<'read, 'write>>(space: &'a mut impl AllocateSpace<'write>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
+    let space: AtomSpaceWriter<'write> = AtomSpaceWriter::write_new(space, atom_type)?;
+    A::init(space as AtomSpaceWriter<'write>, write_parameter)
 }
 
 #[inline]
@@ -110,4 +94,50 @@ pub fn write_values<'a, T>(space: &mut impl AllocateSpace<'a>, values: &[T]) -> 
 
     // SAFETY: Assume init: we just initialized the memory above
     Some(unsafe { &mut *(space as *mut [_] as *mut [T]) })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::space::{AtomSpace, write_value, init_atom};
+    use crate::prelude::{Int, AtomSpaceWriter};
+    use urid::URID;
+    use crate::Atom;
+
+    const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
+
+    #[test]
+    fn test_init_atom_lifetimes () {
+        assert_eq!(AtomSpace::alignment(), 8);
+
+        let mut space = AtomSpace::boxed(32);
+        assert_eq!(space.as_bytes().as_ptr() as usize % 8, 0); // TODO: move this, this is a test for boxed
+
+        let mut cursor: &mut _ = space.as_bytes_mut(); // The pointer that is going to be moved as we keep writing.
+        let new_value = write_value(&mut cursor, 42u8).unwrap();
+
+        assert_eq!(42, *new_value);
+        assert_eq!(31, cursor.len());
+
+        {
+            let int_atom: &mut _ = init_atom(&mut cursor, INT_URID, 69).unwrap();
+            assert_eq!(69, *int_atom);
+            // assert_eq!(12, cursor.len()); TODO
+        }
+        // let new_value = write_value(&mut cursor, 42u8).unwrap();
+        /*{
+            // Remaining once aligned: 24, with 8 bytes for atom header: 16
+            let writer = AtomSpaceWriter::write_new(&mut cursor, INT_URID).unwrap();
+            let int_atom = Int::init(writer, 69).unwrap();
+            assert_eq!(69, *int_atom);
+            assert_eq!(12, cursor.len());
+        }*/
+
+        assert_eq!(space.as_bytes(), [
+            42, 0, 0, 0, 0, 0, 0, 0,
+            4, 0, 0, 0, 5, 0, 0, 0,
+            69, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+        assert_eq!(32, space.as_bytes().len());
+    }
 }
