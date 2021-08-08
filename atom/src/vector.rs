@@ -61,10 +61,8 @@ impl<'a, 'b, C: ScalarAtom> Atom<'a, 'b> for Vector<C> where C: 'b, {
             return None;
         }
 
-        let data = body.aligned::<C::InternalType>()?.as_uninit_slice();
-
-        // SAFETY: Assume Init: We can assume this data was properly initialized by the host.
-        Some(&*(data as *const _ as *const [C::InternalType]))
+        // SAFETY: We can assume this data was properly initialized by the host.
+        Some(body.aligned()?.assume_init())
     }
 
     fn init(mut frame: AtomSpaceWriter<'b>, child_urid: URID<C>) -> Option<VectorWriter<'b, C>> {

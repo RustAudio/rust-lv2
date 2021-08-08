@@ -71,11 +71,11 @@ impl SpaceList {
 /// let mut head = SpaceHead::new(&mut element);
 ///
 /// // Writing an integer.
-/// (&mut head as &mut dyn MutSpace).init(urids.int, 42).unwrap();
+/// lv2_atom::space::init_atom(&mut head, urids.int, 42).unwrap();
 ///
-/// // Retrieving a continuos vector with the written data and verifying it's contents.
+/// // Retrieving a continuos vector with the written data and verifying its contents.
 /// let written_data: Vec<u8> = element.to_vec();
-/// let atom = unsafe { UnidentifiedAtom::new_unchecked(Space::from_slice(written_data.as_ref())) };
+/// let atom = unsafe { AtomSpace::try_from_bytes(&written_data).unwrap().to_atom().unwrap() };
 /// assert_eq!(42, atom.read(urids.int, ()).unwrap());
 /// ```
 pub struct SpaceHead<'a> {

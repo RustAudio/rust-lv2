@@ -345,16 +345,13 @@ mod tests {
             // Object prop body atom: size: u32 = 4 type: u32 = int
                 // Float atom value: i32 = 69, padding(4)
 
-
-        println!("{:?}", raw_space.as_bytes());
-
         // verifying
         {
             // Header
             let s = raw_space.deref();
             let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
             let header = atom.header().unwrap();
-            let x = atom.body().unwrap().as_bytes().len();
+            let x = atom.body().unwrap().len();
             assert_eq!(header.urid(), urids.object);
             assert_eq!(
                 header.size_of_body(),
@@ -389,7 +386,7 @@ mod tests {
 
             let (value, space) = unsafe { space.split_for_value_as_unchecked::<f32>() }.unwrap();
             assert_eq!(*value, second_value);
-            assert_eq!(space.as_bytes().len(), 0);
+            assert_eq!(space.len(), 0);
         }
 
         // reading

@@ -28,13 +28,6 @@ impl<T: 'static> Space<T> {
         unsafe { Self::from_bytes_unchecked(&[]) }
     }
 
-    /// Creates an empty mutable Space.
-    #[inline]
-    fn empty_mut() -> &'static mut Space<T> {
-        // SAFETY: empty slices are always aligned
-        unsafe { Self::from_bytes_mut_unchecked(&mut []) }
-    }
-
     #[inline]
     pub(crate) fn padding_for(data: &[u8]) -> usize {
         let alignment = align_of::<T>();
@@ -58,7 +51,7 @@ impl<T: 'static> Space<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Otherwise, atom reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
-    /// For a safe, checked version, see [`Space::from_bytes`].
+    /// For a safe, checked version, see [`Space::try_from_bytes`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
@@ -75,7 +68,7 @@ impl<T: 'static> Space<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Otherwise, atom reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
-    /// For a safe, checked version, see [`Space::from_bytes`].
+    /// For a safe, checked version, see [`Space::try_from_bytes_mut`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
@@ -83,19 +76,6 @@ impl<T: 'static> Space<T> {
         // SAFETY: It is safe to transmute, since our type has repr(transparent) with [u8].
         // SAFETY: The caller is responsible to check for slice alignment.
         &mut *(data as *mut _ as *mut Self)
-    }
-
-    /// Creates a new space from a slice of bytes.
-    ///
-    /// # Panics
-    ///
-    /// This method panics if the given slice's offset is not 64-bit aligned
-    /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
-    ///
-    /// For a non-panicking version, see [`Space::try_from_bytes`].
-    #[inline]
-    pub fn from_bytes(data: &[u8]) -> &Self {
-        Space::try_from_bytes(data).unwrap()
     }
 
     #[inline]
@@ -176,7 +156,6 @@ impl<T: 'static> Space<T> {
 
     #[inline]
     fn split_bytes_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
-        let l = self.data.len();
         if mid > self.data.len() {
             return None;
         }
@@ -193,19 +172,6 @@ impl<T: 'static> Space<T> {
         // SAFETY: The data is part of the original slice which was aligned already.
         let d = self.data.get(..length);
         Some(unsafe { Self::from_bytes_unchecked(d?) })
-    }
-
-    #[inline]
-    fn split_bytes_at_mut(&mut self, mid: usize) -> Option<(&mut Self, &mut [u8])> {
-        if mid > self.data.len() {
-            return None;
-        }
-
-        let (start, end) = self.data.split_at_mut(mid);
-        // SAFETY: Because this data was the start of an existing Space, it was aligned already.
-        let start = unsafe { Self::from_bytes_mut_unchecked(start) };
-
-        Some((start, end))
     }
 
     /// Try to retrieve space.
@@ -236,19 +202,9 @@ impl<T: 'static> Space<T> {
 
     #[inline]
     pub unsafe fn split_for_value_as_unchecked<U: 'static>(&self) -> Option<(&U, &Self)> {
-        let l = self.as_bytes().len();
-        let (value, rest) = self.realign()?
-            .split_for_value_unchecked()?;
+        let (value, rest) = self.realign()?.split_for_value_unchecked()?;
 
         Some((value, rest.realign().unwrap_or(Self::empty())))
-    }
-
-    #[inline]
-    fn split_at_mut(&mut self, mid: usize) -> Option<(&mut Self, &mut Self)> {
-        let (start, end) = self.split_bytes_at_mut(mid)?;
-        let end = Self::try_align_from_bytes_mut(end).unwrap_or(Space::empty_mut());
-
-        Some((start, end))
     }
 
     #[inline]
@@ -270,6 +226,21 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.data
+    }
+
+    #[inline]
+    pub fn as_ptr(&self) -> *const u8 {
+        self.data.as_ptr()
+    }
+
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.data.as_mut_ptr()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 
     /// Return the internal slice of the space.
@@ -326,6 +297,12 @@ impl<T: 'static> Space<T> {
         unsafe { ::core::slice::from_raw_parts(self.data.as_ptr() as *const MaybeUninit<T>, self.data.len() / size_of::<T>()) }
     }
 
+    #[inline]
+    pub unsafe fn assume_init(&self) -> &[T] {
+        let data = self.as_uninit_slice();
+        &*(data as *const _ as *const [T])
+    }
+
     /// Gets the contents as a slice of potentially uninitialized `T`s.
     ///
     /// The resulting slice contains as many values as can fit in the original space.
@@ -351,7 +328,8 @@ impl AtomSpace {
             atom as *const sys::LV2_Atom as *const u8,
             atom.size as usize + size_of::<sys::LV2_Atom>(),
         );
-        Self::from_bytes(data)
+
+        Self::from_bytes_unchecked(data)
     }
 
     /// Create a new mutable space from an atom pointer.
@@ -412,23 +390,20 @@ mod tests {
     use std::mem::{size_of, size_of_val};
     use urid::*;
 
-    fn aligned_buf() -> Box<[u8]> {
-        unsafe { Box::from_raw(Box::into_raw(vec![0u64; 64].into_boxed_slice()) as *mut [u8]) }
-    }
-
     #[test]
     fn test_space() {
-        let mut vector = aligned_buf();
+        let mut space = Space::<u32>::boxed(256);
+        let bytes = space.as_bytes_mut();
+
         for i in 0..128 {
-            vector[i] = i as u8;
+            bytes[i] = i as u8;
         }
 
         unsafe {
-            let ptr = vector.as_mut_ptr().add(128) as *mut u32;
+            let ptr = space.as_mut_ptr().add(128) as *mut u32;
             *(ptr) = 0x42424242;
         }
 
-        let space = Space::<u32>::from_bytes(&vector);
         let (lower_space, space) = space.split_at(128).unwrap();
         let lower_space = lower_space.as_bytes();
 
@@ -442,12 +417,12 @@ mod tests {
 
     #[test]
     fn test_split_atom() {
-        let mut data = aligned_buf();
+        let mut space  = AtomSpace::boxed(256);
         let urid: URID = unsafe { URID::new_unchecked(17) };
 
         // Writing an integer atom.
         unsafe {
-            *(data.as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
+            *(space.as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
                 atom: sys::LV2_Atom {
                     size: size_of::<i32>() as u32,
                     type_: urid.get(),
@@ -455,12 +430,11 @@ mod tests {
                 body: 42,
             };
 
-            let space = Space::from_bytes(&data);
             let (atom, _) = space.split_atom().unwrap();
             let body = atom.body().unwrap().as_bytes();
 
             assert_eq!(size_of::<i32>(), size_of_val(body));
-            assert_eq!(42, unsafe { *(body.as_ptr() as *const i32) });
+            assert_eq!(42, *(body.as_ptr() as *const i32));
         }
     }
 
@@ -485,30 +459,29 @@ mod tests {
         let created_space = unsafe { Space::from_atom_mut(written_atom) };
 
         assert!(::core::ptr::eq(written_atom_addr, created_space.as_bytes().as_ptr()));
-        assert_eq!(created_space.as_bytes().len(), size_of::<sys::LV2_Atom>() + 42);
+        assert_eq!(created_space.len(), size_of::<sys::LV2_Atom>() + 42);
 
         {
-            todo!()
-            /*let space: &mut _ = &mut space;
-            let _ = AtomSpaceWriter::write_new(space, urids.chunk).unwrap();*/
+            let space: &mut _ = &mut space;
+            let mut atom_frame = AtomSpaceWriter::write_new(space, urids.chunk).unwrap();
 
-            /*let mut test_data: Vec<u8> = vec![0; 24];
+            let mut test_data: Vec<u8> = vec![0; 24];
             for i in 0..test_data.len() {
                 test_data[i] = i as u8;
-            }/**/
+            }
 
             let written_data = crate::space::write_bytes(&mut atom_frame, &test_data).unwrap();
             assert_eq!(test_data.as_slice(), written_data);
-            assert_eq!(atom_frame.atom().size, test_data.len() as u32);
+            assert_eq!(atom_frame.atom().size_of_body(), test_data.len());
 
             let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
             let written_atom = crate::space::write_value(&mut atom_frame, test_atom).unwrap();
             assert_eq!(written_atom.size, test_atom.size);
             assert_eq!(written_atom.type_, test_atom.type_);
             assert_eq!(
-                atom_frame.atom().size as usize,
+                atom_frame.atom().size_of_body(),
                 test_data.len() + size_of_val(&test_atom)
-            );*/
+            );
         }
     }
 
@@ -525,14 +498,6 @@ mod tests {
 
         test_mut_space(frame);
     }
-
-    #[test]
-    fn test_space_head() {
-        let mut space = SpaceList::default();
-        let head = SpaceHead::new(&mut space);
-        test_mut_space(head);
-    }
-
 
     #[test]
     fn unaligned_root_write() {

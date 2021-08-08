@@ -17,7 +17,7 @@
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
 //!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
-//!     out_chunk.write_raw(in_chunk, false).unwrap();
+//!     lv2_atom::space::write_bytes(&mut out_chunk, in_chunk).unwrap();
 //! }
 //! ```
 //!
@@ -69,11 +69,11 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AtomSpace::boxed(256);
 
         // writing
         {
-            let mut space: &mut _ = raw_space.as_mut();
+            let mut space = raw_space.as_bytes_mut();
             let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
             let data = writer.allocate_unaligned(SLICE_LENGTH - 1).unwrap();
 
@@ -86,13 +86,13 @@ mod tests {
 
         // verifying
         {
-            let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>()).unwrap();
 
             let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
             assert_eq!(atom.size as usize, SLICE_LENGTH);
             assert_eq!(atom.type_, urids.chunk.get());
 
-            let data = data.split_at(SLICE_LENGTH).0;
+            let data = data.split_at(SLICE_LENGTH).unwrap().0.as_bytes();
             for i in 0..SLICE_LENGTH {
                 assert_eq!(data[i] as usize, i);
             }
@@ -100,9 +100,7 @@ mod tests {
 
         // reading
         {
-            let space = Space::from_bytes(&raw_space);
-
-            let data = unsafe { Chunk::read(space.split_atom_body(urids.chunk).unwrap().0, ()) }.unwrap();
+            let data = unsafe { Chunk::read(raw_space.split_atom_body(urids.chunk).unwrap().0, ()) }.unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {

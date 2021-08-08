@@ -144,6 +144,6 @@ mod tests {
             69, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
         ]);
-        assert_eq!(32, space.as_bytes().len());
+        assert_eq!(32, space.len());
     }
 }

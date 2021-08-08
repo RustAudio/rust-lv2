@@ -83,8 +83,8 @@ pub struct TupleWriter<'a> {
 
 impl<'a, 'b> TupleWriter<'a> {
     /// Initialize a new tuple element.
-    pub fn init<'c, A: Atom<'c, 'a>>(
-        &'a mut self,
+    pub fn init<'read, 'write, A: Atom<'read, 'write>>(
+        &'write mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {

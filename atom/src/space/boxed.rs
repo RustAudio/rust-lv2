@@ -2,7 +2,7 @@ use std::mem::{size_of, MaybeUninit};
 use std::ops::{Deref, DerefMut};
 use crate::prelude::Space;
 
-fn size_to_bytes<T>(size: usize) -> usize {
+pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
     let type_size = size_of::<T>();
     if type_size == 0 {
         0
@@ -12,12 +12,13 @@ fn size_to_bytes<T>(size: usize) -> usize {
 }
 
 pub(crate) struct BoxedSpace<T: 'static> {
-    inner: Box<[MaybeUninit<T>]>
+    pub(crate) inner: Box<[MaybeUninit<T>]>
 }
 
 impl<T: Copy + 'static> BoxedSpace<T> {
+    #[inline]
     pub fn new_zeroed(size: usize) -> Self {
-        Self { inner: vec![MaybeUninit::zeroed(); size_to_bytes::<T>(size)].into_boxed_slice() }
+        Self { inner: vec![MaybeUninit::zeroed(); byte_index_to_value_index::<T>(size)].into_boxed_slice() }
     }
 }
 
