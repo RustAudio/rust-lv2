@@ -135,16 +135,14 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AtomSpace::boxed_broken(256);
 
         // writing a chunk to indicate the size of the space.
         {
-            let mut space = raw_space.as_mut();
-            let mut writer = (&mut space as &mut dyn AllocateSpace)
-                .init(urids.chunk, ())
-                .unwrap();
+            let mut space = raw_space.as_bytes_mut();
+            let mut writer = crate::space::init_atom(&mut space, urids.chunk, ()).unwrap();
             writer
-                .allocate(256 - size_of::<sys::LV2_Atom>(), false)
+                .allocate_unaligned(256 - size_of::<sys::LV2_Atom>())
                 .unwrap();
         }
 

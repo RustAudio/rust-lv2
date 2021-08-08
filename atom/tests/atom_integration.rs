@@ -99,15 +99,16 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space = AtomSpace::boxed(256);
+    let mut input_atom_space = AtomSpace::boxed_broken(256);
     {
         let mut space = input_atom_space.as_bytes_mut();
         let mut writer = lv2_atom::space::init_atom(&mut space,
                                                     urids.atom.sequence,
                                                     TimeStampURID::Frames(urids.units.frame)).unwrap();
-        {writer
+        {let _ = writer
             .init(TimeStamp::Frames(0), urids.atom.int, 42)
-            .unwrap();}
+            .unwrap();
+        }
         writer
             .init(TimeStamp::Frames(1), urids.atom.long, 17)
             .unwrap();
@@ -117,7 +118,7 @@ fn main() {
     }
 
     // preparing the output atom.
-    let mut output_atom_space = Space::boxed(256);
+    let mut output_atom_space = Space::boxed_broken(256);
     {
         let mut space = output_atom_space.as_bytes_mut();
         lv2_atom::space::init_atom(&mut space,
@@ -147,12 +148,12 @@ fn main() {
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             0,
-            input_atom_space.as_bytes().as_mut_ptr() as *mut c_void,
+            input_atom_space.as_bytes_mut().as_mut_ptr() as *mut c_void,
         );
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             1,
-            output_atom_space.as_bytes().as_mut_ptr() as *mut c_void,
+            output_atom_space.as_bytes_mut().as_mut_ptr() as *mut c_void,
         );
 
         // Activate, run, deactivate.

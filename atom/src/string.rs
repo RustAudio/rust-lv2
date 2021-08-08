@@ -165,14 +165,15 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = TestURIDs::from_map(&map).unwrap();
 
-        let mut raw_space = Space::boxed(256);
+        let mut raw_space = Space::boxed_broken(256);
 
         // writing
         {
             let mut space = raw_space.as_bytes_mut();
             let mut writer = crate::space::init_atom(&mut space, urids.atom.literal, LiteralInfo::Language(urids.german.into_general())).unwrap();
-            writer.append(SAMPLE0).unwrap();
-            writer.append(SAMPLE1).unwrap();
+            todo!()
+            /*writer.append(SAMPLE0).unwrap();
+            writer.append(SAMPLE1).unwrap();*/
         }
 
         // verifying
@@ -213,15 +214,16 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = Space::boxed(256);
+        let mut raw_space = Space::boxed_broken(256);
 
         // writing
         {
             let mut space = raw_space.as_bytes_mut();
 
             let mut writer = crate::space::init_atom(&mut space, urids.string, ()).unwrap();
-            writer.append(SAMPLE0).unwrap();
-            writer.append(SAMPLE1).unwrap();
+            todo!()
+            /*writer.append(SAMPLE0).unwrap();
+            writer.append(SAMPLE1).unwrap();*/
         }
 
         // verifying

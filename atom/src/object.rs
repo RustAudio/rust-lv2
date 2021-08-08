@@ -183,8 +183,8 @@ impl<'a> Iterator for ObjectReader<'a> {
 /// Writing handle for object properties.
 ///
 /// This handle is a safeguard to assure that a object is always a series of properties.
-pub struct ObjectWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+pub struct ObjectWriter<'space> {
+    frame: AtomSpaceWriter<'space>,
 }
 
 impl<'a> ObjectWriter<'a> {
@@ -313,7 +313,7 @@ mod tests {
         // writing
         {
             let mut space = raw_space.as_mut();
-            let frame = AtomSpaceWriter::write_new(&mut space as &mut dyn AllocateSpace, urids.object).unwrap();
+            let frame = AtomSpaceWriter::write_new(&mut space, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
                 ObjectHeader {
@@ -326,7 +326,8 @@ mod tests {
                 writer.init(first_key, urids.int, first_value).unwrap();
             }
             {
-                writer.init(second_key, urids.float, second_value).unwrap();
+                todo!()
+                // writer.init(second_key, urids.float, second_value).unwrap();
             }
         }
 

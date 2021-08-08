@@ -104,7 +104,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = Space::boxed(256);
+        let mut raw_space = Space::boxed_broken(256);
 
         // writing
         {
@@ -115,16 +115,17 @@ mod tests {
                     writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            writer.init::<Int>(urids.int, 42).unwrap();
+            todo!()
+            //writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // verifying
         {
             let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
             let header = atom.header().unwrap();
-            assert_eq!(header.type_, urids.tuple);
+            assert_eq!(header.urid(), urids.tuple);
             assert_eq!(
-                header.size as usize,
+                header.size(),
                 size_of::<sys::LV2_Atom_Vector>()
                     + size_of::<i32>() * 9
                     + 4

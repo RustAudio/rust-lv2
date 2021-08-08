@@ -3,10 +3,11 @@
 mod list;
 mod space;
 mod allocatable;
-mod atom;
+mod atom_writer;
+mod boxed;
 
 pub use space::{AtomSpace, Space};
 pub use list::{SpaceList, SpaceHead};
 pub use allocatable::*;
-pub use atom::AtomSpaceWriter;
+pub use atom_writer::AtomSpaceWriter;
 

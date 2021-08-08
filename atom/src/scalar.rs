@@ -199,8 +199,8 @@ mod tests {
         // reading
         {
             let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urid).unwrap();
-            assert_eq!(A::read(body, ()).unwrap(), value);
+            let (body, _) = unsafe { space.split_atom_body(urid) }.unwrap();
+            unsafe { assert_eq!(A::read(body, ()).unwrap(), value); }
         }
     }
 
