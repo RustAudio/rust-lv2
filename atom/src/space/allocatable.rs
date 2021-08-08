@@ -59,9 +59,9 @@ pub fn allocate_values<'a, T: 'static>(space: &mut impl AllocateSpace<'a>, count
 }
 
 #[inline]
-pub fn init_atom<'a: 'write, 'read, 'write, A: Atom<'read, 'write>>(space: &'a mut impl AllocateSpace<'write>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
+pub fn init_atom<'space: 'write, 'read, 'write, A: Atom<'read, 'write>>(space: &'write mut impl AllocateSpace<'space>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
     let space: AtomSpaceWriter<'write> = AtomSpaceWriter::write_new(space, atom_type)?;
-    A::init(space as AtomSpaceWriter<'write>, write_parameter)
+    A::init(space, write_parameter)
 }
 
 #[inline]
@@ -99,9 +99,8 @@ pub fn write_values<'a, T>(space: &mut impl AllocateSpace<'a>, values: &[T]) -> 
 #[cfg(test)]
 mod tests {
     use crate::space::{AtomSpace, write_value, init_atom};
-    use crate::prelude::{Int, AtomSpaceWriter};
+    use crate::prelude::Int;
     use urid::URID;
-    use crate::Atom;
 
     const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
 
@@ -121,7 +120,7 @@ mod tests {
         {
             let int_atom: &mut _ = init_atom(&mut cursor, INT_URID, 69).unwrap();
             assert_eq!(69, *int_atom);
-            // assert_eq!(12, cursor.len()); TODO
+            assert_eq!(12, cursor.len());
         }
         // let new_value = write_value(&mut cursor, 42u8).unwrap();
         /*{

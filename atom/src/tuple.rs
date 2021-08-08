@@ -125,7 +125,7 @@ mod tests {
             let header = atom.header().unwrap();
             assert_eq!(header.urid(), urids.tuple);
             assert_eq!(
-                header.size(),
+                header.size_of_body(),
                 size_of::<sys::LV2_Atom_Vector>()
                     + size_of::<i32>() * 9
                     + 4

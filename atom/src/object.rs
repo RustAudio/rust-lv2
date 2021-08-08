@@ -207,8 +207,8 @@ impl<'a> ObjectWriter<'a> {
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<'c, K: ?Sized, A: Atom<'c, 'a>>(
-        &'a mut self,
+    pub fn init<'read, 'write, K: ?Sized, A: Atom<'read, 'write>>(
+        &'write mut self,
         key: URID<K>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
@@ -288,6 +288,7 @@ mod tests {
     use crate::space::*;
     use std::mem::size_of;
     use urid::*;
+    use std::ops::Deref;
 
     #[test]
     fn test_object() {
@@ -308,12 +309,12 @@ mod tests {
             .unwrap();
         let second_value: f32 = 42.0;
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AtomSpace::boxed(256);
 
         // writing
         {
-            let mut space = raw_space.as_mut();
-            let frame = AtomSpaceWriter::write_new(&mut space, urids.object).unwrap();
+            let mut cursor = raw_space.as_bytes_mut();
+            let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
                 ObjectHeader {
@@ -326,19 +327,22 @@ mod tests {
                 writer.init(first_key, urids.int, first_value).unwrap();
             }
             {
-                todo!()
-                // writer.init(second_key, urids.float, second_value).unwrap();
+                writer.init(second_key, urids.float, second_value).unwrap();
             }
         }
+
+        println!("{:?}", raw_space.as_bytes());
 
         // verifying
         {
             // Header
-            let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
-            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(atom.type_, urids.object);
+            let s = raw_space.deref();
+            let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
+            let header = atom.header().unwrap();
+            let x = atom.as_space().as_bytes().len();
+            assert_eq!(header.urid(), urids.object);
             assert_eq!(
-                atom.size as usize,
+                header.size_of_body(),
                 size_of::<sys::LV2_Atom_Object_Body>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
                     + 2 * size_of::<i32>()
@@ -347,41 +351,36 @@ mod tests {
             );
 
             // Object.
-            let (object, space) = space.split_at(size_of::<sys::LV2_Atom_Object_Body>());
-            let object = unsafe { &*(object.as_ptr() as *const sys::LV2_Atom_Object_Body) };
+            let (object, space) = unsafe { atom.body().unwrap().split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>() }.unwrap();
             assert_eq!(object.id, 0);
             assert_eq!(object.otype, object_type);
 
             // First property.
-            let (property, space) = space.split_at(size_of::<sys::LV2_Atom_Property_Body>());
-            let property = unsafe { &*(property.as_ptr() as *const sys::LV2_Atom_Property_Body) };
+            let (property, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }.unwrap();
             assert_eq!(property.key, first_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.int);
             assert_eq!(property.value.size as usize, size_of::<i32>());
 
-            let (value, space) = space.split_at(size_of::<i32>());
-            let value = unsafe { *(value.as_ptr() as *const i32) };
-            assert_eq!(value, first_value);
-            let (_, space) = space.split_at(size_of::<i32>());
+            let (value, space) = unsafe { space.split_for_value_as_unchecked::<i32>() }.unwrap();
+            assert_eq!(*value, first_value);
+            let (_, space) = unsafe { space.split_for_value_as_unchecked::<i32>() }.unwrap();
 
             // Second property.
-            let (property, space) = space.split_at(size_of::<sys::LV2_Atom_Property_Body>());
-            let property = unsafe { &*(property.as_ptr() as *const sys::LV2_Atom_Property_Body) };
+            let (property, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }.unwrap();
             assert_eq!(property.key, second_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.float);
             assert_eq!(property.value.size as usize, size_of::<f32>());
 
-            let (value, _) = space.split_at(size_of::<f32>());
-            let value = unsafe { *(value.as_ptr() as *const f32) };
-            assert_eq!(value, second_value);
+            let (value, space) = unsafe { space.split_for_value_as_unchecked::<f32>() }.unwrap();
+            assert_eq!(*value, second_value);
+            assert_eq!(space.as_bytes().len(), 0);
         }
 
         // reading
         {
-            let space = Space::from_bytes(raw_space.as_ref());
-            let (body, _) = unsafe { space.split_atom_body(urids.object) }.unwrap();
+            let (body, _) = unsafe { raw_space.split_atom_body(urids.object) }.unwrap();
 
             let (header, iter) = unsafe { Object::read(body, ()) }.unwrap();
             assert_eq!(header.otype, object_type);

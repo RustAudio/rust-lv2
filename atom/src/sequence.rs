@@ -234,7 +234,7 @@ impl<'a> SequenceWriter<'a> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'read, 'write: 'a, A: Atom<'read, 'write>>(
+    pub fn init<'read, 'write, A: Atom<'read, 'write>>(
         &'write mut self,
         stamp: TimeStamp,
         urid: URID<A>,
@@ -262,7 +262,7 @@ impl<'a> SequenceWriter<'a> {
 mod tests {
     use crate::prelude::*;
     use crate::sequence::*;
-    use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
+    use std::mem::size_of;
 
     #[derive(URIDCollection)]
     struct TestURIDCollection {
@@ -286,16 +286,14 @@ mod tests {
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
                 .unwrap();
 
-            todo!()
-            /*writer
+            writer
                 .init::<Long>(TimeStamp::Frames(1), urids.atom.long, 17)
-                .unwrap();*/
+                .unwrap();
         }
 
         // verifying
 
-        todo!()
-        /*{
+        {
             let (sequence, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }.unwrap();
             assert_eq!(sequence.atom.type_, urids.atom.sequence);
             assert_eq!(
@@ -310,7 +308,7 @@ mod tests {
             assert_eq!(sequence.body.unit, urids.units.frame);
 
             let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
-            assert_eq!(stamp.frames, 0);
+            assert_eq!(unsafe { stamp.frames }, 0);
 
             let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.int);
@@ -318,7 +316,7 @@ mod tests {
             assert_eq!(int.body, 42);
 
             let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
-            assert_eq!(stamp.frames, 1);
+            assert_eq!(unsafe { stamp.frames }, 1);
 
             let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.long);
@@ -348,6 +346,6 @@ mod tests {
             assert_eq!(atom.read::<Long>(urids.atom.long, ()).unwrap(), 17);
 
             assert!(reader.next().is_none());
-        }*/
+        }
     }
 }
