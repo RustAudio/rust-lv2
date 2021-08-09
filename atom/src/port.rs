@@ -105,11 +105,13 @@ impl PortType for AtomPort {
     type InputPortType = PortReader<'static>;
     type OutputPortType = PortWriter<'static>;
 
+    #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
         let space = Space::from_atom(pointer.cast().as_ref());
         PortReader::new(space)
     }
 
+    #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
         let space = RootMutSpace::from_atom(pointer.cast().as_mut());
         PortWriter::new(space)
