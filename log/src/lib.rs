@@ -1,6 +1,5 @@
-use lv2_core::feature::*;
+use lv2_core::feature::{Feature, ThreadingClass};
 //use std::ffi::CString;
-use std::fmt;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
@@ -180,7 +179,5 @@ pub struct LogURIDCollection {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+    fn it_works() {}
 }
