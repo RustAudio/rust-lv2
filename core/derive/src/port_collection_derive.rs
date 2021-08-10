@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::export::Span;
+use proc_macro2::Span;
 use syn::DeriveInput;
 use syn::Field;
 use syn::{parse_macro_input, Data, DataStruct, Ident, Type};
@@ -24,14 +24,7 @@ impl<'a> PortCollectionField<'a> {
         let identifier = self.identifier;
         let port_type = self.port_type;
         quote! {
-            #identifier: {
-                let connection = <#port_type as PortHandle>::from_raw(connections.#identifier, sample_count);
-                if let Some(connection) = connection {
-                    connection
-                } else {
-                    return None;
-                }
-            },
+            #identifier: <#port_type as PortHandle>::from_raw(connections.#identifier, sample_count)?,
         }
     }
 
@@ -135,7 +128,7 @@ impl<'a> PortCollectionStruct<'a> {
             }
 
             #[doc(hidden)]
-            #[allow(non_snake_case)]
+            #[allow(non_snake_case, non_camel_case_types)]
             pub struct #internal_cache_name {
                 #(#raw_field_declarations)*
             }

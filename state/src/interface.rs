@@ -152,7 +152,7 @@ mod tests {
         }
 
         #[cfg_attr(tarpaulin, skip)]
-        fn run(&mut self, _: &mut (), _: &mut ()) {}
+        fn run(&mut self, _: &mut (), _: &mut (), _: u32) {}
     }
 
     #[derive(FeatureCollection)]

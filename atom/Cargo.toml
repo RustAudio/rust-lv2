@@ -1,6 +1,6 @@
 [package]
 name = "lv2-atom"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -14,16 +14,16 @@ travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-lv2-sys = "1.0.0"
-lv2-units = "0.1.0"
+lv2-sys = "2.0.0"
+lv2-units = "0.1.3"
 urid = "0.1.0"
 
 [dependencies.lv2-core]
-version = "1.0.0"
+version = "3.0.0"
 optional = true
 
 [dev-dependencies]
-lv2-urid = "1.0.0"
+lv2-urid = "2.1.0"
 
 [features]
 default = ["lv2-core"]

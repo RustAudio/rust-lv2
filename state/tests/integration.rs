@@ -36,7 +36,7 @@ impl Plugin for Stateful {
         })
     }
 
-    fn run(&mut self, _: &mut (), _: &mut ()) {
+    fn run(&mut self, _: &mut (), _: &mut (), _: u32) {
         self.internal = 17.0;
         self.audio.extend((0..32).map(|f| f as f32));
     }
@@ -118,7 +118,7 @@ fn test_save_n_restore() {
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
-    first_plugin.run(&mut (), &mut ());
+    first_plugin.run(&mut (), &mut (), 32);
 
     assert_eq!(17.0, first_plugin.internal);
     assert_eq!(32, first_plugin.audio.len());

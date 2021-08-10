@@ -19,7 +19,15 @@
 */
 
 /**
-   @defgroup core LV2 Core
+   @defgroup lv2 LV2
+
+   The LV2 specification.
+
+   @{
+*/
+
+/**
+   @defgroup lv2core LV2 Core
 
    Core LV2 specification, see <http://lv2plug.in/ns/lv2core> for details.
 
@@ -140,7 +148,7 @@ typedef void * LV2_Handle;
    features and specify the `URI` and `data` to be used if necessary.
    Some features, such as lv2:isLive, do not require the host to pass data.
 */
-typedef struct _LV2_Feature {
+typedef struct {
 	/**
 	   A globally unique, case-sensitive identifier (URI) for this feature.
 
@@ -163,7 +171,7 @@ typedef struct _LV2_Feature {
    This structure provides the core functions necessary to instantiate and use
    a plugin.
 */
-typedef struct _LV2_Descriptor {
+typedef struct LV2_Descriptor {
 	/**
 	   A globally unique, case-sensitive identifier for this plugin.
 
@@ -185,9 +193,8 @@ typedef struct _LV2_Descriptor {
 	   @param sample_rate Sample rate, in Hz, for the new plugin instance.
 
 	   @param bundle_path Path to the LV2 bundle which contains this plugin
-	   binary. It MUST include the trailing directory separator (e.g. '/') so
-	   that simply appending a filename will yield the path to that file in the
-	   bundle.
+	   binary. It MUST include the trailing directory separator so that simply
+	   appending a filename will yield the path to that file in the bundle.
 
 	   @param features A NULL terminated array of LV2_Feature structs which
 	   represent the features the host supports. Plugins may refuse to
@@ -201,10 +208,10 @@ typedef struct _LV2_Descriptor {
 	   @return A handle for the new plugin instance, or NULL if instantiation
 	   has failed.
 	*/
-	LV2_Handle (*instantiate)(const struct _LV2_Descriptor * descriptor,
-	                          double                         sample_rate,
-	                          const char *                   bundle_path,
-	                          const LV2_Feature *const *     features);
+	LV2_Handle (*instantiate)(const struct LV2_Descriptor * descriptor,
+	                          double                        sample_rate,
+	                          const char *                  bundle_path,
+	                          const LV2_Feature *const *    features);
 
 	/**
 	   Connect a port on a plugin instance to a memory location.
@@ -235,7 +242,7 @@ typedef struct _LV2_Descriptor {
 	   it does, the plugin's behaviour is undefined (a crash is likely).
 
 	   @param data_location Pointer to data of the type defined by the port
-	   type in the plugin's RDF data (e.g. an array of float for an
+	   type in the plugin's RDF data (for example, an array of float for an
 	   lv2:AudioPort). This pointer must be stored by the plugin instance and
 	   used to read/write data when run() is called. Data present at the time
 	   of the connect_port() call MUST NOT be considered meaningful.
@@ -279,10 +286,10 @@ typedef struct _LV2_Descriptor {
 	   lv2core.ttl for details).
 
 	   As a special case, when `sample_count` is 0, the plugin should update
-	   any output ports that represent a single instant in time (e.g. control
-	   ports, but not audio ports). This is particularly useful for latent
-	   plugins, which should update their latency output port so hosts can
-	   pre-roll plugins to compute latency. Plugins MUST NOT crash when
+	   any output ports that represent a single instant in time (for example,
+	   control ports, but not audio ports). This is particularly useful for
+	   latent plugins, which should update their latency output port so hosts
+	   can pre-roll plugins to compute latency. Plugins MUST NOT crash when
 	   `sample_count` is 0.
 
 	   @param instance Instance to be run.
@@ -470,5 +477,6 @@ typedef const LV2_Lib_Descriptor *
 #endif /* LV2_H_INCLUDED */
 
 /**
+   @}
    @}
 */

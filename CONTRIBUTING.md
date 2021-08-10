@@ -1,12 +1,12 @@
-# Contributing to rust-lv2
+# Contributing to Rust-LV2
 
 *Inspired by [Rust's contribution guide](https://github.com/rust-lang/rust/blob/d9051341a1c142542a3f7dab509266606c775382/CONTRIBUTING.md).*
 
-Thank you for your interest in contributing to rust-lv2! There are many ways to contribute, and we appreciate all of them.
+Thank you for your interest in contributing to Rust-LV2! There are many ways to contribute, and we appreciate all of them.
 
 ## General or Usage questions, Feature Ideas or Discussions
 
-Our main discussion panel is the [Rust Audio Discourse](https://rust-audio.discourse.group/). Most of our design decisions are taken there and it's the perfect place to post any question or idea. rust-lv2 isn't the only project there, so you may post anything that is somehow related to Rust and Audio Processing.
+Our main discussion panel is the [Rust Audio Discourse](https://rust-audio.discourse.group/). Most of our design decisions are taken there and it's the perfect place to post any question or idea. Rust-LV2 isn't the only project there, so you may post anything that is somehow related to Rust and Audio Processing.
 
 ## Bug Reports
 
@@ -39,7 +39,7 @@ Instead, this happened: <explanation>
 ### Backtrace:
 ```
 
-All three components are important: what you did, what you expected, what happened instead. Please include the dependencies to rust-lv2 in your `Cargo.toml` so we can track down where to find the bug.
+All three components are important: what you did, what you expected, what happened instead. Please include the dependencies to Rust-LV2 in your `Cargo.toml` so we can track down where to find the bug.
 
 Sometimes, a backtrace is helpful, and so including that is nice. To get a backtrace, set the `RUST_BACKTRACE` environment variable to a value other than `0`. The easiest way to do this is to invoke `cargo` like this:
 
@@ -47,7 +47,7 @@ Sometimes, a backtrace is helpful, and so including that is nice. To get a backt
 
 ## Pull Requests
 
-Pull requests are the primary mechanism we use to change rust-lv2. GitHub itself has some [great documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature. We use the "fork and pull" model [described here](https://help.github.com/articles/about-collaborative-development-models/), where contributors push changes to their personal fork and create pull requests to bring those changes into the source repository.
+Pull requests are the primary mechanism we use to change Rust-LV2. GitHub itself has some [great documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature. We use the "fork and pull" model [described here](https://help.github.com/articles/about-collaborative-development-models/), where contributors push changes to their personal fork and create pull requests to bring those changes into the source repository.
 
 Please make pull requests against the `develop` branch.
 
@@ -59,6 +59,6 @@ Another useful feature are [draft Pull Requests](https://github.blog/2019-02-14-
 
 ## Writing Documentation
 
-Documentation improvements are very welcome. The API documentation is generated from the source code itself. However, the [rust-lv2 book](https://github.com/Janonard/rust-lv2-book), which explains how to use rust-lv2 in general, is a separate project. Documentation pull requests function in the same way as other pull requests.
+Documentation improvements are very welcome. The API documentation is generated from the source code itself. Documentation pull requests function in the same way as other pull requests.
 
 To find documentation-related issues, sort by the [documentation](https://github.com/RustAudio/rust-lv2/labels/documentation) label.

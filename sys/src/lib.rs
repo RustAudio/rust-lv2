@@ -1,40 +1,24 @@
 //! Raw bindings of all LV2 specification headers.
 //!
-//! This crate contains all C headers of the LV2 specification. Please note that utility headers are not included. If you want to use utilities, you should use the "nice" LV2 crates or create your own.
-//!
-//! The bindings are generated at build time using [bindgen](https://crates.io/crates/bindgen), which requires clang to be installed. The installation process is described [here](https://rust-lang.github.io/rust-bindgen/requirements.html).
+//! Bindings to the official [LV2](https://lv2plug.in/) API headers, used by [`rust-lv2`](https://crates.io/crates/lv2), a safe, fast, and ergonomic framework to create [LV2 plugins](http://lv2plug.in/) for audio processing, written in Rust. The crate uses the version 1.18.0 of the specification, as pulled from the [project's website](https://lv2plug.in/lv2-1-18-0.html).
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 #![allow(clippy::all)]
-#![allow(improper_ctypes)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-#[cfg(windows)]
+#[cfg_attr(target_os = "linux", path = "linux/mod.rs")]
+#[cfg_attr(target_os = "windows", path = "windows.rs")]
+mod unsupported;
+pub use unsupported::*;
+
 impl From<u32> for LV2_State_Flags {
     fn from(flags: u32) -> Self {
-        Self(flags as i32)
+        Self(flags as _)
     }
 }
 
-#[cfg(not(windows))]
-impl From<u32> for LV2_State_Flags {
-    fn from(flags: u32) -> Self {
-        Self(flags)
-    }
-}
-
-#[cfg(windows)]
 impl From<LV2_State_Flags> for u32 {
     fn from(flags: LV2_State_Flags) -> u32 {
         flags.0 as u32
-    }
-}
-
-#[cfg(not(windows))]
-impl From<LV2_State_Flags> for u32 {
-    fn from(flags: LV2_State_Flags) -> u32 {
-        flags.0
     }
 }

@@ -2,6 +2,10 @@
 //!
 //! This is a rather classic extension to LV2 plugins: There is a trait called [`State`](trait.State.html) which requires the methods [`save`](trait.State.html#tymethod.save) and [`restore`](trait.State.html#tymethiod.restore) to be implemented. These methods will be called by the host to save and restore the state of the plugin.
 //!
+//! ## Refering to files
+//!
+//! This crate also includes features to create files in a unique namespace for the plugin instance. However, these files will not persist across `save`/`restore` calls and therefore need to be safed together with the state as well. For more information, see the documentation of the [`path` module](path/index.html).
+//!
 //! ## Example usage
 //!
 //! ```
@@ -55,7 +59,7 @@
 //!         })
 //!     }
 //!
-//!     fn run(&mut self, _: &mut (), _: &mut ()) {
+//!     fn run(&mut self, _: &mut (), _: &mut (), _: u32) {
 //!         // Set the float to a different value than the previous one.
 //!         self.internal += 1.0;
 //!     }
@@ -88,6 +92,8 @@ pub use raw::*;
 mod storage;
 pub use storage::Storage;
 
+pub mod path;
+
 /// Kinds of errors that may occur in the crate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StateErr {
@@ -107,6 +113,10 @@ pub enum StateErr {
     NoProperty,
     /// There isn't enough memory available to execute the task.
     NoSpace,
+    /// A path that's been used as a parameter is not encoded in UTF-8.
+    PathNotUTF8,
+    /// The host does not comply to the specification.
+    HostError,
 }
 
 impl StateErr {

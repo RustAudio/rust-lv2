@@ -1,0 +1,14 @@
+[package]
+name = "metro"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+license = "ISC"
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+# This is the first time we need a non-default LV2 feature. In this case, this is the `lv2-time` crate.
+[dependencies]
+lv2 = { version = "0.6.0", features = ["lv2-time"] }
+iterpipes = "0.2.0"

@@ -17,6 +17,7 @@
 
 /**
    @defgroup event Event
+   @ingroup lv2
 
    Generic time-stamped events, see <http://lv2plug.in/ns/ext/event> for
    details.
@@ -80,7 +81,7 @@ typedef struct {
 	   The frames portion of timestamp. The units used here can optionally be
 	   set for a port (with the lv2ev:timeUnits property), otherwise this is
 	   audio frames, corresponding to the sample_count parameter of the LV2 run
-	   method (e.g. frame 0 is the first frame for that call to run).
+	   method (frame 0 is the first frame for that call to run).
 	*/
 	uint32_t frames;
 

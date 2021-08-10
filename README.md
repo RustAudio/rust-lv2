@@ -1,4 +1,4 @@
-# rust-lv2
+# Rust-LV2
 
 [![Build Status][travis-badge]][travis-url] [![Current Crates.io Version][crates-badge]][crates-url]
 
@@ -26,9 +26,9 @@ additional features, including:
 * MIDI processing
 * Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
 * State management
+* Asynchronous work processing
 * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
 * Presets handling **(Not yet implemented)**
-* Asynchronous work processing **(Not yet implemented)**
 * ... and more! (Not yet implemented either)
 
 Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings to any other specification that will integrate with this library.
@@ -92,27 +92,15 @@ impl Plugin for Amp {
 lv2_descriptors!(Amp);
 ```
 
-## Documentation
+## About this framework
 
-The original LV2 API (in the `C` programming language) is documented by ["the LV2 book"](https://lv2plug.in/book/). This book is in the process of being translated to Rust along with the development of `rust-lv2` [(link)](https://janonard.github.io/rust-lv2-book/) and describes how to properly use `rust-lv2`.
+### Q&A
 
-## Building
-
-Since the bindings to the raw C headers are generated with bindgen, you need to have [Clang](https://clang.llvm.org/) installed on your system and, if it isn't in your system's standard path, set the environment variable `LIBCLANG_PATH` to the path of `libClang`.
-
-## Q&A
-
-### Does my host program support it?
+#### Does my host program support it?
 
 Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to the specifications. If your application uses [`lilv`](https://drobilla.net/software/lilv), it's a good sign that it will support your plugin. Some prime examples are [Carla](https://kx.studio/Applications:Carla) and [Ardour](https://ardour.org/).
 
-### What targets are supported?
-
-We currently support stable and beta Rust running on macOS and Linux. Windows will probably work too, but the Windows build environment of Travis CI is currently broken and we therefore can not support it.
-
-We would like to also support Windows as well as ARM-based embedded devices like Raspberry Pis. If you can help us with these targets, please do so!
-
-### Can I host plugins with `rust-lv2`?
+#### Can I host plugins with `rust-lv2`?
 
 Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
 
@@ -120,19 +108,63 @@ However, there is a lot of code that can be re-used for a hosting framework. If 
 
 A bare hosting framework would require an RDF triple store which can load Turtle files, an internal store for plugin interfaces and their extensions, a centralized URID map store, and a graph based work scheduling system to execute `run` functions in order.
 
-### Why `bindgen`?
+### Documentation
 
-`lv2-sys` uses `bindgen` to generate the Rust representation of the LV2 C API. Rust can not handle verbatim C code, but is able to define type and function definitions that exactly match those from the C headers. However, since serveral importants details in C aren't properly defined, these bindings need to be different for every platform. One example: While Rust's `u32` is always an unsigned, 32-bit wide integer, C's `int` may be 16 to 64 bits wide and may be signed or unsigned; It depends on the platform.
+There are multiple valuable sources of documentation:
+* ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in general, broad terms. It's the ideal point to get started and is updated with every new version of Rust-LV2.
+* [The API documentation](https://docs.rs/lv2).
+* [The LV2 specification reference](https://lv2plug.in/ns/).
 
-One solution would be to generate bindings for every supported target, but if we would only support stable, beta and nightly Rust on [tier 1 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-1), we would still have to maintain 21 different versions of the same crate. If we would add [tier 2 platforms](https://forge.rust-lang.org/release/platform-support.html#tier-2) too (which would include e.g. the Raspberry Pis), there would be 216(!) different versions.
+### Features
 
-I guess it's obvious that this isn't a maintainable situation. Therefore, the bindings need to be generated every time they are build, which requires the build dependency to `bindgen`.
+Internally, this framework is built of several sub-crates which are re-exported by the `lv2` crate. All dependencies are optional and can be enabled via features. These are:
 
-## Features
+* `lv2-atom`: General data IO.
+* `lv2-core`: Implementation of the core LV2 specification.
+* `lv2-midi`: MIDI message extension for `lv2-midi`. Support for the [`wmidi` crate](https://crates.io/crates/wmidi) can be enabled with the `wmidi` feature.
+* `lv2-state`: Extension for LV2 plugins to store their state.
+* `lv2-time`: Specification to describe position in time and passage of time, in both real and musical terms.
+* `lv2-units`: Measuring unit definitions.
+* `lv2-urid`: LV2 integration of the URID concept.
+* `lv2-worker`: Work scheduling library that allows real-time capable LV2 plugins to execute non-real-time actions.
+* `urid`: Idiomatic URID support.
 
-There are two optional features:
-* `host`:  Some of the types defined by some crates are only useful for testing or LV2 hosts. Since the goal of this framework is to provide an easy way to create plugins, these aren't necessary and therefore gated behind that feature.
-* `wmidi`: Add [`wmidi`](https://crates.io/crates/wmidi) as an optional dependency to `lv2-midi`, which enables a shortcut to read and write MIDI events directly with the types defined by this crate.
+Sub-crates with an `lv2-` prefix implement a certain LV2 specification, which can be looked up in [the reference](https://lv2plug.in/ns/). Enabling a crate only adds new content, it does not remove or break others.
+
+There are also feature sets that account for common scenarios:
+* `minimal_plugin`: The bare minimum to create plugins. Includes `lv2-core` and `urid`.
+* `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
+* `full`: All sub-crates.
+
+## Supported targets
+
+Rust-LV2 uses pregenerated C API bindings for different targets in order to increase usability and building speed. Rust has a lot of [supported targets](https://forge.rust-lang.org/release/platform-support.html), but our maintaining power is limited and therefore, only certain targets can be supported. We've ranked different targets in Tiers, [just like rustc does](https://doc.rust-lang.org/nightly/rustc/platform-support.html), which gives you a general understanding of what to expect of a target. The tables below list the supported targets, the used binding in the [`lv2-sys`](sys/) crate, and, if applicable, the maintainer and the last verification of that target.
+
+The bindings itself are generated with the [LV2 systool](sys/tool/) and verified by building the [example plugins of the book](docs) and testing them with a host of that target.
+
+### Tier 1
+
+A Tier 1 target for `rust-lv2` also has to be a Tier 1 target of rustc. You can check the [platform support page](https://doc.rust-lang.org/nightly/rustc/platform-support.html) to see which targets are included and what they provide. Additionally, there has to be a [maintainer](https://github.com/orgs/RustAudio/teams/lv2-maintainers) of `rust-lv2` who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 1 target, there will be a maintainer who can help you.
+
+| Target                     | Binding           | Maintainer | Last Verification                                                                                        |
+|----------------------------|-------------------|------------|----------------------------------------------------------------------------------------------------------|
+| `x86_64-unknown-linux-gnu` | `linux/x86_64.rs` | @Janonard  | 10. of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Arch Linux              |
+| `x86-unknown-linux-gnu`    | `linux/x86.rs`    | @Janonard  | 16th of May 2020, using [Carla](https://github.com/falkTX/Carla) v2.1, running on Linux Mint 19.3 32-bit |
+
+### Tier 2
+
+A Tier 2 target is a target that is at least in Tier 2 of rustc and has a generated binding. However, it might not work (well) and there might not be a maintainer who has access to a machine that runs this target and who can generate and verify bindings on this machine. This means that if you have a problem running your code on a Tier 2 target, you're stepping into uncharted territory.
+
+| Target                                | Binding      |
+|---------------------------------------|--------------|
+| `aarch64-unknown-linux-gnu`           | `aarch64.rs` |
+| `arm-unknown-linux-gnueabi`           | `arm.rs`     |
+| `arm-unknown-linux-gnueabihf`         | `arm.rs`     |
+| `armv5te-unknown-linux-gnueabi`       | `arm.rs`     |
+| `armv7-unknown-linux-gnueabi`         | `arm.rs`     |
+| `armv7-unknown-linux-gnueabihf`       | `arm.rs`     |
+| `thumbv7neon-unknown-linux-gnueabihf` | `arm.rs`     |
+| `x86_64-pc-windows-msvc`              | `windows.rs` |
 
 ## License
 

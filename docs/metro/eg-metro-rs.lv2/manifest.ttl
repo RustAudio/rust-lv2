@@ -1,0 +1,8 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/metro>
+	a lv2:Plugin ;
+	lv2:binary <libmetro.so> ;
+	rdfs:seeAlso <metro.ttl> .

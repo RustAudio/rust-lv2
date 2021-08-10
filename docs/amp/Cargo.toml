@@ -1,0 +1,22 @@
+# The host does not really care in which language the code of the plugin is written, as long as the
+# built library complies to the headers of the specifications. Therefore, every plugin is a standard
+# Cargo crate.
+[package]
+name = "amp"
+version = "0.2.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+license = "ISC"
+edition = "2018"
+
+# Plugins are dynamic libraries. This setting tells cargo to export it this way.
+[lib]
+crate-type = ["cdylib"]
+
+# Rust-LV2 is a network of individual sub-crates with different version numbers and histories.
+# However, most plugins don't need to deal with them directly. Instead, they use the re-export crate
+# simply called `lv2`. It has an optional dependency to every sub-crate, which can be enabled via crate features.
+# 
+# The default feature set includes everything to create a simple plugin for audio and MIDI processing.
+# Therefore, we don't need to enable extra features here.
+[dependencies]
+lv2 = "0.6.0"

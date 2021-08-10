@@ -42,7 +42,7 @@ impl Plugin for AtomPlugin {
         })
     }
 
-    fn run(&mut self, ports: &mut Ports, _: &mut ()) {
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         let sequence_reader = ports
             .input
             .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)

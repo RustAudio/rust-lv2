@@ -15,18 +15,16 @@
 //! additional features, including:
 //!
 //! * MIDI processing
-//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
 //! * Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
-//! * Presets handling and State management **(Not yet implemented)**
-//! * Asynchronous work processing **(Not yet implemented)**
-//! * … and more! (Not yet implemented either)
+//! * State management
+//! * Asynchronous work processing
+//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
+//! * Presets handling **(Not yet implemented)**
+//! * ... and more! (Not yet implemented either)
 //!
 //! Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible
 //! with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
 //! to any other specification that will integrate with this library.
-//!
-//! Since this crate depends on `-sys` crates that use `bindgen` to create the C API bindings,
-//! you need to have clang installed on your machine. For more information, check out the [requirements list of bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html).
 //!
 //! # Example
 //!
@@ -70,7 +68,7 @@
 //!
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
-//!     fn run(&mut self, ports: &mut Ports, _features: &mut ()) {
+//!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
 //!         let coef = if *(ports.gain) > -90.0 {
 //!             10.0_f32.powf(*(ports.gain) * 0.05)
 //!         } else {
@@ -86,9 +84,16 @@
 //!
 //! # Using this framework
 //!
-//! For a general introduction into plugin creation, please checkout the [rust-lv2 book](https://janonard.github.io/rust-lv2-book/) first. This will show you how to use this library in general and what is possible.
+//! ## Documentation
 //!
-//! Internally, this framework is built of several sub-crates which this crate re-exports. All dependencies are optional and can be enabled via features. These are:
+//! There are multiple valuable sources of documentation:
+//! * ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in general, broad terms. It's the ideal point to get started and is updated with every new version of Rust-LV2.
+//! * [The API documentation](https://docs.rs/lv2).
+//! * [The LV2 specification reference](https://lv2plug.in/ns/).
+//!
+//! ## Features
+//!
+//! Internally, this framework is built of several sub-crates which are re-exported by the `lv2` crate. All dependencies are optional and can be enabled via features. These are:
 //!
 //! * `lv2-atom`: General data IO.
 //! * `lv2-core`: Implementation of the core LV2 specification.
@@ -104,7 +109,7 @@
 //!
 //! There are also feature sets that account for common scenarios:
 //! * `minimal_plugin`: The bare minimum to create plugins. Includes `lv2-core` and `urid`.
-//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi`, `lv2-urid`, and `urid`. **This is the default.**
+//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi` with the `wmidi` feature, `lv2-units`, `lv2-urid`, and `urid`. **This is the default.**
 //! * `full`: All sub-crates.
 //!
 //! # Extending
@@ -144,6 +149,9 @@ pub extern crate lv2_midi;
 
 #[cfg(feature = "lv2-state")]
 pub extern crate lv2_state;
+
+#[cfg(feature = "lv2-sys")]
+pub extern crate lv2_sys;
 
 #[cfg(feature = "lv2-time")]
 pub extern crate lv2_time;

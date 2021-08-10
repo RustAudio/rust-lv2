@@ -12,9 +12,9 @@ struct Amp {
 
 #[derive(PortCollection)]
 struct AmpPorts {
-    gain: InputPort<Control>,
-    input: InputPort<Audio>,
-    output: OutputPort<Audio>,
+    gain: InputPort<InPlaceControl>,
+    input: InputPort<InPlaceAudio>,
+    output: OutputPort<InPlaceAudio>,
 }
 
 #[derive(FeatureCollection)]
@@ -53,16 +53,16 @@ impl Plugin for Amp {
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _: &mut ()) {
+    fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
         assert!(self.activated);
 
         let coef = *(ports.gain);
 
         let input = ports.input.iter();
-        let output = ports.output.iter_mut();
+        let output = ports.output.iter();
 
         for (input_sample, output_sample) in input.zip(output) {
-            *output_sample = (*input_sample) * coef;
+            output_sample.set(input_sample.get() * coef.get());
         }
     }
 
@@ -150,6 +150,6 @@ fn test_plugin() {
 
     // Verifying the data.
     for i in 0..128 {
-        assert!((input[i] * gain - output[i]).abs() < std::f32::EPSILON);
+        assert!((input[i] * gain - output[i]).abs() < f32::EPSILON);
     }
 }
