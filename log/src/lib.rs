@@ -76,12 +76,13 @@ unsafe impl<'a> Feature for Log<'a> {
     // practice, but it's acceptable to use it for debugging purpose
     // So, at this time, i just giving access to it instanciation class
     unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
-        if class == ThreadingClass::Instantiation {
-            (feature as *const lv2_sys::LV2_Log_Log)
+        match class {
+            ThreadingClass::Audio => {
+                panic!("The log feature is not allowed in the audio threading class")
+            }
+            _ => (feature as *const lv2_sys::LV2_Log_Log)
                 .as_ref()
-                .map(|internal| Self { internal })
-        } else {
-            panic!("The log feature is only allowed in the indtantiation threading class");
+                .map(|internal| Self { internal }),
         }
     }
 }
