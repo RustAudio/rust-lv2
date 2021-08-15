@@ -1,6 +1,5 @@
-# Design and Goals of the LV2 Rust crate
+# API Design guidelines for the LV2 Rust crate
 
-## API Design
 * Memory Safety
 * C Parity
 * Real-Time Safety
@@ -11,68 +10,75 @@
 * Ecosystem integration
 * `#![no_std]` compatibility
 
-### Memory safety
+## Memory safety
 
-#### Goal: Exposing Safe and Sound LV2 APIs
+### Goal: Exposing Safe and Sound LV2 APIs
 
-#### Anti-Goal: Exposing *only* Safe LV2 APIs
+### Anti-Goal: Exposing *only* Safe LV2 APIs
 
-#### Anti-Goal: Making Plugins robust against incorrect Host implementations
+### Anti-Goal: Making Plugins robust against incorrect Host implementations
 
-### C Parity
+### Anti-Goal: Making Plugins robust against incorrect description (`.ttl`) files
 
-#### Goal: LV2 Users must be able to program the same behavior in both C and Rust
+## C Parity
 
-#### Goal: Making every official LV2 API accessible through the `lv2` crate
+### Goal: LV2 Users must be able to program the same behavior in both C and Rust
 
-#### Anti-Goal: Making every other LV2 API accessible through the `lv2` crate
+### Goal: Making every official LV2 API accessible through the `lv2` crate
 
-### Real-Time Safety
+### Anti-Goal: Making every other LV2 API accessible through the `lv2` crate
 
-#### Goal: Making all APIs needed for processing Real-Time Safe
+## Real-Time Safety
 
-#### Nice-to-have: Making as many APIs as possible Real-Time Safe
+### Goal: Making all APIs needed for processing Real-Time Safe
 
-#### Non-Goal: Making Real-Time Safe API wrappers for non-Real-Time Safe LV2 APIs
+### Nice-to-have: Making as many APIs as possible Real-Time Safe
 
-#### Anti-Goal: Enforcing Real-Time Safety in user code
+### Non-Goal: Making Real-Time Safe API wrappers for non-Real-Time Safe LV2 APIs
 
-### Performance
+### Anti-Goal: Enforcing Real-Time Safety in user code
 
-#### Goal: Making APIs needed for processing as *blazingly fast* as possible
+## Performance
 
-#### Nice-to-have: Making APIs needed for processing as lightweight as possible
+### Goal: Making APIs needed for processing as *blazingly fast* as possible
 
-#### Nice-to-have: Making all APIs as fast and lightweight as possible
+### Nice-to-have: Making APIs needed for processing as lightweight as possible
 
-### Extensibility and Modularity
+### Nice-to-have: Making all APIs as fast and lightweight as possible
 
-#### Goal: Make every LV2 spec into a separate crate
+## Extensibility and Modularity
 
-#### Goal: Enable implementing new LV2 specifications on top of `lv2_core`
+### Goal: Make every LV2 spec into a separate crate
 
-#### Goal: Make every extensible LV2 spec extensible by other crates
+### Goal: Enable implementing new LV2 specifications on top of `lv2_core`
 
-#### Goal: Use Rust `features` to disable optional external dependencies (if any)
+### Goal: Make every extensible LV2 spec extensible by other crates
 
-#### Future Goal: Split host-specific features using a `host` feature
+### Goal: Use Rust `features` to disable optional external dependencies (if any)
 
-### Ergonomics and Usability
+### Future Goal: Split host-specific features using a `host` feature
 
-#### Nice-to-have: Follow the Rust API Guidelines and design "Rusty" APIs
+## Ergonomics and Usability
 
-#### Non-goal: Design APIs to be as user-friendly as possible
+### Nice-to-have: Follow the Rust API Guidelines and design "Rusty" APIs
 
-### Correctness
+### Non-goal: Design APIs to be as user-friendly as possible
 
-#### Nice-to-have: Design misuse-resistant APIs
+## Correctness
 
-#### Anti-goal: Design all APIs to be impossible to misuse
+### Nice-to-have: Design misuse-resistant APIs
 
-### Ecosystem integration
+### Anti-goal: Design all APIs to be impossible to misuse
 
-#### Goal: Integrate tightly with `core` and `std` standard libraries
+## Ecosystem integration
 
-#### Nice-to-have: Provide integrations with popular and/or appropriate Rust libraries
+### Goal: Integrate tightly with `core` and `std` standard libraries
 
-### `#![no_std]` compatibility
+### Nice-to-have: Provide integrations with popular and/or appropriate Rust libraries
+
+## `#![no_std]` compatibility
+
+### Future Goal: Make lv2_core `#![no_std]` compatible
+
+### Nice-to-have: Make as many specs as `#![no_std]` compatible as possible
+
