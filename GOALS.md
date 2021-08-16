@@ -42,7 +42,7 @@ One exception to this rule are the manifest files (the `.ttl` files distributed 
 are usually user-written, and writing them incorrectly is likely to trigger Undefined Behavior, in both the plugin and
 the host.
 
-Higher-level, more specialized libraries and frameworks that rely on LV2 should probably auto-generate those crates based on
+Higher-level, more specialized libraries and frameworks that rely on LV2 should probably auto-generate those files based on
 plugin code and metadata. However, for the low-level control that `lv2` provides, these files need to be user-written
 for now. It is possible that APIs relying on the content of those files could be marked `unsafe` in the future, even
 if that makes it less practical to use for direct users of the `lv2` crates.
