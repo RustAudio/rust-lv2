@@ -22,8 +22,7 @@
 //!     let read_value: f32 = ports.input.read(urids.float, ()).unwrap();
 //!
 //!     // Writing is done with the value of the atom.
-//!     // You can modify it afterwards.
-//!     let written_value: &mut f32 = ports.output.init(urids.float, 17.0).unwrap();
+//!     ports.output.init(urids.float, 17.0).unwrap();
 //! }
 //! ```
 //!
@@ -56,8 +55,9 @@ pub trait ScalarAtom: UriBound {
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar<'handle, 'space: 'handle>(mut frame: AtomSpaceWriter<'handle, 'space>, value: Self::InternalType) -> Option<&'handle mut Self::InternalType> {
-        space::write_value(&mut frame, value)
+    fn write_scalar<'handle, 'space: 'handle>(mut frame: AtomSpaceWriter<'handle, 'space>, value: Self::InternalType) -> Option<()> {
+        space::write_value(&mut frame, value)?;
+        Some(())
     }
 }
 
@@ -65,13 +65,13 @@ impl<'handle, 'space: 'handle, A: ScalarAtom> Atom<'handle, 'space> for A {
     type ReadParameter = ();
     type ReadHandle = A::InternalType;
     type WriteParameter = A::InternalType;
-    type WriteHandle = &'handle mut A::InternalType;
+    type WriteHandle = ();
 
     unsafe fn read(body: &'space Space, _: ()) -> Option<A::InternalType> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, value: A::InternalType) -> Option<&'handle mut A::InternalType> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, value: A::InternalType) -> Option<()> {
         <A as ScalarAtom>::write_scalar(frame, value)
     }
 }
@@ -172,7 +172,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             crate::space::init_atom(&mut space, urid, value).unwrap();
         }
 

@@ -15,20 +15,17 @@ unsafe impl UriBound for MidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for MidiEvent
-where
-    'a: 'b,
-{
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for MidiEvent {
     type ReadParameter = ();
-    type ReadHandle = &'a [u8];
+    type ReadHandle = &'handle [u8];
     type WriteParameter = ();
-    type WriteHandle = AtomSpaceWriter<'b>;
+    type WriteHandle = AtomSpaceWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'a Space, _: ()) -> Option<&'a [u8]> {
+    unsafe fn read(body: &'handle Space, _: ()) -> Option<&'handle [u8]> {
         Some(body.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<AtomSpaceWriter<'b>> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<AtomSpaceWriter<'handle, 'space>> {
         Some(frame)
     }
 }

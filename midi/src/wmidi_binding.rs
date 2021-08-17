@@ -20,20 +20,17 @@ unsafe impl UriBound for WMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for WMidiEvent
-where
-    'a: 'b,
-{
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for WMidiEvent {
     type ReadParameter = ();
-    type ReadHandle = wmidi::MidiMessage<'a>;
-    type WriteParameter = wmidi::MidiMessage<'b>;
+    type ReadHandle = wmidi::MidiMessage<'handle>;
+    type WriteParameter = wmidi::MidiMessage<'handle>;
     type WriteHandle = ();
 
-    unsafe fn read(space: &'a Space, _: ()) -> Option<wmidi::MidiMessage<'a>> {
+    unsafe fn read(space: &'handle Space, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
         wmidi::MidiMessage::try_from(space.as_bytes()).ok()
     }
 
-    fn init(mut frame: AtomSpaceWriter<'b>, message: wmidi::MidiMessage) -> Option<()> {
+    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, message: wmidi::MidiMessage) -> Option<()> {
         let space: &mut Space<u8> = lv2_atom::space::allocate(&mut frame, message.bytes_size())?;
         message.copy_to_slice(space.as_bytes_mut()).ok()?;
 
@@ -52,20 +49,17 @@ unsafe impl UriBound for SystemExclusiveWMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for SystemExclusiveWMidiEvent
-where
-    'a: 'b,
-{
+impl<'handle, 'space: 'handle> Atom<'handle, 'space> for SystemExclusiveWMidiEvent {
     type ReadParameter = ();
-    type ReadHandle = wmidi::MidiMessage<'a>;
+    type ReadHandle = wmidi::MidiMessage<'handle>;
     type WriteParameter = ();
-    type WriteHandle = Writer<'b>;
+    type WriteHandle = Writer<'handle, 'space>;
 
-    unsafe fn read(space: &'a Space, _: ()) -> Option<wmidi::MidiMessage<'a>> {
+    unsafe fn read(space: &'handle Space, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
         WMidiEvent::read(space, ())
     }
 
-    fn init(frame: AtomSpaceWriter<'b>, _: ()) -> Option<Writer<'b>> {
+    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<Writer<'handle, 'space>> {
         let mut writer = Writer { frame };
         writer.write::<u8>(0xf0);
         Some(writer)
@@ -77,23 +71,23 @@ where
 /// This writing handle is similar to a chunk's `ByteWriter`: You can allocate space, write raw bytes and generic values.
 ///
 /// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
-pub struct Writer<'a> {
-    frame: AtomSpaceWriter<'a>,
+pub struct Writer<'handle, 'space> {
+    frame: AtomSpaceWriter<'handle, 'space>,
 }
 
-impl<'a> Writer<'a> {
+impl<'handle, 'space> Writer<'handle, 'space> {
     #[inline]
-    pub fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
+    pub fn write_raw(&mut self, data: &[u8]) -> Option<&mut [u8]> {
         lv2_atom::space::write_bytes(&mut self.frame, data)
     }
 
     #[inline]
-    pub fn write<T>(&mut self, instance: T) -> Option<&'a mut T> where T: Copy + Sized + 'static, {
+    pub fn write<T>(&mut self, instance: T) -> Option<&mut T> where T: Copy + Sized + 'static, {
         lv2_atom::space::write_value(&mut self.frame, instance)
     }
 }
 
-impl<'a, 'b> Drop for Writer<'a> {
+impl<'handle, 'space> Drop for Writer<'handle, 'space> {
     fn drop(&mut self) {
         self.write::<u8>(0xf7);
     }
@@ -103,8 +97,8 @@ impl<'a, 'b> Drop for Writer<'a> {
 mod tests {
     use crate::wmidi_binding::*;
     use std::convert::TryFrom;
-    use std::mem::size_of;
     use wmidi::*;
+    use lv2_atom::space::SpaceCursor;
 
     #[test]
     fn test_midi_event() {
@@ -117,7 +111,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             lv2_atom::space::init_atom(&mut space, urid, reference_message.clone()).unwrap();
         }
 
@@ -150,7 +144,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = lv2_atom::space::init_atom(&mut space, urid, ()).unwrap();
             writer.write_raw(&[1, 2, 3, 4]);
         }

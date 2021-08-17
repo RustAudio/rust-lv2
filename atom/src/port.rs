@@ -32,13 +32,13 @@ use urid::URID;
 /// A handle to read atoms from a port.
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to read atoms.
-pub struct PortReader<'a> {
-    space: &'a Space,
+pub struct PortReader<'space> {
+    space: &'space Space,
 }
 
-impl<'a> PortReader<'a> {
+impl<'space> PortReader<'space> {
     /// Create a new port reader.
-    fn new(space: &'a Space) -> Self {
+    fn new(space: &'space Space) -> Self {
         Self { space }
     }
 
@@ -47,8 +47,8 @@ impl<'a> PortReader<'a> {
     /// In order to identify the atom, the reader needs to know it's URID. Also, some atoms require a parameter. However, you can simply pass `()` in most cases.
     ///
     /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
-    pub fn read<'b, A: crate::Atom<'a, 'b>>(
-        &'b self,
+    pub fn read<'handle, A: crate::Atom<'handle, 'space>>(
+        &self,
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {
@@ -61,7 +61,7 @@ impl<'a> PortReader<'a> {
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
 pub struct PortWriter<'a> {
-    space: &'a mut [u8],
+    space: SpaceCursor<'a>,
     has_been_written: bool,
 }
 
@@ -69,7 +69,7 @@ impl<'a> PortWriter<'a> {
     /// Create a new port writer.
     fn new(space: &'a mut Space) -> Self {
         Self {
-            space: space.as_bytes_mut(),
+            space: SpaceCursor::new(space.as_bytes_mut()),
             has_been_written: false,
         }
     }
@@ -89,7 +89,7 @@ impl<'a> PortWriter<'a> {
         if !self.has_been_written {
             self.has_been_written = true;
             // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
-            let space: &'write mut &'write mut [u8] = unsafe { ::core::mem::transmute::<_, &'write mut &'write mut [u8]>(&mut self.space) };
+            let space: &'write mut SpaceCursor<'write> = unsafe { ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space) };
             crate::space::init_atom(space, urid, parameter)
         } else {
             None
@@ -139,7 +139,7 @@ mod tests {
 
         // writing a chunk to indicate the size of the space.
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = crate::space::init_atom(&mut space, urids.chunk, ()).unwrap();
             writer
                 .allocate_unaligned(256 - size_of::<sys::LV2_Atom>())

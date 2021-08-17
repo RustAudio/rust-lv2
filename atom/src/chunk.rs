@@ -70,7 +70,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
             let data = writer.allocate_unaligned(SLICE_LENGTH - 1).unwrap();
 

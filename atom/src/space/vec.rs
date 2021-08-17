@@ -1,5 +1,5 @@
 use std::mem::MaybeUninit;
-use crate::space::{AllocateSpace, Space};
+use crate::space::{SpaceAllocator, Space};
 use std::ops::Range;
 
 pub struct VecSpace<T> {
@@ -46,26 +46,38 @@ pub struct VecSpaceCursor<'vec, T> {
     byte_index: usize
 }
 
-impl<'vec, T: Copy + 'static> AllocateSpace<'vec> for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceAllocator<'vec> for VecSpaceCursor<'vec, T> {
     fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]> {
         let end = self.byte_index.checked_add(size)?;
         VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.byte_index..end)
     }
 
+    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
+        todo!()
+    }
+
+    fn allocated_bytes(&self) -> &[u8] {
+        todo!()
+    }
+
+    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+        todo!()
+    }
+
     #[inline]
-    fn as_bytes(&self) -> &[u8] {
+    fn remaining_bytes(&self) -> &[u8] {
         self.vec.as_bytes()
     }
 
     #[inline]
-    fn as_bytes_mut(&mut self) -> &mut [u8] {
+    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
         self.vec.as_bytes_mut()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::space::{VecSpace, AllocateSpace};
+    use crate::space::{VecSpace, SpaceAllocator};
 
     #[test]
     pub fn test_lifetimes () {
