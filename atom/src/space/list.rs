@@ -95,7 +95,7 @@ impl<'a> SpaceHead<'a> {
 
 impl<'a> SpaceAllocator<'a> for SpaceHead<'a> {
     #[inline]
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]> {
+    fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
         let element = self.element.take()?;
         let (new_element, new_space) = element.allocate(size)?;
         self.element = Some(new_element);
@@ -123,5 +123,9 @@ impl<'a> SpaceAllocator<'a> for SpaceHead<'a> {
     #[inline]
     fn remaining_bytes_mut(&mut self) -> &mut [u8] {
         &mut []
+    }
+
+    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
+        todo!()
     }
 }

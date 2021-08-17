@@ -53,7 +53,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
         Some(TupleIterator { space: body })
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<TupleWriter<'handle, 'space>> {
+    fn init(
+        frame: AtomSpaceWriter<'handle, 'space>,
+        _: (),
+    ) -> Option<TupleWriter<'handle, 'space>> {
         Some(TupleWriter { frame })
     }
 }
@@ -131,7 +134,8 @@ mod tests {
                     + size_of::<sys::LV2_Atom_Int>()
             );
 
-            let (vector, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
+            let (vector, space) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
             assert_eq!(vector.atom.type_, urids.vector);
             assert_eq!(
                 vector.atom.size as usize,
@@ -141,10 +145,13 @@ mod tests {
             assert_eq!(vector.body.child_type, urids.int);
 
             let (vector_items, space) = space.split_at(size_of::<i32>() * 9).unwrap();
-            let vector_items = unsafe { std::slice::from_raw_parts(vector_items.as_bytes().as_ptr() as *const i32, 9) };
+            let vector_items = unsafe {
+                std::slice::from_raw_parts(vector_items.as_bytes().as_ptr() as *const i32, 9)
+            };
             assert_eq!(vector_items, &[17; 9]);
 
-            let (int, _) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let (int, _) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);

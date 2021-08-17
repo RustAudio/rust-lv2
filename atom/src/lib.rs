@@ -73,9 +73,9 @@ pub mod string;
 pub mod tuple;
 pub mod vector;
 
+mod header;
 #[cfg(feature = "lv2-core")]
 pub mod port;
-mod header;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
@@ -87,15 +87,15 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{AtomSpaceWriter, SpaceAllocator, AtomSpace, Space};
+    pub use space::{AtomSpace, AtomSpaceWriter, Space, SpaceAllocator};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
 }
 
+use crate::header::AtomHeader;
 use space::*;
 use urid::*;
-use crate::header::AtomHeader;
 
 #[derive(Clone, URIDCollection)]
 /// Collection with the URIDs of all `UriBound`s in this crate.
@@ -128,8 +128,7 @@ impl AtomURIDCollection {
 /// This is the foundation of this crate: Types that implement `Atom` define the reading and writing functions for an atom type. However, these types will never be constructed; They are only names to be used for generic type arguments.
 ///
 /// This trait has two lifetime parameters: The first one is the lifetime of the atom in memory. In practice, this will often be `'static`, but it's good to keep it generic for testing purposes. The second parameter is the lifetime of the `MutSpace` borrowed by the `FramedMutSpace` parameter in the `write` method. Since the `WriteParameter` may contain this `FramedMutSpace`, it has to be assured that it lives long enough. Since the referenced `MutSpace` also has to borrow the atom, it may not live longer than the atom.
-pub trait Atom<'handle, 'space: 'handle>: UriBound
-{
+pub trait Atom<'handle, 'space: 'handle>: UriBound {
     /// The atom-specific parameter of the `read` function.
     ///
     /// If your atom does not need a reading parameter, you may set it to `()`.
@@ -160,7 +159,8 @@ pub trait Atom<'handle, 'space: 'handle>: UriBound
     ///
     /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
-    unsafe fn read(body: &'space Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
+    unsafe fn read(body: &'space Space, parameter: Self::ReadParameter)
+        -> Option<Self::ReadHandle>;
 
     /// Initialize the body of the atom.
     ///
@@ -231,7 +231,7 @@ impl<'space> UnidentifiedAtom<'space> {
     #[inline]
     pub fn header(&self) -> Option<&'space AtomHeader> {
         // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
-        unsafe { self.space.read_unchecked() }
+        unsafe { self.space.assume_init_value() }
     }
 
     #[inline]

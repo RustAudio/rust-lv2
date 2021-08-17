@@ -116,10 +116,13 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
         header: ObjectHeader,
     ) -> Option<ObjectWriter<'handle, 'space>> {
         {
-            space::write_value(&mut frame, sys::LV2_Atom_Object_Body {
-                id: header.id.map(URID::get).unwrap_or(0),
-                otype: header.otype.get(),
-            })?;
+            space::write_value(
+                &mut frame,
+                sys::LV2_Atom_Object_Body {
+                    id: header.id.map(URID::get).unwrap_or(0),
+                    otype: header.otype.get(),
+                },
+            )?;
         }
         Some(ObjectWriter { frame })
     }
@@ -144,7 +147,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Blank {
 
     #[allow(clippy::unit_arg)]
     #[inline]
-    unsafe fn read(body: &'handle Space, parameter: Self::ReadParameter) -> Option<Self::ReadHandle> {
+    unsafe fn read(
+        body: &'handle Space,
+        parameter: Self::ReadParameter,
+    ) -> Option<Self::ReadHandle> {
         Object::read(body, parameter)
     }
 
@@ -274,7 +280,7 @@ impl Property {
     ) -> Option<()> {
         let header = StrippedPropertyHeader {
             key: key.get(),
-            context: context.map(URID::get).unwrap_or(0)
+            context: context.map(URID::get).unwrap_or(0),
         };
 
         space::write_value(space, header)?;
@@ -288,7 +294,6 @@ mod tests {
     use crate::space::*;
     use std::mem::size_of;
     use urid::*;
-    use std::ops::Deref;
 
     #[test]
     fn test_object() {
@@ -333,12 +338,12 @@ mod tests {
 
         // Atom header: size: u32, type: u32
         // Object header: id: u32 = None, otype: u32 = object_type
-            // Object prop header1: key: u32 = first_key, context: u32 = 0
-            // Object prop body atom: size: u32 = 4 type: u32 = int
-                // Int atom value: i32 = 17, padding(4)
-            // Object prop header12 key: u32 = first_key, context: u32 = 0
-            // Object prop body atom: size: u32 = 4 type: u32 = int
-                // Float atom value: i32 = 69, padding(4)
+        // Object prop header1: key: u32 = first_key, context: u32 = 0
+        // Object prop body atom: size: u32 = 4 type: u32 = int
+        // Int atom value: i32 = 17, padding(4)
+        // Object prop header12 key: u32 = first_key, context: u32 = 0
+        // Object prop body atom: size: u32 = 4 type: u32 = int
+        // Float atom value: i32 = 69, padding(4)
 
         // verifying
         {
@@ -356,12 +361,19 @@ mod tests {
             );
 
             // Object.
-            let (object, space) = unsafe { atom.body().unwrap().split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>() }.unwrap();
+            let (object, space) = unsafe {
+                atom.body()
+                    .unwrap()
+                    .split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
+            }
+            .unwrap();
             assert_eq!(object.id, 0);
             assert_eq!(object.otype, object_type);
 
             // First property.
-            let (property, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }.unwrap();
+            let (property, space) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }
+                    .unwrap();
             assert_eq!(property.key, first_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.int);
@@ -371,7 +383,9 @@ mod tests {
             assert_eq!(*value, first_value);
 
             // Second property.
-            let (property, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }.unwrap();
+            let (property, space) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }
+                    .unwrap();
             assert_eq!(property.key, second_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.float);

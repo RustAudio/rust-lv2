@@ -55,7 +55,9 @@ impl<'a> StoreHandle<'a> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space: Vec<u8> = space.to_vec();
         let space = AtomSpace::try_from_bytes(&space).ok_or(StateErr::BadData)?;
-        let (header, data) = unsafe { space.to_atom() }.and_then(|a| a.header_and_body()).ok_or(StateErr::BadData)?;
+        let (header, data) = unsafe { space.to_atom() }
+            .and_then(|a| a.header_and_body())
+            .ok_or(StateErr::BadData)?;
 
         let key = key.get();
         let data_ptr = data as *const _ as *const c_void;
@@ -124,8 +126,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            lv2_atom::space::init_atom(&mut self.head, urid, parameter)
-                .ok_or(StateErr::Unknown)
+            lv2_atom::space::init_atom(&mut self.head, urid, parameter).ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }
@@ -175,7 +176,10 @@ impl<'a> RetrieveHandle<'a> {
             return Err(StateErr::NoProperty);
         };
 
-        Ok(StatePropertyReader::new(type_, Space::try_from_bytes(space).ok_or(StateErr::BadData)?))
+        Ok(StatePropertyReader::new(
+            type_,
+            Space::try_from_bytes(space).ok_or(StateErr::BadData)?,
+        ))
     }
 }
 

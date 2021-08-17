@@ -69,8 +69,12 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
             .map(|string| (info, string))
     }
 
-    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, info: LiteralInfo) -> Option<StringWriter<'handle, 'space>> {
-        crate::space::write_value(&mut frame,
+    fn init(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+        info: LiteralInfo,
+    ) -> Option<StringWriter<'handle, 'space>> {
+        crate::space::write_value(
+            &mut frame,
             match info {
                 LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                     lang: lang.get(),
@@ -80,9 +84,12 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
                     lang: 0,
                     datatype: datatype.get(),
                 },
-            }
+            },
         )?;
-        Some(StringWriter { frame })
+        Some(StringWriter {
+            frame,
+            has_nul_byte: false,
+        })
     }
 }
 
@@ -107,14 +114,21 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
         Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<StringWriter<'handle, 'space>> {
-        Some(StringWriter { frame })
+    fn init(
+        frame: AtomSpaceWriter<'handle, 'space>,
+        _: (),
+    ) -> Option<StringWriter<'handle, 'space>> {
+        Some(StringWriter {
+            frame,
+            has_nul_byte: false,
+        })
     }
 }
 
 /// Handle to append strings to a string or literal.
 pub struct StringWriter<'handle, 'space> {
     frame: AtomSpaceWriter<'handle, 'space>,
+    has_nul_byte: bool, // If this writer already wrote a null byte before.
 }
 
 impl<'handle, 'space> StringWriter<'handle, 'space> {
@@ -124,19 +138,23 @@ impl<'handle, 'space> StringWriter<'handle, 'space> {
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
     pub fn append(&mut self, string: &str) -> Option<&mut str> {
-        let data = string.as_bytes();
-        let space = crate::space::write_bytes(&mut self.frame, data)?;
-        // FIXME: make a "rewind" function to write the nul byte later
-        unsafe { Some(std::str::from_utf8_unchecked_mut(space)) }
-    }
-}
+        // Rewind to overwrite previously written nul_byte before appending the string.
+        if self.has_nul_byte {
+            if unsafe { !self.frame.rewind(1) } {
+                return None; // Could not rewind
+            }
+        }
 
-impl<'a, 'space> Drop for StringWriter<'a, 'space> {
-    fn drop(&mut self) {
-        // Null terminator.
-        // FIXME: this seems unsafe if the value could not be written for some reason.
-        // todo!()
-        let _ = crate::space::write_value(&mut self.frame, 0u8);
+        // Manually write the bytes to make extra room for the nul byte
+        let bytes = string.as_bytes();
+        let space = self.frame.allocate(bytes.len() + 1)?;
+        space.copy_from_slice(bytes);
+        // SAFETY: space is guaranteed to be at least 1 byte large
+        space[bytes.len()] = 0;
+
+        self.has_nul_byte = true;
+        // SAFETY: We just wrote that string, therefore it is guaranteed to be valid UTF-8
+        unsafe { Some(std::str::from_utf8_unchecked_mut(&mut space[..bytes.len()])) }
     }
 }
 
@@ -172,14 +190,21 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = crate::space::init_atom(&mut space, urids.atom.literal, LiteralInfo::Language(urids.german.into_general())).unwrap();
+            let mut writer = crate::space::init_atom(
+                &mut space,
+                urids.atom.literal,
+                LiteralInfo::Language(urids.german.into_general()),
+            )
+            .unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
 
         // verifying
         {
-            let (literal, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Literal>() }.unwrap();
+            let (literal, space) =
+                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Literal>() }
+                    .unwrap();
 
             assert_eq!(literal.atom.type_, urids.atom.literal.get());
             assert_eq!(
@@ -228,11 +253,20 @@ mod tests {
 
         // verifying
         {
-            let (string, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_String>() }.unwrap();
+            let (string, space) =
+                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_String>() }
+                    .unwrap();
             assert_eq!(string.atom.type_, urids.string);
             assert_eq!(string.atom.size as usize, SAMPLE0.len() + SAMPLE1.len() + 1);
 
-            let string = std::str::from_utf8(space.split_at(string.atom.size as usize).unwrap().0.as_bytes()).unwrap();
+            let string = std::str::from_utf8(
+                space
+                    .split_at(string.atom.size as usize)
+                    .unwrap()
+                    .0
+                    .as_bytes(),
+            )
+            .unwrap();
             assert_eq!(string[..string.len() - 1], SAMPLE0.to_owned() + SAMPLE1);
         }
 

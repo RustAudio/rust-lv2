@@ -89,7 +89,9 @@ impl<'a> PortWriter<'a> {
         if !self.has_been_written {
             self.has_been_written = true;
             // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
-            let space: &'write mut SpaceCursor<'write> = unsafe { ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space) };
+            let space: &'write mut SpaceCursor<'write> = unsafe {
+                ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
+            };
             crate::space::init_atom(space, urid, parameter)
         } else {
             None
@@ -141,22 +143,22 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = crate::space::init_atom(&mut space, urids.chunk, ()).unwrap();
-            writer
-                .allocate_unaligned(256 - size_of::<sys::LV2_Atom>())
-                .unwrap();
+            writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 
         // Getting a writer with the port.
         {
-            let mut writer =
-                unsafe { AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0) };
+            let mut writer = unsafe {
+                AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
+            };
             writer.init::<Int>(urids.int, 42).unwrap();
         }
 
         // Reading
         {
-            let reader =
-                unsafe { AtomPort::input_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0) };
+            let reader = unsafe {
+                AtomPort::input_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
+            };
             assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);
         }
     }

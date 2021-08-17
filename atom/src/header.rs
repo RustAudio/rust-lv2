@@ -1,13 +1,20 @@
+use urid::URID;
+
 #[repr(C, align(8))]
 #[derive(Copy, Clone)]
 pub struct AtomHeader {
-    inner: lv2_sys::LV2_Atom
+    inner: lv2_sys::LV2_Atom,
 }
 
 impl AtomHeader {
     #[inline]
-    pub fn from_raw(inner: lv2_sys::LV2_Atom) -> Self {
-        Self { inner }
+    pub(crate) fn new<T: ?Sized>(atom_type: URID<T>) -> Self {
+        Self {
+            inner: lv2_sys::LV2_Atom {
+                size: 0,
+                type_: atom_type.get(),
+            },
+        }
     }
 
     #[inline]
@@ -31,4 +38,3 @@ impl AtomHeader {
         self.inner.type_
     }
 }
-

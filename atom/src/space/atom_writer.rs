@@ -1,6 +1,6 @@
-use crate::space::SpaceAllocator;
-use urid::URID;
 use crate::header::AtomHeader;
+use crate::space::{Space, SpaceAllocator};
+use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'handle, 'space: 'handle> {
@@ -11,47 +11,75 @@ pub struct AtomSpaceWriter<'handle, 'space: 'handle> {
 impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
     #[inline]
     pub fn atom_header(&self) -> AtomHeader {
-        todo!()
+        let previous = self
+            .parent
+            .allocated_bytes()
+            .get(self.atom_header_index..)
+            .unwrap();
+        let space = Space::try_from_bytes(previous).unwrap();
+
+        unsafe { *space.assume_init_value().unwrap() }
     }
 
-    #[inline]
-    fn atom_header_mut(&self) -> &mut AtomHeader { todo!() }
+    fn atom_header_mut(&mut self) -> &mut AtomHeader {
+        let previous = self
+            .parent
+            .allocated_bytes_mut()
+            .get_mut(self.atom_header_index..)
+            .unwrap();
+        let space = Space::<AtomHeader>::try_from_bytes_mut(previous).unwrap();
+
+        unsafe { space.assume_init_value_mut().unwrap() }
+    }
 
     /// Create a new framed space with the given parent and type URID.
-    pub fn write_new<A: ?Sized>(parent: &'handle mut impl SpaceAllocator<'space>, urid: URID<A>) -> Option<Self> {
-        let atom_header_index = parent.allocated_bytes().len();
-        let atom = AtomHeader::from_raw(sys::LV2_Atom {
-            size: 0,
-            type_: urid.get(),
-        });
+    pub fn write_new<A: ?Sized>(
+        parent: &'handle mut impl SpaceAllocator<'space>,
+        urid: URID<A>,
+    ) -> Option<Self> {
+        let atom = AtomHeader::new(urid);
 
-        let atom = crate::space::write_value(parent, atom)?;
-        Some(Self { atom_header_index, parent })
+        let atom_header_index = parent.allocated_bytes().len();
+        crate::space::write_value(parent, atom)?;
+        Some(Self {
+            atom_header_index,
+            parent,
+        })
     }
 }
 
 impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handle, 'space> {
     #[inline]
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]> {
-        let result = self.parent.allocate_unaligned(size);
-        if result.is_some() {
-            // TODO
-            // self.atom_header_mut().as_raw_mut().size += size as u32;
+    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
+        let (previous, current) = self.parent.allocate_and_split(size)?;
+
+        let space =
+            Space::<AtomHeader>::try_from_bytes_mut(previous.get_mut(self.atom_header_index..)?)?;
+        let header = unsafe { space.assume_init_value_mut() }?;
+        header.as_raw_mut().size += size as u32;
+
+        Some((previous, current))
+    }
+
+    #[inline]
+    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
+        let rewound = self.parent.rewind(byte_count);
+
+        if rewound {
+            self.atom_header_mut().as_raw_mut().size -= byte_count as u32;
         }
 
-        result
+        rewound
     }
 
-    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
-        todo!()
-    }
-
+    #[inline]
     fn allocated_bytes(&self) -> &[u8] {
-        todo!()
+        self.parent.allocated_bytes()
     }
 
+    #[inline]
     fn allocated_bytes_mut(&mut self) -> &mut [u8] {
-        todo!()
+        self.parent.allocated_bytes_mut()
     }
 
     #[inline]
@@ -67,10 +95,10 @@ impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handl
 
 #[cfg(test)]
 mod tests {
-    use core::mem::size_of;
     use crate::prelude::AtomSpaceWriter;
-    use urid::URID;
     use crate::space::cursor::SpaceCursor;
+    use core::mem::size_of;
+    use urid::URID;
 
     #[test]
     fn test_padding_inside_frame() {
@@ -86,9 +114,7 @@ mod tests {
         // writing
         {
             let mut root = SpaceCursor::new(raw_space);
-            let mut frame =
-                AtomSpaceWriter::write_new(&mut root, URID::<()>::new(1).unwrap())
-                    .unwrap();
+            let mut frame = AtomSpaceWriter::write_new(&mut root, URID::new(1).unwrap()).unwrap();
             crate::space::write_value(&mut frame, 42u32).unwrap();
             crate::space::write_value(&mut frame, 17u32).unwrap();
         }

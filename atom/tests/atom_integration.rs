@@ -102,12 +102,16 @@ fn main() {
     let mut input_atom_space = AtomSpace::boxed(256);
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
-        let mut writer = lv2_atom::space::init_atom(&mut space,
-                                                    urids.atom.sequence,
-                                                    TimeStampURID::Frames(urids.units.frame)).unwrap();
-        {let _ = writer
-            .init(TimeStamp::Frames(0), urids.atom.int, 42)
-            .unwrap();
+        let mut writer = lv2_atom::space::init_atom(
+            &mut space,
+            urids.atom.sequence,
+            TimeStampURID::Frames(urids.units.frame),
+        )
+        .unwrap();
+        {
+            let _ = writer
+                .init(TimeStamp::Frames(0), urids.atom.int, 42)
+                .unwrap();
         }
         writer
             .init(TimeStamp::Frames(1), urids.atom.long, 17)
@@ -121,10 +125,9 @@ fn main() {
     let mut output_atom_space = AtomSpace::boxed(256);
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
-        lv2_atom::space::init_atom(&mut space,
-                                                    urids.atom.chunk,
-                                                    ()).unwrap()
-            .allocate_unaligned(256 - size_of::<sys::LV2_Atom>())
+        lv2_atom::space::init_atom(&mut space, urids.atom.chunk, ())
+            .unwrap()
+            .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
     }
 
@@ -166,7 +169,7 @@ fn main() {
     }
 
     // Asserting the result
-    let (sequence, _) = unsafe { output_atom_space.split_atom_body(urids.atom.sequence)}.unwrap();
+    let (sequence, _) = unsafe { output_atom_space.split_atom_body(urids.atom.sequence) }.unwrap();
     for (stamp, atom) in unsafe { Sequence::read(sequence, urids.units.beat) }.unwrap() {
         let stamp = stamp.as_frames().unwrap();
         match stamp {

@@ -2,39 +2,56 @@ use crate::space::SpaceAllocator;
 
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
-    index: usize
+    allocated_length: usize,
 }
 
 impl<'a> SpaceCursor<'a> {
     pub fn new(data: &'a mut [u8]) -> Self {
-        Self { data, index: 0 }
+        Self {
+            data,
+            allocated_length: 0,
+        }
     }
 }
 
 impl<'a> SpaceAllocator<'a> for SpaceCursor<'a> {
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]> {
-        todo!()
-    }
-
+    #[inline]
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
-        todo!()
+        let (allocated, allocatable) = self.data.split_at_mut(self.allocated_length);
+        let new_allocation = allocatable.get_mut(..size)?;
+        self.allocated_length = self.allocated_length.checked_add(size)?;
+
+        Some((allocated, new_allocation))
     }
 
+    #[inline]
+    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
+        if self.allocated_length < byte_count {
+            return false;
+        }
+
+        self.allocated_length -= byte_count;
+
+        true
+    }
+
+    #[inline]
     fn allocated_bytes(&self) -> &[u8] {
-        todo!()
+        &self.data[..self.allocated_length]
     }
 
+    #[inline]
     fn allocated_bytes_mut(&mut self) -> &mut [u8] {
-        todo!()
+        &mut self.data[..self.allocated_length]
     }
 
     #[inline]
     fn remaining_bytes(&self) -> &[u8] {
-        self.data
+        &self.data[self.allocated_length..]
     }
 
     #[inline]
     fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        self.data
+        &mut self.data[self.allocated_length..]
     }
 }
