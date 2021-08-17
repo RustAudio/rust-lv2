@@ -201,6 +201,7 @@ impl<T: 'static> Space<T> {
     }
 
     #[inline]
+    // FIXME: rename this
     pub unsafe fn split_for_value_as_unchecked<U: 'static>(&self) -> Option<(&U, &Self)> {
         let (value, rest) = self.realign()?.split_for_value_unchecked()?;
 
@@ -438,7 +439,7 @@ mod tests {
         }
     }
 
-    fn test_mut_space<'a>(mut space: impl AllocateSpace<'a>) {
+    fn test_mut_space<'a>(mut space: impl SpaceAllocator<'a>) {
         let map = HashURIDMapper::new();
         let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
 
@@ -472,14 +473,14 @@ mod tests {
 
             let written_data = crate::space::write_bytes(&mut atom_frame, &test_data).unwrap();
             assert_eq!(test_data.as_slice(), written_data);
-            assert_eq!(atom_frame.atom().size_of_body(), test_data.len());
+            assert_eq!(atom_frame.atom_header().size_of_body(), test_data.len());
 
             let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
             let written_atom = crate::space::write_value(&mut atom_frame, test_atom).unwrap();
             assert_eq!(written_atom.size, test_atom.size);
             assert_eq!(written_atom.type_, test_atom.type_);
             assert_eq!(
-                atom_frame.atom().size_of_body(),
+                atom_frame.atom_header().size_of_body(),
                 test_data.len() + size_of_val(&test_atom)
             );
         }
@@ -488,15 +489,10 @@ mod tests {
     #[test]
     fn test_root_mut_space() {
         const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let frame = unsafe {
-            std::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        };
+        let mut memory = [0; MEMORY_SIZE];
+        let cursor = SpaceCursor::new(&mut memory[..]);
 
-        test_mut_space(frame);
+        test_mut_space(cursor);
     }
 
     #[test]
@@ -504,7 +500,7 @@ mod tests {
         let mut raw_space = Box::new([0u8; 8]);
 
         {
-            let mut root_space = &mut raw_space[3..];
+            let mut root_space = SpaceCursor::new(&mut raw_space[3..]);
             crate::space::write_value(&mut root_space, 42u8).unwrap();
         }
 

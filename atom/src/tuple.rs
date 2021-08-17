@@ -83,8 +83,8 @@ pub struct TupleWriter<'handle, 'space> {
 
 impl<'handle, 'space> TupleWriter<'handle, 'space> {
     /// Initialize a new tuple element.
-    pub fn init<A: Atom<'handle, 'space>>(
-        &'handle mut self,
+    pub fn init<'a, A: Atom<'a, 'space>>(
+        &'a mut self,
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
@@ -108,7 +108,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = crate::space::init_atom(&mut space, urids.tuple, ()).unwrap();
             {
                 let mut vector_writer =

@@ -8,19 +8,22 @@ use std::mem::MaybeUninit;
 /// A smart pointer that writes atom data to an internal slice.
 ///
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
-pub trait AllocateSpace<'a> {
+pub trait SpaceAllocator<'a> {
     /// Try to allocate memory on the internal data slice.
-    ///
-    /// If `apply_padding` is `true`, the method will assure that the allocated memory is 64-bit-aligned. The first return value is the number of padding bytes that has been used and the second return value is a mutable slice referencing the allocated data.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
     fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]>;
 
-    fn as_bytes(&self) -> &[u8];
-    fn as_bytes_mut(&mut self) -> &mut [u8];
-}
+    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])>;
 
-impl<'a> AllocateSpace<'a> for &'a mut [u8] {
+    fn allocated_bytes(&self) -> &[u8];
+    fn allocated_bytes_mut(&mut self) -> &mut [u8];
+
+    fn remaining_bytes(&self) -> &[u8];
+    fn remaining_bytes_mut(&mut self) -> &mut [u8];
+}
+/*
+impl<'a> SpaceAllocator<'a> for &'a mut [u8] {
     #[inline]
     fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]> {
         if size > self.len() {
@@ -34,52 +37,61 @@ impl<'a> AllocateSpace<'a> for &'a mut [u8] {
     }
 
     #[inline]
-    fn as_bytes(&self) -> &[u8] {
+    fn remaining_bytes(&self) -> &[u8] {
         self
     }
 
     #[inline]
-    fn as_bytes_mut(&mut self) -> &mut [u8] {
+    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
         self
     }
-}
+}*/
 
+/*
 #[inline]
 pub fn realign<'a, T: 'static, S: AllocateSpace<'a>>(space: &mut S) -> Option<()> {
     let required_padding = Space::<T>::padding_for(space.as_bytes());
     let _ = space.allocate_unaligned(required_padding)?;
     Some(())
+}*/
+
+unsafe fn assume_init_mut<T>(s: &mut MaybeUninit<T>) -> &mut T {
+    // SAFETY: the caller must guarantee that `self` is initialized.
+    // This also means that `self` must be a `value` variant.
+    unsafe {
+        &mut *s.as_mut_ptr()
+    }
 }
 
 #[inline]
-pub fn allocate<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl AllocateSpace<'space>, size: usize) -> Option<&'handle mut Space<T>> {
-    let required_padding = Space::<T>::padding_for(space.as_bytes());
+pub fn allocate<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl SpaceAllocator<'space>, size: usize) -> Option<&'handle mut Space<T>> {
+    let required_padding = Space::<T>::padding_for(space.remaining_bytes());
     let raw = space.allocate_unaligned(size + required_padding)?;
 
     Space::try_align_from_bytes_mut(raw)
 }
 
 #[inline]
-pub fn allocate_values<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl AllocateSpace<'space>, count: usize) -> Option<&'handle mut [MaybeUninit<T>]> {
+pub fn allocate_values<'handle, 'space: 'handle, T: 'static>(space: &'handle mut impl SpaceAllocator<'space>, count: usize) -> Option<&'handle mut [MaybeUninit<T>]> {
     let space = allocate(space, count * ::core::mem::size_of::<T>())?;
     Some(space.as_uninit_slice_mut())
 }
 
 #[inline]
-pub fn init_atom<'handle, 'space: 'handle, A: Atom<'handle, 'space>>(space: &'handle mut impl AllocateSpace<'space>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
+pub fn init_atom<'handle, 'space: 'handle, A: Atom<'handle, 'space>>(space: &'handle mut impl SpaceAllocator<'space>, atom_type: URID<A>, write_parameter: A::WriteParameter) -> Option<A::WriteHandle> {
     let space: AtomSpaceWriter<'handle, 'space> = AtomSpaceWriter::write_new(space, atom_type)?;
     A::init(space, write_parameter)
 }
 
 #[inline]
-pub fn write_bytes<'handle, 'space: 'handle>(space: &'handle mut impl AllocateSpace<'space>, bytes: &[u8]) -> Option<&'handle mut [u8]> {
+pub fn write_bytes<'handle, 'space: 'handle>(space: &'handle mut impl SpaceAllocator<'space>, bytes: &[u8]) -> Option<&'handle mut [u8]> {
     let space = space.allocate_unaligned(bytes.len())?;
     space.copy_from_slice(bytes);
     Some(space)
 }
 
 #[inline]
-pub fn write_value<'handle, 'space: 'handle, T>(space: &'handle mut impl AllocateSpace<'space>, value: T) -> Option<&'handle mut T>
+pub fn write_value<'handle, 'space: 'handle, T>(space: &'handle mut impl SpaceAllocator<'space>, value: T) -> Option<&'handle mut T>
     where T: Copy + Sized + 'static {
     let space = allocate(space, size_of_val(&value))?;
     // SAFETY: We used size_of_val, so we are sure that the allocated space is exactly big enough for T.
@@ -87,10 +99,10 @@ pub fn write_value<'handle, 'space: 'handle, T>(space: &'handle mut impl Allocat
     *space = MaybeUninit::new(value);
 
     // SAFETY: the MaybeUninit has now been properly initialized.
-    Some (unsafe { &mut *(space.as_mut_ptr()) })
+    Some (unsafe { assume_init_mut(space) })
 }
 
-pub fn write_values<'handle, 'space: 'handle, T>(space: &'handle mut impl AllocateSpace<'space>, values: &[T]) -> Option<&'handle mut [T]>
+pub fn write_values<'handle, 'space: 'handle, T>(space: &'handle mut impl SpaceAllocator<'space>, values: &[T]) -> Option<&'handle mut [T]>
     where T: Copy + Sized + 'static {
     let space: &mut Space<T> = allocate(space, size_of_val(values))?;
     let space = space.as_uninit_slice_mut();
@@ -106,8 +118,9 @@ pub fn write_values<'handle, 'space: 'handle, T>(space: &'handle mut impl Alloca
 #[cfg(test)]
 mod tests {
     use crate::space::{AtomSpace, write_value, init_atom};
-    use crate::prelude::Int;
+    use crate::prelude::{Int, SpaceAllocator};
     use urid::URID;
+    use crate::space::cursor::SpaceCursor;
 
     const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
 
@@ -118,16 +131,15 @@ mod tests {
         let mut space = AtomSpace::boxed(32);
         assert_eq!(space.as_bytes().as_ptr() as usize % 8, 0); // TODO: move this, this is a test for boxed
 
-        let mut cursor: &mut _ = space.as_bytes_mut(); // The pointer that is going to be moved as we keep writing.
+        let mut cursor= SpaceCursor::new(space.as_bytes_mut()); // The pointer that is going to be moved as we keep writing.
         let new_value = write_value(&mut cursor, 42u8).unwrap();
 
         assert_eq!(42, *new_value);
-        assert_eq!(31, cursor.len());
+        assert_eq!(31, cursor.remaining_bytes().len());
 
         {
-            let int_atom: &mut _ = init_atom(&mut cursor, INT_URID, 69).unwrap();
-            assert_eq!(69, *int_atom);
-            assert_eq!(12, cursor.len());
+            init_atom(&mut cursor, INT_URID, 69).unwrap();
+            assert_eq!(12, cursor.remaining_bytes().len());
         }
         // let new_value = write_value(&mut cursor, 42u8).unwrap();
         /*{

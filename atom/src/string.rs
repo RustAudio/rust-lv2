@@ -113,17 +113,17 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
 }
 
 /// Handle to append strings to a string or literal.
-pub struct StringWriter<'a, 'space> {
-    frame: AtomSpaceWriter<'a, 'space>,
+pub struct StringWriter<'handle, 'space> {
+    frame: AtomSpaceWriter<'handle, 'space>,
 }
 
-impl<'a, 'space> StringWriter<'a, 'space> {
+impl<'handle, 'space> StringWriter<'handle, 'space> {
     /// Append a string.
     ///
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
-    pub fn append(&'a mut self, string: &str) -> Option<&'a mut str> {
+    pub fn append(&mut self, string: &str) -> Option<&mut str> {
         let data = string.as_bytes();
         let space = crate::space::write_bytes(&mut self.frame, data)?;
         // FIXME: make a "rewind" function to write the nul byte later
@@ -171,7 +171,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = crate::space::init_atom(&mut space, urids.atom.literal, LiteralInfo::Language(urids.german.into_general())).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
@@ -219,7 +219,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
             let mut writer = crate::space::init_atom(&mut space, urids.string, ()).unwrap();
             writer.append(SAMPLE0).unwrap();

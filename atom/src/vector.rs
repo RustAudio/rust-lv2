@@ -90,7 +90,7 @@ pub struct VectorWriter<'handle, 'space, A: ScalarAtom> {
 impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
     /// Push a single value to the vector.
     #[inline]
-    pub fn push(&'handle mut self, child: A::InternalType) -> Option<&'handle mut A::InternalType> {
+    pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
         space::write_value(&mut self.frame, child)
     }
 
@@ -98,13 +98,13 @@ impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
     ///
     /// Using this method, you don't need to have the elements in memory before you can write them.
     #[inline]
-    pub fn allocate_uninit(&'handle mut self, count: usize) -> Option<&'handle mut [MaybeUninit<A::InternalType>]> {
+    pub fn allocate_uninit(&mut self, count: usize) -> Option<&mut [MaybeUninit<A::InternalType>]> {
         space::allocate_values(&mut self.frame, count)
     }
 
     /// Append multiple elements to the vector.
     #[inline]
-    pub fn append(&'handle mut self, data: &[A::InternalType]) -> Option<&'handle mut [A::InternalType]> {
+    pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
         space::write_values(&mut self.frame, data)
     }
 }
@@ -126,7 +126,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = crate::space::init_atom(&mut space, urids.vector(), urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);

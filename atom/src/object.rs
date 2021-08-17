@@ -116,7 +116,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
         header: ObjectHeader,
     ) -> Option<ObjectWriter<'handle, 'space>> {
         {
-            let x = space::write_value(&mut frame, sys::LV2_Atom_Object_Body {
+            space::write_value(&mut frame, sys::LV2_Atom_Object_Body {
                 id: header.id.map(URID::get).unwrap_or(0),
                 otype: header.otype.get(),
             })?;
@@ -202,8 +202,8 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<'read, 'write, K: ?Sized, A: Atom<'read, 'space>>(
-        &'space mut self,
+    pub fn init<'a, K: ?Sized, A: Atom<'a, 'space>>(
+        &'a mut self,
         key: URID<K>,
         child_urid: URID<A>,
         parameter: A::WriteParameter,
@@ -268,7 +268,7 @@ impl Property {
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
     #[inline]
     fn write_header<'a, 'space, K: ?Sized, C: ?Sized>(
-        space: &'a mut impl AllocateSpace<'space>,
+        space: &'a mut impl SpaceAllocator<'space>,
         key: URID<K>,
         context: Option<URID<C>>,
     ) -> Option<()> {
@@ -313,7 +313,7 @@ mod tests {
 
         // writing
         {
-            let mut cursor = raw_space.as_bytes_mut();
+            let mut cursor = SpaceCursor::new(raw_space.as_bytes_mut());
             let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
             let mut writer = Object::init(
                 frame,
@@ -343,10 +343,8 @@ mod tests {
         // verifying
         {
             // Header
-            let s = raw_space.deref();
-            let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
+            let (atom, _space) = unsafe { raw_space.split_atom() }.unwrap();
             let header = atom.header().unwrap();
-            let x = atom.body().unwrap().len();
             assert_eq!(header.urid(), urids.object);
             assert_eq!(
                 header.size_of_body(),

@@ -1,4 +1,4 @@
-use crate::space::AllocateSpace;
+use crate::space::SpaceAllocator;
 
 /// Linked list element for dynamic atom writing.
 ///
@@ -93,7 +93,7 @@ impl<'a> SpaceHead<'a> {
     }
 }
 
-impl<'a> AllocateSpace<'a> for SpaceHead<'a> {
+impl<'a> SpaceAllocator<'a> for SpaceHead<'a> {
     #[inline]
     fn allocate_unaligned(&mut self, size: usize) -> Option<&'a mut [u8]> {
         let element = self.element.take()?;
@@ -103,13 +103,25 @@ impl<'a> AllocateSpace<'a> for SpaceHead<'a> {
         Some(new_space)
     }
 
+    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
+        todo!()
+    }
+
+    fn allocated_bytes(&self) -> &[u8] {
+        todo!()
+    }
+
+    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+        todo!()
+    }
+
     #[inline]
-    fn as_bytes(&self) -> &[u8] {
+    fn remaining_bytes(&self) -> &[u8] {
         &[]
     }
 
     #[inline]
-    fn as_bytes_mut(&mut self) -> &mut [u8] {
+    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
         &mut []
     }
 }

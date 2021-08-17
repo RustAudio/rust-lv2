@@ -87,7 +87,7 @@ pub mod prelude {
     pub use port::AtomPort;
     pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{AtomSpaceWriter, AllocateSpace, AtomSpace, Space};
+    pub use space::{AtomSpaceWriter, SpaceAllocator, AtomSpace, Space};
     pub use string::{Literal, LiteralInfo, String};
     pub use tuple::Tuple;
     pub use vector::Vector;
@@ -199,8 +199,8 @@ impl<'space> UnidentifiedAtom<'space> {
     /// Try to read the atom.
     ///
     /// To identify the atom, it's URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
-    pub fn read<'handle, A: Atom<'handle, 'space>>(
-        &self,
+    pub fn read<'a, A: Atom<'a, 'space>>(
+        &'a self,
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {

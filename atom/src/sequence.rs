@@ -204,7 +204,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// * The time stamp is not measured in our unit.
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
-    fn write_time_stamp(&'handle mut self, stamp: TimeStamp) -> Option<()> {
+    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Option<()> {
         let raw_stamp = match self.unit {
             TimeStampUnit::Frames => {
                 let frames = stamp.as_frames()?;
@@ -234,8 +234,8 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<A: Atom<'handle, 'space>>(
-        &'handle mut self,
+    pub fn init<'a, A: Atom<'a, 'space>>(
+        &'a mut self,
         stamp: TimeStamp,
         urid: URID<A>,
         parameter: A::WriteParameter,
@@ -249,7 +249,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn forward(&'handle mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
+    pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
         let data = atom.space.as_bytes();
         self.write_time_stamp(stamp)?;
         space::write_bytes(&mut self.frame, data)?;
@@ -279,7 +279,7 @@ mod tests {
 
         // writing
         {
-            let mut space = raw_space.as_bytes_mut();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space::init_atom(&mut space, urids.atom.sequence,  TimeStampURID::Frames(urids.units.frame)).unwrap();
 
             writer
