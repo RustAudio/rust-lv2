@@ -1,5 +1,5 @@
 use lv2_core::feature::{Feature, ThreadingClass};
-//use std::ffi::CString;
+use std::ffi::CStr;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
@@ -99,20 +99,23 @@ impl<'a> Log<'a> {
     /// operation, but the host may implement an option to display them for debugging purposes.
     /// This entry type is special in that it may be written to in a real-time thread. It is
     /// assumed that if debug tracing is enabled, real-time considerations are not a concern.
-    pub fn print(&self, entry_type: URID<impl EntryType>, message: &str) -> Result<(), LogError> {
+    pub fn print_cstr(
+        &self,
+        entry_type: URID<impl EntryType>,
+        message: &CStr,
+    ) -> Result<(), LogError> {
         let printf = if let Some(printf) = self.internal.printf {
             printf
         } else {
             return Err(LogError::NoCallback);
         };
-        let message = String::from(message) + "\0";
 
         let res = unsafe {
             (printf)(
                 self.internal.handle,
                 entry_type.get(),
                 "%s\0" as *const _ as *const c_char,
-                message.as_str() as *const _ as *const c_char,
+                message.as_ptr(),
             )
         };
         if res > 0 {
