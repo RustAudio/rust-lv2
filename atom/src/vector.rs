@@ -48,7 +48,10 @@ unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<'handle, 'space: 'handle, C: ScalarAtom> Atom<'handle, 'space> for Vector<C> where C: 'space, {
+impl<'handle, 'space: 'handle, C: ScalarAtom> Atom<'handle, 'space> for Vector<C>
+where
+    C: 'space,
+{
     type ReadParameter = URID<C>;
     type ReadHandle = &'space [C::InternalType];
     type WriteParameter = URID<C>;
@@ -57,15 +60,20 @@ impl<'handle, 'space: 'handle, C: ScalarAtom> Atom<'handle, 'space> for Vector<C
     unsafe fn read(body: &'space Space, child_urid: URID<C>) -> Option<&'space [C::InternalType]> {
         let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Vector_Body>()?;
 
-        if header.child_type != child_urid || header.child_size as usize != size_of::<C::InternalType>() {
+        if header.child_type != child_urid
+            || header.child_size as usize != size_of::<C::InternalType>()
+        {
             return None;
         }
 
         // SAFETY: We can assume this data was properly initialized by the host.
-        Some(body.aligned()?.assume_init())
+        Some(body.aligned()?.assume_init_slice())
     }
 
-    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, child_urid: URID<C>) -> Option<VectorWriter<'handle, 'space, C>> {
+    fn init(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+        child_urid: URID<C>,
+    ) -> Option<VectorWriter<'handle, 'space, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -127,14 +135,17 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = crate::space::init_atom(&mut space, urids.vector(), urids.int).unwrap();
+            let mut writer =
+                crate::space::init_atom(&mut space, urids.vector(), urids.int).unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }
 
         // verifying
         {
-            let (vector, children) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
+            let (vector, children) =
+                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }
+                    .unwrap();
             assert_eq!(vector.atom.type_, urids.vector.get());
             assert_eq!(
                 vector.atom.size as usize,
@@ -143,8 +154,9 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int.get());
 
-            let children =
-                unsafe { std::slice::from_raw_parts(children.as_bytes().as_ptr() as *const i32, CHILD_COUNT) };
+            let children = unsafe {
+                std::slice::from_raw_parts(children.as_bytes().as_ptr() as *const i32, CHILD_COUNT)
+            };
             for value in &children[0..children.len() - 1] {
                 assert_eq!(*value, 42);
             }

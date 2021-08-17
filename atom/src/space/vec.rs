@@ -1,29 +1,46 @@
+#![deny(unsafe_code)]
+
+use crate::space::{Space, SpaceAllocator};
 use std::mem::MaybeUninit;
-use crate::space::{SpaceAllocator, Space};
 use std::ops::Range;
 
 pub struct VecSpace<T> {
-    inner: Vec<MaybeUninit<T>>
+    inner: Vec<MaybeUninit<T>>,
 }
 
 impl<T: Copy + 'static> VecSpace<T> {
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self { inner: vec![MaybeUninit::zeroed(); capacity] }
+    pub fn new_with_capacity(capacity: usize) -> Self {
+        Self {
+            inner: vec![MaybeUninit::zeroed(); capacity],
+        }
+    }
+
+    #[inline]
+    pub fn as_space(&self) -> &Space<T> {
+        Space::from_uninit_slice(&self.inner)
+    }
+
+    #[inline]
+    pub fn as_space_mut(&mut self) -> &mut Space<T> {
+        Space::from_uninit_slice_mut(&mut self.inner)
     }
 
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        Space::<T>::from_uninit_slice(&self.inner).as_bytes()
+        self.as_space().as_bytes()
     }
 
     #[inline]
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        Space::<T>::from_uninit_slice_mut(&mut self.inner).as_bytes_mut()
+        self.as_space_mut().as_bytes_mut()
     }
 
     #[inline]
-    fn get_or_allocate_bytes_mut(&mut self, byte_range: Range<usize>) -> Option<&mut [u8]> {
+    fn get_or_allocate_bytes_mut(
+        &mut self,
+        byte_range: Range<usize>,
+    ) -> Option<(&mut [u8], &mut [u8])> {
         let byte_len = self.inner.len() * ::core::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -32,60 +49,92 @@ impl<T: Copy + 'static> VecSpace<T> {
             self.inner.resize(new_size, MaybeUninit::zeroed());
         }
 
-        self.as_bytes_mut().get_mut(byte_range)
+        let bytes = self.as_bytes_mut();
+        bytes.get(byte_range.clone())?; // To make sure everything is in range instead of panicking on split_at_mut
+        let (previous, allocatable) = bytes.split_at_mut(byte_range.start);
+
+        return Some((
+            previous,
+            allocatable.get_mut(..byte_range.end - byte_range.start)?,
+        ));
     }
 
     #[inline]
     pub fn cursor(&mut self) -> VecSpaceCursor<T> {
-        VecSpaceCursor { vec: self, byte_index: 0 }
+        VecSpaceCursor {
+            vec: self,
+            allocated_length: 0,
+        }
     }
 }
 
 pub struct VecSpaceCursor<'vec, T> {
     vec: &'vec mut VecSpace<T>,
-    byte_index: usize
+    allocated_length: usize,
 }
 
 impl<'vec, T: Copy + 'static> SpaceAllocator<'vec> for VecSpaceCursor<'vec, T> {
-    fn allocate_unaligned(&mut self, size: usize) -> Option<&mut [u8]> {
-        let end = self.byte_index.checked_add(size)?;
-        VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.byte_index..end)
-    }
-
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
-        todo!()
+        let end = self.allocated_length.checked_add(size)?;
+        let result = VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.allocated_length..end);
+
+        if result.is_some() {
+            self.allocated_length = end;
+        }
+
+        result
     }
 
+    #[inline]
+    #[allow(unsafe_code)]
+    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
+        if self.allocated_length < byte_count {
+            return false;
+        }
+
+        self.allocated_length -= byte_count;
+
+        true
+    }
+
+    #[inline]
     fn allocated_bytes(&self) -> &[u8] {
-        todo!()
+        &self.vec.as_bytes()[..self.allocated_length]
     }
 
+    #[inline]
     fn allocated_bytes_mut(&mut self) -> &mut [u8] {
-        todo!()
+        &mut self.vec.as_bytes_mut()[..self.allocated_length]
     }
 
     #[inline]
     fn remaining_bytes(&self) -> &[u8] {
-        self.vec.as_bytes()
+        self.vec
+            .as_bytes()
+            .get(self.allocated_length..)
+            .unwrap_or(&[])
     }
 
     #[inline]
     fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        self.vec.as_bytes_mut()
+        self.vec
+            .as_bytes_mut()
+            .get_mut(self.allocated_length..)
+            .unwrap_or(&mut [])
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::space::{VecSpace, SpaceAllocator};
+    use crate::space::{SpaceAllocator, VecSpace};
 
     #[test]
-    pub fn test_lifetimes () {
-        let mut buffer = VecSpace::<u8>::with_capacity(16);
+    pub fn test_lifetimes() {
+        let mut buffer = VecSpace::<u8>::new_with_capacity(16);
 
         {
             let mut cursor = buffer.cursor();
-            let buf1 = cursor.allocate_unaligned(2).unwrap();
+            let buf1 = cursor.allocate(2).unwrap();
             buf1[0] = 5
         }
 

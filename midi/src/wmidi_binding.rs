@@ -30,7 +30,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for WMidiEvent {
         wmidi::MidiMessage::try_from(space.as_bytes()).ok()
     }
 
-    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, message: wmidi::MidiMessage) -> Option<()> {
+    fn init(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+        message: wmidi::MidiMessage,
+    ) -> Option<()> {
         let space: &mut Space<u8> = lv2_atom::space::allocate(&mut frame, message.bytes_size())?;
         message.copy_to_slice(space.as_bytes_mut()).ok()?;
 
@@ -82,11 +85,15 @@ impl<'handle, 'space> Writer<'handle, 'space> {
     }
 
     #[inline]
-    pub fn write<T>(&mut self, instance: T) -> Option<&mut T> where T: Copy + Sized + 'static, {
+    pub fn write<T>(&mut self, instance: T) -> Option<&mut T>
+    where
+        T: Copy + Sized + 'static,
+    {
         lv2_atom::space::write_value(&mut self.frame, instance)
     }
 }
 
+// TODO: use rewind instead of relying on a Drop
 impl<'handle, 'space> Drop for Writer<'handle, 'space> {
     fn drop(&mut self) {
         self.write::<u8>(0xf7);
@@ -96,9 +103,9 @@ impl<'handle, 'space> Drop for Writer<'handle, 'space> {
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
+    use lv2_atom::space::SpaceCursor;
     use std::convert::TryFrom;
     use wmidi::*;
-    use lv2_atom::space::SpaceCursor;
 
     #[test]
     fn test_midi_event() {
@@ -117,7 +124,9 @@ mod tests {
 
         // verifying
         {
-            let (header, space) = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }.header_and_body().unwrap();
+            let (header, space) = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
+                .header_and_body()
+                .unwrap();
             assert_eq!(header.urid(), urid);
             assert_eq!(header.size_of_body(), 3);
 
@@ -128,7 +137,9 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }.body().unwrap();
+            let space = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
+                .body()
+                .unwrap();
 
             let message = unsafe { WMidiEvent::read(space, ()) }.unwrap();
             assert_eq!(message, reference_message);
@@ -151,7 +162,10 @@ mod tests {
 
         // verifying
         {
-            let (header, body) = unsafe { raw_space.to_atom() }.unwrap().header_and_body().unwrap();
+            let (header, body) = unsafe { raw_space.to_atom() }
+                .unwrap()
+                .header_and_body()
+                .unwrap();
             assert_eq!(header.urid(), urid);
             assert_eq!(header.size_of_body(), 6);
             assert_eq!(&body.as_bytes()[..6], &[0xf0, 1, 2, 3, 4, 0xf7]);

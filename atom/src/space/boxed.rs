@@ -1,6 +1,6 @@
+use crate::prelude::Space;
 use std::mem::{size_of, MaybeUninit};
 use std::ops::{Deref, DerefMut};
-use crate::prelude::Space;
 
 pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
     let type_size = size_of::<T>();
@@ -12,13 +12,16 @@ pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
 }
 
 pub(crate) struct BoxedSpace<T: 'static> {
-    pub(crate) inner: Box<[MaybeUninit<T>]>
+    pub(crate) inner: Box<[MaybeUninit<T>]>,
 }
 
 impl<T: Copy + 'static> BoxedSpace<T> {
     #[inline]
     pub fn new_zeroed(size: usize) -> Self {
-        Self { inner: vec![MaybeUninit::zeroed(); byte_index_to_value_index::<T>(size)].into_boxed_slice() }
+        Self {
+            inner: vec![MaybeUninit::zeroed(); byte_index_to_value_index::<T>(size)]
+                .into_boxed_slice(),
+        }
     }
 }
 

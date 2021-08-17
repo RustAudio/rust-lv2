@@ -96,7 +96,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
         Some(SequenceIterator { space: body, unit })
     }
 
-    fn init(mut frame: AtomSpaceWriter<'handle, 'space>, unit: TimeStampURID) -> Option<SequenceWriter<'handle, 'space>> {
+    fn init(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+        unit: TimeStampURID,
+    ) -> Option<SequenceWriter<'handle, 'space>> {
         let header = sys::LV2_Atom_Sequence_Body {
             unit: match unit {
                 TimeStampURID::BeatsPerMinute(urid) => urid.get(),
@@ -177,7 +180,8 @@ impl<'a> Iterator for SequenceIterator<'a> {
 
     fn next(&mut self) -> Option<(TimeStamp, UnidentifiedAtom<'a>)> {
         // SAFETY: The validity of the space's contents is guaranteed by this type.
-        let (raw_stamp, space) = unsafe { self.space.split_for_value_as_unchecked::<RawTimeStamp>() }?;
+        let (raw_stamp, space) =
+            unsafe { self.space.split_for_value_as_unchecked::<RawTimeStamp>() }?;
         let stamp = match self.unit {
             TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
             TimeStampUnit::BeatsPerMinute => unsafe { TimeStamp::BeatsPerMinute(raw_stamp.beats) },
@@ -280,7 +284,12 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space::init_atom(&mut space, urids.atom.sequence,  TimeStampURID::Frames(urids.units.frame)).unwrap();
+            let mut writer = space::init_atom(
+                &mut space,
+                urids.atom.sequence,
+                TimeStampURID::Frames(urids.units.frame),
+            )
+            .unwrap();
 
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
@@ -294,7 +303,9 @@ mod tests {
         // verifying
 
         {
-            let (sequence, space) = unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }.unwrap();
+            let (sequence, space) =
+                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }
+                    .unwrap();
             assert_eq!(sequence.atom.type_, urids.atom.sequence);
             assert_eq!(
                 sequence.atom.size as usize,
@@ -307,18 +318,22 @@ mod tests {
             );
             assert_eq!(sequence.body.unit, urids.units.frame);
 
-            let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            let (stamp, space) =
+                unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
             assert_eq!(unsafe { stamp.frames }, 0);
 
-            let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let (int, space) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);
 
-            let (stamp, space) = unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            let (stamp, space) =
+                unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
             assert_eq!(unsafe { stamp.frames }, 1);
 
-            let (int, space) = unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let (int, _space) =
+                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.long);
             assert_eq!(int.atom.size as usize, size_of::<i64>());
             assert_eq!(int.body, 17);
@@ -326,7 +341,9 @@ mod tests {
 
         // reading
         {
-            let body = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }.body().unwrap();
+            let body = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
+                .body()
+                .unwrap();
             let mut reader = unsafe { Sequence::read(body, urids.units.beat) }.unwrap();
 
             assert_eq!(reader.unit(), TimeStampUnit::Frames);

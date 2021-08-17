@@ -47,7 +47,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
         Some(space.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<AtomSpaceWriter<'handle, 'space>> {
+    fn init(
+        frame: AtomSpaceWriter<'handle, 'space>,
+        _: (),
+    ) -> Option<AtomSpaceWriter<'handle, 'space>> {
         Some(frame)
     }
 }
@@ -72,7 +75,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
-            let data = writer.allocate_unaligned(SLICE_LENGTH - 1).unwrap();
+            let data = writer.allocate(SLICE_LENGTH - 1).unwrap();
 
             for (i, value) in data.into_iter().enumerate() {
                 *value = i as u8;
@@ -97,7 +100,9 @@ mod tests {
 
         // reading
         {
-            let data = unsafe { Chunk::read(raw_space.split_atom_body(urids.chunk).unwrap().0, ()) }.unwrap();
+            let data =
+                unsafe { Chunk::read(raw_space.split_atom_body(urids.chunk).unwrap().0, ()) }
+                    .unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {

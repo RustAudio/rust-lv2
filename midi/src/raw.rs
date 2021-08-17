@@ -25,7 +25,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for MidiEvent {
         Some(body.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, _: ()) -> Option<AtomSpaceWriter<'handle, 'space>> {
+    fn init(
+        frame: AtomSpaceWriter<'handle, 'space>,
+        _: (),
+    ) -> Option<AtomSpaceWriter<'handle, 'space>> {
         Some(frame)
     }
 }

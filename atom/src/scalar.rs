@@ -55,7 +55,10 @@ pub trait ScalarAtom: UriBound {
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar<'handle, 'space: 'handle>(mut frame: AtomSpaceWriter<'handle, 'space>, value: Self::InternalType) -> Option<()> {
+    fn write_scalar<'handle, 'space: 'handle>(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+        value: Self::InternalType,
+    ) -> Option<()> {
         space::write_value(&mut frame, value)?;
         Some(())
     }
@@ -196,7 +199,9 @@ mod tests {
         // reading
         {
             let (body, _) = unsafe { raw_space.split_atom_body(urid) }.unwrap();
-            unsafe { assert_eq!(A::read(body, ()).unwrap(), value); }
+            unsafe {
+                assert_eq!(A::read(body, ()).unwrap(), value);
+            }
         }
     }
 
