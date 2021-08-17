@@ -124,32 +124,6 @@ impl<'a> Log<'a> {
             Err(LogError::PrintError)
         }
     }
-    /// Send a message to the host with a new line at the end.
-    ///
-    /// It same as [print](struct.Log.html#method.print) but add a newline a the end of message.
-    /// See [print](struct.Log.html#method.print) documentation for details.
-    pub fn println(&self, entry_type: URID<impl EntryType>, message: &str) -> Result<(), LogError> {
-        let printf = if let Some(printf) = self.internal.printf {
-            printf
-        } else {
-            return Err(LogError::NoCallback);
-        };
-        let message = String::from(message) + "\n\0";
-
-        let res = unsafe {
-            (printf)(
-                self.internal.handle,
-                entry_type.get(),
-                "%s\0" as *const _ as *const c_char,
-                message.as_str() as *const _ as *const c_char,
-            )
-        };
-        if res > 0 {
-            Ok(())
-        } else {
-            Err(LogError::PrintError)
-        }
-    }
 }
 
 /// A URID cache containing all log properties.
