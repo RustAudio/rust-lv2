@@ -1,5 +1,5 @@
 use crate::space::{AtomSpaceWriter, Space};
-use crate::Atom;
+use crate::{Atom, UnidentifiedAtom};
 use urid::URID;
 
 use core::mem::size_of_val;
@@ -96,6 +96,17 @@ pub fn init_atom<'handle, 'space: 'handle, A: Atom<'handle, 'space>>(
 ) -> Option<A::WriteHandle> {
     let space: AtomSpaceWriter<'handle, 'space> = AtomSpaceWriter::write_new(space, atom_type)?;
     A::init(space, write_parameter)
+}
+
+#[inline]
+pub fn forward_atom<'handle, 'space: 'handle>(
+    space: &'handle mut impl SpaceAllocator<'space>,
+    atom: &UnidentifiedAtom,
+) -> Option<&'handle mut UnidentifiedAtom> {
+    let resulting_space = allocate(space, atom.atom_space().len())?;
+    resulting_space.as_bytes_mut().copy_from_slice(atom.atom_space().as_bytes());
+    // SAFETY: We just wrote those bytes, we know for sure they're the same and aligned
+    unsafe { UnidentifiedAtom::from_space_mut(resulting_space) }
 }
 
 #[inline]

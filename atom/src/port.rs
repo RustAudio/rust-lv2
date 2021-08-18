@@ -28,18 +28,20 @@ use lv2_core::port::PortType;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use urid::URID;
+use crate::UnidentifiedAtom;
+use crate::header::AtomHeader;
 
 /// A handle to read atoms from a port.
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to read atoms.
 pub struct PortReader<'space> {
-    space: &'space Space,
+    atom: &'space UnidentifiedAtom,
 }
 
 impl<'space> PortReader<'space> {
     /// Create a new port reader.
-    fn new(space: &'space Space) -> Self {
-        Self { space }
+    fn new(atom: &'space UnidentifiedAtom) -> Self {
+        Self { atom }
     }
 
     /// Read an atom.
@@ -47,13 +49,13 @@ impl<'space> PortReader<'space> {
     /// In order to identify the atom, the reader needs to know it's URID. Also, some atoms require a parameter. However, you can simply pass `()` in most cases.
     ///
     /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
+    #[inline]
     pub fn read<'handle, A: crate::Atom<'handle, 'space>>(
         &self,
         urid: URID<A>,
         parameter: A::ReadParameter,
     ) -> Option<A::ReadHandle> {
-        // SAFETY: The port's space has been initialized by the host
-        unsafe { A::read(self.space.split_atom_body(urid)?.0, parameter) }
+        self.atom.read(urid, parameter)
     }
 }
 
@@ -112,8 +114,8 @@ impl PortType for AtomPort {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
-        let space = Space::from_atom(*pointer.cast().as_ref());
-        PortReader::new(space)
+        let header: &'static AtomHeader = AtomHeader::from_raw(&*pointer.cast().as_ptr());
+        PortReader::new(UnidentifiedAtom::from_header(header))
     }
 
     #[inline]

@@ -62,7 +62,7 @@ impl<T: 'static> Space<T> {
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
-    unsafe fn from_bytes_unchecked(data: &[u8]) -> &Space<T> {
+    pub unsafe fn from_bytes_unchecked(data: &[u8]) -> &Space<T> {
         // SAFETY: It is safe to transmute, since our type has repr(transparent) with [u8].
         // SAFETY: The caller is responsible to check for slice alignment.
         &*(data as *const _ as *const Self)
@@ -79,7 +79,7 @@ impl<T: 'static> Space<T> {
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
-    unsafe fn from_bytes_mut_unchecked(data: &mut [u8]) -> &mut Space<T> {
+    pub unsafe fn from_bytes_mut_unchecked(data: &mut [u8]) -> &mut Space<T> {
         // SAFETY: It is safe to transmute, since our type has repr(transparent) with [u8].
         // SAFETY: The caller is responsible to check for slice alignment.
         &mut *(data as *mut _ as *mut Self)
@@ -268,6 +268,12 @@ impl<T: 'static> Space<T> {
     }
 
     #[inline]
+    pub(crate) unsafe fn assume_init_value_unchecked(&self) -> &T {
+        // SAFETY: The caller has to ensure this slice actually points to initialized memory.
+        &*(self.as_uninit_unchecked().as_ptr())
+    }
+
+    #[inline]
     pub(crate) unsafe fn assume_init_value_mut(&mut self) -> Option<&mut T> {
         // SAFETY: The caller has to ensure this slice actually points to initialized memory.
         Some(&mut *(self.as_uninit_mut()?.as_mut_ptr()))
@@ -391,24 +397,19 @@ impl AtomSpace {
     }
 
     #[inline]
-    pub unsafe fn to_atom_unchecked(&self) -> UnidentifiedAtom {
-        UnidentifiedAtom::new_unchecked(self)
-    }
-
-    #[inline]
-    pub unsafe fn to_atom(&self) -> Option<UnidentifiedAtom> {
+    pub unsafe fn to_atom(&self) -> Option<&UnidentifiedAtom> {
         let header = self.assume_init_value()?; // Try to read to ensure there is enough room
                                                 // SAFETY: we just read and sliced to ensure this space is big enough for an atom header and its contents
-        Some(UnidentifiedAtom::new_unchecked(
+        Some(UnidentifiedAtom::from_space_unchecked(
             self.slice(header.size_of_atom())?,
         ))
     }
 
     #[inline]
-    pub unsafe fn split_atom(&self) -> Option<(UnidentifiedAtom, &Self)> {
+    pub unsafe fn split_atom(&self) -> Option<(&UnidentifiedAtom, &Self)> {
         let header = self.assume_init_value()?;
         let (atom, rest) = self.split_at(header.size_of_atom())?;
-        let atom = UnidentifiedAtom::new_unchecked(atom);
+        let atom = UnidentifiedAtom::from_space_unchecked(atom);
 
         Some((atom, rest))
     }
@@ -474,7 +475,7 @@ mod tests {
             };
 
             let (atom, _) = space.split_atom().unwrap();
-            let body = atom.body().unwrap().as_bytes();
+            let body = atom.body().as_bytes();
 
             assert_eq!(size_of::<i32>(), size_of_val(body));
             assert_eq!(42, *(body.as_ptr() as *const i32));

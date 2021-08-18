@@ -312,10 +312,10 @@ impl<'a> EventReader<'a> {
 }
 
 impl<'a> Pipe for EventReader<'a> {
-    type InputItem = Option<UnidentifiedAtom<'a>>;
+    type InputItem = Option<&'a UnidentifiedAtom>;
     type OutputItem = PulseInput;
 
-    fn next(&mut self, atom: Option<UnidentifiedAtom>) -> PulseInput {
+    fn next(&mut self, atom: Option<&'a UnidentifiedAtom>) -> PulseInput {
         let mut updates = PulseInput {
             beat_update: None,
             bpm_update: None,

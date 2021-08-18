@@ -56,7 +56,9 @@ impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handl
         let space =
             Space::<AtomHeader>::try_from_bytes_mut(previous.get_mut(self.atom_header_index..)?)?;
         let header = unsafe { space.assume_init_value_mut() }?;
-        header.as_raw_mut().size += size as u32;
+
+        // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
+        unsafe { header.set_size_of_body(header.size_of_body() + size) };
 
         Some((previous, current))
     }
@@ -64,9 +66,11 @@ impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handl
     #[inline]
     unsafe fn rewind(&mut self, byte_count: usize) -> bool {
         let rewound = self.parent.rewind(byte_count);
+        let header = self.atom_header_mut();
 
         if rewound {
-            self.atom_header_mut().as_raw_mut().size -= byte_count as u32;
+            // SAFETY: Reducing the size of the atom is fine
+            header.set_size_of_body(header.size_of_body() - byte_count);
         }
 
         rewound
