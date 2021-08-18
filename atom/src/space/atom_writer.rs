@@ -101,19 +101,15 @@ impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handl
 mod tests {
     use crate::prelude::AtomSpaceWriter;
     use crate::space::cursor::SpaceCursor;
+    use crate::space::AtomSpace;
     use core::mem::size_of;
     use urid::URID;
 
     #[test]
     fn test_padding_inside_frame() {
         const MEMORY_SIZE: usize = 256;
-        let mut memory: [u64; MEMORY_SIZE] = [0; MEMORY_SIZE];
-        let raw_space: &mut [u8] = unsafe {
-            core::slice::from_raw_parts_mut(
-                (&mut memory).as_mut_ptr() as *mut u8,
-                MEMORY_SIZE * size_of::<u64>(),
-            )
-        };
+        let mut space = AtomSpace::boxed(256);
+        let raw_space = space.as_bytes_mut();
 
         // writing
         {
@@ -128,12 +124,11 @@ mod tests {
             let (atom, space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
             let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
             assert_eq!(atom.type_, 1);
-            assert_eq!(atom.size as usize, 12);
+            assert_eq!(atom.size as usize, 8);
 
             let (value, space) = space.split_at(size_of::<u32>());
             let value = unsafe { *(value.as_ptr() as *const u32) };
             assert_eq!(value, 42);
-            let (_, space) = space.split_at(4);
 
             let (value, _) = space.split_at(size_of::<u32>());
             let value = unsafe { *(value.as_ptr() as *const u32) };
