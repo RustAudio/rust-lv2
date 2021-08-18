@@ -176,9 +176,9 @@ impl<'a> SequenceIterator<'a> {
 }
 
 impl<'a> Iterator for SequenceIterator<'a> {
-    type Item = (TimeStamp, UnidentifiedAtom<'a>);
+    type Item = (TimeStamp, &'a UnidentifiedAtom);
 
-    fn next(&mut self) -> Option<(TimeStamp, UnidentifiedAtom<'a>)> {
+    fn next(&mut self) -> Option<(TimeStamp, &'a UnidentifiedAtom)> {
         // SAFETY: The validity of the space's contents is guaranteed by this type.
         let (raw_stamp, space) =
             unsafe { self.space.split_for_value_as_unchecked::<RawTimeStamp>() }?;
@@ -253,10 +253,10 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn forward(&mut self, stamp: TimeStamp, atom: UnidentifiedAtom) -> Option<()> {
-        let data = atom.space.as_bytes();
+    pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Option<()> {
         self.write_time_stamp(stamp)?;
-        space::write_bytes(&mut self.frame, data)?;
+
+        space::forward_atom(&mut self.frame, atom)?;
 
         Some(())
     }
@@ -341,9 +341,7 @@ mod tests {
 
         // reading
         {
-            let body = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
-                .body()
-                .unwrap();
+            let body = unsafe { UnidentifiedAtom::from_space_unchecked(&raw_space) }.body();
             let mut reader = unsafe { Sequence::read(body, urids.units.beat) }.unwrap();
 
             assert_eq!(reader.unit(), TimeStampUnit::Frames);

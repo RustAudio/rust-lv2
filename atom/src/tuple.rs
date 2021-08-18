@@ -69,9 +69,9 @@ pub struct TupleIterator<'a> {
 }
 
 impl<'a> Iterator for TupleIterator<'a> {
-    type Item = UnidentifiedAtom<'a>;
+    type Item = &'a UnidentifiedAtom;
 
-    fn next(&mut self) -> Option<UnidentifiedAtom<'a>> {
+    fn next(&mut self) -> Option<&'a UnidentifiedAtom> {
         // SAFETY: The validity of the space is guaranteed by this type.
         let (atom, space) = unsafe { self.space.split_atom() }?;
         self.space = space;
@@ -124,7 +124,7 @@ mod tests {
         // verifying
         {
             let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
-            let header = atom.header().unwrap();
+            let header = atom.header();
             assert_eq!(header.urid(), urids.tuple);
             assert_eq!(
                 header.size_of_body(),
@@ -160,7 +160,7 @@ mod tests {
         // reading
         {
             let (body, _) = unsafe { raw_space.split_atom_body(urids.tuple) }.unwrap();
-            let items: Vec<UnidentifiedAtom> = unsafe { Tuple::read(body, ()) }.unwrap().collect();
+            let items: Vec<&UnidentifiedAtom> = unsafe { Tuple::read(body, ()) }.unwrap().collect();
             assert_eq!(items[0].read(urids.vector, urids.int).unwrap(), [17; 9]);
             assert_eq!(items[1].read(urids.int, ()).unwrap(), 42);
         }

@@ -124,22 +124,18 @@ mod tests {
 
         // verifying
         {
-            let (header, space) = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
-                .header_and_body()
-                .unwrap();
-            assert_eq!(header.urid(), urid);
-            assert_eq!(header.size_of_body(), 3);
+            let atom = unsafe { UnidentifiedAtom::from_space(&raw_space) }.unwrap();
+            assert_eq!(atom.header().urid(), urid);
+            assert_eq!(atom.header().size_of_body(), 3);
 
-            let message = space.slice(3).unwrap().as_bytes();
+            let message = atom.body().slice(3).unwrap().as_bytes();
             let message = MidiMessage::try_from(message).unwrap();
             assert_eq!(message, reference_message);
         }
 
         // reading
         {
-            let space = unsafe { UnidentifiedAtom::new_unchecked(&raw_space) }
-                .body()
-                .unwrap();
+            let space = unsafe { UnidentifiedAtom::from_space(&raw_space) }.unwrap().body();
 
             let message = unsafe { WMidiEvent::read(space, ()) }.unwrap();
             assert_eq!(message, reference_message);
@@ -162,13 +158,11 @@ mod tests {
 
         // verifying
         {
-            let (header, body) = unsafe { raw_space.to_atom() }
-                .unwrap()
-                .header_and_body()
-                .unwrap();
-            assert_eq!(header.urid(), urid);
-            assert_eq!(header.size_of_body(), 6);
-            assert_eq!(&body.as_bytes()[..6], &[0xf0, 1, 2, 3, 4, 0xf7]);
+            let atom = unsafe { raw_space.to_atom() }.unwrap();
+
+            assert_eq!(atom.header().urid(), urid);
+            assert_eq!(atom.header().size_of_body(), 6);
+            assert_eq!(&atom.body().as_bytes()[..6], &[0xf0, 1, 2, 3, 4, 0xf7]);
         }
 
         // reading

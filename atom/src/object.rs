@@ -170,9 +170,9 @@ pub struct ObjectReader<'a> {
 }
 
 impl<'a> Iterator for ObjectReader<'a> {
-    type Item = (PropertyHeader, UnidentifiedAtom<'a>);
+    type Item = (PropertyHeader, &'a UnidentifiedAtom);
 
-    fn next(&mut self) -> Option<(PropertyHeader, UnidentifiedAtom<'a>)> {
+    fn next(&mut self) -> Option<(PropertyHeader, &'a UnidentifiedAtom)> {
         // SAFETY: The fact that this contains a valid property is guaranteed by this type.
         let (header, atom, space) = unsafe { Property::read_body(self.space) }?;
         self.space = space;
@@ -257,7 +257,7 @@ impl Property {
     /// # Safety
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
-    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, UnidentifiedAtom, &Space)> {
+    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, &UnidentifiedAtom, &Space)> {
         let (header, space) = space.split_for_value_as_unchecked::<StrippedPropertyHeader>()?;
 
         let header = PropertyHeader {
@@ -349,7 +349,7 @@ mod tests {
         {
             // Header
             let (atom, _space) = unsafe { raw_space.split_atom() }.unwrap();
-            let header = atom.header().unwrap();
+            let header = atom.header();
             assert_eq!(header.urid(), urids.object);
             assert_eq!(
                 header.size_of_body(),
@@ -362,9 +362,7 @@ mod tests {
 
             // Object.
             let (object, space) = unsafe {
-                atom.body()
-                    .unwrap()
-                    .split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
+                atom.body().split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
             }
             .unwrap();
             assert_eq!(object.id, 0);
@@ -404,7 +402,7 @@ mod tests {
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
-            let properties: Vec<(PropertyHeader, UnidentifiedAtom)> = iter.collect();
+            let properties: Vec<(PropertyHeader, &UnidentifiedAtom)> = iter.collect();
             let (header, atom) = properties[0];
             assert_eq!(header.key, first_key);
             assert_eq!(atom.read::<Int>(urids.int, ()).unwrap(), first_value);
