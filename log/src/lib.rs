@@ -53,10 +53,28 @@ pub enum LogError {
     NoCallback,
 }
 
+//replace the lv2_sys::Log_Log to avoid checking if function pointers are null
+#[repr(C)]
+struct LogInternal {
+    handle: lv2_sys::LV2_Log_Handle,
+    printf: unsafe extern "C" fn(
+        handle: lv2_sys::LV2_Log_Handle,
+        type_: lv2_sys::LV2_URID,
+        fmt: *const c_char,
+        ...
+    ) -> c_int,
+    vprintf: unsafe extern "C" fn(
+        handle: lv2_sys::LV2_Log_Handle,
+        type_: lv2_sys::LV2_URID,
+        fmt: *const c_char,
+        ap: *mut lv2_sys::__va_list_tag,
+    ) -> c_int,
+}
+
 /// The Log feature.
 #[repr(transparent)]
 pub struct Log<'a> {
-    internal: &'a lv2_sys::LV2_Log_Log,
+    internal: &'a LogInternal,
 }
 
 unsafe impl<'a> UriBound for Log<'a> {
@@ -75,7 +93,7 @@ unsafe impl<'a> Feature for Log<'a> {
             ThreadingClass::Audio => {
                 panic!("The log feature is not allowed in the audio threading class")
             }
-            _ => (feature as *const lv2_sys::LV2_Log_Log)
+            _ => (feature as *const LogInternal)
                 .as_ref()
                 .map(|internal| Self { internal }),
         }
@@ -99,14 +117,8 @@ impl<'a> Log<'a> {
         entry_type: URID<impl EntryType>,
         message: &CStr,
     ) -> Result<(), LogError> {
-        let printf = if let Some(printf) = self.internal.printf {
-            printf
-        } else {
-            return Err(LogError::NoCallback);
-        };
-
         let res = unsafe {
-            (printf)(
+            (self.internal.printf)(
                 self.internal.handle,
                 entry_type.get(),
                 "%s\0" as *const _ as *const c_char,
@@ -138,7 +150,7 @@ mod tests {
     fn _should_compile() {
         let fake_logger = unsafe {
             Log {
-                internal: &*(0xDEFEC8 as *const lv2_sys::LV2_Log_Log),
+                internal: &*(0xDEFEC8 as *const LogInternal),
             }
         };
         let urid = unsafe { URID::<ErrorClass>::new_unchecked(42) };
