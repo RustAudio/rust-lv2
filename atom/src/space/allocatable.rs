@@ -180,14 +180,6 @@ mod tests {
             init_atom(&mut cursor, INT_URID, 69).unwrap();
             assert_eq!(12, cursor.remaining_bytes().len());
         }
-        // let new_value = write_value(&mut cursor, 42u8).unwrap();
-        /*{
-            // Remaining once aligned: 24, with 8 bytes for atom header: 16
-            let writer = AtomSpaceWriter::write_new(&mut cursor, INT_URID).unwrap();
-            let int_atom = Int::init(writer, 69).unwrap();
-            assert_eq!(69, *int_atom);
-            assert_eq!(12, cursor.len());
-        }*/
 
         assert_eq!(
             space.as_bytes(),
