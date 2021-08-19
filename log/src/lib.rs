@@ -88,15 +88,10 @@ unsafe impl<'a> Feature for Log<'a> {
     // * i shouldn't be used in context where rt is a concern, that mean is audiothreadclass in
     // practice, but it's acceptable to use it for debugging purpose
     // So, at this time, i just giving access to it instanciation class
-    unsafe fn from_feature_ptr(feature: *const c_void, class: ThreadingClass) -> Option<Self> {
-        match class {
-            ThreadingClass::Audio => {
-                panic!("The log feature is not allowed in the audio threading class")
-            }
-            _ => (feature as *const LogInternal)
-                .as_ref()
-                .map(|internal| Self { internal }),
-        }
+    unsafe fn from_feature_ptr(feature: *const c_void, _class: ThreadingClass) -> Option<Self> {
+        (feature as *const LogInternal)
+            .as_ref()
+            .map(|internal| Self { internal })
     }
 }
 
