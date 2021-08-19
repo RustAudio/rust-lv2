@@ -127,10 +127,10 @@ impl<'a> Log<'a> {
 /// A URID cache containing all usefull log properties.
 #[derive(URIDCollection, Debug)]
 pub struct LogURIDCollection {
-    pub error_class: URID<Error>,
-    pub note_class: URID<Note>,
-    pub trace_class: URID<Trace>,
-    pub warning_class: URID<Warning>,
+    pub error: URID<Error>,
+    pub note: URID<Note>,
+    pub trace: URID<Trace>,
+    pub warning: URID<Warning>,
 }
 
 #[cfg(test)]
