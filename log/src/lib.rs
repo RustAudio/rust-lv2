@@ -1,46 +1,46 @@
 use lv2_core::feature::{Feature, ThreadingClass};
-use std::error::Error;
+use std::error;
 use std::ffi::CStr;
 use std::fmt;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
-pub struct EntryClass;
-unsafe impl UriBound for EntryClass {
-    const URI: &'static [u8] = lv2_sys::LV2_LOG__Entry;
-}
-
-/// UriBound for an error message.
-pub struct ErrorClass;
-unsafe impl UriBound for ErrorClass {
+/// URID marker. The corresponding URID is used to log an error on the host.
+pub struct Error;
+unsafe impl UriBound for Error {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Error;
 }
 
-/// UriBound for an informative message.
-pub struct NoteClass;
-unsafe impl UriBound for NoteClass {
+/// URID marker. The corresponding URID is used to log an informative on the host.
+pub struct Note;
+unsafe impl UriBound for Note {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Note;
 }
 
-/// UriBound for a debuging message.
-pub struct TraceClass;
-unsafe impl UriBound for TraceClass {
+/// URID marker. The corresponding URID is used to log a debbuging trace on the host.
+pub struct Trace;
+unsafe impl UriBound for Trace {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Trace;
 }
 
-/// Uribound for an error message.
-pub struct WarningClass;
-unsafe impl UriBound for WarningClass {
+/// URID marker. The corresponding URID is used to log a warning on the host.
+pub struct Warning;
+unsafe impl UriBound for Warning {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Warning;
 }
 
-/// Marker trait for Uribound type representing nature of a log message.
-pub unsafe trait EntryType {}
+/// Trait for URID marker. Plugin implementers shouldn't care about it.
+///
+/// # Safety
+///
+/// This trait is used to check at compile time if an URID indicate the nature of a log message,
+/// Plugin implementers should not implement it.
+pub unsafe trait Entry {}
 
-unsafe impl EntryType for ErrorClass {}
-unsafe impl EntryType for NoteClass {}
-unsafe impl EntryType for TraceClass {}
-unsafe impl EntryType for WarningClass {}
+unsafe impl Entry for Error {}
+unsafe impl Entry for Note {}
+unsafe impl Entry for Trace {}
+unsafe impl Entry for Warning {}
 
 /// Returned if an error occured when sending a log to the host.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -51,7 +51,7 @@ impl fmt::Display for PrintError {
         write!(f, "An error occured when sending a message to the host")
     }
 }
-impl Error for PrintError {}
+impl error::Error for PrintError {}
 
 //replace the lv2_sys::Log_Log to avoid checking if function pointers are null
 #[repr(C)]
@@ -103,7 +103,7 @@ unsafe impl<'a> Feature for Log<'a> {
 impl<'a> Log<'a> {
     /// Send a log message to the host.
     ///
-    /// The `entry_type` parameter is an URID representing the kind of log message. There are four
+    /// The `entry` parameter is an URID representing the kind of log message. There are four
     /// kind of message:
     /// * **note:** an informative message.
     /// * **warning:** a warning message.
@@ -112,15 +112,11 @@ impl<'a> Log<'a> {
     /// operation, but the host may implement an option to display them for debugging purposes.
     /// This entry type is special in that it may be written to in a real-time thread. It is
     /// assumed that if debug tracing is enabled, real-time considerations are not a concern.
-    pub fn print_cstr(
-        &self,
-        entry_type: URID<impl EntryType>,
-        message: &CStr,
-    ) -> Result<(), PrintError> {
+    pub fn print_cstr(&self, entry: URID<impl Entry>, message: &CStr) -> Result<(), PrintError> {
         let res = unsafe {
             (self.internal.printf)(
                 self.internal.handle,
-                entry_type.get(),
+                entry.get(),
                 "%s\0" as *const _ as *const c_char,
                 message.as_ptr(),
             )
@@ -133,15 +129,13 @@ impl<'a> Log<'a> {
     }
 }
 
-/// A URID cache containing all log properties.
+/// A URID cache containing all usefull log properties.
 #[derive(URIDCollection, Debug)]
 pub struct LogURIDCollection {
-    pub entry_class: URID<EntryClass>,
-    pub error_class: URID<ErrorClass>,
-    pub note_class: URID<NoteClass>,
-    pub trace_class: URID<TraceClass>,
-    pub warning_class: URID<WarningClass>,
-    //pub log: URID<Log<'a>>,
+    pub error_class: URID<Error>,
+    pub note_class: URID<Note>,
+    pub trace_class: URID<Trace>,
+    pub warning_class: URID<Warning>,
 }
 
 #[cfg(test)]
@@ -153,7 +147,7 @@ mod tests {
                 internal: &*(0xDEFEC8 as *const LogInternal),
             }
         };
-        let urid = unsafe { URID::<ErrorClass>::new_unchecked(42) };
+        let urid = unsafe { URID::<Error>::new_unchecked(42) };
         let message = CStr::from_bytes_with_nul(b"message\0").unwrap();
 
         let _ = fake_logger.print_cstr(urid, message);
