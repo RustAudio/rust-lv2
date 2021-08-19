@@ -39,8 +39,9 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
     ) -> Option<Self> {
         let atom = AtomHeader::new(urid);
 
-        let atom_header_index = parent.allocated_bytes().len();
         crate::space::write_value(parent, atom)?;
+        let atom_header_index = parent.allocated_bytes().len() - ::core::mem::size_of::<AtomHeader>();
+
         Some(Self {
             atom_header_index,
             parent,
@@ -107,7 +108,6 @@ mod tests {
 
     #[test]
     fn test_padding_inside_frame() {
-        const MEMORY_SIZE: usize = 256;
         let mut space = AtomSpace::boxed(256);
         let raw_space = space.as_bytes_mut();
 

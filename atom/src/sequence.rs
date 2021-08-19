@@ -71,6 +71,14 @@ use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
 use urid::*;
 
+#[repr(C, align(8))]
+#[derive(Copy, Clone)]
+struct SequenceBody(sys::LV2_Atom_Sequence_Body);
+
+#[repr(C, align(8))]
+#[derive(Copy, Clone)]
+struct TimestampBody(RawTimeStamp);
+
 /// An atom containing a sequence of time-stamped events.
 ///
 /// [See also the module documentation.](index.html)
@@ -100,13 +108,13 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         unit: TimeStampURID,
     ) -> Option<SequenceWriter<'handle, 'space>> {
-        let header = sys::LV2_Atom_Sequence_Body {
+        let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
             unit: match unit {
                 TimeStampURID::BeatsPerMinute(urid) => urid.get(),
                 TimeStampURID::Frames(urid) => urid.get(),
             },
             pad: 0,
-        };
+        });
         space::write_value(&mut frame, header)?;
 
         Some(SequenceWriter {
@@ -230,7 +238,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
             }
         };
         self.last_stamp = Some(stamp);
-        space::write_value(&mut self.frame, raw_stamp)?;
+        space::write_value(&mut self.frame, TimestampBody(raw_stamp))?;
 
         Some(())
     }
@@ -311,8 +319,7 @@ mod tests {
                 sequence.atom.size as usize,
                 size_of::<sys::LV2_Atom_Sequence_Body>()
                     + size_of::<RawTimeStamp>()
-                    + size_of::<sys::LV2_Atom_Int>()
-                    + 4
+                    + size_of::<sys::LV2_Atom_Int>() // Int struct Includes padding
                     + size_of::<RawTimeStamp>()
                     + size_of::<sys::LV2_Atom_Long>()
             );
