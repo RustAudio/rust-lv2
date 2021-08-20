@@ -63,11 +63,12 @@ struct LogInternal {
         fmt: *const c_char,
         ...
     ) -> c_int,
+    //placeholder, not useable yet
     vprintf: unsafe extern "C" fn(
         handle: lv2_sys::LV2_Log_Handle,
         type_: lv2_sys::LV2_URID,
         fmt: *const c_char,
-        ap: *mut lv2_sys::__va_list_tag,
+        ap: *mut core::ffi::c_void, //should be *mut ffi::VaList but it's not yet stable
     ) -> c_int,
 }
 
