@@ -1,3 +1,83 @@
+//! Logging library allowing LV2 plugins to print log message through host.
+//!
+//! This crate allow plugins to print log message through the host. Different log levels are
+//! defined by URI and passed as a lv2 URID. The core of this crate is the [Log
+//! Feature](struct.Log.html).
+//!
+//! # Example
+//!
+//! This following plugin log an error message each time the input control is switched on.
+//!
+//! Note: Logging an error is not real-time safe. This following plugin should not ask
+//! `hardRTCapable` in its .ttl files.
+//!
+//! ```
+//! use core::any::Any;
+//! use lv2_core::feature::*;
+//! use lv2_core::prelude::*;
+//! use lv2_log::*;
+//! use lv2_urid::*;
+//! use std::ffi::CStr;
+//! use urid::*;
+//!
+//! #[derive(URIDCollection)]
+//! struct LoggerUrids {
+//!     error: URID<Error>,
+//! }
+//!
+//! #[derive(PortCollection)]
+//! struct Ports {
+//!     toggle: InputPort<Control>,
+//! }
+//! #[derive(FeatureCollection)]
+//! pub struct InitFeatures<'a> {
+//!     map: LV2Map<'a>,
+//! }
+//!
+//! #[derive(FeatureCollection)]
+//! pub struct AudioFeatures<'a> {
+//!     log: Log<'a>,
+//! }
+//!
+//! #[repr(C)]
+//! #[uri("urn:rust-lv2-test:logger")]
+//! struct logger {
+//!     urids: LoggerUrids,
+//!     last_toggle: bool,
+//! }
+//!
+//! impl Plugin for logger {
+//!     type Ports = Ports;
+//!     type InitFeatures = InitFeatures<'static>;
+//!     type AudioFeatures = AudioFeatures<'static>;
+//!
+//!     fn new(_plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self> {
+//!         let urids: LoggerUrids = features.map.populate_collection()?;
+//!         Some(Self {
+//!             urids,
+//!             last_toggle: false,
+//!         })
+//!     }
+//!
+//!     fn run(&mut self, ports: &mut Ports, features: &mut Self::AudioFeatures, _: u32) {
+//!         let log = &features.log;
+//!         let toggle = *ports.toggle > 0.0;
+//!         if self.last_toggle != toggle && toggle {
+//!             let message = CStr::from_bytes_with_nul(b"error run message\n\0").unwrap();
+//!             let _ = log.print_cstr(self.urids.error, message);
+//!         }
+//!         self.last_toggle = toggle;
+//!     }
+//!
+//!     fn extension_data(_uri: &Uri) -> Option<&'static dyn Any> {
+//!         None
+//!         //match_extensions![uri, WorkerDescriptor<Self>]
+//!     }
+//! }
+//!
+//! lv2_descriptors!(logger);
+//! ```
+
 use lv2_core::feature::{Feature, ThreadingClass};
 use std::error;
 use std::ffi::CStr;
@@ -5,50 +85,50 @@ use std::fmt;
 use std::os::raw::*; //get all common c_type
 use urid::*;
 
-/// URID marker. The corresponding URID is used to log an error on the host.
+/// URID marker. The corresponding URID is used to log an error message on the host.
 pub struct Error;
 unsafe impl UriBound for Error {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Error;
 }
 
-/// URID marker. The corresponding URID is used to log an informative on the host.
+/// URID marker. The corresponding URID is used to log an informative message on the host.
 pub struct Note;
 unsafe impl UriBound for Note {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Note;
 }
 
-/// URID marker. The corresponding URID is used to log a debbuging trace on the host.
+/// URID marker. The corresponding URID is used to log a debugging trace on the host.
 pub struct Trace;
 unsafe impl UriBound for Trace {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Trace;
 }
 
-/// URID marker. The corresponding URID is used to log a warning on the host.
+/// URID marker. The corresponding URID is used to log a warning message on the host.
 pub struct Warning;
 unsafe impl UriBound for Warning {
     const URI: &'static [u8] = lv2_sys::LV2_LOG__Warning;
 }
 
-/// Trait for URID marker. Plugin implementers shouldn't care about it.
+/// Trait for URID marker. URID with a marker implementing this can be used to indicate the logging
+/// level.
 ///
-/// # Safety
-///
-/// This trait is used to check at compile time if an URID indicate the nature of a log message,
-/// Plugin implementers should not implement it.
-pub unsafe trait Entry {}
+/// Plugin implementers can implement this on custom URID marker to define and use additional
+/// logging level.
+//
+pub trait Entry: UriBound {}
 
-unsafe impl Entry for Error {}
-unsafe impl Entry for Note {}
-unsafe impl Entry for Trace {}
-unsafe impl Entry for Warning {}
+impl Entry for Error {}
+impl Entry for Note {}
+impl Entry for Trace {}
+impl Entry for Warning {}
 
-/// Returned if an error occured when sending a log to the host.
+/// Returned if an error occurred when sending a log to the host.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct PrintError;
 
 impl fmt::Display for PrintError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "An error occured when sending a message to the host")
+        write!(f, "An error occurred when sending a message to the host")
     }
 }
 impl error::Error for PrintError {}
@@ -72,7 +152,9 @@ struct LogInternal {
     ) -> c_int,
 }
 
-/// The Log feature.
+/// Feature allowing to print log message through the host.
+///
+///
 #[repr(transparent)]
 pub struct Log<'a> {
     internal: &'a LogInternal,
@@ -83,12 +165,6 @@ unsafe impl<'a> UriBound for Log<'a> {
 }
 
 unsafe impl<'a> Feature for Log<'a> {
-    // Note: this feature can be used in any threading class but:
-    // * i have a doubt about it's thread safety, can we assume the host provide this thread safety
-    // since this feature can be used anywhere ?.
-    // * i shouldn't be used in context where rt is a concern, that mean is audiothreadclass in
-    // practice, but it's acceptable to use it for debugging purpose
-    // So, at this time, i just giving access to it instanciation class
     unsafe fn from_feature_ptr(feature: *const c_void, _class: ThreadingClass) -> Option<Self> {
         (feature as *const LogInternal)
             .as_ref()
@@ -100,7 +176,7 @@ impl<'a> Log<'a> {
     /// Send a log message to the host.
     ///
     /// The `entry` parameter is an URID representing the kind of log message. There are four
-    /// kind of message:
+    /// standard kind of message:
     /// * **note:** an informative message.
     /// * **warning:** a warning message.
     /// * **error:** an error message.
@@ -108,6 +184,12 @@ impl<'a> Log<'a> {
     /// operation, but the host may implement an option to display them for debugging purposes.
     /// This entry type is special in that it may be written to in a real-time thread. It is
     /// assumed that if debug tracing is enabled, real-time considerations are not a concern.
+    ///
+    /// # Real-Time safety
+    ///
+    /// This function is not real-time safe. Except for logging debugging trace, it should not be
+    /// used in real-time context. That means `HardRTCapable` plugins should not call this function in
+    /// their `run()` context.
     pub fn print_cstr(&self, entry: URID<impl Entry>, message: &CStr) -> Result<(), PrintError> {
         let res = unsafe {
             (self.internal.printf)(
@@ -125,7 +207,7 @@ impl<'a> Log<'a> {
     }
 }
 
-/// A URID cache containing all usefull log properties.
+/// A URID cache containing all useful log properties.
 #[derive(URIDCollection, Debug)]
 pub struct LogURIDCollection {
     pub error: URID<Error>,
