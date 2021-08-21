@@ -10,3 +10,6 @@ edition = "2018"
 lv2-sys = "2.0.0"
 lv2-core = "3.0.0"
 urid = "0.1.0"
+
+[dev-dependencies]
+lv2-urid = "2.1.0" # for doc example
