@@ -46,7 +46,7 @@ impl<T: Copy + 'static> VecSpace<T> {
         &mut self,
         byte_range: Range<usize>,
     ) -> Option<(&mut [u8], &mut [u8])> {
-        let byte_len = self.inner.len() * ::core::mem::size_of::<T>();
+        let byte_len = self.inner.len() * std::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
         if max > byte_len {

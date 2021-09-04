@@ -64,64 +64,30 @@
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
-pub mod chunk;
-pub mod object;
-pub mod scalar;
-pub mod sequence;
-pub mod space;
-pub mod string;
-pub mod tuple;
-pub mod vector;
+pub use header::AtomHeader;
+use space::*;
+use urid::*;
 
 mod header;
 #[cfg(feature = "lv2-core")]
 pub mod port;
-
-pub use header::AtomHeader;
+pub mod atoms;
+pub mod space;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
-    use crate::*;
-
-    pub use crate::{Atom, AtomURIDCollection, UnidentifiedAtom};
-    pub use chunk::Chunk;
-    pub use object::{Object, ObjectHeader, PropertyHeader};
+    pub use atoms::chunk::Chunk;
+    pub use atoms::object::{Object, ObjectHeader, PropertyHeader};
     pub use port::AtomPort;
-    pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
-    pub use sequence::{Sequence, TimeStamp, TimeStampURID};
+    pub use atoms::scalar::{AtomURID, Bool, Double, Float, Int, Long};
+    pub use atoms::sequence::{Sequence, TimeStamp, TimeStampURID};
     pub use space::{AtomSpace, AtomSpaceWriter, Space, SpaceAllocator};
-    pub use string::{Literal, LiteralInfo, String};
-    pub use tuple::Tuple;
-    pub use vector::Vector;
-}
+    pub use atoms::string::{Literal, LiteralInfo, String};
+    pub use atoms::tuple::Tuple;
+    pub use atoms::vector::Vector;
 
-use space::*;
-use urid::*;
-
-#[derive(Clone, URIDCollection)]
-/// Collection with the URIDs of all `UriBound`s in this crate.
-pub struct AtomURIDCollection {
-    pub blank: URID<object::Blank>,
-    pub double: URID<scalar::Double>,
-    pub float: URID<scalar::Float>,
-    pub int: URID<scalar::Int>,
-    pub long: URID<scalar::Long>,
-    pub urid: URID<scalar::AtomURID>,
-    pub bool: URID<scalar::Bool>,
-    vector: URID<vector::Vector<scalar::Int>>,
-    pub chunk: URID<chunk::Chunk>,
-    pub literal: URID<string::Literal>,
-    pub object: URID<object::Object>,
-    pub property: URID<object::Property>,
-    pub string: URID<string::String>,
-    pub tuple: URID<tuple::Tuple>,
-    pub sequence: URID<sequence::Sequence>,
-}
-
-impl AtomURIDCollection {
-    pub fn vector<S: scalar::ScalarAtom>(&self) -> URID<vector::Vector<S>> {
-        unsafe { URID::new_unchecked(self.vector.get()) }
-    }
+    use crate::*;
+    pub use crate::{Atom, atoms::AtomURIDCollection, UnidentifiedAtom};
 }
 
 /// Atom type.

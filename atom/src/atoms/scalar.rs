@@ -29,7 +29,6 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
-use crate::space::*;
 use crate::*;
 use std::marker::Unpin;
 use urid::UriBound;

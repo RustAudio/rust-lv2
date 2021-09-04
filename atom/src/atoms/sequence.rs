@@ -65,11 +65,9 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
-use crate::space::*;
 use crate::*;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
-use urid::*;
 
 #[repr(C, align(8))]
 #[derive(Copy, Clone)]
@@ -273,7 +271,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use crate::sequence::*;
+    use crate::atoms::sequence::*;
     use std::mem::size_of;
 
     #[derive(URIDCollection)]

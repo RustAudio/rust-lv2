@@ -30,12 +30,10 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Vector](http://lv2plug.in/ns/ext/atom/atom.html#Vector)
-use crate::scalar::ScalarAtom;
-use crate::space::*;
+use crate::atoms::scalar::ScalarAtom;
 use crate::*;
 use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
-use urid::*;
 
 /// An atom containg an array of scalar atom bodies.
 ///
@@ -128,7 +126,7 @@ mod tests {
         const CHILD_COUNT: usize = 17;
 
         let map = HashURIDMapper::new();
-        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
+        let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = AtomSpace::boxed(256);
 

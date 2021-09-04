@@ -40,7 +40,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
         let atom = AtomHeader::new(urid);
 
         crate::space::write_value(parent, atom)?;
-        let atom_header_index = parent.allocated_bytes().len() - ::core::mem::size_of::<AtomHeader>();
+        let atom_header_index = parent.allocated_bytes().len() - std::mem::size_of::<AtomHeader>();
 
         Some(Self {
             atom_header_index,
