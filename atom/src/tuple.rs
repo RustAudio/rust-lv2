@@ -65,7 +65,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
 ///
 /// The item of this iterator is simply the space a single atom occupies.
 pub struct TupleIterator<'a> {
-    space: &'a Space,
+    space: &'a AtomSpace,
 }
 
 impl<'a> Iterator for TupleIterator<'a> {
@@ -123,7 +123,7 @@ mod tests {
 
         // verifying
         {
-            let (atom, space) = unsafe { raw_space.split_atom() }.unwrap();
+            let atom= unsafe { raw_space.to_atom() }.unwrap();
             let header = atom.header();
             assert_eq!(header.urid(), urids.tuple);
             assert_eq!(
@@ -131,11 +131,11 @@ mod tests {
                 size_of::<sys::LV2_Atom_Vector>()
                     + size_of::<i32>() * 9
                     + 4
-                    + size_of::<sys::LV2_Atom_Int>()
+                    + size_of::<sys::LV2_Atom>() + size_of::<i32>()
             );
 
-            let (vector, space) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
+            let (vector, remaining) =
+                unsafe { atom.body().split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
             assert_eq!(vector.atom.type_, urids.vector);
             assert_eq!(
                 vector.atom.size as usize,
@@ -144,14 +144,11 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int);
 
-            let (vector_items, space) = space.split_at(size_of::<i32>() * 9).unwrap();
-            let vector_items = unsafe {
-                std::slice::from_raw_parts(vector_items.as_bytes().as_ptr() as *const i32, 9)
-            };
+            let (vector_items, space) = remaining.split_at(size_of::<i32>() * 9).unwrap();
+            let vector_items = unsafe { vector_items.aligned::<i32>().unwrap().assume_init_slice() };
             assert_eq!(vector_items, &[17; 9]);
 
-            let (int, _) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let int: &sys::LV2_Atom_Int = unsafe { space.aligned().unwrap().assume_init_value_unchecked() };
             assert_eq!(int.atom.type_, urids.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);

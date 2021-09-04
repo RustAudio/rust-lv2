@@ -165,8 +165,6 @@ mod tests {
 
     #[test]
     fn test_init_atom_lifetimes() {
-        assert_eq!(AtomSpace::alignment(), 8);
-
         let mut space = AtomSpace::boxed(32);
         assert_eq!(space.as_bytes().as_ptr() as usize % 8, 0); // TODO: move this, this is a test for boxed
 

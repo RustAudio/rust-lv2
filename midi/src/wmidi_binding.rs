@@ -128,7 +128,7 @@ mod tests {
             assert_eq!(atom.header().urid(), urid);
             assert_eq!(atom.header().size_of_body(), 3);
 
-            let message = atom.body().slice(3).unwrap().as_bytes();
+            let message = &atom.body().as_bytes()[..3];
             let message = MidiMessage::try_from(message).unwrap();
             assert_eq!(message, reference_message);
         }

@@ -59,6 +59,7 @@ pub trait ScalarAtom: UriBound {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         value: Self::InternalType,
     ) -> Option<()> {
+        // TODO: decide if just the value has to be written, or if the whole atom type has to be written
         space::write_value(&mut frame, value)?;
         Some(())
     }

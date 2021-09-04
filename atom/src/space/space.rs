@@ -39,11 +39,6 @@ impl<T: 'static> Space<T> {
         }
     }
 
-    #[inline]
-    pub fn alignment() -> usize {
-        align_of::<T>()
-    }
-
     pub fn boxed(size: usize) -> impl Deref<Target = Self> + DerefMut<Target = Self>
     where
         T: Copy,
@@ -56,7 +51,7 @@ impl<T: 'static> Space<T> {
     /// # Safety
     ///
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
-    /// Otherwise, atom reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
+    /// Otherwise, reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
     /// For a safe, checked version, see [`Space::try_from_bytes`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
@@ -73,7 +68,7 @@ impl<T: 'static> Space<T> {
     /// # Safety
     ///
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
-    /// Otherwise, atom reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
+    /// Otherwise, reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
     /// For a safe, checked version, see [`Space::try_from_bytes_mut`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
@@ -175,13 +170,6 @@ impl<T: 'static> Space<T> {
         let start = unsafe { Self::from_bytes_unchecked(start) };
 
         Some((start, end))
-    }
-
-    #[inline]
-    pub fn slice(&self, length: usize) -> Option<&Self> {
-        // SAFETY: The data is part of the original slice which was aligned already.
-        let d = self.data.get(..length);
-        Some(unsafe { Self::from_bytes_unchecked(d?) })
     }
 
     /// Try to retrieve space.
@@ -359,6 +347,13 @@ impl<T: 'static> Space<T> {
             )
         }
     }
+
+    pub fn write(&mut self, value: T) -> Option<&mut T> {
+        let uninit = self.as_uninit_mut()?;
+        *uninit = MaybeUninit::new(value);
+        // SAFETY: We just initialized this value.
+        Some(unsafe { &mut *(uninit.as_mut_ptr()) })
+    }
 }
 
 impl AtomSpace {
@@ -398,11 +393,7 @@ impl AtomSpace {
 
     #[inline]
     pub unsafe fn to_atom(&self) -> Option<&UnidentifiedAtom> {
-        let header = self.assume_init_value()?; // Try to read to ensure there is enough room
-                                                // SAFETY: we just read and sliced to ensure this space is big enough for an atom header and its contents
-        Some(UnidentifiedAtom::from_space_unchecked(
-            self.slice(header.size_of_atom())?,
-        ))
+        UnidentifiedAtom::from_space(self)
     }
 
     #[inline]
