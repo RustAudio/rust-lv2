@@ -84,7 +84,7 @@ pub fn allocate_values<'handle, 'space: 'handle, T: 'static>(
     space: &'handle mut impl SpaceAllocator<'space>,
     count: usize,
 ) -> Option<&'handle mut [MaybeUninit<T>]> {
-    let space = allocate(space, count * ::core::mem::size_of::<T>())?;
+    let space = allocate(space, count * std::mem::size_of::<T>())?;
     Some(space.as_uninit_slice_mut())
 }
 

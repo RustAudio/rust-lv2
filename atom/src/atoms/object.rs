@@ -67,7 +67,6 @@
 //!
 //! # Specification
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
-use crate::space::*;
 use crate::*;
 use std::convert::TryFrom;
 use std::iter::Iterator;

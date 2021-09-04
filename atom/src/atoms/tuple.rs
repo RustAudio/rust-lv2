@@ -30,9 +30,7 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
-use crate::space::*;
 use crate::*;
-use urid::*;
 
 /// An atom  containing a series of other atoms.
 ///
@@ -105,7 +103,7 @@ mod tests {
     #[test]
     fn test_tuple() {
         let map = HashURIDMapper::new();
-        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
+        let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = AtomSpace::boxed(256);
 
