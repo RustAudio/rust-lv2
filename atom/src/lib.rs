@@ -77,6 +77,8 @@ mod header;
 #[cfg(feature = "lv2-core")]
 pub mod port;
 
+pub use header::AtomHeader;
+
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
     use crate::*;
@@ -93,7 +95,6 @@ pub mod prelude {
     pub use vector::Vector;
 }
 
-use crate::header::AtomHeader;
 use space::*;
 use urid::*;
 

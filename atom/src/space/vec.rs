@@ -10,6 +10,11 @@ pub struct VecSpace<T> {
 
 impl<T: Copy + 'static> VecSpace<T> {
     #[inline]
+    pub fn new() -> Self {
+        Self { inner: Vec::new() }
+    }
+
+    #[inline]
     pub fn new_with_capacity(capacity: usize) -> Self {
         Self {
             inner: vec![MaybeUninit::zeroed(); capacity],

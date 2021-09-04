@@ -148,7 +148,7 @@ impl<'handle, 'space> StringWriter<'handle, 'space> {
         // Manually write the bytes to make extra room for the nul byte
         let bytes = string.as_bytes();
         let space = self.frame.allocate(bytes.len() + 1)?;
-        space.copy_from_slice(bytes);
+        space[..bytes.len()].copy_from_slice(bytes);
         // SAFETY: space is guaranteed to be at least 1 byte large
         space[bytes.len()] = 0;
 

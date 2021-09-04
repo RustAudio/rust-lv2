@@ -1,6 +1,7 @@
 use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
+use atom::AtomHeader;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::marker::PhantomData;
@@ -12,7 +13,7 @@ use urid::*;
 ///
 /// The written properties a buffered and flushed when requested. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle<'a> {
-    properties: HashMap<URID, SpaceList>,
+    properties: HashMap<URID, VecSpace<AtomHeader>>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
@@ -36,25 +37,22 @@ impl<'a> StoreHandle<'a> {
     /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
     pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
         let property_key = property_key.into_general();
-        self.properties
-            .insert(property_key.into_general(), SpaceList::default());
-        StatePropertyWriter::new(SpaceHead::new(
-            self.properties
-                .get_mut(&property_key.into_general())
-                .unwrap(),
-        ))
+        let space = self.properties
+            .entry(property_key.into_general())
+            .or_insert_with(VecSpace::new);
+
+        StatePropertyWriter::new(space.cursor())
     }
 
     /// Internal helper function to store a property.
-    pub fn commit_pair<K: ?Sized>(
+    fn commit_pair<K: ?Sized>(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID<K>,
-        space: SpaceList,
+        space: VecSpace<AtomHeader>,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
-        let space: Vec<u8> = space.to_vec();
-        let space = AtomSpace::try_from_bytes(&space).ok_or(StateErr::BadData)?;
+        let space = space.as_space();
         let atom = unsafe { space.to_atom() }.ok_or(StateErr::BadData)?;
 
         let key = key.get();
@@ -101,15 +99,15 @@ impl<'a> StoreHandle<'a> {
 
 /// Writing handle for properties.
 pub struct StatePropertyWriter<'a> {
-    head: SpaceHead<'a>,
+    cursor: VecSpaceCursor<'a, AtomHeader>,
     initialized: bool,
 }
 
 impl<'a> StatePropertyWriter<'a> {
     /// Create a new property writer that uses the given space head.
-    pub fn new(head: SpaceHead<'a>) -> Self {
+    pub fn new(cursor: VecSpaceCursor<'a, AtomHeader>) -> Self {
         Self {
-            head,
+            cursor,
             initialized: false,
         }
     }
@@ -124,7 +122,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            lv2_atom::space::init_atom(&mut self.head, urid, parameter).ok_or(StateErr::Unknown)
+            lv2_atom::space::init_atom(&mut self.cursor, urid, parameter).ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }

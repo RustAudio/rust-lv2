@@ -49,7 +49,7 @@
 //!     // The sequence writer, however, assures that the written time stamps are monotonic.
 //!     for event in input_sequence {
 //!         // An event contains a timestamp and an atom.
-//!         let (timestamp, atom): (TimeStamp, UnidentifiedAtom) = event;
+//!         let (timestamp, atom): (TimeStamp, &UnidentifiedAtom) = event;
 //!         // If the read atom is a 32-bit integer...
 //!         if let Some(integer) = atom.read(urids.atom.int, ()) {
 //!             // Multiply it by two and write it to the sequence.
@@ -133,7 +133,7 @@ pub enum TimeStampUnit {
 }
 
 /// An event time stamp.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TimeStamp {
     Frames(i64),
     BeatsPerMinute(f64),
@@ -354,17 +354,11 @@ mod tests {
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 
             let (stamp, atom) = reader.next().unwrap();
-            match stamp {
-                TimeStamp::Frames(frames) => assert_eq!(frames, 0),
-                _ => panic!("Invalid time stamp!"),
-            }
+            assert_eq!(stamp, TimeStamp::Frames(0));
             assert_eq!(atom.read::<Int>(urids.atom.int, ()).unwrap(), 42);
 
             let (stamp, atom) = reader.next().unwrap();
-            match stamp {
-                TimeStamp::Frames(frames) => assert_eq!(frames, 1),
-                _ => panic!("Invalid time stamp!"),
-            }
+            assert_eq!(stamp, TimeStamp::Frames(1));
             assert_eq!(atom.read::<Long>(urids.atom.long, ()).unwrap(), 17);
 
             assert!(reader.next().is_none());

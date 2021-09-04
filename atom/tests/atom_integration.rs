@@ -124,7 +124,7 @@ fn main() {
     // preparing the output atom.
     let mut output_atom_space = AtomSpace::boxed(256);
     {
-        let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
+        let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
         lv2_atom::space::init_atom(&mut space, urids.atom.chunk, ())
             .unwrap()
             .allocate(256 - size_of::<sys::LV2_Atom>())
