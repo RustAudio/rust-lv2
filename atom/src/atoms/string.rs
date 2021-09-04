@@ -8,7 +8,7 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_atom::string::StringWriter;
+//! use lv2_atom::atoms::string::StringWriter;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -238,7 +238,7 @@ mod tests {
     #[test]
     fn test_string() {
         let map = HashURIDMapper::new();
-        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
+        let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = AtomSpace::boxed(256);
 

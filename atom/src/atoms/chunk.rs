@@ -57,17 +57,16 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
 
 #[cfg(test)]
 mod tests {
-    use crate::chunk::*;
+    use crate::atoms::chunk::*;
     use crate::*;
     use std::mem::size_of;
-    use urid::*;
 
     #[test]
     fn test_chunk_and_slice_writer() {
         const SLICE_LENGTH: usize = 42;
 
         let map = HashURIDMapper::new();
-        let urids = crate::AtomURIDCollection::from_map(&map).unwrap();
+        let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = AtomSpace::boxed(256);
 
