@@ -10,7 +10,7 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_atom::vector::VectorWriter;
+//! use lv2_atom::atoms::vector::VectorWriter;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {

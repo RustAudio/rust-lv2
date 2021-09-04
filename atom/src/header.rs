@@ -24,12 +24,6 @@ impl AtomHeader {
     }
 
     #[inline]
-    pub(crate) fn from_raw_mut(raw: &mut lv2_sys::LV2_Atom) -> &mut Self {
-        // SAFETY: AtomHeader is repr(C) and has LV2_Atom as its only field, so transmuting between the two is safe.
-        unsafe { &mut *(raw as *mut lv2_sys::LV2_Atom as *mut _) }
-    }
-
-    #[inline]
     pub(crate) unsafe fn set_size_of_body(&mut self, size: usize) {
         self.inner.size = size as u32;
     }

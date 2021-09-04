@@ -6,7 +6,7 @@
 //! ```
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
-//! use lv2_atom::tuple::{TupleIterator, TupleWriter};
+//! use lv2_atom::atoms::tuple::{TupleIterator, TupleWriter};
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {

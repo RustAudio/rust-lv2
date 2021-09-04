@@ -157,7 +157,7 @@ make_scalar_atom!(
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use crate::scalar::ScalarAtom;
+    use crate::atoms::scalar::ScalarAtom;
     use crate::space::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
