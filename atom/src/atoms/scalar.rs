@@ -163,6 +163,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::mem::size_of;
     use urid::*;
+    use crate::AtomHeader;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
     where
@@ -172,7 +173,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid: URID<A> = map.map_type().unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {

@@ -102,13 +102,14 @@ impl<'handle, 'space: 'handle> SpaceAllocatorImpl<'space> for AtomSpaceWriter<'h
 mod tests {
     use crate::prelude::AtomSpaceWriter;
     use crate::space::cursor::SpaceCursor;
-    use crate::space::{AtomSpace, SpaceAllocator};
+    use crate::space::{SpaceAllocator, VecSpace};
     use core::mem::size_of;
     use urid::URID;
+    use crate::AtomHeader;
 
     #[test]
     fn test_padding_inside_frame() {
-        let mut space = AtomSpace::boxed(256);
+        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
         let raw_space = space.as_bytes_mut();
 
         // writing

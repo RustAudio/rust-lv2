@@ -8,6 +8,7 @@ use core::prelude::*;
 use lv2_urid::*;
 use units::prelude::*;
 use urid::*;
+use atom::AtomHeader;
 
 #[derive(PortCollection)]
 struct Ports {
@@ -99,7 +100,8 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space = AtomSpace::boxed(256);
+    let mut input_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let input_atom_space = input_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
         let mut writer = space.init_atom(
@@ -121,7 +123,8 @@ fn main() {
     }
 
     // preparing the output atom.
-    let mut output_atom_space = AtomSpace::boxed(256);
+    let mut output_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let output_atom_space = output_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
         space.init_atom(urids.atom.chunk, ())

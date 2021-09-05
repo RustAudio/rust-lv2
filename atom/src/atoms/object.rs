@@ -292,6 +292,7 @@ mod tests {
     use crate::space::*;
     use std::mem::size_of;
     use urid::*;
+    use crate::AtomHeader;
 
     #[test]
     fn test_object() {
@@ -312,7 +313,8 @@ mod tests {
             .unwrap();
         let second_value: f32 = 42.0;
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {
