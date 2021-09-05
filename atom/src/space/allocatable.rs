@@ -139,14 +139,15 @@ impl<'space, H: SpaceAllocatorImpl<'space>> SpaceAllocator<'space> for H { }
 mod tests {
     use crate::prelude::{Int, SpaceAllocator};
     use crate::space::cursor::SpaceCursor;
-    use crate::space::{AtomSpace, SpaceAllocatorImpl};
+    use crate::space::{SpaceAllocatorImpl, VecSpace};
     use urid::URID;
+    use crate::AtomHeader;
 
     const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
 
     #[test]
     fn test_init_atom_lifetimes() {
-        let mut space = AtomSpace::boxed(32);
+        let mut space = VecSpace::<AtomHeader>::new_with_capacity(4);
         assert_eq!(space.as_bytes().as_ptr() as usize % 8, 0); // TODO: move this, this is a test for boxed
 
         let mut cursor = SpaceCursor::new(space.as_bytes_mut()); // The pointer that is going to be moved as we keep writing.
@@ -167,6 +168,6 @@ mod tests {
                 0, 0, 0, 0, 0,
             ]
         );
-        assert_eq!(32, space.len());
+        assert_eq!(32, space.as_bytes().len());
     }
 }

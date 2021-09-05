@@ -285,7 +285,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = TestURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {

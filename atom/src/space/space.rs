@@ -3,7 +3,6 @@ use crate::UnidentifiedAtom;
 use core::mem::{align_of, size_of};
 use std::marker::PhantomData;
 use std::mem::{size_of_val, MaybeUninit};
-use std::ops::{Deref, DerefMut};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 use urid::URID;
 
@@ -37,13 +36,6 @@ impl<T: 'static> Space<T> {
         } else {
             alignment - start % alignment
         }
-    }
-
-    pub fn boxed(size: usize) -> impl Deref<Target = Self> + DerefMut<Target = Self>
-    where
-        T: Copy,
-    {
-        crate::space::boxed::BoxedSpace::new_zeroed(size)
     }
 
     /// Creates a new space from a slice of bytes, without checking for padding correctness.
@@ -429,10 +421,11 @@ mod tests {
     use crate::space::*;
     use std::mem::{size_of, size_of_val};
     use urid::*;
+    use crate::AtomHeader;
 
     #[test]
     fn test_space() {
-        let mut space = Space::<u32>::boxed(256);
+        let mut space = VecSpace::<u32>::new_with_capacity(64);
         let bytes = space.as_bytes_mut();
 
         for i in 0..128 {
@@ -440,11 +433,11 @@ mod tests {
         }
 
         unsafe {
-            let ptr = space.as_mut_ptr().add(128) as *mut u32;
+            let ptr = space.as_space_mut().as_mut_ptr().add(128) as *mut u32;
             *(ptr) = 0x42424242;
         }
 
-        let (lower_space, space) = space.split_at(128).unwrap();
+        let (lower_space, space) = space.as_space_mut().split_at(128).unwrap();
         let lower_space = lower_space.as_bytes();
 
         for i in 0..128 {
@@ -457,7 +450,8 @@ mod tests {
 
     #[test]
     fn test_split_atom() {
-        let mut space = AtomSpace::boxed(256);
+        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let space = space.as_space_mut();
         let urid: URID = unsafe { URID::new_unchecked(17) };
 
         // Writing an integer atom.

@@ -2,7 +2,6 @@
 
 mod allocatable;
 mod atom_writer;
-mod boxed;
 mod cursor;
 mod space;
 mod vec;

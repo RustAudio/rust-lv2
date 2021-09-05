@@ -103,7 +103,8 @@ impl<'handle, 'space> Drop for Writer<'handle, 'space> {
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
-    use lv2_atom::space::SpaceCursor;
+    use lv2_atom::space::{VecSpace, SpaceCursor};
+    use lv2_atom::AtomHeader;
     use std::convert::TryFrom;
     use wmidi::*;
 
@@ -112,7 +113,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<WMidiEvent>().unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
         let reference_message =
             MidiMessage::NoteOn(Channel::Ch1, Note::A0, Velocity::try_from(125).unwrap());
 
@@ -149,7 +151,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {

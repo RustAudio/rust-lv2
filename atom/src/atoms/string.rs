@@ -164,6 +164,7 @@ mod tests {
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
     use urid::*;
+    use crate::AtomHeader;
 
     struct German;
     unsafe impl UriBound for German {
@@ -184,7 +185,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = TestURIDs::from_map(&map).unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {
@@ -239,7 +241,8 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = AtomSpace::boxed(256);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {
