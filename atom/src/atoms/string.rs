@@ -73,8 +73,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         info: LiteralInfo,
     ) -> Option<StringWriter<'handle, 'space>> {
-        crate::space::write_value(
-            &mut frame,
+        frame.write_value(
             match info {
                 LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                     lang: lang.get(),
@@ -190,8 +189,8 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = crate::space::init_atom(
-                &mut space,
+
+            let mut writer = space.init_atom(
                 urids.atom.literal,
                 LiteralInfo::Language(urids.german.into_general()),
             )
@@ -246,7 +245,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
-            let mut writer = crate::space::init_atom(&mut space, urids.string, ()).unwrap();
+            let mut writer = space.init_atom(urids.string, ()).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

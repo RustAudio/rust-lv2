@@ -68,26 +68,26 @@ pub use header::AtomHeader;
 use space::*;
 use urid::*;
 
+pub mod atoms;
 mod header;
 #[cfg(feature = "lv2-core")]
 pub mod port;
-pub mod atoms;
 pub mod space;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
     pub use atoms::chunk::Chunk;
     pub use atoms::object::{Object, ObjectHeader, PropertyHeader};
-    pub use port::AtomPort;
     pub use atoms::scalar::{AtomURID, Bool, Double, Float, Int, Long};
     pub use atoms::sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{AtomSpace, AtomSpaceWriter, Space, SpaceAllocator};
     pub use atoms::string::{Literal, LiteralInfo, String};
     pub use atoms::tuple::Tuple;
     pub use atoms::vector::Vector;
+    pub use port::AtomPort;
+    pub use space::{AtomSpace, AtomSpaceWriter, Space, SpaceAllocator};
 
     use crate::*;
-    pub use crate::{Atom, atoms::AtomURIDCollection, UnidentifiedAtom};
+    pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
 }
 
 /// Atom type.
@@ -149,7 +149,7 @@ pub trait Atom<'handle, 'space: 'handle>: UriBound {
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct UnidentifiedAtom {
-    header: AtomHeader
+    header: AtomHeader,
 }
 
 impl UnidentifiedAtom {

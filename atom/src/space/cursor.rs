@@ -1,4 +1,4 @@
-use crate::space::SpaceAllocator;
+use crate::space::SpaceAllocatorImpl;
 
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
@@ -14,7 +14,7 @@ impl<'a> SpaceCursor<'a> {
     }
 }
 
-impl<'a> SpaceAllocator<'a> for SpaceCursor<'a> {
+impl<'a> SpaceAllocatorImpl<'a> for SpaceCursor<'a> {
     #[inline]
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let (allocated, allocatable) = self.data.split_at_mut(self.allocated_length);

@@ -54,12 +54,13 @@ pub trait ScalarAtom: UriBound {
     /// Try to write the atom into a space.
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
+    #[inline]
     fn write_scalar<'handle, 'space: 'handle>(
         mut frame: AtomSpaceWriter<'handle, 'space>,
         value: Self::InternalType,
     ) -> Option<()> {
         // TODO: decide if just the value has to be written, or if the whole atom type has to be written
-        space::write_value(&mut frame, value)?;
+        frame.write_value(value)?;
         Some(())
     }
 }
@@ -156,8 +157,8 @@ make_scalar_atom!(
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use crate::atoms::scalar::ScalarAtom;
+    use crate::prelude::*;
     use crate::space::*;
     use std::convert::TryFrom;
     use std::mem::size_of;
@@ -176,7 +177,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            crate::space::init_atom(&mut space, urid, value).unwrap();
+            space.init_atom(urid, value).unwrap();
         }
 
         // verifying

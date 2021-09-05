@@ -213,6 +213,11 @@ impl<T: 'static> Space<T> {
     }
 
     #[inline]
+    pub fn realign_mut<U: 'static>(&mut self) -> Option<&mut Space<U>> {
+        Space::<U>::try_align_from_bytes_mut(self.as_bytes_mut())
+    }
+
+    #[inline]
     pub fn aligned<U: 'static>(&self) -> Option<&Space<U>> {
         Space::<U>::try_from_bytes(self.as_bytes())
     }
@@ -482,11 +487,11 @@ mod tests {
             test_data[i] = i as u8;
         }
 
-        let written_data = crate::space::write_bytes(&mut space, test_data.as_slice()).unwrap();
+        let written_data = space.write_bytes(test_data.as_slice()).unwrap();
         assert_eq!(test_data.as_slice(), written_data);
 
         let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-        let written_atom = crate::space::write_value(&mut space, test_atom).unwrap();
+        let written_atom = space.write_value(test_atom).unwrap();
         assert_eq!(written_atom.size, test_atom.size);
         assert_eq!(written_atom.type_, test_atom.type_);
         let written_atom_addr = written_atom as *mut _ as *mut _;
@@ -508,12 +513,12 @@ mod tests {
                 test_data[i] = i as u8;
             }
 
-            let written_data = crate::space::write_bytes(&mut atom_frame, &test_data).unwrap();
+            let written_data = atom_frame.write_bytes(&test_data).unwrap();
             assert_eq!(test_data.as_slice(), written_data);
             assert_eq!(atom_frame.atom_header().size_of_body(), test_data.len());
 
             let test_atom = sys::LV2_Atom { size: 42, type_: 1 };
-            let written_atom = crate::space::write_value(&mut atom_frame, test_atom).unwrap();
+            let written_atom = atom_frame.write_value(test_atom).unwrap();
             assert_eq!(written_atom.size, test_atom.size);
             assert_eq!(written_atom.type_, test_atom.type_);
             assert_eq!(
@@ -538,7 +543,7 @@ mod tests {
 
         {
             let mut root_space = SpaceCursor::new(&mut raw_space[3..]);
-            crate::space::write_value(&mut root_space, 42u8).unwrap();
+            root_space.write_value(42u8).unwrap();
         }
 
         assert_eq!(&[0, 0, 0, 42, 0, 0, 0, 0], raw_space.as_ref());

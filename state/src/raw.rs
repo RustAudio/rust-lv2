@@ -37,7 +37,8 @@ impl<'a> StoreHandle<'a> {
     /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
     pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
         let property_key = property_key.into_general();
-        let space = self.properties
+        let space = self
+            .properties
             .entry(property_key.into_general())
             .or_insert_with(VecSpace::new);
 
@@ -122,7 +123,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            lv2_atom::space::init_atom(&mut self.cursor, urid, parameter).ok_or(StateErr::Unknown)
+            self.cursor.init_atom(urid, parameter).ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }

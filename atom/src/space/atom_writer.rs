@@ -1,11 +1,11 @@
 use crate::header::AtomHeader;
-use crate::space::{Space, SpaceAllocator};
+use crate::space::{Space, SpaceAllocator, SpaceAllocatorImpl};
 use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'handle, 'space: 'handle> {
     atom_header_index: usize,
-    parent: &'handle mut dyn SpaceAllocator<'space>,
+    parent: &'handle mut (dyn SpaceAllocatorImpl<'space>),
 }
 
 impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
@@ -39,7 +39,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
     ) -> Option<Self> {
         let atom = AtomHeader::new(urid);
 
-        crate::space::write_value(parent, atom)?;
+        parent.write_value(atom)?;
         let atom_header_index = parent.allocated_bytes().len() - std::mem::size_of::<AtomHeader>();
 
         Some(Self {
@@ -49,7 +49,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
     }
 }
 
-impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handle, 'space> {
+impl<'handle, 'space: 'handle> SpaceAllocatorImpl<'space> for AtomSpaceWriter<'handle, 'space> {
     #[inline]
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
@@ -102,7 +102,7 @@ impl<'handle, 'space: 'handle> SpaceAllocator<'space> for AtomSpaceWriter<'handl
 mod tests {
     use crate::prelude::AtomSpaceWriter;
     use crate::space::cursor::SpaceCursor;
-    use crate::space::AtomSpace;
+    use crate::space::{AtomSpace, SpaceAllocator};
     use core::mem::size_of;
     use urid::URID;
 
@@ -115,8 +115,8 @@ mod tests {
         {
             let mut root = SpaceCursor::new(raw_space);
             let mut frame = AtomSpaceWriter::write_new(&mut root, URID::new(1).unwrap()).unwrap();
-            crate::space::write_value(&mut frame, 42u32).unwrap();
-            crate::space::write_value(&mut frame, 17u32).unwrap();
+            frame.write_value(42u32).unwrap();
+            frame.write_value(17u32).unwrap();
         }
 
         // checking

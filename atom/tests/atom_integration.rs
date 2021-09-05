@@ -102,8 +102,7 @@ fn main() {
     let mut input_atom_space = AtomSpace::boxed(256);
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
-        let mut writer = lv2_atom::space::init_atom(
-            &mut space,
+        let mut writer = space.init_atom(
             urids.atom.sequence,
             TimeStampURID::Frames(urids.units.frame),
         )
@@ -125,7 +124,7 @@ fn main() {
     let mut output_atom_space = AtomSpace::boxed(256);
     {
         let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
-        lv2_atom::space::init_atom(&mut space, urids.atom.chunk, ())
+        space.init_atom(urids.atom.chunk, ())
             .unwrap()
             .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
