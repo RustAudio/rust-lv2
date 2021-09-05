@@ -115,8 +115,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
         header: ObjectHeader,
     ) -> Option<ObjectWriter<'handle, 'space>> {
         {
-            space::write_value(
-                &mut frame,
+            frame.write_value(
                 sys::LV2_Atom_Object_Body {
                     id: header.id.map(URID::get).unwrap_or(0),
                     otype: header.otype.get(),
@@ -199,7 +198,7 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        space::init_atom(&mut self.frame, child_urid, parameter)
+        self.frame.init_atom(child_urid, parameter)
     }
 
     /// Initialize a new property.
@@ -214,7 +213,7 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
-        space::init_atom(&mut self.frame, child_urid, parameter)
+        self.frame.init_atom(child_urid, parameter)
     }
 }
 
@@ -282,7 +281,7 @@ impl Property {
             context: context.map(URID::get).unwrap_or(0),
         };
 
-        space::write_value(space, header)?;
+        space.write_value(header)?;
         Some(())
     }
 }
@@ -361,7 +360,8 @@ mod tests {
 
             // Object.
             let (object, space) = unsafe {
-                atom.body().split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
+                atom.body()
+                    .split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
             }
             .unwrap();
             assert_eq!(object.id, 0);

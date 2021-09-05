@@ -17,7 +17,7 @@
 //!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
 //!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
-//!     lv2_atom::space::write_bytes(&mut out_chunk, in_chunk).unwrap();
+//!     out_chunk.write_bytes(in_chunk).unwrap();
 //! }
 //! ```
 //!
@@ -73,14 +73,14 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space::init_atom(&mut space, urids.chunk, ()).unwrap();
+            let mut writer = space.init_atom(urids.chunk, ()).unwrap();
             let data = writer.allocate(SLICE_LENGTH).unwrap();
 
             for (i, value) in data.into_iter().enumerate() {
                 *value = i as u8;
             }
 
-            space::write_value(&mut space, 41u8).unwrap();
+            space.write_value(41u8).unwrap();
         }
 
         // verifying

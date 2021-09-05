@@ -113,7 +113,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
             },
             pad: 0,
         });
-        space::write_value(&mut frame, header)?;
+        frame.write_value(header)?;
 
         Some(SequenceWriter {
             frame,
@@ -236,7 +236,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
             }
         };
         self.last_stamp = Some(stamp);
-        space::write_value(&mut self.frame, TimestampBody(raw_stamp))?;
+        self.frame.write_value(TimestampBody(raw_stamp))?;
 
         Some(())
     }
@@ -251,7 +251,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
         parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
-        space::init_atom(&mut self.frame, urid, parameter)
+        self.frame.init_atom(urid, parameter)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -262,7 +262,7 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Option<()> {
         self.write_time_stamp(stamp)?;
 
-        space::forward_atom(&mut self.frame, atom)?;
+        self.frame.forward_atom(atom)?;
 
         Some(())
     }
@@ -270,8 +270,8 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use crate::atoms::sequence::*;
+    use crate::prelude::*;
     use std::mem::size_of;
 
     #[derive(URIDCollection)]
@@ -290,12 +290,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space::init_atom(
-                &mut space,
-                urids.atom.sequence,
-                TimeStampURID::Frames(urids.units.frame),
-            )
-            .unwrap();
+            let mut writer = space.init_atom(urids.atom.sequence,TimeStampURID::Frames(urids.units.frame)).unwrap();
 
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)

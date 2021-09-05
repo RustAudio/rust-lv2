@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use crate::space::{Space, SpaceAllocator};
+use crate::space::{Space, SpaceAllocatorImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -78,7 +78,7 @@ pub struct VecSpaceCursor<'vec, T> {
     allocated_length: usize,
 }
 
-impl<'vec, T: Copy + 'static> SpaceAllocator<'vec> for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceAllocatorImpl<'vec> for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let end = self.allocated_length.checked_add(size)?;
         let result = VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.allocated_length..end);

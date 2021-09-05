@@ -89,7 +89,7 @@ impl<'handle, 'space> TupleWriter<'handle, 'space> {
         child_urid: URID<A>,
         child_parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
-        space::init_atom(&mut self.frame, child_urid, child_parameter)
+        self.frame.init_atom(child_urid, child_parameter)
     }
 }
 
@@ -110,7 +110,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = crate::space::init_atom(&mut space, urids.tuple, ()).unwrap();
+            let mut writer = space.init_atom(urids.tuple, ()).unwrap();
             {
                 let mut vector_writer =
                     writer.init::<Vector<Int>>(urids.vector, urids.int).unwrap();
@@ -121,7 +121,7 @@ mod tests {
 
         // verifying
         {
-            let atom= unsafe { raw_space.to_atom() }.unwrap();
+            let atom = unsafe { raw_space.to_atom() }.unwrap();
             let header = atom.header();
             assert_eq!(header.urid(), urids.tuple);
             assert_eq!(
@@ -129,11 +129,15 @@ mod tests {
                 size_of::<sys::LV2_Atom_Vector>()
                     + size_of::<i32>() * 9
                     + 4
-                    + size_of::<sys::LV2_Atom>() + size_of::<i32>()
+                    + size_of::<sys::LV2_Atom>()
+                    + size_of::<i32>()
             );
 
-            let (vector, remaining) =
-                unsafe { atom.body().split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }.unwrap();
+            let (vector, remaining) = unsafe {
+                atom.body()
+                    .split_for_value_as_unchecked::<sys::LV2_Atom_Vector>()
+            }
+            .unwrap();
             assert_eq!(vector.atom.type_, urids.vector);
             assert_eq!(
                 vector.atom.size as usize,
@@ -143,10 +147,12 @@ mod tests {
             assert_eq!(vector.body.child_type, urids.int);
 
             let (vector_items, space) = remaining.split_at(size_of::<i32>() * 9).unwrap();
-            let vector_items = unsafe { vector_items.aligned::<i32>().unwrap().assume_init_slice() };
+            let vector_items =
+                unsafe { vector_items.aligned::<i32>().unwrap().assume_init_slice() };
             assert_eq!(vector_items, &[17; 9]);
 
-            let int: &sys::LV2_Atom_Int = unsafe { space.aligned().unwrap().assume_init_value_unchecked() };
+            let int: &sys::LV2_Atom_Int =
+                unsafe { space.aligned().unwrap().assume_init_value_unchecked() };
             assert_eq!(int.atom.type_, urids.int);
             assert_eq!(int.atom.size as usize, size_of::<i32>());
             assert_eq!(int.body, 42);

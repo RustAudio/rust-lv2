@@ -34,8 +34,8 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for WMidiEvent {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         message: wmidi::MidiMessage,
     ) -> Option<()> {
-        let space: &mut Space<u8> = lv2_atom::space::allocate(&mut frame, message.bytes_size())?;
-        message.copy_to_slice(space.as_bytes_mut()).ok()?;
+        let space = frame.allocate(message.bytes_size())?;
+        message.copy_to_slice(space).ok()?;
 
         Some(())
     }
@@ -81,7 +81,7 @@ pub struct Writer<'handle, 'space> {
 impl<'handle, 'space> Writer<'handle, 'space> {
     #[inline]
     pub fn write_raw(&mut self, data: &[u8]) -> Option<&mut [u8]> {
-        lv2_atom::space::write_bytes(&mut self.frame, data)
+        self.frame.write_bytes(data)
     }
 
     #[inline]
@@ -89,7 +89,7 @@ impl<'handle, 'space> Writer<'handle, 'space> {
     where
         T: Copy + Sized + 'static,
     {
-        lv2_atom::space::write_value(&mut self.frame, instance)
+        self.frame.write_value(instance)
     }
 }
 
@@ -119,7 +119,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            lv2_atom::space::init_atom(&mut space, urid, reference_message.clone()).unwrap();
+            space.init_atom(urid, reference_message.clone()).unwrap();
         }
 
         // verifying
@@ -135,7 +135,9 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { UnidentifiedAtom::from_space(&raw_space) }.unwrap().body();
+            let space = unsafe { UnidentifiedAtom::from_space(&raw_space) }
+                .unwrap()
+                .body();
 
             let message = unsafe { WMidiEvent::read(space, ()) }.unwrap();
             assert_eq!(message, reference_message);
@@ -152,7 +154,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = lv2_atom::space::init_atom(&mut space, urid, ()).unwrap();
+            let mut writer = space.init_atom(urid, ()).unwrap();
             writer.write_raw(&[1, 2, 3, 4]);
         }
 

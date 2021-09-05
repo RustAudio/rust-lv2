@@ -23,13 +23,13 @@
 //!     ports.output.init(urids.int, 42).unwrap();
 //! }
 //! ```
+use crate::header::AtomHeader;
 use crate::space::*;
+use crate::UnidentifiedAtom;
 use lv2_core::port::PortType;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use urid::URID;
-use crate::UnidentifiedAtom;
-use crate::header::AtomHeader;
 
 /// A handle to read atoms from a port.
 ///
@@ -94,7 +94,7 @@ impl<'a> PortWriter<'a> {
             let space: &'write mut SpaceCursor<'write> = unsafe {
                 ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
             };
-            crate::space::init_atom(space, urid, parameter)
+            space.init_atom(urid, parameter)
         } else {
             None
         }
@@ -144,7 +144,7 @@ mod tests {
         // writing a chunk to indicate the size of the space.
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = crate::space::init_atom(&mut space, urids.chunk, ()).unwrap();
+            let mut writer = space.init_atom(urids.chunk, ()).unwrap();
             writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 
