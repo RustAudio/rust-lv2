@@ -56,7 +56,8 @@ where
     type WriteHandle = VectorWriter<'handle, 'space, C>;
 
     unsafe fn read(body: &'space Space, child_urid: URID<C>) -> Option<&'space [C::InternalType]> {
-        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Vector_Body>()?;
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
 
         if header.child_type != child_urid
             || header.child_size as usize != size_of::<C::InternalType>()
@@ -65,7 +66,7 @@ where
         }
 
         // SAFETY: We can assume this data was properly initialized by the host.
-        Some(body.aligned()?.assume_init_slice())
+        reader.as_slice()
     }
 
     fn init(
@@ -118,9 +119,9 @@ impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
 #[cfg(test)]
 mod tests {
     use crate::space::*;
+    use crate::AtomHeader;
     use std::mem::size_of;
     use urid::*;
-    use crate::AtomHeader;
 
     #[test]
     fn test_vector() {
@@ -142,9 +143,8 @@ mod tests {
 
         // verifying
         {
-            let (vector, children) =
-                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Vector>() }
-                    .unwrap();
+            let mut reader = raw_space.read();
+            let vector: &sys::LV2_Atom_Vector = unsafe { reader.next_value() }.unwrap();
             assert_eq!(vector.atom.type_, urids.vector.get());
             assert_eq!(
                 vector.atom.size as usize,
@@ -153,9 +153,7 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int.get());
 
-            let children = unsafe {
-                std::slice::from_raw_parts(children.as_bytes().as_ptr() as *const i32, CHILD_COUNT)
-            };
+            let children = unsafe { reader.next_slice::<i32>(CHILD_COUNT) }.unwrap();
             for value in &children[0..children.len() - 1] {
                 assert_eq!(*value, 42);
             }
@@ -164,7 +162,7 @@ mod tests {
 
         // reading
         {
-            let atom = unsafe { raw_space.to_atom() }.unwrap();
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
             let children: &[i32] = atom.read(urids.vector, urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);

@@ -3,6 +3,7 @@
 mod allocatable;
 mod atom_writer;
 mod cursor;
+pub mod reader;
 mod space;
 mod vec;
 

@@ -1,10 +1,10 @@
 use crate::header::AtomHeader;
-use crate::UnidentifiedAtom;
+use crate::space::reader::SpaceReader;
+use crate::space::SpaceCursor;
 use core::mem::{align_of, size_of};
 use std::marker::PhantomData;
 use std::mem::{size_of_val, MaybeUninit};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
-use urid::URID;
 
 /// An aligned slice of bytes that is designed to contain a given type `T` (by default, Atoms).
 ///
@@ -22,7 +22,7 @@ pub type AtomSpace = Space<AtomHeader>;
 impl<T: 'static> Space<T> {
     /// Creates an empty Space.
     #[inline]
-    fn empty() -> &'static Space<T> {
+    pub fn empty<'a>() -> &'a Space<T> {
         // SAFETY: empty slices are always aligned
         unsafe { Self::from_bytes_unchecked(&[]) }
     }
@@ -170,33 +170,9 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub fn split_at(&self, mid: usize) -> Option<(&Self, &Self)> {
         let (start, end) = self.split_bytes_at(mid)?;
-        let end = Self::try_align_from_bytes(end).unwrap_or(Space::empty());
+        let end = Self::try_align_from_bytes(end).unwrap_or_else(Space::empty);
 
         Some((start, end))
-    }
-
-    #[inline]
-    fn split_for_value(&self) -> Option<(&MaybeUninit<T>, &Self)> {
-        let (value, rest) = self.split_at(size_of::<T>())?;
-        let value = value.as_uninit()?;
-
-        Some((value, rest))
-    }
-
-    #[inline]
-    // FIXME: rename this
-    pub unsafe fn split_for_value_unchecked(&self) -> Option<(&T, &Self)> {
-        let (value, rest) = self.split_for_value()?;
-
-        Some((&*(value.as_ptr() as *const T), rest))
-    }
-
-    #[inline]
-    // FIXME: rename this
-    pub unsafe fn split_for_value_as_unchecked<U: 'static>(&self) -> Option<(&U, &Self)> {
-        let (value, rest) = self.realign()?.split_for_value_unchecked()?;
-
-        Some((value, rest.realign().unwrap_or(Self::empty())))
     }
 
     #[inline]
@@ -240,6 +216,11 @@ impl<T: 'static> Space<T> {
         self.data.len()
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Return the internal slice of the space.
     #[inline]
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
@@ -249,36 +230,25 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub(crate) unsafe fn assume_init_value(&self) -> Option<&T> {
         // SAFETY: The caller has to ensure this slice actually points to initialized memory.
-        Some(&*(self.as_uninit()?.as_ptr()))
-    }
-
-    #[inline]
-    pub(crate) unsafe fn assume_init_value_unchecked(&self) -> &T {
-        // SAFETY: The caller has to ensure this slice actually points to initialized memory.
-        &*(self.as_uninit_unchecked().as_ptr())
+        Some(crate::util::assume_init_ref(self.as_uninit()?))
     }
 
     #[inline]
     pub(crate) unsafe fn assume_init_value_mut(&mut self) -> Option<&mut T> {
         // SAFETY: The caller has to ensure this slice actually points to initialized memory.
-        Some(&mut *(self.as_uninit_mut()?.as_mut_ptr()))
-    }
-
-    #[inline]
-    pub unsafe fn read_as_unchecked<U: 'static>(&self) -> Option<&U> {
-        self.aligned()?.assume_init_value()
+        Some(crate::util::assume_init_mut(self.as_uninit_mut()?))
     }
 
     /// Gets a `T`-aligned pointer to the contents.
     ///split_for_type
     /// This methods returns [`None`](Option::None) if the space is not large enough for a value of type `T`.
     #[inline]
-    fn as_uninit(&self) -> Option<&MaybeUninit<T>> {
+    pub fn as_uninit(&self) -> Option<&MaybeUninit<T>> {
         if self.data.len() < size_of::<T>() {
             return None;
         }
 
-        // SAFETY: We just checked that the space was actually big enough.
+        // SAFETY: We just checked that the space was actually big enough, and the alignment is guaranteed by this type.
         Some(unsafe { self.as_uninit_unchecked() })
     }
 
@@ -291,7 +261,7 @@ impl<T: 'static> Space<T> {
             return None;
         }
 
-        // SAFETY: We just checked that the space was actually big enough.
+        // SAFETY: We just checked that the space was actually big enough, and the alignment is guaranteed by this type.
         Some(unsafe { self.as_uninit_mut_unchecked() })
     }
 
@@ -326,8 +296,7 @@ impl<T: 'static> Space<T> {
 
     #[inline]
     pub unsafe fn assume_init_slice(&self) -> &[T] {
-        let data = self.as_uninit_slice();
-        &*(data as *const _ as *const [T])
+        crate::util::assume_init_slice(self.as_uninit_slice())
     }
 
     /// Gets the contents as a slice of potentially uninitialized `T`s.
@@ -345,83 +314,23 @@ impl<T: 'static> Space<T> {
         }
     }
 
-    pub fn write(&mut self, value: T) -> Option<&mut T> {
-        let uninit = self.as_uninit_mut()?;
-        *uninit = MaybeUninit::new(value);
-        // SAFETY: We just initialized this value.
-        Some(unsafe { &mut *(uninit.as_mut_ptr()) })
-    }
-}
-
-impl AtomSpace {
-    /// Create a new space from an atom pointer.
-    ///
-    /// The method creates a space that contains the atom as well as its body.
-    ///
-    /// # Safety
-    ///
-    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub unsafe fn from_atom(atom: &sys::LV2_Atom) -> &Self {
-        let data = std::slice::from_raw_parts(
-            atom as *const sys::LV2_Atom as *const u8,
-            atom.size as usize + size_of::<sys::LV2_Atom>(),
-        );
-
-        Self::from_bytes_unchecked(data)
-    }
-
-    /// Create a new mutable space from an atom pointer.
-    ///
-    /// The method creates a space that contains the atom as well as its body.
-    ///
-    /// # Safety
-    ///
-    /// Since the body is not included in the atom reference, this method has to assume that it is valid memory and therefore is unsafe but sound.
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub unsafe fn from_atom_mut(atom: &mut sys::LV2_Atom) -> &mut Self {
-        let data = std::slice::from_raw_parts_mut(
-            atom as *mut sys::LV2_Atom as *mut u8,
-            atom.size as usize + size_of::<sys::LV2_Atom>(),
-        );
-
-        Self::from_bytes_mut_unchecked(data)
+    #[inline]
+    pub fn read(&self) -> SpaceReader<T> {
+        SpaceReader::new(self)
     }
 
     #[inline]
-    pub unsafe fn to_atom(&self) -> Option<&UnidentifiedAtom> {
-        UnidentifiedAtom::from_space(self)
-    }
-
-    #[inline]
-    pub unsafe fn split_atom(&self) -> Option<(&UnidentifiedAtom, &Self)> {
-        let header = self.assume_init_value()?;
-        let (atom, rest) = self.split_at(header.size_of_atom())?;
-        let atom = UnidentifiedAtom::from_space_unchecked(atom);
-
-        Some((atom, rest))
-    }
-
-    #[inline]
-    pub unsafe fn split_atom_body<T>(&self, urid: URID<T>) -> Option<(&Space, &Space)> {
-        let (header, body) = self.split_for_value()?;
-        // SAFETY: The caller is responsible for ensuring there is a valid atom header in there.
-        let header = &*header.as_ptr();
-
-        if header.urid() != urid {
-            return None;
-        }
-
-        body.split_at(header.size_of_body())
+    pub fn write(&mut self) -> SpaceCursor {
+        SpaceCursor::new(self.as_bytes_mut())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::space::*;
+    use crate::AtomHeader;
     use std::mem::{size_of, size_of_val};
     use urid::*;
-    use crate::AtomHeader;
 
     #[test]
     fn test_space() {
@@ -464,7 +373,7 @@ mod tests {
                 body: 42,
             };
 
-            let (atom, _) = space.split_atom().unwrap();
+            let atom = space.read().next_atom().unwrap();
             let body = atom.body().as_bytes();
 
             assert_eq!(size_of::<i32>(), size_of_val(body));
@@ -490,7 +399,11 @@ mod tests {
         assert_eq!(written_atom.type_, test_atom.type_);
         let written_atom_addr = written_atom as *mut _ as *mut _;
 
-        let created_space = unsafe { Space::from_atom_mut(written_atom) };
+        let created_space = unsafe {
+            AtomHeader::from_raw(written_atom)
+                .assume_full_atom()
+                .atom_space()
+        };
 
         assert!(::core::ptr::eq(
             written_atom_addr,

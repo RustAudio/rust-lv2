@@ -4,11 +4,11 @@ extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
 use atom::prelude::*;
+use atom::AtomHeader;
 use core::prelude::*;
 use lv2_urid::*;
 use units::prelude::*;
 use urid::*;
-use atom::AtomHeader;
 
 #[derive(PortCollection)]
 struct Ports {
@@ -104,11 +104,12 @@ fn main() {
     let input_atom_space = input_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
-        let mut writer = space.init_atom(
-            urids.atom.sequence,
-            TimeStampURID::Frames(urids.units.frame),
-        )
-        .unwrap();
+        let mut writer = space
+            .init_atom(
+                urids.atom.sequence,
+                TimeStampURID::Frames(urids.units.frame),
+            )
+            .unwrap();
         {
             let _ = writer
                 .init(TimeStamp::Frames(0), urids.atom.int, 42)
@@ -127,7 +128,8 @@ fn main() {
     let output_atom_space = output_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
-        space.init_atom(urids.atom.chunk, ())
+        space
+            .init_atom(urids.atom.chunk, ())
             .unwrap()
             .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
@@ -171,8 +173,12 @@ fn main() {
     }
 
     // Asserting the result
-    let (sequence, _) = unsafe { output_atom_space.split_atom_body(urids.atom.sequence) }.unwrap();
-    for (stamp, atom) in unsafe { Sequence::read(sequence, urids.units.beat) }.unwrap() {
+    let sequence = unsafe { output_atom_space.read().next_atom() }
+        .unwrap()
+        .read(urids.atom.sequence, urids.units.beat)
+        .unwrap();
+
+    for (stamp, atom) in sequence {
         let stamp = stamp.as_frames().unwrap();
         match stamp {
             0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),

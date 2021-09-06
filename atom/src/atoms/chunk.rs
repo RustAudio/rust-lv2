@@ -59,7 +59,6 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
 mod tests {
     use crate::atoms::chunk::*;
     use crate::*;
-    use std::mem::size_of;
 
     #[test]
     fn test_chunk_and_slice_writer() {
@@ -86,23 +85,20 @@ mod tests {
 
         // verifying
         {
-            let (atom, data) = raw_space.split_at(size_of::<sys::LV2_Atom>()).unwrap();
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
+            assert_eq!(atom.header().size_of_body(), SLICE_LENGTH);
+            assert_eq!(atom.header().urid(), urids.chunk.get());
 
-            let atom = unsafe { &*(atom.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(atom.size as usize, SLICE_LENGTH);
-            assert_eq!(atom.type_, urids.chunk.get());
-
-            let data = data.split_at(SLICE_LENGTH).unwrap().0.as_bytes();
-            for i in 0..SLICE_LENGTH {
-                assert_eq!(data[i] as usize, i);
+            let data = atom.body().as_bytes();
+            for (i, value) in data.iter().enumerate() {
+                assert_eq!(*value as usize, i);
             }
         }
 
         // reading
         {
             let data =
-                unsafe { Chunk::read(raw_space.split_atom_body(urids.chunk).unwrap().0, ()) }
-                    .unwrap();
+                unsafe { Chunk::read(raw_space.read().next_atom().unwrap().body(), ()) }.unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.iter().enumerate() {

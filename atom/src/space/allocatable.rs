@@ -5,12 +5,6 @@ use urid::URID;
 use core::mem::size_of_val;
 use std::mem::MaybeUninit;
 
-// This function is separate to ensure proper lifetimes
-unsafe fn assume_init_mut<T>(s: &mut MaybeUninit<T>) -> &mut T {
-    // SAFETY: the caller must guarantee that `self` is initialized.
-    &mut *s.as_mut_ptr()
-}
-
 /// A smart pointer that writes atom data to an internal slice.
 ///
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
@@ -40,7 +34,18 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 
     #[inline]
-    fn allocate_aligned<'handle, T: 'static>(&'handle mut self, size: usize) -> Option<&'handle mut Space<T>>
+    fn allocate_padding_for<T: 'static>(&mut self) -> Option<()> {
+        let required_padding = Space::<T>::padding_for(self.remaining_bytes());
+        self.allocate(required_padding)?;
+
+        Some(())
+    }
+
+    #[inline]
+    fn allocate_aligned<'handle, T: 'static>(
+        &'handle mut self,
+        size: usize,
+    ) -> Option<&'handle mut Space<T>>
     where
         'space: 'handle,
     {
@@ -113,7 +118,7 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
         *space = MaybeUninit::new(value);
 
         // SAFETY: the MaybeUninit has now been properly initialized.
-        Some(unsafe { assume_init_mut(space) })
+        Some(unsafe { crate::util::assume_init_mut(space) })
     }
 
     fn write_values<'handle, T>(&'handle mut self, values: &[T]) -> Option<&'handle mut [T]>
@@ -133,15 +138,15 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 }
 
-impl<'space, H: SpaceAllocatorImpl<'space>> SpaceAllocator<'space> for H { }
+impl<'space, H: SpaceAllocatorImpl<'space>> SpaceAllocator<'space> for H {}
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::{Int, SpaceAllocator};
     use crate::space::cursor::SpaceCursor;
     use crate::space::{SpaceAllocatorImpl, VecSpace};
-    use urid::URID;
     use crate::AtomHeader;
+    use urid::URID;
 
     const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
 
@@ -158,13 +163,13 @@ mod tests {
 
         {
             cursor.init_atom(INT_URID, 69).unwrap();
-            assert_eq!(12, cursor.remaining_bytes().len());
+            assert_eq!(8, cursor.remaining_bytes().len());
         }
 
         assert_eq!(
             space.as_bytes(),
             [
-                42, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                42, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 5, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0,
             ]
         );

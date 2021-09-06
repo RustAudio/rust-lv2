@@ -114,14 +114,14 @@ impl PortType for AtomPort {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
-        let header: &'static AtomHeader = AtomHeader::from_raw(&*pointer.cast().as_ptr());
-        PortReader::new(UnidentifiedAtom::from_header(header))
+        let header = AtomHeader::from_raw(pointer.cast().as_ref());
+        PortReader::new(header.assume_full_atom())
     }
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
-        let space = Space::from_atom_mut(&mut *pointer.cast().as_ptr());
-        PortWriter::new(space)
+        let header = AtomHeader::from_raw_mut(pointer.cast().as_mut());
+        PortWriter::new(header.assume_full_atom_mut().body_mut())
     }
 }
 
@@ -129,11 +129,11 @@ impl PortType for AtomPort {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use crate::AtomHeader;
     use lv2_core::prelude::*;
     use std::mem::size_of;
     use std::ptr::NonNull;
     use urid::*;
-    use crate::AtomHeader;
 
     #[test]
     fn test_atom_port() {

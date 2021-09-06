@@ -48,7 +48,7 @@ pub trait ScalarAtom: UriBound {
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
     #[inline]
     unsafe fn read_scalar(body: &Space) -> Option<Self::InternalType> {
-        body.read_as_unchecked().copied()
+        body.read().next_value().copied()
     }
 
     /// Try to write the atom into a space.
@@ -59,8 +59,9 @@ pub trait ScalarAtom: UriBound {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         value: Self::InternalType,
     ) -> Option<()> {
-        // TODO: decide if just the value has to be written, or if the whole atom type has to be written
         frame.write_value(value)?;
+        // Scalars have extra padding due to repr(C)
+        frame.allocate_padding_for::<AtomHeader>();
         Some(())
     }
 }
@@ -160,10 +161,9 @@ mod tests {
     use crate::atoms::scalar::ScalarAtom;
     use crate::prelude::*;
     use crate::space::*;
-    use std::convert::TryFrom;
-    use std::mem::size_of;
-    use urid::*;
     use crate::AtomHeader;
+    use std::convert::TryFrom;
+    use urid::*;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
     where
@@ -191,20 +191,22 @@ mod tests {
                 body: B,
             }
 
-            let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>()).unwrap();
+            let scalar: &Scalar<A::InternalType> =
+                unsafe { raw_space.read().next_value().unwrap() };
 
-            let scalar = unsafe { &*(scalar.as_ptr() as *const Scalar<A::InternalType>) };
             assert_eq!(scalar.atom.type_, urid);
-            assert_eq!(scalar.atom.size as usize, size_of::<A::InternalType>());
+            assert_eq!(scalar.atom.size as usize, 8); // All are always aligned and padded
             assert_eq!(scalar.body, value);
         }
 
         // reading
         {
-            let (body, _) = unsafe { raw_space.split_atom_body(urid) }.unwrap();
-            unsafe {
-                assert_eq!(A::read(body, ()).unwrap(), value);
-            }
+            let read_value = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urid, ())
+                .unwrap();
+
+            assert_eq!(read_value, value);
         }
     }
 

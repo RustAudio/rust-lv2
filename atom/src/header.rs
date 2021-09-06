@@ -1,3 +1,4 @@
+use crate::UnidentifiedAtom;
 use urid::URID;
 
 #[repr(C, align(8))]
@@ -24,6 +25,22 @@ impl AtomHeader {
     }
 
     #[inline]
+    pub(crate) fn from_raw_mut(raw: &mut lv2_sys::LV2_Atom) -> &mut Self {
+        // SAFETY: AtomHeader is repr(C) and has LV2_Atom as its only field, so transmuting between the two is safe.
+        unsafe { &mut *(raw as *mut lv2_sys::LV2_Atom as *mut _) }
+    }
+
+    #[inline]
+    pub unsafe fn assume_full_atom(&self) -> &UnidentifiedAtom {
+        UnidentifiedAtom::from_header(self)
+    }
+
+    #[inline]
+    pub unsafe fn assume_full_atom_mut(&mut self) -> &mut UnidentifiedAtom {
+        UnidentifiedAtom::from_header_mut(self)
+    }
+
+    #[inline]
     pub(crate) unsafe fn set_size_of_body(&mut self, size: usize) {
         self.inner.size = size as u32;
     }
@@ -39,7 +56,7 @@ impl AtomHeader {
     }
 
     #[inline]
-    pub fn urid(self) -> u32 {
-        self.inner.type_
+    pub fn urid(self) -> URID {
+        URID::new(self.inner.type_).unwrap()
     }
 }
