@@ -54,7 +54,9 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
     type WriteHandle = StringWriter<'handle, 'space>;
 
     unsafe fn read(body: &'handle Space, _: ()) -> Option<(LiteralInfo, &'handle str)> {
-        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Literal_Body>()?;
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
+
         let info = if header.lang != 0 && header.datatype == 0 {
             LiteralInfo::Language(URID::new(header.lang)?)
         } else if header.lang == 0 && header.datatype != 0 {
@@ -62,7 +64,9 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
         } else {
             return None;
         };
-        let data = body.as_bytes();
+
+        let data = reader.into_remaining().as_bytes();
+
         std::str::from_utf8(&data[0..data.len() - 1])
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
             .ok()
@@ -73,18 +77,16 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
         mut frame: AtomSpaceWriter<'handle, 'space>,
         info: LiteralInfo,
     ) -> Option<StringWriter<'handle, 'space>> {
-        frame.write_value(
-            match info {
-                LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
-                    lang: lang.get(),
-                    datatype: 0,
-                },
-                LiteralInfo::Datatype(datatype) => sys::LV2_Atom_Literal_Body {
-                    lang: 0,
-                    datatype: datatype.get(),
-                },
+        frame.write_value(match info {
+            LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
+                lang: lang.get(),
+                datatype: 0,
             },
-        )?;
+            LiteralInfo::Datatype(datatype) => sys::LV2_Atom_Literal_Body {
+                lang: 0,
+                datatype: datatype.get(),
+            },
+        })?;
         Some(StringWriter {
             frame,
             has_nul_byte: false,
@@ -161,10 +163,10 @@ impl<'handle, 'space> StringWriter<'handle, 'space> {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use crate::AtomHeader;
     use std::ffi::CStr;
     use std::mem::{size_of, size_of_val};
     use urid::*;
-    use crate::AtomHeader;
 
     struct German;
     unsafe impl UriBound for German {
@@ -192,20 +194,20 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
-            let mut writer = space.init_atom(
-                urids.atom.literal,
-                LiteralInfo::Language(urids.german.into_general()),
-            )
-            .unwrap();
+            let mut writer = space
+                .init_atom(
+                    urids.atom.literal,
+                    LiteralInfo::Language(urids.german.into_general()),
+                )
+                .unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
 
         // verifying
         {
-            let (literal, space) =
-                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Literal>() }
-                    .unwrap();
+            let mut reader = raw_space.read();
+            let literal: &sys::LV2_Atom_Literal = unsafe { reader.next_value() }.unwrap();
 
             assert_eq!(literal.atom.type_, urids.atom.literal.get());
             assert_eq!(
@@ -219,7 +221,7 @@ mod tests {
             assert_eq!(literal.body.datatype, 0);
 
             let size = literal.atom.size as usize - size_of::<sys::LV2_Atom_Literal_Body>();
-            let string = CStr::from_bytes_with_nul(space.split_at(size).unwrap().0.as_bytes())
+            let string = CStr::from_bytes_with_nul(reader.next_bytes(size).unwrap())
                 .unwrap()
                 .to_str()
                 .unwrap();
@@ -228,8 +230,14 @@ mod tests {
 
         // reading
         {
-            let (body, _) = unsafe { raw_space.split_atom_body(urids.atom.literal) }.unwrap();
-            let (info, text) = unsafe { Literal::read(body, ()) }.unwrap();
+            let (info, text) = unsafe {
+                raw_space
+                    .read()
+                    .next_atom()
+                    .unwrap()
+                    .read(urids.atom.literal, ())
+            }
+            .unwrap();
 
             assert_eq!(info, LiteralInfo::Language(urids.german.into_general()));
             assert_eq!(text, SAMPLE0.to_owned() + SAMPLE1);
@@ -255,27 +263,22 @@ mod tests {
 
         // verifying
         {
-            let (string, space) =
-                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_String>() }
-                    .unwrap();
+            let mut reader = raw_space.read();
+            let string: &sys::LV2_Atom_String = unsafe { reader.next_value() }.unwrap();
             assert_eq!(string.atom.type_, urids.string);
             assert_eq!(string.atom.size as usize, SAMPLE0.len() + SAMPLE1.len() + 1);
 
-            let string = std::str::from_utf8(
-                space
-                    .split_at(string.atom.size as usize)
-                    .unwrap()
-                    .0
-                    .as_bytes(),
-            )
-            .unwrap();
+            let string =
+                std::str::from_utf8(reader.next_bytes(string.atom.size as usize).unwrap()).unwrap();
             assert_eq!(string[..string.len() - 1], SAMPLE0.to_owned() + SAMPLE1);
         }
 
         // reading
         {
-            let (body, _) = unsafe { raw_space.split_atom_body(urids.string) }.unwrap();
-            let string = unsafe { String::read(body, ()) }.unwrap();
+            let string = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urids.string, ())
+                .unwrap();
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);
         }
     }

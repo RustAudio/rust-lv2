@@ -54,12 +54,12 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space = space.as_space();
-        let atom = unsafe { space.to_atom() }.ok_or(StateErr::BadData)?;
+        let atom = unsafe { space.read().next_atom() }.ok_or(StateErr::BadData)?;
 
         let key = key.get();
         let data_ptr = atom.body().as_ptr() as *const c_void;
         let data_size = atom.header().size_of_body();
-        let data_type = atom.header().urid();
+        let data_type = atom.header().urid().get();
         let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
             | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
             .into();
@@ -123,7 +123,9 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<A::WriteHandle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            self.cursor.init_atom(urid, parameter).ok_or(StateErr::Unknown)
+            self.cursor
+                .init_atom(urid, parameter)
+                .ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }

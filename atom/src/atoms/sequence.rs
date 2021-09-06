@@ -65,6 +65,7 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
+use crate::space::reader::AtomSpaceReader;
 use crate::*;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
@@ -93,13 +94,16 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
     type WriteHandle = SequenceWriter<'handle, 'space>;
 
     unsafe fn read(body: &Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
-        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence_Body>()?;
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
+
         let unit = if header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
         } else {
             TimeStampUnit::Frames
         };
-        Some(SequenceIterator { space: body, unit })
+
+        Some(SequenceIterator { reader, unit })
     }
 
     fn init(
@@ -171,7 +175,7 @@ impl TimeStamp {
 
 /// An iterator over all events in a sequence.
 pub struct SequenceIterator<'a> {
-    space: &'a Space,
+    reader: AtomSpaceReader<'a>,
     unit: TimeStampUnit,
 }
 
@@ -185,18 +189,24 @@ impl<'a> Iterator for SequenceIterator<'a> {
     type Item = (TimeStamp, &'a UnidentifiedAtom);
 
     fn next(&mut self) -> Option<(TimeStamp, &'a UnidentifiedAtom)> {
-        // SAFETY: The validity of the space's contents is guaranteed by this type.
-        let (raw_stamp, space) =
-            unsafe { self.space.split_for_value_as_unchecked::<RawTimeStamp>() }?;
-        let stamp = match self.unit {
-            TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
-            TimeStampUnit::BeatsPerMinute => unsafe { TimeStamp::BeatsPerMinute(raw_stamp.beats) },
-        };
+        let unit = self.unit;
 
-        // SAFETY: The validity of the space's contents is guaranteed by this type.
-        let (atom, space) = unsafe { space.split_atom() }?;
-        self.space = space;
-        Some((stamp, atom))
+        self.reader.try_read(|reader| {
+            // SAFETY: The validity of the space's contents is guaranteed by this type.
+            let raw_stamp: &RawTimeStamp = unsafe { reader.next_value()? };
+
+            let stamp = match unit {
+                TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
+                TimeStampUnit::BeatsPerMinute => unsafe {
+                    TimeStamp::BeatsPerMinute(raw_stamp.beats)
+                },
+            };
+
+            // SAFETY: The validity of the space's contents is guaranteed by this type.
+            let atom = unsafe { reader.next_atom()? };
+
+            Some((stamp, atom))
+        })
     }
 }
 
@@ -291,7 +301,12 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.atom.sequence,TimeStampURID::Frames(urids.units.frame)).unwrap();
+            let mut writer = space
+                .init_atom(
+                    urids.atom.sequence,
+                    TimeStampURID::Frames(urids.units.frame),
+                )
+                .unwrap();
 
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
@@ -305,9 +320,8 @@ mod tests {
         // verifying
 
         {
-            let (sequence, space) =
-                unsafe { raw_space.split_for_value_as_unchecked::<sys::LV2_Atom_Sequence>() }
-                    .unwrap();
+            let mut reader = raw_space.read();
+            let sequence: &sys::LV2_Atom_Sequence = unsafe { reader.next_value() }.unwrap();
             assert_eq!(sequence.atom.type_, urids.atom.sequence);
             assert_eq!(
                 sequence.atom.size as usize,
@@ -319,22 +333,18 @@ mod tests {
             );
             assert_eq!(sequence.body.unit, urids.units.frame);
 
-            let (stamp, space) =
-                unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            let stamp: &RawTimeStamp = unsafe { reader.next_value() }.unwrap();
             assert_eq!(unsafe { stamp.frames }, 0);
 
-            let (int, space) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let int: &sys::LV2_Atom_Int = unsafe { reader.next_value() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.int);
-            assert_eq!(int.atom.size as usize, size_of::<i32>());
+            assert_eq!(int.atom.size as usize, 2 * size_of::<i32>());
             assert_eq!(int.body, 42);
 
-            let (stamp, space) =
-                unsafe { space.split_for_value_as_unchecked::<RawTimeStamp>() }.unwrap();
+            let stamp: &RawTimeStamp = unsafe { reader.next_value() }.unwrap();
             assert_eq!(unsafe { stamp.frames }, 1);
 
-            let (int, _space) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Int>() }.unwrap();
+            let int: &sys::LV2_Atom_Int = unsafe { reader.next_value() }.unwrap();
             assert_eq!(int.atom.type_, urids.atom.long);
             assert_eq!(int.atom.size as usize, size_of::<i64>());
             assert_eq!(int.body, 17);
@@ -342,9 +352,10 @@ mod tests {
 
         // reading
         {
-            let body = unsafe { UnidentifiedAtom::from_space_unchecked(&raw_space) }.body();
-            let mut reader = unsafe { Sequence::read(body, urids.units.beat) }.unwrap();
-
+            let mut reader = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urids.atom.sequence, urids.units.beat)
+                .unwrap();
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 
             let (stamp, atom) = reader.next().unwrap();

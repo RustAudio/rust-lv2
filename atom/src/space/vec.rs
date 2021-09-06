@@ -4,15 +4,6 @@ use crate::space::{Space, SpaceAllocatorImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
-pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
-    let type_size = ::core::mem::size_of::<T>();
-    if type_size == 0 {
-        0
-    } else {
-        size / type_size + if size % type_size > 0 { 1 } else { 0 }
-    }
-}
-
 pub struct VecSpace<T> {
     inner: Vec<MaybeUninit<T>>,
 }
@@ -59,7 +50,7 @@ impl<T: Copy + 'static> VecSpace<T> {
         let max = byte_range.start.max(byte_range.end);
 
         if max > byte_len {
-            let new_size = byte_index_to_value_index::<T>(max);
+            let new_size = crate::util::byte_index_to_value_index::<T>(max);
             self.inner.resize(new_size, MaybeUninit::zeroed());
         }
 

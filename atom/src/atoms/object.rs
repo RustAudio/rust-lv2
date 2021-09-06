@@ -67,6 +67,7 @@
 //!
 //! # Specification
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
+use crate::space::reader::AtomSpaceReader;
 use crate::*;
 use std::convert::TryFrom;
 use std::iter::Iterator;
@@ -83,6 +84,7 @@ unsafe impl UriBound for Object {
 }
 
 /// Information about an object atom.
+#[derive(Copy, Clone)]
 pub struct ObjectHeader {
     /// The id of the object to distinguish different objects of the same type.
     ///
@@ -99,13 +101,15 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
     type WriteHandle = ObjectWriter<'handle, 'space>;
 
     unsafe fn read(body: &'handle Space, _: ()) -> Option<(ObjectHeader, ObjectReader<'handle>)> {
-        let (header, body) = body.split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()?;
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
+
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
             otype: URID::try_from(header.otype).ok()?,
         };
 
-        let reader = ObjectReader { space: body };
+        let reader = ObjectReader { reader };
 
         Some((header, reader))
     }
@@ -115,12 +119,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
         header: ObjectHeader,
     ) -> Option<ObjectWriter<'handle, 'space>> {
         {
-            frame.write_value(
-                sys::LV2_Atom_Object_Body {
-                    id: header.id.map(URID::get).unwrap_or(0),
-                    otype: header.otype.get(),
-                },
-            )?;
+            frame.write_value(sys::LV2_Atom_Object_Body {
+                id: header.id.map(URID::get).unwrap_or(0),
+                otype: header.otype.get(),
+            })?;
         }
         Some(ObjectWriter { frame })
     }
@@ -164,7 +166,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Blank {
 ///
 /// Each iteration item is the header of the property, as well as the space occupied by the value atom. You can use normal `read` methods on the returned space.
 pub struct ObjectReader<'a> {
-    space: &'a Space,
+    reader: AtomSpaceReader<'a>,
 }
 
 impl<'a> Iterator for ObjectReader<'a> {
@@ -172,10 +174,8 @@ impl<'a> Iterator for ObjectReader<'a> {
 
     fn next(&mut self) -> Option<(PropertyHeader, &'a UnidentifiedAtom)> {
         // SAFETY: The fact that this contains a valid property is guaranteed by this type.
-        let (header, atom, space) = unsafe { Property::read_body(self.space) }?;
-        self.space = space;
-        // SAFETY: The fact that this contains a valid atom header is guaranteed by this type.
-        Some((header, atom))
+        self.reader
+            .try_read(|reader| unsafe { Property::read_body(reader) })
     }
 }
 
@@ -255,16 +255,19 @@ impl Property {
     /// # Safety
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
-    unsafe fn read_body(space: &Space) -> Option<(PropertyHeader, &UnidentifiedAtom, &Space)> {
-        let (header, space) = space.split_for_value_as_unchecked::<StrippedPropertyHeader>()?;
+    unsafe fn read_body<'a>(
+        reader: &mut AtomSpaceReader<'a>,
+    ) -> Option<(PropertyHeader, &'a UnidentifiedAtom)> {
+        let header: &StrippedPropertyHeader = reader.next_value()?;
 
         let header = PropertyHeader {
             key: URID::try_from(header.key).ok()?,
             context: URID::try_from(header.context).ok(),
         };
 
-        let (atom, space) = space.split_atom()?;
-        Some((header, atom, space))
+        let atom = reader.next_atom()?;
+
+        Some((header, atom))
     }
 
     /// Write out the header of a property atom.
@@ -290,11 +293,12 @@ impl Property {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use crate::AtomHeader;
     use std::mem::size_of;
     use urid::*;
-    use crate::AtomHeader;
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn test_object() {
         let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
@@ -348,68 +352,67 @@ mod tests {
         // verifying
         {
             // Header
-            let (atom, _space) = unsafe { raw_space.split_atom() }.unwrap();
-            let header = atom.header();
-            assert_eq!(header.urid(), urids.object);
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
+
+            assert_eq!(atom.header().urid(), urids.object);
             assert_eq!(
-                header.size_of_body(),
+                atom.header().size_of_body(),
                 size_of::<sys::LV2_Atom_Object_Body>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
                     + 2 * size_of::<i32>()
                     + size_of::<sys::LV2_Atom_Property_Body>()
-                    + size_of::<f32>()
+                    + 2 * size_of::<f32>()
             );
 
             // Object.
-            let (object, space) = unsafe {
-                atom.body()
-                    .split_for_value_as_unchecked::<sys::LV2_Atom_Object_Body>()
-            }
-            .unwrap();
+            let mut object_reader = atom.body().read();
+            let object: &sys::LV2_Atom_Object_Body = unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(object.id, 0);
             assert_eq!(object.otype, object_type);
 
             // First property.
-            let (property, space) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }
-                    .unwrap();
+            let property: &sys::LV2_Atom_Property_Body =
+                unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(property.key, first_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.int);
-            assert_eq!(property.value.size as usize, size_of::<i32>());
+            assert_eq!(property.value.size as usize, 2 * size_of::<i32>());
 
-            let (value, space) = unsafe { space.split_for_value_as_unchecked::<i32>() }.unwrap();
+            let value: &i32 = unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(*value, first_value);
 
             // Second property.
-            let (property, space) =
-                unsafe { space.split_for_value_as_unchecked::<sys::LV2_Atom_Property_Body>() }
-                    .unwrap();
+            let property: &sys::LV2_Atom_Property_Body =
+                unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(property.key, second_key);
             assert_eq!(property.context, 0);
             assert_eq!(property.value.type_, urids.float);
-            assert_eq!(property.value.size as usize, size_of::<f32>());
+            assert_eq!(property.value.size as usize, 2 * size_of::<f32>());
 
-            let (value, space) = unsafe { space.split_for_value_as_unchecked::<f32>() }.unwrap();
+            let value: &f32 = unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(*value, second_value);
-            assert_eq!(space.len(), 0);
+            assert!(object_reader.into_remaining().is_empty());
         }
 
         // reading
         {
-            let (body, _) = unsafe { raw_space.split_atom_body(urids.object) }.unwrap();
+            let (header, iter) = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urids.object, ())
+                .unwrap();
 
-            let (header, iter) = unsafe { Object::read(body, ()) }.unwrap();
             assert_eq!(header.otype, object_type);
             assert_eq!(header.id, None);
 
             let properties: Vec<(PropertyHeader, &UnidentifiedAtom)> = iter.collect();
+
             let (header, atom) = properties[0];
             assert_eq!(header.key, first_key);
-            assert_eq!(atom.read::<Int>(urids.int, ()).unwrap(), first_value);
+            assert_eq!(atom.read(urids.int, ()).unwrap(), first_value);
+
             let (header, atom) = properties[1];
             assert_eq!(header.key, second_key);
-            assert_eq!(atom.read::<Float>(urids.float, ()).unwrap(), second_value);
+            assert_eq!(atom.read(urids.float, ()).unwrap(), second_value);
         }
     }
 }

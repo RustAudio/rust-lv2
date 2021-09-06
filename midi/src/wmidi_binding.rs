@@ -103,7 +103,7 @@ impl<'handle, 'space> Drop for Writer<'handle, 'space> {
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
-    use lv2_atom::space::{VecSpace, SpaceCursor};
+    use lv2_atom::space::{SpaceCursor, VecSpace};
     use lv2_atom::AtomHeader;
     use std::convert::TryFrom;
     use wmidi::*;
@@ -163,7 +163,7 @@ mod tests {
 
         // verifying
         {
-            let atom = unsafe { raw_space.to_atom() }.unwrap();
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
 
             assert_eq!(atom.header().urid(), urid);
             assert_eq!(atom.header().size_of_body(), 6);
@@ -172,7 +172,7 @@ mod tests {
 
         // reading
         {
-            let atom = unsafe { raw_space.to_atom() }.unwrap();
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
             let message = atom.read(urid, ()).unwrap();
             assert_eq!(
                 message,
