@@ -48,7 +48,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
     type WriteParameter = ();
     type WriteHandle = TupleWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'space Space, _: ()) -> Option<TupleIterator<'space>> {
+    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<TupleIterator<'space>> {
         Some(TupleIterator {
             reader: body.read(),
         })

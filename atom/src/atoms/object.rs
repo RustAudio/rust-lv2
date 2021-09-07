@@ -100,7 +100,10 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
     type WriteParameter = ObjectHeader;
     type WriteHandle = ObjectWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'handle Space, _: ()) -> Option<(ObjectHeader, ObjectReader<'handle>)> {
+    unsafe fn read(
+        body: &'handle AtomSpace,
+        _: (),
+    ) -> Option<(ObjectHeader, ObjectReader<'handle>)> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
@@ -148,7 +151,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Blank {
     #[allow(clippy::unit_arg)]
     #[inline]
     unsafe fn read(
-        body: &'handle Space,
+        body: &'handle AtomSpace,
         parameter: Self::ReadParameter,
     ) -> Option<Self::ReadHandle> {
         Object::read(body, parameter)
@@ -391,7 +394,7 @@ mod tests {
 
             let value: &f32 = unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(*value, second_value);
-            assert!(object_reader.remaining_bytes().is_empty());
+            assert_eq!(object_reader.remaining_bytes().len(), 4);
         }
 
         // reading

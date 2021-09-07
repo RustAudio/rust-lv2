@@ -44,7 +44,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
     type WriteHandle = AtomSpaceWriter<'handle, 'space>;
 
     #[inline]
-    unsafe fn read(space: &'handle Space, _: ()) -> Option<&'handle AtomSpace> {
+    unsafe fn read(space: &'handle AtomSpace, _: ()) -> Option<&'handle AtomSpace> {
         Some(space)
     }
 

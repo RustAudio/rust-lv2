@@ -6,11 +6,16 @@ use std::marker::PhantomData;
 use std::mem::{size_of_val, MaybeUninit};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 
-/// An aligned slice of bytes that is designed to contain a given type `T` (by default, Atoms).
+/// An slice of bytes with the alignment of a type `T`.
 ///
-/// The accessor methods of this struct all behave in a similar way: If the internal slice is big enough, they create a reference to the start of the slice with the desired type and create a new space object that contains the space after the references instance.
+/// This type is a simple byte slice that guarantees its start is properly aligned for containing a type `T`.
+/// This buffer can be split and realigned, effectively allowing to read a stream of arbitrary types
+/// from a byte buffer, such as [`Atom`s](crate::atom::Atom).
+///
+/// Note that only the start of the slice is aligned, not the end. This allows having a buffer that
+/// is bigger than a multiple of `T`'s alignment.
 #[repr(transparent)]
-pub struct Space<T = AtomHeader> {
+pub struct Space<T> {
     _type: PhantomData<T>,
     // Note: this could be [MaybeUninit<T>] for alignment, but Spaces can have extra unaligned bytes at the end.
     data: [u8],
@@ -19,7 +24,16 @@ pub struct Space<T = AtomHeader> {
 pub type AtomSpace = Space<AtomHeader>;
 
 impl<T: 'static> Space<T> {
-    /// Creates an empty Space.
+    /// Creates a space from an empty slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::prelude::Space;
+    ///
+    /// let space = Space::<u32>::empty();
+    /// assert!(space.as_bytes().is_empty());
+    /// ```
     #[inline]
     pub fn empty<'a>() -> &'a Space<T> {
         // SAFETY: empty slices are always aligned

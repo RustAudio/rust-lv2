@@ -187,12 +187,12 @@ impl<'a> RetrieveHandle<'a> {
 /// This handle contains the type and the data of a property retrieved from the [`RetrieveHandle`](struct.RetrieveHandle.html).
 pub struct StatePropertyReader<'a> {
     type_: URID,
-    body: &'a Space,
+    body: &'a AtomSpace,
 }
 
 impl<'a> StatePropertyReader<'a> {
     /// Create a new reading handle with the given type and data.
-    pub fn new<T: ?Sized>(type_: URID<T>, body: &'a Space) -> Self {
+    pub fn new<T: ?Sized>(type_: URID<T>, body: &'a AtomSpace) -> Self {
         Self {
             type_: type_.into_general(),
             body,
@@ -205,7 +205,7 @@ impl<'a> StatePropertyReader<'a> {
     }
 
     /// Return the data of the property.
-    pub fn body(&self) -> &Space {
+    pub fn body(&self) -> &AtomSpace {
         self.body
     }
 
