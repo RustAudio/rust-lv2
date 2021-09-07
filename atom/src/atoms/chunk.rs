@@ -14,10 +14,10 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
-//!     let in_chunk: &[u8] = ports.input.read(urids.chunk, ()).unwrap();
+//!     let in_chunk: &AtomSpace = ports.input.read(urids.chunk, ()).unwrap();
 //!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk, ()).unwrap();
 //!
-//!     out_chunk.write_bytes(in_chunk).unwrap();
+//!     out_chunk.write_bytes(in_chunk.as_bytes()).unwrap();
 //! }
 //! ```
 //!
@@ -39,14 +39,16 @@ unsafe impl UriBound for Chunk {
 
 impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
     type ReadParameter = ();
-    type ReadHandle = &'handle [u8];
+    type ReadHandle = &'handle AtomSpace;
     type WriteParameter = ();
     type WriteHandle = AtomSpaceWriter<'handle, 'space>;
 
-    unsafe fn read(space: &'handle Space, _: ()) -> Option<&'handle [u8]> {
-        Some(space.as_bytes())
+    #[inline]
+    unsafe fn read(space: &'handle Space, _: ()) -> Option<&'handle AtomSpace> {
+        Some(space)
     }
 
+    #[inline]
     fn init(
         frame: AtomSpaceWriter<'handle, 'space>,
         _: (),
@@ -101,7 +103,7 @@ mod tests {
                 unsafe { Chunk::read(raw_space.read().next_atom().unwrap().body(), ()) }.unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
-            for (i, value) in data.iter().enumerate() {
+            for (i, value) in data.as_bytes().iter().enumerate() {
                 assert_eq!(*value as usize, i);
             }
         }

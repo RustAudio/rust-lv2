@@ -13,7 +13,6 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 pub struct Space<T = AtomHeader> {
     _type: PhantomData<T>,
     // Note: this could be [MaybeUninit<T>] for alignment, but Spaces can have extra unaligned bytes at the end.
-    // TODO: replace this with [MaybeUninit<u8>]
     data: [u8],
 }
 
