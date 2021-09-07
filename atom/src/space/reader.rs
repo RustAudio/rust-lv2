@@ -2,48 +2,50 @@ use crate::prelude::Space;
 use crate::{AtomHeader, UnidentifiedAtom};
 use std::mem::MaybeUninit;
 
-pub struct SpaceReader<'a, T> {
-    space: &'a Space<T>,
+pub struct SpaceReader<'a> {
+    space: &'a [u8],
 }
 
-impl<'a, T: 'static> SpaceReader<'a, T> {
+impl<'a> SpaceReader<'a> {
     #[inline]
-    pub fn new(space: &'a Space<T>) -> Self {
+    pub fn new(space: &'a [u8]) -> Self {
         SpaceReader { space }
     }
 
     #[inline]
-    fn next_uninit_value<U: 'static>(&mut self) -> Option<&'a MaybeUninit<U>> {
-        let space = self.space.realign()?;
-        let value_size = ::core::mem::size_of::<U>();
+    fn next_uninit_value<T: 'static>(&mut self) -> Option<&'a MaybeUninit<T>> {
+        let space = Space::try_align_from_bytes(self.space)?;
+        let value_size = ::core::mem::size_of::<T>();
         let (value, remaining) = space.split_at(value_size)?;
 
-        self.space = remaining.realign().unwrap_or_else(Space::empty);
+        self.space = remaining.as_bytes();
 
         value.as_uninit()
     }
 
     #[inline]
-    fn next_uninit_value_slice<U: 'static>(
+    fn next_uninit_value_slice<T: 'static>(
         &mut self,
         length: usize,
-    ) -> Option<&'a [MaybeUninit<U>]> {
-        let space = self.space.realign()?;
-        let split_point = crate::util::value_index_to_byte_index::<U>(length);
+    ) -> Option<&'a [MaybeUninit<T>]> {
+        let space = Space::try_align_from_bytes(self.space)?;
+
+        let split_point = crate::util::value_index_to_byte_index::<T>(length);
         let (data, remaining) = space.split_at(split_point)?;
 
-        self.space = remaining.realign().unwrap_or_else(Space::empty);
+        self.space = remaining.as_bytes();
 
         Some(data.as_uninit_slice())
     }
 
     #[inline]
-    fn as_uninit_slice<U: 'static>(&self) -> Option<&'a [MaybeUninit<U>]> {
-        Some(self.space.realign()?.as_uninit_slice())
+    fn as_uninit_slice<T: 'static>(&self) -> Option<&'a [MaybeUninit<T>]> {
+        let space = Space::try_align_from_bytes(self.space)?;
+        Some(space.as_uninit_slice())
     }
 
     #[inline]
-    pub unsafe fn as_slice<U: 'static>(&self) -> Option<&'a [U]> {
+    pub unsafe fn as_slice<T: 'static>(&self) -> Option<&'a [T]> {
         self.as_uninit_slice()
             .map(|s| crate::util::assume_init_slice(s))
     }
@@ -56,12 +58,10 @@ impl<'a, T: 'static> SpaceReader<'a, T> {
 
     #[inline]
     pub fn next_bytes(&mut self, length: usize) -> Option<&'a [u8]> {
-        let split_point = crate::util::value_index_to_byte_index::<u8>(length);
+        let bytes = self.space.get(..length)?;
+        self.space = self.space.get(length..).unwrap_or(&[]);
 
-        let (data, remaining) = self.space.split_at(split_point)?;
-        self.space = remaining.realign().unwrap_or_else(Space::empty);
-
-        Some(data.as_bytes())
+        Some(bytes)
     }
 
     #[inline]
@@ -71,7 +71,19 @@ impl<'a, T: 'static> SpaceReader<'a, T> {
     }
 
     #[inline]
-    pub fn into_remaining(self) -> &'a Space<T> {
+    pub unsafe fn next_atom(&mut self) -> Option<&'a UnidentifiedAtom> {
+        let space = Space::<AtomHeader>::try_align_from_bytes(&self.space)?;
+        let header = space.assume_init_value()?;
+        let (_, rest) = space.split_at(header.size_of_atom())?;
+
+        let atom = UnidentifiedAtom::from_header(header);
+        self.space = rest.as_bytes();
+
+        Some(atom)
+    }
+
+    #[inline]
+    pub fn remaining_bytes(&self) -> &'a [u8] {
         self.space
     }
 
@@ -80,25 +92,10 @@ impl<'a, T: 'static> SpaceReader<'a, T> {
     where
         F: FnOnce(&mut Self) -> Option<U>,
     {
-        let mut reader = self.space.read();
+        let mut reader = Self { space: self.space };
         let value = read_handler(&mut reader)?;
-        self.space = reader.into_remaining();
+        self.space = reader.remaining_bytes();
 
         Some(value)
-    }
-}
-
-pub type AtomSpaceReader<'a> = SpaceReader<'a, AtomHeader>;
-
-impl<'a> AtomSpaceReader<'a> {
-    #[inline]
-    pub unsafe fn next_atom(&mut self) -> Option<&'a UnidentifiedAtom> {
-        let header = self.space.assume_init_value()?;
-        let (_, rest) = self.space.split_at(header.size_of_atom())?;
-
-        let atom = UnidentifiedAtom::from_header(header);
-        self.space = rest;
-
-        Some(atom)
     }
 }
