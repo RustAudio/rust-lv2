@@ -69,7 +69,7 @@ pub struct PortWriter<'a> {
 
 impl<'a> PortWriter<'a> {
     /// Create a new port writer.
-    fn new(space: &'a mut Space) -> Self {
+    fn new(space: &'a mut AtomSpace) -> Self {
         Self {
             space: SpaceCursor::new(space.as_bytes_mut()),
             has_been_written: false,

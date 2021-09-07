@@ -128,8 +128,10 @@ pub trait Atom<'handle, 'space: 'handle>: UriBound {
     ///
     /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
-    unsafe fn read(body: &'space Space, parameter: Self::ReadParameter)
-        -> Option<Self::ReadHandle>;
+    unsafe fn read(
+        body: &'space AtomSpace,
+        parameter: Self::ReadParameter,
+    ) -> Option<Self::ReadHandle>;
 
     /// Initialize the body of the atom.
     ///

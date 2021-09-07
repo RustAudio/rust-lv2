@@ -53,7 +53,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
     type WriteParameter = LiteralInfo;
     type WriteHandle = StringWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'handle Space, _: ()) -> Option<(LiteralInfo, &'handle str)> {
+    unsafe fn read(body: &'handle AtomSpace, _: ()) -> Option<(LiteralInfo, &'handle str)> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
@@ -109,7 +109,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
     type WriteParameter = ();
     type WriteHandle = StringWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'space Space, _: ()) -> Option<&'handle str> {
+    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<&'handle str> {
         let data = body.as_bytes();
         let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
         Some(core::str::from_utf8(rust_str_bytes).ok()?)

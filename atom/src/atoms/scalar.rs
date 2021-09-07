@@ -47,7 +47,7 @@ pub trait ScalarAtom: UriBound {
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
     #[inline]
-    unsafe fn read_scalar(body: &Space) -> Option<Self::InternalType> {
+    unsafe fn read_scalar(body: &AtomSpace) -> Option<Self::InternalType> {
         body.read().next_value().copied()
     }
 
@@ -72,7 +72,7 @@ impl<'handle, 'space: 'handle, A: ScalarAtom> Atom<'handle, 'space> for A {
     type WriteParameter = A::InternalType;
     type WriteHandle = ();
 
-    unsafe fn read(body: &'space Space, _: ()) -> Option<A::InternalType> {
+    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<A::InternalType> {
         <A as ScalarAtom>::read_scalar(body)
     }
 

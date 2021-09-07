@@ -21,7 +21,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for MidiEvent {
     type WriteParameter = ();
     type WriteHandle = AtomSpaceWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'handle Space, _: ()) -> Option<&'handle [u8]> {
+    unsafe fn read(body: &'handle AtomSpace, _: ()) -> Option<&'handle [u8]> {
         Some(body.as_bytes())
     }
 

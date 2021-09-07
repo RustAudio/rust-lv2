@@ -93,7 +93,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
     type WriteParameter = TimeStampURID;
     type WriteHandle = SequenceWriter<'handle, 'space>;
 
-    unsafe fn read(body: &Space, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
+    unsafe fn read(body: &AtomSpace, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
 

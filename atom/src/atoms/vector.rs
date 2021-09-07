@@ -55,7 +55,10 @@ where
     type WriteParameter = URID<C>;
     type WriteHandle = VectorWriter<'handle, 'space, C>;
 
-    unsafe fn read(body: &'space Space, child_urid: URID<C>) -> Option<&'space [C::InternalType]> {
+    unsafe fn read(
+        body: &'space AtomSpace,
+        child_urid: URID<C>,
+    ) -> Option<&'space [C::InternalType]> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
 

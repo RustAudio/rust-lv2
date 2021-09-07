@@ -26,7 +26,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for WMidiEvent {
     type WriteParameter = wmidi::MidiMessage<'handle>;
     type WriteHandle = ();
 
-    unsafe fn read(space: &'handle Space, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
+    unsafe fn read(space: &'handle AtomSpace, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
         wmidi::MidiMessage::try_from(space.as_bytes()).ok()
     }
 
@@ -58,7 +58,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for SystemExclusiveWMidiEve
     type WriteParameter = ();
     type WriteHandle = Writer<'handle, 'space>;
 
-    unsafe fn read(space: &'handle Space, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
+    unsafe fn read(space: &'handle AtomSpace, _: ()) -> Option<wmidi::MidiMessage<'handle>> {
         WMidiEvent::read(space, ())
     }
 
