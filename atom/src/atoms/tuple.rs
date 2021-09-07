@@ -30,7 +30,7 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
-use crate::space::reader::AtomSpaceReader;
+use crate::space::reader::SpaceReader;
 use crate::*;
 
 /// An atom  containing a series of other atoms.
@@ -50,7 +50,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
 
     unsafe fn read(body: &'space Space, _: ()) -> Option<TupleIterator<'space>> {
         Some(TupleIterator {
-            reader: AtomSpaceReader::new(body),
+            reader: body.read(),
         })
     }
 
@@ -66,7 +66,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
 ///
 /// The item of this iterator is simply the space a single atom occupies.
 pub struct TupleIterator<'a> {
-    reader: AtomSpaceReader<'a>,
+    reader: SpaceReader<'a>,
 }
 
 impl<'a> Iterator for TupleIterator<'a> {

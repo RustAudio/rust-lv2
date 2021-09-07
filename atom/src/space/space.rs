@@ -131,7 +131,7 @@ impl<T: 'static> Space<T> {
     /// This method returns [`None`](Option::None) if the given slice's is too small to contain
     /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
     #[inline]
-    fn try_align_from_bytes(data: &[u8]) -> Option<&Self> {
+    pub fn try_align_from_bytes(data: &[u8]) -> Option<&Self> {
         // SAFETY: We just aligned the slice start
         data.get(Self::padding_for(data)..)
             .map(|data| unsafe { Space::from_bytes_unchecked(data) })
@@ -144,7 +144,7 @@ impl<T: 'static> Space<T> {
     /// This method returns [`None`](Option::None) if the given slice's is too small to contain
     /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
     #[inline]
-    pub(crate) fn try_align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
+    pub fn try_align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
         // SAFETY: We just aligned the slice's start
         data.get_mut(Self::padding_for(data)..)
             .map(|data| unsafe { Space::from_bytes_mut_unchecked(data) })
@@ -314,8 +314,8 @@ impl<T: 'static> Space<T> {
     }
 
     #[inline]
-    pub fn read(&self) -> SpaceReader<T> {
-        SpaceReader::new(self)
+    pub fn read(&self) -> SpaceReader {
+        SpaceReader::new(self.as_bytes())
     }
 
     #[inline]

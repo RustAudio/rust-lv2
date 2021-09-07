@@ -65,7 +65,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
             return None;
         };
 
-        let data = reader.into_remaining().as_bytes();
+        let data = reader.remaining_bytes();
 
         std::str::from_utf8(&data[0..data.len() - 1])
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))

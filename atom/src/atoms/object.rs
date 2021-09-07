@@ -67,7 +67,7 @@
 //!
 //! # Specification
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
-use crate::space::reader::AtomSpaceReader;
+use crate::space::reader::SpaceReader;
 use crate::*;
 use std::convert::TryFrom;
 use std::iter::Iterator;
@@ -166,7 +166,7 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Blank {
 ///
 /// Each iteration item is the header of the property, as well as the space occupied by the value atom. You can use normal `read` methods on the returned space.
 pub struct ObjectReader<'a> {
-    reader: AtomSpaceReader<'a>,
+    reader: SpaceReader<'a>,
 }
 
 impl<'a> Iterator for ObjectReader<'a> {
@@ -256,7 +256,7 @@ impl Property {
     ///
     /// The caller must ensure that the given Space actually contains a valid property.
     unsafe fn read_body<'a>(
-        reader: &mut AtomSpaceReader<'a>,
+        reader: &mut SpaceReader<'a>,
     ) -> Option<(PropertyHeader, &'a UnidentifiedAtom)> {
         let header: &StrippedPropertyHeader = reader.next_value()?;
 
@@ -391,7 +391,7 @@ mod tests {
 
             let value: &f32 = unsafe { object_reader.next_value() }.unwrap();
             assert_eq!(*value, second_value);
-            assert!(object_reader.into_remaining().is_empty());
+            assert!(object_reader.remaining_bytes().is_empty());
         }
 
         // reading

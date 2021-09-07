@@ -65,7 +65,7 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
-use crate::space::reader::AtomSpaceReader;
+use crate::space::reader::SpaceReader;
 use crate::*;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
@@ -175,7 +175,7 @@ impl TimeStamp {
 
 /// An iterator over all events in a sequence.
 pub struct SequenceIterator<'a> {
-    reader: AtomSpaceReader<'a>,
+    reader: SpaceReader<'a>,
     unit: TimeStampUnit,
 }
 
