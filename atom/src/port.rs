@@ -160,9 +160,11 @@ mod tests {
 
         // Reading
         {
-            let reader = unsafe {
-                AtomPort::input_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
-            };
+            let chunk = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urids.chunk, ())
+                .unwrap();
+            let reader = unsafe { AtomPort::input_from_raw(NonNull::from(chunk).cast(), 0) };
             assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);
         }
     }

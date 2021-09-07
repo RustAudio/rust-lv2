@@ -172,8 +172,13 @@ fn main() {
         (plugin_descriptor.cleanup.unwrap())(plugin);
     }
 
+    let chunk = unsafe { output_atom_space.read().next_atom() }
+        .unwrap()
+        .read(urids.atom.chunk, ())
+        .unwrap();
+
     // Asserting the result
-    let sequence = unsafe { output_atom_space.read().next_atom() }
+    let sequence = unsafe { chunk.read().next_atom() }
         .unwrap()
         .read(urids.atom.sequence, urids.units.beat)
         .unwrap();
