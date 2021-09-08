@@ -6,6 +6,7 @@ pub use lv2_core_derive::*;
 
 use crate::feature::*;
 use crate::port::*;
+use crate::prelude::LV2_Descriptor;
 use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
@@ -276,6 +277,19 @@ impl<T: Plugin> PluginInstance<T> {
 }
 
 #[doc(hidden)]
-pub unsafe trait PluginInstanceDescriptor: Plugin {
+pub unsafe trait PluginInstanceDescriptor {
     const DESCRIPTOR: sys::LV2_Descriptor;
+}
+
+unsafe impl<T: Plugin> PluginInstanceDescriptor for T {
+    const DESCRIPTOR: LV2_Descriptor = LV2_Descriptor {
+        URI: T::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
+        instantiate: Some(PluginInstance::<T>::instantiate),
+        connect_port: Some(PluginInstance::<T>::connect_port),
+        activate: Some(PluginInstance::<T>::activate),
+        run: Some(PluginInstance::<T>::run),
+        deactivate: Some(PluginInstance::<T>::deactivate),
+        cleanup: Some(PluginInstance::<T>::cleanup),
+        extension_data: Some(PluginInstance::<T>::extension_data),
+    };
 }

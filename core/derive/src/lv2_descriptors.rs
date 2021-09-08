@@ -18,29 +18,6 @@ impl Parse for Lv2InstanceDescriptor {
 }
 
 impl Lv2InstanceDescriptor {
-    /// Implement the `PluginInstanceDescriptor` for the plugin.
-    ///
-    /// By implementing `PluginInstanceDescriptor`, two static objects are created: The URI of the
-    /// plugin, stored as a string, and the descriptor, a struct with pointers to the plugin's
-    /// basic functions; Like `instantiate` or `run`.
-    pub fn make_instance_descriptor_impl(&self) -> impl ::quote::ToTokens {
-        let plugin_type = &self.plugin_type;
-        quote! {
-            unsafe impl PluginInstanceDescriptor for #plugin_type {
-                const DESCRIPTOR: LV2_Descriptor = LV2_Descriptor {
-                    URI: Self::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
-                    instantiate: Some(PluginInstance::<Self>::instantiate),
-                    connect_port: Some(PluginInstance::<Self>::connect_port),
-                    activate: Some(PluginInstance::<Self>::activate),
-                    run: Some(PluginInstance::<Self>::run),
-                    deactivate: Some(PluginInstance::<Self>::deactivate),
-                    cleanup: Some(PluginInstance::<Self>::cleanup),
-                    extension_data: Some(PluginInstance::<Self>::extension_data)
-                };
-            }
-        }
-    }
-
     /// Create a matching arm for the plugin.
     ///
     /// The root function receives an index and has to return one plugin descriptor per index,
@@ -71,13 +48,6 @@ impl Parse for Lv2InstanceDescriptorList {
 }
 
 impl Lv2InstanceDescriptorList {
-    /// Implement `PluginInstanceDescriptor` for all plugin instances.
-    fn make_instance_descriptor_impls(&self) -> impl Iterator<Item = impl ::quote::ToTokens> + '_ {
-        self.descriptors
-            .iter()
-            .map(Lv2InstanceDescriptor::make_instance_descriptor_impl)
-    }
-
     /// Create the `lv2_descriptor` function.
     ///
     /// This function tells the host of a library's plugin instances by returning one plugin
@@ -115,11 +85,9 @@ impl Lv2InstanceDescriptorList {
 #[inline]
 pub fn lv2_descriptors_impl(input: TokenStream) -> TokenStream {
     let list: Lv2InstanceDescriptorList = parse_macro_input!(input);
-    let descriptors = list.make_instance_descriptor_impls();
     let export_function = list.make_descriptor_function();
 
     (quote! {
-        #(#descriptors)*
         #export_function
     })
     .into()
