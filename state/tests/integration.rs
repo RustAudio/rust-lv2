@@ -1,4 +1,5 @@
 use lv2_atom::prelude::*;
+use lv2_core::extension::ExtensionInterface;
 use lv2_core::feature::{FeatureCollection, MissingFeatureError};
 use lv2_core::prelude::*;
 use lv2_state::*;
@@ -41,7 +42,7 @@ impl Plugin for Stateful {
         self.audio.extend((0..32).map(|f| f as f32));
     }
 
-    fn extension_data(uri: &Uri) -> Option<&'static dyn std::any::Any> {
+    fn extension_data(uri: &Uri) -> Option<ExtensionInterface> {
         match_extensions!(uri, StateDescriptor<Self>)
     }
 }

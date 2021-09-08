@@ -9,7 +9,7 @@
 //! This is a complete example on how to create an extension and implement it for a plugin:
 //!
 //! ```
-//! use lv2_core::extension::ExtensionDescriptor;
+//! use lv2_core::extension::{ExtensionDescriptor, ExtensionInterface};
 //! use lv2_core::prelude::*;
 //! use urid::*;
 //! use std::any::Any;
@@ -83,7 +83,7 @@
 //!         self.internal += 1;
 //!     }
 //!
-//!     fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
+//!     fn extension_data(uri: &Uri) -> Option<ExtensionInterface> {
 //!         // This macro use matches the given URI with the URIs of the given extension descriptors.
 //!         // If one of them matches, it's interface is returned.
 //!         //
@@ -118,7 +118,6 @@
 //!
 //! assert_eq!(42, plugin.internal);
 //! ```
-use std::any::Any;
 use urid::UriBound;
 
 /// A descriptor for a plugin extension.
@@ -127,9 +126,28 @@ use urid::UriBound;
 ///
 /// [For a usage example, see the module documentation.](index.html)
 pub trait ExtensionDescriptor: UriBound {
-    type ExtensionInterface: 'static + Any;
+    type ExtensionInterface: 'static;
 
     const INTERFACE: &'static Self::ExtensionInterface;
+}
+
+#[derive(Copy, Clone)]
+pub struct ExtensionInterface {
+    interface: *const c_void,
+}
+
+impl ExtensionInterface {
+    #[inline]
+    pub fn new_for<T: ExtensionDescriptor>() -> Self {
+        Self {
+            interface: T::INTERFACE as *const _ as *const c_void,
+        }
+    }
+
+    #[inline]
+    pub fn get_ptr(self) -> *const c_void {
+        self.interface
+    }
 }
 
 /// Generate the body of a plugin's `extension_data` function.
@@ -143,13 +161,20 @@ pub trait ExtensionDescriptor: UriBound {
 #[macro_export]
 macro_rules! match_extensions {
     ($uri:expr, $($descriptor:ty),*) => {
-        match ($uri).to_bytes_with_nul() {
-            $(
-                <$descriptor as UriBound>::URI => Some(<$descriptor as ExtensionDescriptor>::INTERFACE as &'static dyn ::std::any::Any),
-            )*
-            _ => None,
+        {
+            extern crate lv2_core as _lv2_core;
+            //extern crate urid as _urid;
+
+            todo!()
+            /*match ($uri).to_bytes_with_nul() {
+                $(
+                    <$descriptor as _urid::UriBound>::URI => Some(_lv2_core::extension::ExtensionInterface::new_for::<$descriptor>()),
+                )*
+                _ => None,
+            }*/
         }
     };
 }
 
 pub use crate::match_extensions;
+use std::ffi::c_void;
