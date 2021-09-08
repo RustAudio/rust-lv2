@@ -1,4 +1,4 @@
-use crate::prelude::Space;
+use crate::prelude::AlignedSpace;
 use crate::{AtomHeader, UnidentifiedAtom};
 use std::mem::MaybeUninit;
 
@@ -14,7 +14,7 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     fn next_uninit_value<T: 'static>(&mut self) -> Option<&'a MaybeUninit<T>> {
-        let space = Space::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
         let value_size = ::core::mem::size_of::<T>();
         let (value, remaining) = space.split_at(value_size)?;
 
@@ -28,7 +28,7 @@ impl<'a> SpaceReader<'a> {
         &mut self,
         length: usize,
     ) -> Option<&'a [MaybeUninit<T>]> {
-        let space = Space::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
 
         let split_point = crate::util::value_index_to_byte_index::<T>(length);
         let (data, remaining) = space.split_at(split_point)?;
@@ -40,7 +40,7 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     fn as_uninit_slice<T: 'static>(&self) -> Option<&'a [MaybeUninit<T>]> {
-        let space = Space::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
         Some(space.as_uninit_slice())
     }
 
@@ -72,7 +72,7 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     pub unsafe fn next_atom(&mut self) -> Option<&'a UnidentifiedAtom> {
-        let space = Space::<AtomHeader>::try_align_from_bytes(&self.space)?;
+        let space = AlignedSpace::<AtomHeader>::align_from_bytes(&self.space)?;
         let header = space.assume_init_value()?;
         let (_, rest) = space.split_at(header.size_of_atom())?;
 

@@ -10,5 +10,5 @@ mod vec;
 pub use allocatable::*;
 pub use atom_writer::AtomSpaceWriter;
 pub use cursor::SpaceCursor;
-pub use space::{AtomSpace, Space};
+pub use space::{AlignedSpace, AtomSpace};
 pub use vec::{VecSpace, VecSpaceCursor};

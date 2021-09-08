@@ -1,4 +1,4 @@
-use crate::space::{AtomSpaceWriter, Space};
+use crate::space::{AlignedSpace, AtomSpaceWriter};
 use crate::{Atom, UnidentifiedAtom};
 use urid::URID;
 
@@ -35,7 +35,7 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
 
     #[inline]
     fn allocate_padding_for<T: 'static>(&mut self) -> Option<()> {
-        let required_padding = Space::<T>::padding_for(self.remaining_bytes());
+        let required_padding = crate::util::padding_for::<T>(self.remaining_bytes())?;
         self.allocate(required_padding)?;
 
         Some(())
@@ -45,14 +45,14 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     fn allocate_aligned<'handle, T: 'static>(
         &'handle mut self,
         size: usize,
-    ) -> Option<&'handle mut Space<T>>
+    ) -> Option<&'handle mut AlignedSpace<T>>
     where
         'space: 'handle,
     {
-        let required_padding = Space::<T>::padding_for(self.remaining_bytes());
+        let required_padding = crate::util::padding_for::<T>(self.remaining_bytes())?;
         let raw = self.allocate(size + required_padding)?;
 
-        Space::try_align_from_bytes_mut(raw)
+        AlignedSpace::align_from_bytes_mut(raw)
     }
 
     #[inline]
@@ -126,7 +126,7 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
         T: Copy + Sized + 'static,
         //'space: 'handle,
     {
-        let space: &mut Space<T> = self.allocate_aligned(size_of_val(values))?;
+        let space: &mut AlignedSpace<T> = self.allocate_aligned(size_of_val(values))?;
         let space = space.as_uninit_slice_mut();
 
         for (dst, src) in space.iter_mut().zip(values.iter()) {
