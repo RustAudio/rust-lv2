@@ -29,7 +29,7 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 /// # use lv2_atom::space::AlignedSpace;
 /// let values = &[42u64, 69];
 /// // Transmuting to a slice of bytes
-/// let bytes: &[u8] = unsafe { core::slice::from_ref(&value).align_to().1 };
+/// let bytes: &[u8] = unsafe { values.align_to().1 };
 ///
 /// // ---
 ///
@@ -62,7 +62,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// # use lv2_atom::space::AlignedSpace;
     /// let values = &[42u64, 69];
     /// // Transmuting to a slice of bytes
-    /// let bytes: &[u8] = unsafe { value.align_to().1 };
+    /// let bytes: &[u8] = unsafe { values.align_to().1 };
     ///
     /// assert!(AlignedSpace::<u64>::try_from_bytes(bytes).is_some());
     /// assert!(AlignedSpace::<u64>::try_from_bytes(&bytes[1..]).is_none());
@@ -90,7 +90,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// # use lv2_atom::space::AlignedSpace;
     /// let values = &mut [42u64, 69];
     /// // Transmuting to a slice of bytes
-    /// let bytes: &mut [u8] = unsafe { value.align_to_mut().1 };
+    /// let bytes: &mut [u8] = unsafe { values.align_to_mut().1 };
     ///
     /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(bytes).is_some());
     /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(&mut bytes[1..]).is_none());
@@ -118,14 +118,14 @@ impl<T: 'static> AlignedSpace<T> {
     /// # use lv2_atom::space::AlignedSpace;
     /// let values = &[42u64, 69];
     /// // Transmuting to a slice of bytes
-    /// let bytes: &[u8] = unsafe { value.align_to().1 };
+    /// let bytes: &[u8] = unsafe { values.align_to().1 };
     ///
     /// // The slice has space for both values
     /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
     /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert!(AlignedSpace::<u64>::align_from_bytes(&bytes[9..]).is_none());
+    /// assert!(AlignedSpace::<u64>::align_from_bytes(&bytes[10..]).is_none());
     /// ```
     #[inline]
     pub fn align_from_bytes(data: &[u8]) -> Option<&Self> {
@@ -147,14 +147,14 @@ impl<T: 'static> AlignedSpace<T> {
     /// # use lv2_atom::space::AlignedSpace;
     /// let values = &mut [42u64, 69];
     /// // Transmuting to a slice of bytes
-    /// let bytes: &mut [u8] = unsafe { value.align_to_mut().1 };
+    /// let bytes: &mut [u8] = unsafe { values.align_to_mut().1 };
     ///
     /// // The slice has space for both values
     /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
     /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[9..]).is_none());
+    /// assert!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[10..]).is_none());
     /// ```
     #[inline]
     pub fn align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
@@ -446,28 +446,33 @@ mod tests {
     use urid::*;
 
     #[test]
-    fn test_space() {
-        let mut space = VecSpace::<u32>::new_with_capacity(64);
-        let bytes = space.as_bytes_mut();
+    fn align_from_bytes() {
+        let values = &mut [42u64, 69];
+        let bytes = unsafe { values.align_to_mut().1 };
 
-        for i in 0..128 {
-            bytes[i] = i as u8;
-        }
+        assert_eq!(
+            AlignedSpace::<u64>::try_from_bytes(bytes).unwrap().len(),
+            ::core::mem::size_of::<u64>() * 2
+        );
+        assert_eq!(
+            AlignedSpace::<u64>::try_from_bytes_mut(bytes)
+                .unwrap()
+                .len(),
+            ::core::mem::size_of::<u64>() * 2
+        );
 
-        unsafe {
-            let ptr = space.as_space_mut().as_bytes_mut().as_mut_ptr().add(128) as *mut u32;
-            *(ptr) = 0x42424242;
-        }
+        assert_eq!(
+            unsafe { AlignedSpace::<u64>::from_bytes_unchecked(bytes) }.len(),
+            ::core::mem::size_of::<u64>() * 2
+        );
 
-        let (lower_space, space) = space.as_space_mut().split_at(128).unwrap();
-        let lower_space = lower_space.as_bytes();
+        assert_eq!(
+            unsafe { AlignedSpace::<u64>::from_bytes_mut_unchecked(bytes) }.len(),
+            ::core::mem::size_of::<u64>() * 2
+        );
 
-        for i in 0..128 {
-            assert_eq!(lower_space[i], i as u8);
-        }
-
-        let integer = unsafe { space.assume_init_value() }.unwrap();
-        assert_eq!(*integer, 0x42424242);
+        assert!(AlignedSpace::<u64>::try_from_bytes(&bytes[1..]).is_none());
+        assert!(AlignedSpace::<u64>::try_from_bytes_mut(&mut bytes[1..]).is_none());
     }
 
     #[test]
