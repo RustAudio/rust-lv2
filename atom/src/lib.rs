@@ -86,7 +86,7 @@ pub mod prelude {
     pub use atoms::tuple::Tuple;
     pub use atoms::vector::Vector;
     pub use port::AtomPort;
-    pub use space::{AtomSpace, AtomSpaceWriter, Space, SpaceAllocator};
+    pub use space::{AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceAllocator};
 
     use crate::*;
     pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};

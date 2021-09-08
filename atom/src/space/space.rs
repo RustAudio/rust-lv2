@@ -10,45 +10,187 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 ///
 /// This type is a simple byte slice that guarantees its start is properly aligned for containing a type `T`.
 /// This buffer can be split and realigned, effectively allowing to read a stream of arbitrary types
-/// from a byte buffer, such as [`Atom`s](crate::atom::Atom).
+/// from a byte buffer, such as [`Atom`s](crate::Atom).
+///
+/// Any operation that may lead to a misaligned `Space` is considered unsafe.
 ///
 /// Note that only the start of the slice is aligned, not the end. This allows having a buffer that
 /// is bigger than a multiple of `T`'s alignment.
+///
+/// Although they are aligned, `Space`s do not consider their contents to be initialized. Therefore,
+/// the only safe reading operations will return `MaybeUninit<T>`. Unsafe helper methods that assume
+/// the contents are initialized are also provided, for convenience.
+///
+/// # Example
+///
+/// The following example reads `u64`s from an aligned byte slice.
+///
+/// ```
+/// # use lv2_atom::space::AlignedSpace;
+/// let values = &[42u64, 69];
+/// // Transmuting to a slice of bytes
+/// let bytes: &[u8] = unsafe { core::slice::from_ref(&value).align_to().1 };
+///
+/// // ---
+///
+/// // Bytes are already aligned, the whole slice will be available
+/// let space: &AlignedSpace<u64> = AlignedSpace::align_from_bytes(bytes).unwrap();
+/// // SAFETY: we know the slice was initialized with proper u64 values.
+/// let read_values = unsafe { space.assume_init_slice() };
+/// assert_eq!(read_values, [42u64, 69]);
+/// ```
+///
 #[repr(transparent)]
-pub struct Space<T> {
+pub struct AlignedSpace<T> {
     _type: PhantomData<T>,
-    // Note: this could be [MaybeUninit<T>] for alignment, but Spaces can have extra unaligned bytes at the end.
     data: [u8],
 }
 
-pub type AtomSpace = Space<AtomHeader>;
+pub type AtomSpace = AlignedSpace<AtomHeader>;
 
-impl<T: 'static> Space<T> {
+impl<T: 'static> AlignedSpace<T> {
+    /// Creates a new space from a slice of bytes.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's offset is not aligned
+    /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::space::AlignedSpace;
+    /// let values = &[42u64, 69];
+    /// // Transmuting to a slice of bytes
+    /// let bytes: &[u8] = unsafe { value.align_to().1 };
+    ///
+    /// assert!(AlignedSpace::<u64>::try_from_bytes(bytes).is_some());
+    /// assert!(AlignedSpace::<u64>::try_from_bytes(&bytes[1..]).is_none());
+    /// ```
+    #[inline]
+    pub fn try_from_bytes(data: &[u8]) -> Option<&Self> {
+        if data.as_ptr() as usize % align_of::<T>() != 0 {
+            return None;
+        }
+
+        // SAFETY: We just checked above that the pointer is correctly aligned
+        Some(unsafe { AlignedSpace::from_bytes_unchecked(data) })
+    }
+
+    /// Creates a new mutable space from a mutable slice of bytes.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's offset is not aligned
+    /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::space::AlignedSpace;
+    /// let values = &mut [42u64, 69];
+    /// // Transmuting to a slice of bytes
+    /// let bytes: &mut [u8] = unsafe { value.align_to_mut().1 };
+    ///
+    /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(bytes).is_some());
+    /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(&mut bytes[1..]).is_none());
+    /// ```
+    #[inline]
+    pub fn try_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
+        if data.as_ptr() as usize % align_of::<T>() != 0 {
+            return None;
+        }
+
+        // SAFETY: We just checked above that the pointer is correctly aligned
+        Some(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
+    }
+
+    /// Creates a new space from a slice of bytes, slicing some bytes off its start it if necessary.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
+    /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::space::AlignedSpace;
+    /// let values = &[42u64, 69];
+    /// // Transmuting to a slice of bytes
+    /// let bytes: &[u8] = unsafe { value.align_to().1 };
+    ///
+    /// // The slice has space for both values
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(bytes).unwrap().values_len(), 2);
+    /// // The slice now only has space for a single value
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
+    /// // The slice doesn't have space for any value anymore
+    /// assert!(AlignedSpace::<u64>::align_from_bytes(&bytes[9..]).is_none());
+    /// ```
+    #[inline]
+    pub fn align_from_bytes(data: &[u8]) -> Option<&Self> {
+        // SAFETY: We just aligned the slice start
+        data.get(crate::util::padding_for::<T>(data)?..)
+            .map(|data| unsafe { AlignedSpace::from_bytes_unchecked(data) })
+    }
+
+    /// Creates a new mutable space from a mutable slice of bytes, slicing some bytes off its start it if necessary.
+    ///
+    /// # Errors
+    ///
+    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
+    /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::space::AlignedSpace;
+    /// let values = &mut [42u64, 69];
+    /// // Transmuting to a slice of bytes
+    /// let bytes: &mut [u8] = unsafe { value.align_to_mut().1 };
+    ///
+    /// // The slice has space for both values
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(bytes).unwrap().values_len(), 2);
+    /// // The slice now only has space for a single value
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
+    /// // The slice doesn't have space for any value anymore
+    /// assert!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[9..]).is_none());
+    /// ```
+    #[inline]
+    pub fn align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
+        // SAFETY: We just aligned the slice's start
+        data.get_mut(crate::util::padding_for::<T>(data)?..)
+            .map(|data| unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
+    }
+
     /// Creates a space from an empty slice.
     ///
     /// # Example
     ///
     /// ```
-    /// # use lv2_atom::prelude::Space;
-    ///
-    /// let space = Space::<u32>::empty();
+    /// # use lv2_atom::prelude::AlignedSpace;
+    /// let space = AlignedSpace::<u32>::empty();
     /// assert!(space.as_bytes().is_empty());
     /// ```
     #[inline]
-    pub fn empty<'a>() -> &'a Space<T> {
+    pub fn empty<'a>() -> &'a AlignedSpace<T> {
         // SAFETY: empty slices are always aligned
         unsafe { Self::from_bytes_unchecked(&[]) }
     }
 
+    /// Creates an empty mutable space.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lv2_atom::prelude::AlignedSpace;
+    /// let space = AlignedSpace::<u32>::empty_mut();
+    /// assert!(space.as_bytes().is_empty());
+    /// ```
     #[inline]
-    pub(crate) fn padding_for(data: &[u8]) -> usize {
-        let alignment = align_of::<T>();
-        let start = data.as_ptr() as usize;
-        if start % alignment == 0 {
-            0
-        } else {
-            alignment - start % alignment
-        }
+    pub fn empty_mut<'a>() -> &'a mut AlignedSpace<T> {
+        // SAFETY: empty slices are always aligned
+        unsafe { Self::from_bytes_mut_unchecked(&mut []) }
     }
 
     /// Creates a new space from a slice of bytes, without checking for padding correctness.
@@ -56,13 +198,13 @@ impl<T: 'static> Space<T> {
     /// # Safety
     ///
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
-    /// Otherwise, reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
+    /// Calling this method with an unaligned slice will result from UB.
     ///
     /// For a safe, checked version, see [`Space::try_from_bytes`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
-    pub unsafe fn from_bytes_unchecked(data: &[u8]) -> &Space<T> {
+    pub unsafe fn from_bytes_unchecked(data: &[u8]) -> &AlignedSpace<T> {
         // SAFETY: It is safe to transmute, since our type has repr(transparent) with [u8].
         // SAFETY: The caller is responsible to check for slice alignment.
         &*(data as *const _ as *const Self)
@@ -79,12 +221,32 @@ impl<T: 'static> Space<T> {
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
-    pub unsafe fn from_bytes_mut_unchecked(data: &mut [u8]) -> &mut Space<T> {
+    pub unsafe fn from_bytes_mut_unchecked(data: &mut [u8]) -> &mut AlignedSpace<T> {
         // SAFETY: It is safe to transmute, since our type has repr(transparent) with [u8].
         // SAFETY: The caller is responsible to check for slice alignment.
         &mut *(data as *mut _ as *mut Self)
     }
 
+    /// Creates a new space from an already aligned slice of T values.
+    #[inline]
+    pub fn from_slice(slice: &[T]) -> &Self {
+        // SAFETY: reinterpreting as raw bytes is safe for any value
+        let bytes = unsafe { from_raw_parts(slice.as_ptr() as *const u8, size_of_val(slice)) };
+        // SAFETY: The pointer is a slice of T, therefore it is already correctly aligned
+        unsafe { Self::from_bytes_unchecked(bytes) }
+    }
+
+    /// Creates a new mutable space from an already aligned slice of T values.
+    #[inline]
+    pub fn from_slice_mut(slice: &mut [T]) -> &mut Self {
+        // SAFETY: reinterpreting as raw bytes is safe for any value
+        let bytes =
+            unsafe { from_raw_parts_mut(slice.as_mut_ptr() as *mut u8, size_of_val(slice)) };
+        // SAFETY: The pointer is a slice of T, therefore it is already correctly aligned
+        unsafe { Self::from_bytes_mut_unchecked(bytes) }
+    }
+
+    /// Creates a new space from an already aligned, potentially uninitialized slice of T.
     #[inline]
     pub(crate) fn from_uninit_slice(slice: &[MaybeUninit<T>]) -> &Self {
         // SAFETY: reinterpreting as raw bytes is safe for any value
@@ -93,6 +255,7 @@ impl<T: 'static> Space<T> {
         unsafe { Self::from_bytes_unchecked(bytes) }
     }
 
+    /// Creates a new space from an already aligned, potentially uninitialized slice of T.
     #[inline]
     pub(crate) fn from_uninit_slice_mut(slice: &mut [MaybeUninit<T>]) -> &mut Self {
         // SAFETY: reinterpreting as raw bytes is safe for any value
@@ -102,68 +265,7 @@ impl<T: 'static> Space<T> {
         unsafe { Self::from_bytes_mut_unchecked(bytes) }
     }
 
-    /// Creates a new space from a slice of bytes.
-    ///
-    /// # Errors
-    ///
-    /// This method returns [`None`](Option::None) if the given slice's offset is not 64-bit aligned
-    /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
-    ///
-    /// This is the non-panicking version of [`Space::from_bytes`].
-    #[inline]
-    pub fn try_from_bytes(data: &[u8]) -> Option<&Self> {
-        if data.as_ptr() as usize % align_of::<T>() != 0 {
-            return None;
-        }
-
-        // SAFETY: We just checked above that the pointer is correctly aligned
-        Some(unsafe { Space::from_bytes_unchecked(data) })
-    }
-
-    /// Creates a new mutable space from a mutable slice of bytes.
-    ///
-    /// # Errors
-    ///
-    /// This method returns [`None`](Option::None) if the given slice's offset is not 64-bit aligned
-    /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
-    ///
-    /// This is the non-panicking version of [`Space::from_bytes`].
-    #[inline]
-    pub fn try_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
-        if data.as_ptr() as usize % align_of::<T>() != 0 {
-            return None;
-        }
-
-        // SAFETY: We just checked above that the pointer is correctly aligned
-        Some(unsafe { Space::from_bytes_mut_unchecked(data) })
-    }
-
-    /// Creates a new space from a slice of bytes, aligning it if necessary.
-    ///
-    /// # Errors
-    ///
-    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
-    /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
-    #[inline]
-    pub fn try_align_from_bytes(data: &[u8]) -> Option<&Self> {
-        // SAFETY: We just aligned the slice start
-        data.get(Self::padding_for(data)..)
-            .map(|data| unsafe { Space::from_bytes_unchecked(data) })
-    }
-
-    /// Creates a new space from a slice of bytes, aligning it if necessary.
-    ///
-    /// # Errors
-    ///
-    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
-    /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
-    #[inline]
-    pub fn try_align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
-        // SAFETY: We just aligned the slice's start
-        data.get_mut(Self::padding_for(data)..)
-            .map(|data| unsafe { Space::from_bytes_mut_unchecked(data) })
-    }
-
+    /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
     #[inline]
     fn split_bytes_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
         if mid > self.data.len() {
@@ -183,29 +285,29 @@ impl<T: 'static> Space<T> {
     #[inline]
     pub fn split_at(&self, mid: usize) -> Option<(&Self, &Self)> {
         let (start, end) = self.split_bytes_at(mid)?;
-        let end = Self::try_align_from_bytes(end).unwrap_or_else(Space::empty);
+        let end = Self::align_from_bytes(end).unwrap_or_else(AlignedSpace::empty);
 
         Some((start, end))
     }
 
     #[inline]
-    pub fn realign<U: 'static>(&self) -> Option<&Space<U>> {
-        Space::<U>::try_align_from_bytes(self.as_bytes())
+    pub fn realign<U: 'static>(&self) -> Option<&AlignedSpace<U>> {
+        AlignedSpace::<U>::align_from_bytes(self.as_bytes())
     }
 
     #[inline]
-    pub fn realign_mut<U: 'static>(&mut self) -> Option<&mut Space<U>> {
-        Space::<U>::try_align_from_bytes_mut(self.as_bytes_mut())
+    pub fn realign_mut<U: 'static>(&mut self) -> Option<&mut AlignedSpace<U>> {
+        AlignedSpace::<U>::align_from_bytes_mut(self.as_bytes_mut())
     }
 
     #[inline]
-    pub fn aligned<U: 'static>(&self) -> Option<&Space<U>> {
-        Space::<U>::try_from_bytes(self.as_bytes())
+    pub fn aligned<U: 'static>(&self) -> Option<&AlignedSpace<U>> {
+        AlignedSpace::<U>::try_from_bytes(self.as_bytes())
     }
 
     #[inline]
-    pub fn aligned_mut<U: 'static>(&mut self) -> Option<&mut Space<U>> {
-        Space::<U>::try_from_bytes_mut(self.as_bytes_mut())
+    pub fn aligned_mut<U: 'static>(&mut self) -> Option<&mut AlignedSpace<U>> {
+        AlignedSpace::<U>::try_from_bytes_mut(self.as_bytes_mut())
     }
 
     /// Return the internal slice of the space.
@@ -214,14 +316,10 @@ impl<T: 'static> Space<T> {
         &self.data
     }
 
+    /// Returns the internal slice of the space.
     #[inline]
-    pub fn as_ptr(&self) -> *const u8 {
-        self.data.as_ptr()
-    }
-
-    #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut u8 {
-        self.data.as_mut_ptr()
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        &mut self.data
     }
 
     #[inline]
@@ -230,14 +328,16 @@ impl<T: 'static> Space<T> {
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    pub fn values_len(&self) -> usize {
+        self.data
+            .len()
+            .checked_div(size_of::<T>())
+            .unwrap_or(usize::MAX)
     }
 
-    /// Return the internal slice of the space.
     #[inline]
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        &mut self.data
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 
     #[inline]
@@ -355,7 +455,7 @@ mod tests {
         }
 
         unsafe {
-            let ptr = space.as_space_mut().as_mut_ptr().add(128) as *mut u32;
+            let ptr = space.as_space_mut().as_bytes_mut().as_mut_ptr().add(128) as *mut u32;
             *(ptr) = 0x42424242;
         }
 
@@ -378,7 +478,7 @@ mod tests {
 
         // Writing an integer atom.
         unsafe {
-            *(space.as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
+            *(space.as_bytes_mut().as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
                 atom: sys::LV2_Atom {
                     size: size_of::<i32>() as u32,
                     type_: urid.get(),

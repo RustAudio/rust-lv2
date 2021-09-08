@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use crate::space::{Space, SpaceAllocatorImpl};
+use crate::space::{AlignedSpace, SpaceAllocatorImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -22,13 +22,13 @@ impl<T: Copy + 'static> VecSpace<T> {
     }
 
     #[inline]
-    pub fn as_space(&self) -> &Space<T> {
-        Space::from_uninit_slice(&self.inner)
+    pub fn as_space(&self) -> &AlignedSpace<T> {
+        AlignedSpace::from_uninit_slice(&self.inner)
     }
 
     #[inline]
-    pub fn as_space_mut(&mut self) -> &mut Space<T> {
-        Space::from_uninit_slice_mut(&mut self.inner)
+    pub fn as_space_mut(&mut self) -> &mut AlignedSpace<T> {
+        AlignedSpace::from_uninit_slice_mut(&mut self.inner)
     }
 
     #[inline]
@@ -42,10 +42,7 @@ impl<T: Copy + 'static> VecSpace<T> {
     }
 
     #[inline]
-    fn get_or_allocate_bytes_mut(
-        &mut self,
-        byte_range: Range<usize>,
-    ) -> Option<(&mut [u8], &mut [u8])> {
+    fn reallocate_bytes_mut(&mut self, byte_range: Range<usize>) -> Option<(&mut [u8], &mut [u8])> {
         let byte_len = self.inner.len() * std::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -81,7 +78,7 @@ pub struct VecSpaceCursor<'vec, T> {
 impl<'vec, T: Copy + 'static> SpaceAllocatorImpl<'vec> for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let end = self.allocated_length.checked_add(size)?;
-        let result = VecSpace::<T>::get_or_allocate_bytes_mut(self.vec, self.allocated_length..end);
+        let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
 
         if result.is_some() {
             self.allocated_length = end;

@@ -1,5 +1,5 @@
 use crate::header::AtomHeader;
-use crate::space::{Space, SpaceAllocator, SpaceAllocatorImpl};
+use crate::space::{AlignedSpace, SpaceAllocator, SpaceAllocatorImpl};
 use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
@@ -16,7 +16,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
             .allocated_bytes()
             .get(self.atom_header_index..)
             .unwrap();
-        let space = Space::try_from_bytes(previous).unwrap();
+        let space = AlignedSpace::try_from_bytes(previous).unwrap();
 
         unsafe { *space.assume_init_value().unwrap() }
     }
@@ -27,7 +27,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
             .allocated_bytes_mut()
             .get_mut(self.atom_header_index..)
             .unwrap();
-        let space = Space::<AtomHeader>::try_from_bytes_mut(previous).unwrap();
+        let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(previous).unwrap();
 
         unsafe { space.assume_init_value_mut().unwrap() }
     }
@@ -54,8 +54,9 @@ impl<'handle, 'space: 'handle> SpaceAllocatorImpl<'space> for AtomSpaceWriter<'h
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
-        let space =
-            Space::<AtomHeader>::try_from_bytes_mut(previous.get_mut(self.atom_header_index..)?)?;
+        let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(
+            previous.get_mut(self.atom_header_index..)?,
+        )?;
         let header = unsafe { space.assume_init_value_mut() }?;
 
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
@@ -103,9 +104,9 @@ mod tests {
     use crate::prelude::AtomSpaceWriter;
     use crate::space::cursor::SpaceCursor;
     use crate::space::{SpaceAllocator, VecSpace};
+    use crate::AtomHeader;
     use core::mem::size_of;
     use urid::URID;
-    use crate::AtomHeader;
 
     #[test]
     fn test_padding_inside_frame() {

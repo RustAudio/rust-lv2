@@ -33,3 +33,13 @@ pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
         size / type_size + if size % type_size > 0 { 1 } else { 0 }
     }
 }
+
+#[inline]
+pub(crate) fn padding_for<T>(data: &[u8]) -> Option<usize> {
+    let value = data.as_ptr().align_offset(::core::mem::align_of::<T>());
+    if value == usize::MAX {
+        None
+    } else {
+        Some(value)
+    }
+}

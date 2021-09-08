@@ -57,7 +57,7 @@ impl<'a> StoreHandle<'a> {
         let atom = unsafe { space.read().next_atom() }.ok_or(StateErr::BadData)?;
 
         let key = key.get();
-        let data_ptr = atom.body().as_ptr() as *const c_void;
+        let data_ptr = atom.body().as_bytes().as_ptr() as *const c_void;
         let data_size = atom.header().size_of_body();
         let data_type = atom.header().urid().get();
         let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
@@ -177,7 +177,7 @@ impl<'a> RetrieveHandle<'a> {
 
         Ok(StatePropertyReader::new(
             type_,
-            Space::try_from_bytes(space).ok_or(StateErr::BadData)?,
+            AlignedSpace::try_from_bytes(space).ok_or(StateErr::BadData)?,
         ))
     }
 }
@@ -231,7 +231,7 @@ impl<'a> StatePropertyReader<'a> {
 mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
-    use atom::space::Space;
+    use atom::space::AlignedSpace;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
         let mut store_handle = storage.store_handle();
@@ -312,7 +312,7 @@ mod tests {
                 }
                 3 => {
                     assert_eq!(urids.vector::<Int>(), *type_);
-                    let space = Space::try_from_bytes(value.as_slice()).unwrap();
+                    let space = AlignedSpace::try_from_bytes(value.as_slice()).unwrap();
                     let data = unsafe { Vector::read(space, urids.int) }.unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }
