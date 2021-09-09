@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "Procedural macros for lv2-core"
 readme = "README.md"
 repository = "https://github.com/RustAudio/rust-lv2"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }

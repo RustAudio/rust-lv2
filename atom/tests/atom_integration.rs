@@ -137,7 +137,7 @@ fn main() {
 
     unsafe {
         // retrieving the descriptor.
-        let plugin_descriptor = &*lv2_descriptor(0);
+        let plugin_descriptor: &sys::LV2_Descriptor = todo!(); // &*lv2_descriptor(0);
         assert_eq!(
             CStr::from_ptr(plugin_descriptor.URI).to_str().unwrap(),
             "urn:rust-lv2:atom-plugin"

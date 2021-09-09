@@ -85,24 +85,9 @@ wmidi = ["lv2-midi", "lv2-midi/wmidi"]
 
 [workspace]
 members = [
-    "atom",
     "core",
     "core/derive",
-    "instance-access",
-    "midi",
-    "state",
     "sys",
-    "sys/tool",
-    "time",
-    "units",
-    "urid",
-    "urid/derive",
-    "urid/lv2-urid",
-    "worker",
-    "docs/amp",
-    "docs/fifths",
-    "docs/metro",
-    "docs/midigate",
 ]
 
 [profile.release]

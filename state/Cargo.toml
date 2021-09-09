@@ -14,11 +14,8 @@ travis-ci = { repository = "RustAudio/rust-lv2", branch = "master" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-lv2-sys = "2.0.0"
 lv2-core = "3.0.0"
-lv2-atom = "2.0.0"
-urid = "0.1.0"
 
-[dev-dependencies]
-lv2-urid = "2.1.0"
-mktemp = "0.4.0"
+# [dev-dependencies]
+# lv2-urid = "2.1.0"
+# mktemp = "0.4.0"
