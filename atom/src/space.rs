@@ -8,7 +8,7 @@ mod space;
 mod vec;
 
 pub use allocatable::*;
-pub use atom_writer::AtomSpaceWriter;
+pub use atom_writer::{AtomSpaceWriter, AtomSpaceWriterHandle};
 pub use cursor::SpaceCursor;
 pub use space::{AlignedSpace, AtomSpace};
 pub use vec::{VecSpace, VecSpaceCursor};

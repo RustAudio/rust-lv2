@@ -26,6 +26,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::*;
 use crate::Atom;
+use crate::AtomSpaceWriter;
 use urid::UriBound;
 
 /// An atom containing memory of undefined type.
@@ -37,11 +38,11 @@ unsafe impl UriBound for Chunk {
     const URI: &'static [u8] = sys::LV2_ATOM__Chunk;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Chunk {
+impl<'handle, 'space: 'handle> Atom for Chunk {
     type ReadParameter = ();
     type ReadHandle = &'handle AtomSpace;
     type WriteParameter = ();
-    type WriteHandle = AtomSpaceWriter<'handle, 'space>;
+    type WriteHandle = AtomSpaceWriterHandle;
 
     #[inline]
     unsafe fn read(space: &'handle AtomSpace, _: ()) -> Option<&'handle AtomSpace> {

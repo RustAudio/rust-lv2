@@ -1,6 +1,13 @@
 use crate::header::AtomHeader;
 use crate::space::{AlignedSpace, SpaceAllocator, SpaceAllocatorImpl};
+use crate::AtomHandle;
 use urid::URID;
+
+pub struct AtomSpaceWriterHandle;
+
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
+    type Handle = AtomSpaceWriter<'handle, 'space>;
+}
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'handle, 'space: 'handle> {

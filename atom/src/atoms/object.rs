@@ -94,13 +94,23 @@ pub struct ObjectHeader {
     pub otype: URID,
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Object {
-    type ReadParameter = ();
-    type ReadHandle = (ObjectHeader, ObjectReader<'handle>);
-    type WriteParameter = ObjectHeader;
-    type WriteHandle = ObjectWriter<'handle, 'space>;
+struct ObjectReaderHandle;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
+    type Handle = AtomSpaceWriter<'handle, 'space>;
+}
 
-    unsafe fn read(
+struct ObjectWriterHandle;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
+    type Handle = AtomSpaceWriter<'handle, 'space>;
+}
+
+impl Atom for Object {
+    type ReadParameter = ();
+    type ReadHandle = ObjectReaderHandle;
+    type WriteParameter = ObjectHeader;
+    type WriteHandle = ObjectWriterHandle;
+
+    unsafe fn read<'handle, 'space: 'handle>(
         body: &'handle AtomSpace,
         _: (),
     ) -> Option<(ObjectHeader, ObjectReader<'handle>)> {
