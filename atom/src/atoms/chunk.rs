@@ -14,8 +14,8 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
-//!     let in_chunk: &AtomSpace = ports.input.read(urids.chunk, ()).unwrap();
-//!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk, ()).unwrap();
+//!     let in_chunk: &AtomSpace = ports.input.read(urids.chunk).unwrap();
+//!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk).unwrap();
 //!
 //!     out_chunk.write_bytes(in_chunk.as_bytes()).unwrap();
 //! }
@@ -25,8 +25,8 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::*;
-use crate::Atom;
 use crate::AtomSpaceWriter;
+use crate::{Atom, AtomHandle};
 use urid::UriBound;
 
 /// An atom containing memory of undefined type.
@@ -38,22 +38,31 @@ unsafe impl UriBound for Chunk {
     const URI: &'static [u8] = sys::LV2_ATOM__Chunk;
 }
 
-impl<'handle, 'space: 'handle> Atom for Chunk {
-    type ReadParameter = ();
-    type ReadHandle = &'handle AtomSpace;
-    type WriteParameter = ();
+struct ChunkReaderHandle;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ChunkReaderHandle {
+    type Handle = &'handle AtomSpace;
+}
+
+struct ChunkWriterHandle;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ChunkWriterHandle {
+    type Handle = AtomSpaceWriter<'handle, 'space>;
+}
+
+impl Atom for Chunk {
+    type ReadHandle = ChunkReaderHandle;
     type WriteHandle = AtomSpaceWriterHandle;
 
     #[inline]
-    unsafe fn read(space: &'handle AtomSpace, _: ()) -> Option<&'handle AtomSpace> {
-        Some(space)
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+        Some(body)
     }
 
     #[inline]
-    fn init(
+    fn init<'handle, 'space: 'handle>(
         frame: AtomSpaceWriter<'handle, 'space>,
-        _: (),
-    ) -> Option<AtomSpaceWriter<'handle, 'space>> {
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
         Some(frame)
     }
 }

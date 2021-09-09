@@ -87,29 +87,56 @@ unsafe impl UriBound for Sequence {
     const URI: &'static [u8] = sys::LV2_ATOM__Sequence;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Sequence {
-    type ReadParameter = URID<Beat>;
-    type ReadHandle = SequenceIterator<'handle>;
-    type WriteParameter = TimeStampURID;
-    type WriteHandle = SequenceWriter<'handle, 'space>;
+struct SequenceReadHandle;
+impl<'handle> AtomHandle<'handle> for SequenceReadHandle {
+    type Handle = SequenceHeaderReader<'handle>;
+}
 
-    unsafe fn read(body: &AtomSpace, bpm_urid: URID<Beat>) -> Option<SequenceIterator> {
-        let mut reader = body.read();
-        let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
+struct SequenceWriteHandle;
+impl<'handle> AtomHandle<'handle> for SequenceWriteHandle {
+    type Handle = SequenceWriter<'handle>;
+}
 
-        let unit = if header.unit == bpm_urid {
+pub struct SequenceHeaderReader<'handle> {
+    header: &'handle sys::LV2_Atom_Sequence_Body,
+    reader: SpaceReader<'handle>,
+}
+
+impl<'handle> SequenceHeaderReader<'handle> {
+    pub fn read(self, bpm_urid: URID<Beat>) -> SequenceIterator<'handle> {
+        let unit = if self.header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
         } else {
             TimeStampUnit::Frames
         };
 
-        Some(SequenceIterator { reader, unit })
+        SequenceIterator {
+            reader: self.reader,
+            unit,
+        }
+    }
+}
+
+pub struct SequenceHeaderWriter<'handle> {
+    frame: AtomSpaceWriter<'handle>,
+}
+
+impl Atom for Sequence {
+    type ReadHandle = SequenceReadHandle;
+    type WriteHandle = SequenceWriteHandle;
+
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
+
+        Some(SequenceHeaderReader { reader, header })
     }
 
-    fn init(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-        unit: TimeStampURID,
-    ) -> Option<SequenceWriter<'handle, 'space>> {
+    fn init<'handle, 'space: 'handle>(
+        frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
             unit: match unit {
                 TimeStampURID::BeatsPerMinute(urid) => urid.get(),
@@ -211,13 +238,13 @@ impl<'a> Iterator for SequenceIterator<'a> {
 }
 
 /// The writing handle for sequences.
-pub struct SequenceWriter<'handle, 'space> {
-    frame: AtomSpaceWriter<'handle, 'space>,
+pub struct SequenceWriter<'handle> {
+    frame: AtomSpaceWriter<'handle>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
 
-impl<'handle, 'space> SequenceWriter<'handle, 'space> {
+impl<'handle> SequenceWriter<'handle> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:
@@ -254,14 +281,13 @@ impl<'handle, 'space> SequenceWriter<'handle, 'space> {
     /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'a, A: Atom<'a, 'space>>(
+    pub fn init<'a, A: Atom>(
         &'a mut self,
         stamp: TimeStamp,
         urid: URID<A>,
-        parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         self.write_time_stamp(stamp)?;
-        self.frame.init_atom(urid, parameter)
+        self.frame.init_atom(urid)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -354,7 +380,7 @@ mod tests {
         {
             let mut reader = unsafe { raw_space.read().next_atom() }
                 .unwrap()
-                .read(urids.atom.sequence, urids.units.beat)
+                .read(urids.atom.sequence)
                 .unwrap();
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 

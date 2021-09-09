@@ -18,14 +18,14 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Read an integer from the port and print it.
-//!     println!("My input is: {}", ports.input.read(urids.int, ()).unwrap());
+//!     println!("My input is: {}", ports.input.read(urids.int).unwrap());
 //!     // Write the integer `42` to the port.
 //!     ports.output.init(urids.int, 42).unwrap();
 //! }
 //! ```
 use crate::header::AtomHeader;
 use crate::space::*;
-use crate::UnidentifiedAtom;
+use crate::{AtomHandle, UnidentifiedAtom};
 use lv2_core::port::PortType;
 use std::ffi::c_void;
 use std::ptr::NonNull;
@@ -50,26 +50,25 @@ impl<'space> PortReader<'space> {
     ///
     /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
     #[inline]
-    pub fn read<'handle, A: crate::Atom<'handle, 'space>>(
+    pub fn read<'handle, A: crate::Atom>(
         &self,
         urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Option<A::ReadHandle> {
-        self.atom.read(urid, parameter)
+    ) -> Option<<A::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+        self.atom.read(urid)
     }
 }
 
 /// A handle to write atoms into a port.
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
-pub struct PortWriter<'a> {
-    space: SpaceCursor<'a>,
+pub struct PortWriter<'space> {
+    space: SpaceCursor<'space>,
     has_been_written: bool,
 }
 
-impl<'a> PortWriter<'a> {
+impl<'space> PortWriter<'space> {
     /// Create a new port writer.
-    fn new(space: &'a mut AtomSpace) -> Self {
+    fn new(space: &'space mut AtomSpace) -> Self {
         Self {
             space: SpaceCursor::new(space.as_bytes_mut()),
             has_been_written: false,
@@ -83,18 +82,17 @@ impl<'a> PortWriter<'a> {
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
     /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn init<'b, 'read, 'write, A: crate::Atom<'read, 'write>>(
+    pub fn init<'b, 'write, A: crate::Atom>(
         &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
+    ) -> Option<<A::WriteHandle as AtomHandle<'write, 'space>>::Handle> {
         if !self.has_been_written {
             self.has_been_written = true;
             // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
             let space: &'write mut SpaceCursor<'write> = unsafe {
                 ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
             };
-            space.init_atom(urid, parameter)
+            space.init_atom(urid)
         } else {
             None
         }
@@ -162,7 +160,7 @@ mod tests {
         {
             let chunk = unsafe { raw_space.read().next_atom() }
                 .unwrap()
-                .read(urids.chunk, ())
+                .read(urids.chunk)
                 .unwrap();
             let reader = unsafe { AtomPort::input_from_raw(NonNull::from(chunk).cast(), 0) };
             assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);

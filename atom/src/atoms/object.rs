@@ -30,12 +30,12 @@
 //! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
 //!     // Create the reading handle.
 //!     // We don't need the header now.
-//!     let (_header, object_reader) = ports.input.read(urids.atom.object, ()).unwrap();
+//!     let (_header, object_reader) = ports.input.read(urids.atom.object).unwrap();
 //!
 //!     /// Iterate through all properties of the object.
 //!     for (property_header, atom) in object_reader {
 //!         // If the property is an integer...
-//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!         if let Some(integer) = atom.read(urids.atom.int) {
 //!             // Print it!
 //!             println!(
 //!                 "Property No. {} has integer value {}",
@@ -52,16 +52,17 @@
 //!     }
 //!
 //!     // Initialize the object.
-//!     let mut object_writer = ports.output.init(
-//!         urids.atom.object,
-//!         ObjectHeader {
-//!             id: None,
-//!             otype: urids.object_class.into_general(),
-//!         }
+//!     let mut object_writer = ports.output.init(urids.atom.object)
+//!         .unwrap()
+//!         .write_header(
+//!             ObjectHeader {
+//!                 id: None,
+//!                 otype: urids.object_class.into_general(),
+//!             }
 //!     ).unwrap();
 //!
 //!     // Write a property to the object.
-//!     object_writer.init(urids.property_a, urids.atom.int, 42).unwrap();
+//!     object_writer.init(urids.property_a, urids.atom.int).unwrap();
 //! }
 //! ```
 //!
@@ -95,25 +96,37 @@ pub struct ObjectHeader {
 }
 
 struct ObjectReaderHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
-    type Handle = AtomSpaceWriter<'handle, 'space>;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ObjectReaderHandle {
+    type Handle = (ObjectHeader, ObjectReader<'handle>);
 }
 
 struct ObjectWriterHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
-    type Handle = AtomSpaceWriter<'handle, 'space>;
+impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ObjectWriterHandle {
+    type Handle = ObjectHeaderWriter<'handle, 'space>;
+}
+
+pub struct ObjectHeaderWriter<'handle, 'space> {
+    frame: AtomSpaceWriter<'handle>,
+}
+
+impl<'handle, 'space: 'handle> ObjectHeaderWriter<'handle, 'space> {
+    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'handle, 'space>> {
+        self.frame.write_value(sys::LV2_Atom_Object_Body {
+            id: header.id.map(URID::get).unwrap_or(0),
+            otype: header.otype.get(),
+        })?;
+
+        Some(ObjectWriter { frame: self.frame })
+    }
 }
 
 impl Atom for Object {
-    type ReadParameter = ();
     type ReadHandle = ObjectReaderHandle;
-    type WriteParameter = ObjectHeader;
     type WriteHandle = ObjectWriterHandle;
 
     unsafe fn read<'handle, 'space: 'handle>(
-        body: &'handle AtomSpace,
-        _: (),
-    ) -> Option<(ObjectHeader, ObjectReader<'handle>)> {
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
@@ -127,17 +140,10 @@ impl Atom for Object {
         Some((header, reader))
     }
 
-    fn init(
+    fn init<'handle, 'space: 'handle>(
         mut frame: AtomSpaceWriter<'handle, 'space>,
-        header: ObjectHeader,
-    ) -> Option<ObjectWriter<'handle, 'space>> {
-        {
-            frame.write_value(sys::LV2_Atom_Object_Body {
-                id: header.id.map(URID::get).unwrap_or(0),
-                otype: header.otype.get(),
-            })?;
-        }
-        Some(ObjectWriter { frame })
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+        Some(ObjectHeaderWriter { frame })
     }
 }
 
@@ -152,26 +158,22 @@ unsafe impl UriBound for Blank {
     const URI: &'static [u8] = sys::LV2_ATOM__Blank;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Blank {
-    type ReadParameter = <Object as Atom<'handle, 'space>>::ReadParameter;
-    type ReadHandle = <Object as Atom<'handle, 'space>>::ReadHandle;
-    type WriteParameter = <Object as Atom<'handle, 'space>>::WriteParameter;
-    type WriteHandle = <Object as Atom<'handle, 'space>>::WriteHandle;
+impl Atom for Blank {
+    type ReadHandle = <Object as Atom>::ReadHandle;
+    type WriteHandle = <Object as Atom>::WriteHandle;
 
-    #[allow(clippy::unit_arg)]
     #[inline]
-    unsafe fn read(
-        body: &'handle AtomSpace,
-        parameter: Self::ReadParameter,
-    ) -> Option<Self::ReadHandle> {
-        Object::read(body, parameter)
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+        Object::read(body)
     }
 
-    fn init(
-        frame: AtomSpaceWriter<'handle, 'space>,
-        parameter: Self::WriteParameter,
-    ) -> Option<Self::WriteHandle> {
-        Object::init(frame, parameter)
+    #[inline]
+    fn init<'handle, 'space: 'handle>(
+        mut frame: AtomSpaceWriter<'handle, 'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+        Object::init(frame)
     }
 }
 
@@ -203,15 +205,14 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
     /// Initialize a new property with a context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
-    pub fn init_with_context<'read, K: ?Sized, T: ?Sized, A: Atom<'read, 'space>>(
+    pub fn init_with_context<'read, K: ?Sized, T: ?Sized, A: Atom>(
         &'space mut self,
         key: URID<K>,
         context: URID<T>,
         child_urid: URID<A>,
-        parameter: A::WriteParameter,
     ) -> Option<A::WriteHandle> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        self.frame.init_atom(child_urid, parameter)
+        self.frame.init_atom(child_urid)
     }
 
     /// Initialize a new property.
@@ -219,14 +220,13 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<'a, K: ?Sized, A: Atom<'a, 'space>>(
+    pub fn init<'a, K: ?Sized, A: Atom>(
         &'a mut self,
         key: URID<K>,
         child_urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
+    ) -> Option<<A::WriteHandle as AtomHandle<'a, 'space>>::Handle> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
-        self.frame.init_atom(child_urid, parameter)
+        self.frame.init_atom(child_urid)
     }
 }
 
@@ -411,7 +411,7 @@ mod tests {
         {
             let (header, iter) = unsafe { raw_space.read().next_atom() }
                 .unwrap()
-                .read(urids.object, ())
+                .read(urids.object)
                 .unwrap();
 
             assert_eq!(header.otype, object_type);
@@ -421,11 +421,11 @@ mod tests {
 
             let (header, atom) = properties[0];
             assert_eq!(header.key, first_key);
-            assert_eq!(atom.read(urids.int, ()).unwrap(), first_value);
+            assert_eq!(atom.read(urids.int).unwrap(), first_value);
 
             let (header, atom) = properties[1];
             assert_eq!(header.key, second_key);
-            assert_eq!(atom.read(urids.float, ()).unwrap(), second_value);
+            assert_eq!(atom.read(urids.float).unwrap(), second_value);
         }
     }
 }

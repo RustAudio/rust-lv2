@@ -46,19 +46,13 @@ unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<'handle, 'space: 'handle, C: ScalarAtom> Atom<'handle, 'space> for Vector<C>
-where
-    C: 'space,
-{
-    type ReadParameter = URID<C>;
+impl<C: ScalarAtom> Atom for Vector<C> {
     type ReadHandle = &'space [C::InternalType];
-    type WriteParameter = URID<C>;
     type WriteHandle = VectorWriter<'handle, 'space, C>;
 
-    unsafe fn read(
+    unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-        child_urid: URID<C>,
-    ) -> Option<&'space [C::InternalType]> {
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
 
@@ -72,10 +66,9 @@ where
         reader.as_slice()
     }
 
-    fn init(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-        child_urid: URID<C>,
-    ) -> Option<VectorWriter<'handle, 'space, C>> {
+    fn init<'handle, 'space: 'handle>(
+        frame: AtomSpaceWriter<'handle, 'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: child_urid.get(),
             child_size: size_of::<C::InternalType>() as u32,

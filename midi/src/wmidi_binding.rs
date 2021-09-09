@@ -20,7 +20,7 @@ unsafe impl UriBound for WMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for WMidiEvent {
+impl Atom for WMidiEvent {
     type ReadParameter = ();
     type ReadHandle = wmidi::MidiMessage<'handle>;
     type WriteParameter = wmidi::MidiMessage<'handle>;
@@ -52,7 +52,7 @@ unsafe impl UriBound for SystemExclusiveWMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for SystemExclusiveWMidiEvent {
+impl Atom for SystemExclusiveWMidiEvent {
     type ReadParameter = ();
     type ReadHandle = wmidi::MidiMessage<'handle>;
     type WriteParameter = ();
