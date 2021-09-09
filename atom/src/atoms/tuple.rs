@@ -42,22 +42,21 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Tuple {
-    type ReadParameter = ();
+impl Atom for Tuple {
     type ReadHandle = TupleIterator<'handle>;
-    type WriteParameter = ();
     type WriteHandle = TupleWriter<'handle, 'space>;
 
-    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<TupleIterator<'space>> {
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
         Some(TupleIterator {
             reader: body.read(),
         })
     }
 
-    fn init(
+    fn init<'handle, 'space: 'handle>(
         frame: AtomSpaceWriter<'handle, 'space>,
-        _: (),
-    ) -> Option<TupleWriter<'handle, 'space>> {
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
         Some(TupleWriter { frame })
     }
 }

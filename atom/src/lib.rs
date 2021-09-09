@@ -47,7 +47,7 @@
 //!         // An event contains a timestamp and an atom.
 //!         let (timestamp, atom) = event;
 //!         // If the read atom is a 32-bit integer...
-//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!         if let Some(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
 //!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
 //!         } else {
@@ -92,7 +92,7 @@ pub mod prelude {
     pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
 }
 
-pub trait AtomHandle<'handle, 'space: 'handle> {
+pub trait AtomHandle<'handle> {
     type Handle: 'handle;
 }
 
@@ -102,25 +102,15 @@ pub trait AtomHandle<'handle, 'space: 'handle> {
 ///
 /// This trait has two lifetime parameters: The first one is the lifetime of the atom in memory. In practice, this will often be `'static`, but it's good to keep it generic for testing purposes. The second parameter is the lifetime of the `MutSpace` borrowed by the `FramedMutSpace` parameter in the `write` method. Since the `WriteParameter` may contain this `FramedMutSpace`, it has to be assured that it lives long enough. Since the referenced `MutSpace` also has to borrow the atom, it may not live longer than the atom.
 pub trait Atom: UriBound {
-    /// The atom-specific parameter of the `read` function.
-    ///
-    /// If your atom does not need a reading parameter, you may set it to `()`.
-    type ReadParameter;
-
     /// The return value of the `read` function.
     ///
     /// It may contain a reference to the atom and therefore may not outlive it.
-    type ReadHandle: for<'handle, 'space> AtomHandle<'handle, 'space>;
-
-    /// The atom-specific parameter of the `write` function.
-    ///
-    /// If your atom does not need a writing parameter, you may set it to `()`.
-    type WriteParameter;
+    type ReadHandle: for<'handle> AtomHandle<'handle>;
 
     /// The return value of the `write` function.
     ///
     /// It may contain a reference to a `MutSpace` and therefore may not outlive it.
-    type WriteHandle: for<'handle, 'space> AtomHandle<'handle, 'space>;
+    type WriteHandle: for<'handle> AtomHandle<'handle>;
 
     /// Reads the body of the atom.
     ///
@@ -134,8 +124,7 @@ pub trait Atom: UriBound {
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
     unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-        parameter: Self::ReadParameter,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle>;
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle>;
 
     /// Initialize the body of the atom.
     ///
@@ -146,9 +135,8 @@ pub trait Atom: UriBound {
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
     fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'handle, 'space>,
-        parameter: Self::WriteParameter,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle>;
+        frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle>;
 }
 
 /// An atom of yet unknown type.
@@ -199,14 +187,13 @@ impl UnidentifiedAtom {
     pub fn read<'handle, 'space: 'handle, A: Atom>(
         &'space self,
         urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Option<<A::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<A::ReadHandle as AtomHandle<'handle>>::Handle> {
         if self.header.urid() != urid {
             return None;
         }
 
         // SAFETY: the fact that this contains a valid instance of A is checked above.
-        unsafe { A::read(self.body(), parameter) }
+        unsafe { A::read(self.body()) }
     }
 
     #[inline]

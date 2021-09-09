@@ -15,7 +15,7 @@ unsafe impl UriBound for MidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for MidiEvent {
+impl Atom for MidiEvent {
     type ReadParameter = ();
     type ReadHandle = &'handle [u8];
     type WriteParameter = ();

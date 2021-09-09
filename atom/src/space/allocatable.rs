@@ -10,7 +10,7 @@ use std::mem::MaybeUninit;
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
 ///
 // TODO: Find proper name
-pub trait SpaceAllocatorImpl<'space> {
+pub trait SpaceAllocatorImpl {
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])>;
 
     #[must_use]
@@ -24,7 +24,7 @@ pub trait SpaceAllocatorImpl<'space> {
 }
 
 // TODO: Find proper name
-pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
+pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     /// Try to allocate memory on the internal data slice.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
@@ -42,13 +42,7 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 
     #[inline]
-    fn allocate_aligned<'handle, T: 'static>(
-        &'handle mut self,
-        size: usize,
-    ) -> Option<&'handle mut AlignedSpace<T>>
-    where
-        'space: 'handle,
-    {
+    fn allocate_aligned<T: 'static>(&mut self, size: usize) -> Option<&mut AlignedSpace<T>> {
         let required_padding = crate::util::padding_for::<T>(self.remaining_bytes())?;
         let raw = self.allocate(size + required_padding)?;
 
@@ -56,38 +50,19 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 
     #[inline]
-    fn allocate_values<'handle, T: 'static>(
-        &'handle mut self,
-        count: usize,
-    ) -> Option<&'handle mut [MaybeUninit<T>]>
-    where
-        'space: 'handle,
-    {
+    fn allocate_values<T: 'static>(&mut self, count: usize) -> Option<&mut [MaybeUninit<T>]> {
         let space = self.allocate_aligned(count * std::mem::size_of::<T>())?;
         Some(space.as_uninit_slice_mut())
     }
 
     #[inline]
-    fn init_atom<'handle, A: Atom<'handle, 'space>>(
-        &'handle mut self,
-        atom_type: URID<A>,
-        write_parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle>
-    where
-        'space: 'handle,
-    {
-        let space: AtomSpaceWriter<'handle, 'space> = AtomSpaceWriter::write_new(self, atom_type)?;
-        A::init(space, write_parameter)
+    fn init_atom<A: Atom>(&mut self, atom_type: URID<A>) -> Option<A::WriteHandle> {
+        let space = AtomSpaceWriter::write_new(self, atom_type)?;
+        A::init(space)
     }
 
     #[inline]
-    fn forward_atom<'handle>(
-        &'handle mut self,
-        atom: &UnidentifiedAtom,
-    ) -> Option<&'handle mut UnidentifiedAtom>
-    where
-        'space: 'handle,
-    {
+    fn forward_atom(&mut self, atom: &UnidentifiedAtom) -> Option<&mut UnidentifiedAtom> {
         let resulting_space = self.allocate_aligned(atom.atom_space().len())?;
         resulting_space
             .as_bytes_mut()
@@ -97,20 +72,16 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 
     #[inline]
-    fn write_bytes<'handle>(&'handle mut self, bytes: &[u8]) -> Option<&'handle mut [u8]>
-    where
-        'space: 'handle,
-    {
+    fn write_bytes(&mut self, bytes: &[u8]) -> Option<&mut [u8]> {
         let space = self.allocate(bytes.len())?;
         space.copy_from_slice(bytes);
         Some(space)
     }
 
     #[inline]
-    fn write_value<'handle, T: 'static>(&'handle mut self, value: T) -> Option<&'handle mut T>
+    fn write_value<T: 'static>(&mut self, value: T) -> Option<&mut T>
     where
         T: Copy + Sized + 'static,
-        'space: 'handle,
     {
         let space = self.allocate_aligned(size_of_val(&value))?;
         // SAFETY: We used size_of_val, so we are sure that the allocated space is exactly big enough for T.
@@ -121,10 +92,9 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
         Some(unsafe { crate::util::assume_init_mut(space) })
     }
 
-    fn write_values<'handle, T>(&'handle mut self, values: &[T]) -> Option<&'handle mut [T]>
+    fn write_values<T>(&mut self, values: &[T]) -> Option<&mut [T]>
     where
         T: Copy + Sized + 'static,
-        //'space: 'handle,
     {
         let space: &mut AlignedSpace<T> = self.allocate_aligned(size_of_val(values))?;
         let space = space.as_uninit_slice_mut();
@@ -138,7 +108,7 @@ pub trait SpaceAllocator<'space>: SpaceAllocatorImpl<'space> + Sized {
     }
 }
 
-impl<'space, H: SpaceAllocatorImpl<'space>> SpaceAllocator<'space> for H {}
+impl<H: SpaceAllocatorImpl> SpaceAllocator for H {}
 
 #[cfg(test)]
 mod tests {

@@ -17,8 +17,8 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
-//!     let input: &str = ports.input.read(urids.string, ()).unwrap();
-//!     let mut writer: StringWriter = ports.output.init(urids.string, ()).unwrap();
+//!     let input: &str = ports.input.read(urids.string).unwrap();
+//!     let mut writer: StringWriter = ports.output.init(urids.string).unwrap();
 //!     writer.append(input).unwrap();
 //! }
 //! ```
@@ -29,6 +29,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Literal](http://lv2plug.in/ns/ext/atom/atom.html#Literal)
 use crate::prelude::*;
 use crate::space::*;
+use crate::AtomHandle;
 use urid::*;
 
 /// An atom containing either a localized string or an RDF literal.
@@ -47,13 +48,49 @@ pub enum LiteralInfo {
     Datatype(URID),
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
-    type ReadParameter = ();
-    type ReadHandle = (LiteralInfo, &'handle str);
-    type WriteParameter = LiteralInfo;
-    type WriteHandle = StringWriter<'handle, 'space>;
+pub struct LiteralInfoWriter<'a> {
+    frame: AtomSpaceWriter<'a>,
+}
 
-    unsafe fn read(body: &'handle AtomSpace, _: ()) -> Option<(LiteralInfo, &'handle str)> {
+impl<'a> LiteralInfoWriter<'a> {
+    pub fn write_info(mut self, info: LiteralInfo) -> Option<StringWriter<'a>> {
+        self.frame.write_value(match info {
+            LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
+                lang: lang.get(),
+                datatype: 0,
+            },
+            LiteralInfo::Datatype(datatype) => sys::LV2_Atom_Literal_Body {
+                lang: 0,
+                datatype: datatype.get(),
+            },
+        })?;
+
+        Some(StringWriter {
+            frame: self.frame,
+            has_nul_byte: false,
+        })
+    }
+}
+
+struct LiteralReadHandle;
+
+impl<'a> AtomHandle<'a> for LiteralReadHandle {
+    type Handle = (LiteralInfo, &'a str);
+}
+
+struct LiteralWriteHandle;
+
+impl<'a> AtomHandle<'a> for LiteralWriteHandle {
+    type Handle = StringWriter<'a>;
+}
+
+impl Atom for Literal {
+    type ReadHandle = LiteralReadHandle;
+    type WriteHandle = LiteralWriteHandle;
+
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
@@ -73,25 +110,24 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for Literal {
             .map(|string| (info, string))
     }
 
-    fn init(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-        info: LiteralInfo,
-    ) -> Option<StringWriter<'handle, 'space>> {
-        frame.write_value(match info {
-            LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
-                lang: lang.get(),
-                datatype: 0,
-            },
-            LiteralInfo::Datatype(datatype) => sys::LV2_Atom_Literal_Body {
-                lang: 0,
-                datatype: datatype.get(),
-            },
-        })?;
-        Some(StringWriter {
-            frame,
-            has_nul_byte: false,
-        })
+    #[inline]
+    fn init<'handle, 'space: 'handle>(
+        frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+        Some(LiteralInfoWriter { frame })
     }
+}
+
+struct StringReadHandle;
+
+impl<'a> AtomHandle<'a> for StringReadHandle {
+    type Handle = &'a str;
+}
+
+struct StringWriteHandle;
+
+impl<'a> AtomHandle<'a> for StringWriteHandle {
+    type Handle = StringWriter<'a>;
 }
 
 /// An atom containing a UTF-8 encoded string.
@@ -103,22 +139,21 @@ unsafe impl UriBound for String {
     const URI: &'static [u8] = sys::LV2_ATOM__String;
 }
 
-impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
-    type ReadParameter = ();
-    type ReadHandle = &'handle str;
-    type WriteParameter = ();
-    type WriteHandle = StringWriter<'handle, 'space>;
+impl Atom for String {
+    type ReadHandle = StringReadHandle;
+    type WriteHandle = StringWriteHandle;
 
-    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<&'handle str> {
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         let data = body.as_bytes();
         let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
         Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
-    fn init(
-        frame: AtomSpaceWriter<'handle, 'space>,
-        _: (),
-    ) -> Option<StringWriter<'handle, 'space>> {
+    fn init<'handle, 'space: 'handle>(
+        frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
         Some(StringWriter {
             frame,
             has_nul_byte: false,
@@ -127,12 +162,12 @@ impl<'handle, 'space: 'handle> Atom<'handle, 'space> for String {
 }
 
 /// Handle to append strings to a string or literal.
-pub struct StringWriter<'handle, 'space> {
-    frame: AtomSpaceWriter<'handle, 'space>,
+pub struct StringWriter<'a> {
+    frame: AtomSpaceWriter<'a>,
     has_nul_byte: bool, // If this writer already wrote a null byte before.
 }
 
-impl<'handle, 'space> StringWriter<'handle, 'space> {
+impl<'a> StringWriter<'a> {
     /// Append a string.
     ///
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
@@ -141,6 +176,7 @@ impl<'handle, 'space> StringWriter<'handle, 'space> {
     pub fn append(&mut self, string: &str) -> Option<&mut str> {
         // Rewind to overwrite previously written nul_byte before appending the string.
         if self.has_nul_byte {
+            // SAFETY: it is safe to overwrite the nul byte
             if unsafe { !self.frame.rewind(1) } {
                 return None; // Could not rewind
             }
@@ -235,7 +271,7 @@ mod tests {
                     .read()
                     .next_atom()
                     .unwrap()
-                    .read(urids.atom.literal, ())
+                    .read(urids.atom.literal)
             }
             .unwrap();
 
@@ -277,7 +313,7 @@ mod tests {
         {
             let string = unsafe { raw_space.read().next_atom() }
                 .unwrap()
-                .read(urids.string, ())
+                .read(urids.string)
                 .unwrap();
             assert_eq!(string, SAMPLE0.to_owned() + SAMPLE1);
         }

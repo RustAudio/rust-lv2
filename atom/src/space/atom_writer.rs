@@ -6,16 +6,16 @@ use urid::URID;
 pub struct AtomSpaceWriterHandle;
 
 impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
-    type Handle = AtomSpaceWriter<'handle, 'space>;
+    type Handle = AtomSpaceWriter<'handle>;
 }
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
-pub struct AtomSpaceWriter<'handle, 'space: 'handle> {
+pub struct AtomSpaceWriter<'handle> {
     atom_header_index: usize,
-    parent: &'handle mut (dyn SpaceAllocatorImpl<'space>),
+    parent: &'handle mut (dyn SpaceAllocatorImpl<'handle>),
 }
 
-impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
+impl<'handle> AtomSpaceWriter<'handle> {
     #[inline]
     pub fn atom_header(&self) -> AtomHeader {
         let previous = self
@@ -56,7 +56,7 @@ impl<'handle, 'space> AtomSpaceWriter<'handle, 'space> {
     }
 }
 
-impl<'handle, 'space: 'handle> SpaceAllocatorImpl<'space> for AtomSpaceWriter<'handle, 'space> {
+impl<'handle> SpaceAllocatorImpl<'handle> for AtomSpaceWriter<'handle> {
     #[inline]
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let (previous, current) = self.parent.allocate_and_split(size)?;

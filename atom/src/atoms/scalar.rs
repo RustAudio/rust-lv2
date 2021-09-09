@@ -19,10 +19,10 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Scalar atoms don't need a reading parameter.
-//!     let read_value: f32 = ports.input.read(urids.float, ()).unwrap();
+//!     let read_value: &f32 = ports.input.read(urids.float).unwrap();
 //!
 //!     // Writing is done with the value of the atom.
-//!     ports.output.init(urids.float, 17.0).unwrap();
+//!     ports.output.init(urids.float).unwrap().set(17.0);
 //! }
 //! ```
 //!
@@ -30,7 +30,8 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
 use crate::*;
-use std::marker::Unpin;
+use std::marker::{PhantomData, Unpin};
+use std::mem::MaybeUninit;
 use urid::UriBound;
 use urid::URID;
 
@@ -56,28 +57,53 @@ pub trait ScalarAtom: UriBound {
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     #[inline]
     fn write_scalar<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-        value: Self::InternalType,
-    ) -> Option<()> {
-        frame.write_value(value)?;
+        mut frame: AtomSpaceWriter<'space>,
+    ) -> Option<ScalarWriter<'handle, Self::InternalType>> {
+        let value = frame.write_value(MaybeUninit::<Self::InternalType>::uninit())?;
         // Scalars have extra padding due to repr(C)
         frame.allocate_padding_for::<AtomHeader>();
-        Some(())
+        Some(ScalarWriter(value))
     }
 }
 
-impl<'handle, 'space: 'handle, A: ScalarAtom> Atom<'handle, 'space> for A {
-    type ReadParameter = ();
-    type ReadHandle = A::InternalType;
-    type WriteParameter = A::InternalType;
-    type WriteHandle = ();
+pub struct ScalarWriter<'handle, T: Copy + 'static>(&'handle mut MaybeUninit<T>);
 
-    unsafe fn read(body: &'space AtomSpace, _: ()) -> Option<A::InternalType> {
+impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
+    #[inline]
+    pub fn set<'a>(&mut self, value: T) -> &mut T
+    where
+        'a: 'handle,
+    {
+        *self.0 = MaybeUninit::new(value);
+        // SAFETY: we just wrote the value, therefore it is initialized now
+        unsafe { crate::util::assume_init_mut(&mut self.0) }
+    }
+}
+
+struct ScalarReaderHandle<T: Copy + 'static>;
+impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarReaderHandle<T> {
+    type Handle = &'handle T;
+}
+
+struct ScalarWriterHandle<T: Copy + 'static>;
+impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarWriterHandle<T> {
+    type Handle = ScalarWriter<'handle, T>;
+}
+
+impl<A: ScalarAtom> Atom for A {
+    type ReadHandle = ScalarReaderHandle<A::InternalType>;
+    type WriteHandle = ScalarWriterHandle<A::InternalType>;
+
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(frame: AtomSpaceWriter<'handle, 'space>, value: A::InternalType) -> Option<()> {
-        <A as ScalarAtom>::write_scalar(frame, value)
+    fn init<'handle, 'space: 'handle>(
+        frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+        <A as ScalarAtom>::write_scalar(frame)
     }
 }
 
@@ -203,7 +229,7 @@ mod tests {
         {
             let read_value = unsafe { raw_space.read().next_atom() }
                 .unwrap()
-                .read(urid, ())
+                .read(urid)
                 .unwrap();
 
             assert_eq!(read_value, value);
