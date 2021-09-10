@@ -50,10 +50,10 @@ impl<'space> PortReader<'space> {
     ///
     /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
     #[inline]
-    pub fn read<'handle, A: crate::Atom>(
+    pub fn read<A: crate::Atom>(
         &self,
         urid: URID<A>,
-    ) -> Option<<A::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<A::ReadHandle as AtomHandle>::Handle> {
         self.atom.read(urid)
     }
 }
@@ -82,10 +82,10 @@ impl<'space> PortWriter<'space> {
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
     /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn init<'b, 'write, A: crate::Atom>(
-        &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
+    pub fn init<'a, 'write, A: crate::Atom>(
+        &'a mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle<'write, 'space>>::Handle> {
+    ) -> Option<<A::WriteHandle as AtomHandle<'write>>::Handle> {
         if !self.has_been_written {
             self.has_been_written = true;
             // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.

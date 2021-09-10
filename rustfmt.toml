@@ -1,0 +1,4 @@
+format_code_in_doc_comments = true
+reorder_impl_items = true
+use_field_init_shorthand = true
+wrap_comments = true

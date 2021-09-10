@@ -89,7 +89,7 @@ fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
         // Constructing the plugin.
         Stateful::new(
             &PluginInfo::new(Stateful::uri(), Path::new("./"), 44100.0),
-            &mut Features { map: map },
+            &mut Features { map },
         )
         .unwrap()
     };

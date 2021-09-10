@@ -31,6 +31,7 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Vector](http://lv2plug.in/ns/ext/atom/atom.html#Vector)
 use crate::atoms::scalar::ScalarAtom;
+use crate::space::reader::SpaceReader;
 use crate::*;
 use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
@@ -38,63 +39,97 @@ use std::mem::{size_of, MaybeUninit};
 /// An atom containg an array of scalar atom bodies.
 ///
 /// [See also the module documentation.](index.html)
-pub struct Vector<C: ScalarAtom> {
-    child: PhantomData<C>,
-}
+pub struct Vector;
 
-unsafe impl<C: ScalarAtom> UriBound for Vector<C> {
+unsafe impl UriBound for Vector {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-impl<C: ScalarAtom> Atom for Vector<C> {
-    type ReadHandle = &'space [C::InternalType];
-    type WriteHandle = VectorWriter<'handle, 'space, C>;
+struct VectorReadHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
-        let mut reader = body.read();
-        let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
+impl<'a> AtomHandle<'a> for VectorReadHandle {
+    type Handle = VectorReader<'a>;
+}
 
-        if header.child_type != child_urid
-            || header.child_size as usize != size_of::<C::InternalType>()
+struct VectorWriteHandle;
+
+impl<'a> AtomHandle<'a> for VectorWriteHandle {
+    type Handle = VectorTypeWriter<'a>;
+}
+
+pub struct VectorReader<'a> {
+    reader: SpaceReader<'a>,
+    header: &'a sys::LV2_Atom_Vector_Body,
+}
+
+impl<'a> VectorReader<'a> {
+    pub fn of_type<C: ScalarAtom>(self, atom_type: URID<C>) -> Option<&'a [C::InternalType]> {
+        if self.header.child_type != atom_type
+            || self.header.child_size as usize != size_of::<C::InternalType>()
         {
             return None;
         }
 
-        // SAFETY: We can assume this data was properly initialized by the host.
-        reader.as_slice()
+        // SAFETY: The data type has just been checked above, and we can assume this data was
+        // properly initialized by the host.
+        unsafe { self.reader.as_slice() }
     }
+}
 
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'handle, 'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+pub struct VectorTypeWriter<'a> {
+    header: &'a mut MaybeUninit<sys::LV2_Atom_Vector_Body>,
+    writer: AtomSpaceWriter<'a>,
+}
+
+impl<'a> VectorTypeWriter<'a> {
+    pub fn of_type<C: ScalarAtom>(mut self, atom_type: URID<C>) -> VectorWriter<'a, C> {
         let body = sys::LV2_Atom_Vector_Body {
-            child_type: child_urid.get(),
+            child_type: atom_type.get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
-        frame.write_value(body)?;
 
-        Some(VectorWriter {
-            frame,
+        crate::util::write_uninit(&mut self.header, body);
+
+        VectorWriter {
+            writer: self.writer,
             type_: PhantomData,
-        })
+        }
+    }
+}
+
+impl Atom for Vector {
+    type ReadHandle = VectorReadHandle;
+    type WriteHandle = VectorWriteHandle;
+
+    unsafe fn read<'handle, 'space: 'handle>(
+        body: &'space AtomSpace,
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+        let mut reader = body.read();
+        let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
+
+        Some(VectorReader { reader, header })
+    }
+
+    fn init(mut writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        let header = writer.write_value(MaybeUninit::uninit())?;
+
+        Some(VectorTypeWriter { writer, header })
     }
 }
 
 /// Handle to append elements to a vector.
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
-pub struct VectorWriter<'handle, 'space, A: ScalarAtom> {
-    frame: AtomSpaceWriter<'handle, 'space>,
+pub struct VectorWriter<'handle, A: ScalarAtom> {
+    writer: AtomSpaceWriter<'handle>,
     type_: PhantomData<A>,
 }
 
-impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
+impl<'handle, A: ScalarAtom> VectorWriter<'handle, A> {
     /// Push a single value to the vector.
     #[inline]
     pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
-        self.frame.write_value(child)
+        self.writer.write_value(child)
     }
 
     /// Append a slice of undefined memory to the vector.
@@ -102,13 +137,13 @@ impl<'handle, 'space, A: ScalarAtom> VectorWriter<'handle, 'space, A> {
     /// Using this method, you don't need to have the elements in memory before you can write them.
     #[inline]
     pub fn allocate_uninit(&mut self, count: usize) -> Option<&mut [MaybeUninit<A::InternalType>]> {
-        self.frame.allocate_values(count)
+        self.writer.allocate_values(count)
     }
 
     /// Append multiple elements to the vector.
     #[inline]
     pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
-        self.frame.write_values(data)
+        self.writer.write_values(data)
     }
 }
 
@@ -159,7 +194,7 @@ mod tests {
         // reading
         {
             let atom = unsafe { raw_space.read().next_atom() }.unwrap();
-            let children: &[i32] = atom.read(urids.vector, urids.int).unwrap();
+            let children: &[i32] = atom.read(urids.vector).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {

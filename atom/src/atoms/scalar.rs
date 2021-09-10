@@ -48,8 +48,8 @@ pub trait ScalarAtom: UriBound {
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
     #[inline]
-    unsafe fn read_scalar(body: &AtomSpace) -> Option<Self::InternalType> {
-        body.read().next_value().copied()
+    unsafe fn read_scalar(body: &AtomSpace) -> Option<&Self::InternalType> {
+        body.read().next_value()
     }
 
     /// Try to write the atom into a space.
@@ -78,12 +78,12 @@ impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
     }
 }
 
-struct ScalarReaderHandle<T: Copy + 'static>;
+struct ScalarReaderHandle<T: Copy + 'static>(PhantomData<T>);
 impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarReaderHandle<T> {
     type Handle = &'handle T;
 }
 
-struct ScalarWriterHandle<T: Copy + 'static>;
+struct ScalarWriterHandle<T: Copy + 'static>(PhantomData<T>);
 impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarWriterHandle<T> {
     type Handle = ScalarWriter<'handle, T>;
 }
@@ -98,9 +98,7 @@ impl<A: ScalarAtom> Atom for A {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         <A as ScalarAtom>::write_scalar(frame)
     }
 }
@@ -203,7 +201,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            space.init_atom(urid, value).unwrap();
+            space.init_atom(urid).unwrap().set(value);
         }
 
         // verifying

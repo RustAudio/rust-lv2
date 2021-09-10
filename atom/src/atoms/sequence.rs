@@ -37,8 +37,7 @@
 //!     // You have to provide the unit of the time stamps.
 //!     let mut output_sequence: SequenceWriter = ports.output.init(
 //!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
+//!     ).unwrap().with_unit(urids.units.beat);
 //!
 //!     // Iterate through all events in the input sequence.
 //!     //
@@ -52,7 +51,7 @@
 //!         // If the read atom is a 32-bit integer...
 //!         if let Some(integer) = atom.read(urids.atom.int, ()) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
+//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(integer * 2);
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -94,7 +93,7 @@ impl<'handle> AtomHandle<'handle> for SequenceReadHandle {
 
 struct SequenceWriteHandle;
 impl<'handle> AtomHandle<'handle> for SequenceWriteHandle {
-    type Handle = SequenceWriter<'handle>;
+    type Handle = SequenceHeaderWriter<'handle>;
 }
 
 pub struct SequenceHeaderReader<'handle> {
@@ -155,9 +154,7 @@ impl Atom for Sequence {
         Some(SequenceHeaderReader { reader, header })
     }
 
-    fn init<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         let header = frame.write_value(MaybeUninit::uninit())?;
 
         Some(SequenceHeaderWriter { header, frame })
@@ -288,14 +285,14 @@ impl<'handle> SequenceWriter<'handle> {
         Some(())
     }
 
-    /// Initialize an event.
+    /// Initialize an event.       
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<'a, A: Atom>(
-        &'a mut self,
+    pub fn init<A: Atom>(
+        &mut self,
         stamp: TimeStamp,
         urid: URID<A>,
-    ) -> Option<A::WriteHandle> {
+    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
         self.write_time_stamp(stamp)?;
         self.frame.init_atom(urid)
     }
@@ -338,19 +335,19 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space
-                .init_atom(
-                    urids.atom.sequence,
-                    TimeStampURID::Frames(urids.units.frame),
-                )
-                .unwrap();
+                .init_atom(urids.atom.sequence)
+                .unwrap()
+                .with_unit(TimeStampURID::Frames(urids.units.frame));
 
             writer
-                .init::<Int>(TimeStamp::Frames(0), urids.atom.int, 42)
-                .unwrap();
+                .init::<Int>(TimeStamp::Frames(0), urids.atom.int)
+                .unwrap()
+                .set(42);
 
             writer
-                .init::<Long>(TimeStamp::Frames(1), urids.atom.long, 17)
-                .unwrap();
+                .init::<Long>(TimeStamp::Frames(1), urids.atom.long)
+                .unwrap()
+                .set(17);
         }
 
         // verifying
@@ -391,16 +388,18 @@ mod tests {
             let mut reader = unsafe { raw_space.read().next_atom() }
                 .unwrap()
                 .read(urids.atom.sequence)
-                .unwrap();
+                .unwrap()
+                .read(urids.units.beat);
+
             assert_eq!(reader.unit(), TimeStampUnit::Frames);
 
             let (stamp, atom) = reader.next().unwrap();
             assert_eq!(stamp, TimeStamp::Frames(0));
-            assert_eq!(atom.read::<Int>(urids.atom.int, ()).unwrap(), 42);
+            assert_eq!(atom.read::<Int>(urids.atom.int).unwrap(), 42);
 
             let (stamp, atom) = reader.next().unwrap();
             assert_eq!(stamp, TimeStamp::Frames(1));
-            assert_eq!(atom.read::<Long>(urids.atom.long, ()).unwrap(), 17);
+            assert_eq!(atom.read::<Long>(urids.atom.long).unwrap(), 17);
 
             assert!(reader.next().is_none());
         }

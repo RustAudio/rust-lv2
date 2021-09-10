@@ -1,5 +1,5 @@
 use crate::space::{AlignedSpace, AtomSpaceWriter};
-use crate::{Atom, UnidentifiedAtom};
+use crate::{Atom, AtomHandle, UnidentifiedAtom};
 use urid::URID;
 
 use core::mem::size_of_val;
@@ -56,7 +56,10 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     }
 
     #[inline]
-    fn init_atom<A: Atom>(&mut self, atom_type: URID<A>) -> Option<A::WriteHandle> {
+    fn init_atom<A: Atom>(
+        &mut self,
+        atom_type: URID<A>,
+    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
         let space = AtomSpaceWriter::write_new(self, atom_type)?;
         A::init(space)
     }

@@ -499,7 +499,7 @@ mod tests {
         }
     }
 
-    fn test_mut_space<'a>(mut space: impl SpaceAllocator<'a>) {
+    fn test_mut_space<'a>(mut space: impl SpaceAllocator) {
         let map = HashURIDMapper::new();
         let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 

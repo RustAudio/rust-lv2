@@ -39,13 +39,13 @@ unsafe impl UriBound for Chunk {
 }
 
 struct ChunkReaderHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ChunkReaderHandle {
+impl<'handle> AtomHandle<'handle> for ChunkReaderHandle {
     type Handle = &'handle AtomSpace;
 }
 
 struct ChunkWriterHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ChunkWriterHandle {
-    type Handle = AtomSpaceWriter<'handle, 'space>;
+impl<'handle> AtomHandle<'handle> for ChunkWriterHandle {
+    type Handle = AtomSpaceWriter<'handle>;
 }
 
 impl Atom for Chunk {
@@ -55,14 +55,12 @@ impl Atom for Chunk {
     #[inline]
     unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         Some(body)
     }
 
     #[inline]
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'handle, 'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Some(frame)
     }
 }
@@ -85,7 +83,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.chunk, ()).unwrap();
+            let mut writer = space.init_atom(urids.chunk).unwrap();
             let data = writer.allocate(SLICE_LENGTH).unwrap();
 
             for (i, value) in data.into_iter().enumerate() {
@@ -110,7 +108,7 @@ mod tests {
         // reading
         {
             let data =
-                unsafe { Chunk::read(raw_space.read().next_atom().unwrap().body(), ()) }.unwrap();
+                unsafe { Chunk::read(raw_space.read().next_atom().unwrap().body()) }.unwrap();
             assert_eq!(data.len(), SLICE_LENGTH);
 
             for (i, value) in data.as_bytes().iter().enumerate() {
