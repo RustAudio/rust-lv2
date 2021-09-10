@@ -30,6 +30,7 @@
 use crate::prelude::*;
 use crate::space::*;
 use crate::AtomHandle;
+use std::mem::MaybeUninit;
 use urid::*;
 
 /// An atom containing either a localized string or an RDF literal.
@@ -49,11 +50,12 @@ pub enum LiteralInfo {
 }
 
 pub struct LiteralInfoWriter<'a> {
+    body: &'a mut MaybeUninit<sys::LV2_Atom_Literal_Body>,
     frame: AtomSpaceWriter<'a>,
 }
 
 impl<'a> LiteralInfoWriter<'a> {
-    pub fn write_info(mut self, info: LiteralInfo) -> Option<StringWriter<'a>> {
+    pub fn write_info(mut self, info: LiteralInfo) -> StringWriter<'a> {
         self.frame.write_value(match info {
             LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                 lang: lang.get(),
@@ -63,12 +65,12 @@ impl<'a> LiteralInfoWriter<'a> {
                 lang: 0,
                 datatype: datatype.get(),
             },
-        })?;
+        });
 
-        Some(StringWriter {
+        StringWriter {
             frame: self.frame,
             has_nul_byte: false,
-        })
+        }
     }
 }
 
@@ -81,7 +83,7 @@ impl<'a> AtomHandle<'a> for LiteralReadHandle {
 struct LiteralWriteHandle;
 
 impl<'a> AtomHandle<'a> for LiteralWriteHandle {
-    type Handle = StringWriter<'a>;
+    type Handle = LiteralInfoWriter<'a>;
 }
 
 impl Atom for Literal {
@@ -111,10 +113,9 @@ impl Atom for Literal {
     }
 
     #[inline]
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
-        Some(LiteralInfoWriter { frame })
+    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        let body = frame.write_value(MaybeUninit::uninit())?;
+        Some(LiteralInfoWriter { body, frame })
     }
 }
 
@@ -151,9 +152,7 @@ impl Atom for String {
         Some(core::str::from_utf8(rust_str_bytes).ok()?)
     }
 
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Some(StringWriter {
             frame,
             has_nul_byte: false,
@@ -231,11 +230,9 @@ mod tests {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
             let mut writer = space
-                .init_atom(
-                    urids.atom.literal,
-                    LiteralInfo::Language(urids.german.into_general()),
-                )
-                .unwrap();
+                .init_atom(urids.atom.literal)
+                .unwrap()
+                .write_info(LiteralInfo::Language(urids.german.into_general()));
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }
@@ -292,7 +289,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
-            let mut writer = space.init_atom(urids.string, ()).unwrap();
+            let mut writer = space.init_atom(urids.string).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

@@ -75,7 +75,7 @@ pub struct VecSpaceCursor<'vec, T> {
     allocated_length: usize,
 }
 
-impl<'vec, T: Copy + 'static> SpaceAllocatorImpl<'vec> for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let end = self.allocated_length.checked_add(size)?;
         let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);

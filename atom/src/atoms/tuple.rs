@@ -42,21 +42,31 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
+struct TupleReadHandle;
+
+impl<'a> AtomHandle<'a> for TupleReadHandle {
+    type Handle = TupleIterator<'a>;
+}
+
+struct TupleWriteHandle;
+
+impl<'a> AtomHandle<'a> for TupleWriteHandle {
+    type Handle = TupleWriter<'a>;
+}
+
 impl Atom for Tuple {
-    type ReadHandle = TupleIterator<'handle>;
-    type WriteHandle = TupleWriter<'handle, 'space>;
+    type ReadHandle = TupleReadHandle;
+    type WriteHandle = TupleWriteHandle;
 
     unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         Some(TupleIterator {
             reader: body.read(),
         })
     }
 
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'handle, 'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Some(TupleWriter { frame })
     }
 }
@@ -78,18 +88,17 @@ impl<'a> Iterator for TupleIterator<'a> {
 }
 
 /// The writing handle to add atoms to a tuple.
-pub struct TupleWriter<'handle, 'space> {
-    frame: AtomSpaceWriter<'handle, 'space>,
+pub struct TupleWriter<'space> {
+    frame: AtomSpaceWriter<'space>,
 }
 
-impl<'handle, 'space> TupleWriter<'handle, 'space> {
+impl<'space> TupleWriter<'space> {
     /// Initialize a new tuple element.
-    pub fn init<'a, A: Atom<'a, 'space>>(
-        &'a mut self,
+    pub fn init<A: Atom>(
+        &mut self,
         child_urid: URID<A>,
-        child_parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
-        self.frame.init_atom(child_urid, child_parameter)
+    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
+        self.frame.init_atom(child_urid)
     }
 }
 
@@ -112,12 +121,12 @@ mod tests {
         // writing
         {
             let mut cursor = raw_space.write();
-            let mut writer = cursor.init_atom(urids.tuple, ()).unwrap();
+            let mut writer = cursor.init_atom(urids.tuple).unwrap();
             {
-                let mut vector_writer = writer.init(urids.vector, urids.int).unwrap();
+                let mut vector_writer = writer.init(urids.vector).unwrap().of_type(urids.int);
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            writer.init(urids.int, 42).unwrap();
+            writer.init(urids.int).unwrap().set(42);
         }
 
         // verifying

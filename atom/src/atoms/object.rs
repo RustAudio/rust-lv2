@@ -145,9 +145,7 @@ impl Atom for Object {
         Some((header, reader))
     }
 
-    fn init<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         let header = frame.write_value(MaybeUninit::uninit())?;
         Some(ObjectHeaderWriter { header, frame })
     }
@@ -176,9 +174,7 @@ impl Atom for Blank {
     }
 
     #[inline]
-    fn init<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Object::init(frame)
     }
 }
@@ -343,19 +339,18 @@ mod tests {
         {
             let mut cursor = SpaceCursor::new(raw_space.as_bytes_mut());
             let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
-            let mut writer = Object::init(
-                frame,
-                ObjectHeader {
-                    id: None,
-                    otype: object_type,
-                },
-            )
-            .unwrap();
+            let mut writer = Object::init(frame).unwrap().write_header(ObjectHeader {
+                id: None,
+                otype: object_type,
+            });
             {
-                writer.init(first_key, urids.int, first_value).unwrap();
+                writer.init(first_key, urids.int).unwrap().set(first_value);
             }
             {
-                writer.init(second_key, urids.float, second_value).unwrap();
+                writer
+                    .init(second_key, urids.float)
+                    .unwrap()
+                    .set(second_value);
             }
         }
 
@@ -427,11 +422,11 @@ mod tests {
 
             let (header, atom) = properties[0];
             assert_eq!(header.key, first_key);
-            assert_eq!(atom.read(urids.int).unwrap(), first_value);
+            assert_eq!(*atom.read(urids.int).unwrap(), first_value);
 
             let (header, atom) = properties[1];
             assert_eq!(header.key, second_key);
-            assert_eq!(atom.read(urids.float).unwrap(), second_value);
+            assert_eq!(*atom.read(urids.float).unwrap(), second_value);
         }
     }
 }

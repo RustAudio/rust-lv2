@@ -134,9 +134,7 @@ pub trait Atom: UriBound {
     /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle>;
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle>;
 }
 
 /// An atom of yet unknown type.

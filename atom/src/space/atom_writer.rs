@@ -5,14 +5,14 @@ use urid::URID;
 
 pub struct AtomSpaceWriterHandle;
 
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for AtomSpaceWriterHandle {
+impl<'handle> AtomHandle<'handle> for AtomSpaceWriterHandle {
     type Handle = AtomSpaceWriter<'handle>;
 }
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'handle> {
     atom_header_index: usize,
-    parent: &'handle mut (dyn SpaceAllocatorImpl<'handle>),
+    parent: &'handle mut (dyn SpaceAllocatorImpl),
 }
 
 impl<'handle> AtomSpaceWriter<'handle> {
@@ -41,7 +41,7 @@ impl<'handle> AtomSpaceWriter<'handle> {
 
     /// Create a new framed space with the given parent and type URID.
     pub fn write_new<A: ?Sized>(
-        parent: &'handle mut impl SpaceAllocator<'space>,
+        parent: &'handle mut impl SpaceAllocator,
         urid: URID<A>,
     ) -> Option<Self> {
         let atom = AtomHeader::new(urid);
@@ -56,7 +56,7 @@ impl<'handle> AtomSpaceWriter<'handle> {
     }
 }
 
-impl<'handle> SpaceAllocatorImpl<'handle> for AtomSpaceWriter<'handle> {
+impl<'handle> SpaceAllocatorImpl for AtomSpaceWriter<'handle> {
     #[inline]
     fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
