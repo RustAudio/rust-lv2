@@ -20,6 +20,13 @@ pub(crate) unsafe fn assume_init_slice<T>(slice: &[MaybeUninit<T>]) -> &[T] {
 }
 
 #[inline]
+pub(crate) fn write_uninit<T>(uninit: &mut MaybeUninit<T>, value: T) -> &mut T {
+    *uninit = MaybeUninit::new(value);
+    // SAFETY: we just wrote the value, therefore it is initialized now
+    unsafe { assume_init_mut(uninit) }
+}
+
+#[inline]
 pub(crate) fn value_index_to_byte_index<T>(size: usize) -> usize {
     size * ::core::mem::size_of::<T>()
 }

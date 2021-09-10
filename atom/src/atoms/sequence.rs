@@ -29,10 +29,9 @@
 //!     // The reading method needs the URID of the BPM unit to tell if the time stamp
 //!     // is measured in beats or in frames. If the atom doesn't says that it's measured
 //!     // in beats, it is assumed that it is measured in frames.
-//!     let input_sequence: SequenceIterator = ports.input.read(
-//!         urids.atom.sequence,
-//!         urids.units.beat
-//!     ).unwrap();
+//!     let input_sequence: SequenceIterator = ports.input
+//!         .read(urids.atom.sequence)
+//!         .unwrap().read(urids.units.beat);
 //!
 //!     // Get the write handle to the sequence.
 //!     // You have to provide the unit of the time stamps.
@@ -67,6 +66,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::reader::SpaceReader;
 use crate::*;
+use std::mem::MaybeUninit;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
 
@@ -118,7 +118,28 @@ impl<'handle> SequenceHeaderReader<'handle> {
 }
 
 pub struct SequenceHeaderWriter<'handle> {
+    header: &'handle mut MaybeUninit<SequenceBody>,
     frame: AtomSpaceWriter<'handle>,
+}
+
+impl<'a> SequenceHeaderWriter<'a> {
+    pub fn with_unit(mut self, unit: TimeStampURID) -> SequenceWriter<'a> {
+        let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
+            unit: match unit {
+                TimeStampURID::BeatsPerMinute(urid) => urid.get(),
+                TimeStampURID::Frames(urid) => urid.get(),
+            },
+            pad: 0,
+        });
+
+        crate::util::write_uninit(&mut self.header, header);
+
+        SequenceWriter {
+            frame: self.frame,
+            unit: unit.into(),
+            last_stamp: None,
+        }
+    }
 }
 
 impl Atom for Sequence {
@@ -135,22 +156,11 @@ impl Atom for Sequence {
     }
 
     fn init<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
+        mut frame: AtomSpaceWriter<'space>,
     ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
-        let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
-            unit: match unit {
-                TimeStampURID::BeatsPerMinute(urid) => urid.get(),
-                TimeStampURID::Frames(urid) => urid.get(),
-            },
-            pad: 0,
-        });
-        frame.write_value(header)?;
+        let header = frame.write_value(MaybeUninit::uninit())?;
 
-        Some(SequenceWriter {
-            frame,
-            unit: unit.into(),
-            last_stamp: None,
-        })
+        Some(SequenceHeaderWriter { header, frame })
     }
 }
 

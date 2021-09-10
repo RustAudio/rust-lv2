@@ -74,9 +74,7 @@ impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
     where
         'a: 'handle,
     {
-        *self.0 = MaybeUninit::new(value);
-        // SAFETY: we just wrote the value, therefore it is initialized now
-        unsafe { crate::util::assume_init_mut(&mut self.0) }
+        crate::util::write_uninit(&mut self.0, value)
     }
 }
 
