@@ -20,7 +20,7 @@
 //!     // Read an integer from the port and print it.
 //!     println!("My input is: {}", ports.input.read(urids.int).unwrap());
 //!     // Write the integer `42` to the port.
-//!     ports.output.init(urids.int, 42).unwrap();
+//!     ports.output.init(urids.int).unwrap();
 //! }
 //! ```
 use crate::header::AtomHeader;

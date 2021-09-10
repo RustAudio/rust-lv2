@@ -72,6 +72,7 @@ use crate::space::reader::SpaceReader;
 use crate::*;
 use std::convert::TryFrom;
 use std::iter::Iterator;
+use std::mem::MaybeUninit;
 use urid::UriBound;
 use urid::URID;
 
@@ -96,27 +97,31 @@ pub struct ObjectHeader {
 }
 
 struct ObjectReaderHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ObjectReaderHandle {
+impl<'handle> AtomHandle<'handle> for ObjectReaderHandle {
     type Handle = (ObjectHeader, ObjectReader<'handle>);
 }
 
 struct ObjectWriterHandle;
-impl<'handle, 'space: 'handle> AtomHandle<'handle, 'space> for ObjectWriterHandle {
-    type Handle = ObjectHeaderWriter<'handle, 'space>;
+impl<'handle> AtomHandle<'handle> for ObjectWriterHandle {
+    type Handle = ObjectHeaderWriter<'handle>;
 }
 
-pub struct ObjectHeaderWriter<'handle, 'space> {
+pub struct ObjectHeaderWriter<'handle> {
+    header: &'handle mut MaybeUninit<sys::LV2_Atom_Object_Body>,
     frame: AtomSpaceWriter<'handle>,
 }
 
-impl<'handle, 'space: 'handle> ObjectHeaderWriter<'handle, 'space> {
-    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'handle, 'space>> {
-        self.frame.write_value(sys::LV2_Atom_Object_Body {
-            id: header.id.map(URID::get).unwrap_or(0),
-            otype: header.otype.get(),
-        })?;
+impl<'handle> ObjectHeaderWriter<'handle> {
+    pub fn write_header(mut self, header: ObjectHeader) -> ObjectWriter<'handle> {
+        crate::util::write_uninit(
+            &mut self.header,
+            sys::LV2_Atom_Object_Body {
+                id: header.id.map(URID::get).unwrap_or(0),
+                otype: header.otype.get(),
+            },
+        );
 
-        Some(ObjectWriter { frame: self.frame })
+        ObjectWriter { frame: self.frame }
     }
 }
 
@@ -126,7 +131,7 @@ impl Atom for Object {
 
     unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
@@ -141,9 +146,10 @@ impl Atom for Object {
     }
 
     fn init<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
-        Some(ObjectHeaderWriter { frame })
+        mut frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
+        let header = frame.write_value(MaybeUninit::uninit())?;
+        Some(ObjectHeaderWriter { header, frame })
     }
 }
 
@@ -165,14 +171,14 @@ impl Atom for Blank {
     #[inline]
     unsafe fn read<'handle, 'space: 'handle>(
         body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle, 'space>>::Handle> {
+    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
         Object::read(body)
     }
 
     #[inline]
     fn init<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'handle, 'space>,
-    ) -> Option<<Self::WriteHandle as AtomHandle<'handle, 'space>>::Handle> {
+        mut frame: AtomSpaceWriter<'space>,
+    ) -> Option<<Self::WriteHandle as AtomHandle<'handle>>::Handle> {
         Object::init(frame)
     }
 }
@@ -197,20 +203,20 @@ impl<'a> Iterator for ObjectReader<'a> {
 /// Writing handle for object properties.
 ///
 /// This handle is a safeguard to assure that a object is always a series of properties.
-pub struct ObjectWriter<'handle, 'space: 'handle> {
-    frame: AtomSpaceWriter<'handle, 'space>,
+pub struct ObjectWriter<'a> {
+    frame: AtomSpaceWriter<'a>,
 }
 
-impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
+impl<'a> ObjectWriter<'a> {
     /// Initialize a new property with a context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
     pub fn init_with_context<'read, K: ?Sized, T: ?Sized, A: Atom>(
-        &'space mut self,
+        &mut self,
         key: URID<K>,
         context: URID<T>,
         child_urid: URID<A>,
-    ) -> Option<A::WriteHandle> {
+    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
         self.frame.init_atom(child_urid)
     }
@@ -220,11 +226,11 @@ impl<'handle, 'space: 'handle> ObjectWriter<'handle, 'space> {
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<'a, K: ?Sized, A: Atom>(
-        &'a mut self,
+    pub fn init<K: ?Sized, A: Atom>(
+        &mut self,
         key: URID<K>,
         child_urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle<'a, 'space>>::Handle> {
+    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
         self.frame.init_atom(child_urid)
     }
@@ -287,8 +293,8 @@ impl Property {
     ///
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
     #[inline]
-    fn write_header<'a, 'space, K: ?Sized, C: ?Sized>(
-        space: &'a mut impl SpaceAllocator<'space>,
+    fn write_header<K: ?Sized, C: ?Sized>(
+        space: &mut impl SpaceAllocator,
         key: URID<K>,
         context: Option<URID<C>>,
     ) -> Option<()> {
