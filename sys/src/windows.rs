@@ -1755,7 +1755,7 @@ pub const LV2_Options_Status_LV2_OPTIONS_ERR_BAD_KEY: LV2_Options_Status = 4;
 #[doc = "< Invalid/unsupported value."]
 pub const LV2_Options_Status_LV2_OPTIONS_ERR_BAD_VALUE: LV2_Options_Status = 8;
 #[doc = " A status code for option functions."]
-pub type LV2_Options_Status = i32;
+pub type LV2_Options_Status = u32;
 #[doc = "Interface for dynamically setting options (LV2_OPTIONS__interface)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

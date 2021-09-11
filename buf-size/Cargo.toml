@@ -1,0 +1,14 @@
+[package]
+name = "lv2-buf-size"
+version = "0.1.0"
+authors = ["Adrien Prokopowicz <adrien.prokopowicz@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lv2-atom = "2.0.0"
+lv2-core = "3.0.0"
+lv2-options = "0.1.0"
+lv2-sys = "2.0.0"
+urid = "0.1.0"
