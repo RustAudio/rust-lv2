@@ -1,4 +1,4 @@
-use lv2_atom::Atom;
+use lv2_atom::{Atom, AtomHandle};
 use urid::UriBound;
 
 /// A simple macro to automate the definition of the u32 options available in this module
@@ -18,17 +18,19 @@ macro_rules! make_option {
         }
 
         impl lv2_options::OptionType for $name {
-            type AtomType = lv2_atom::scalar::Int;
+            type AtomType = lv2_atom::atoms::scalar::Int;
 
             #[inline]
-            fn from_option_value<'a>(
-                value: <lv2_atom::scalar::Int as Atom<'a, 'a>>::ReadHandle,
+            fn from_option_value(
+                value: <<lv2_atom::atoms::scalar::Int as Atom>::ReadHandle as AtomHandle>::Handle,
             ) -> Option<Self> {
                 Some(Self((*value)))
             }
 
             #[inline]
-            fn as_option_value<'a>(&'a self) -> <lv2_atom::scalar::Int as Atom<'a, 'a>>::ReadHandle {
+            fn as_option_value<'a>(
+                &'a self,
+            ) -> <<lv2_atom::atoms::scalar::Int as Atom>::ReadHandle as AtomHandle>::Handle {
                 &self.0
             }
         }

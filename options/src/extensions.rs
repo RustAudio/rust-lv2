@@ -1,5 +1,6 @@
 //! Contains the [`OptionsInterface`](crate::extensions::OptionsInterface) extension interface.
 use crate::features::OptionsList;
+use crate::option::request::OptionRequestList;
 use crate::OptionsError;
 use lv2_core::feature::Feature;
 use lv2_core::plugin::PluginInstance;
@@ -9,7 +10,6 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::panic::AssertUnwindSafe;
 use urid::UriBound;
-use crate::option::request::OptionRequestList;
 
 /// An interface to allow dynamically setting options from the host.
 ///

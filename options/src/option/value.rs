@@ -1,5 +1,5 @@
 use crate::option::subject::Subject;
-use lv2_atom::prelude::Space;
+use lv2_atom::prelude::AlignedSpace;
 use lv2_atom::Atom;
 use urid::URID;
 
@@ -26,7 +26,7 @@ impl OptionValue {
     }
 
     #[inline]
-    pub fn data(&self) -> Option<Space> {
+    pub fn data(&self) -> Option<&AlignedSpace<u8>> {
         // SAFETY: lifetime of the returned atom value is guaranteed by lifetime of the current Option pointer
         // And the validity of these pointers are guaranteed by the host
         let slice = unsafe {
@@ -36,17 +36,15 @@ impl OptionValue {
             )
         };
 
-        Some(Space::from_slice(slice))
+        Some(AlignedSpace::from_slice(slice))
     }
 
     #[inline]
-    pub fn read<'a, T: crate::option::OptionType>(
-        &'a self,
+    pub fn read<T: crate::option::OptionType>(
+        &self,
         option_type: URID<T>,
         data_type: URID<T::AtomType>,
-        data_type_parameter: <T::AtomType as Atom<'a, 'a>>::ReadParameter,
-    ) -> Option<T> where T::AtomType: Atom<'a, 'a>
-    {
+    ) -> Option<T> {
         if !self.is(option_type) {
             return None;
         }
@@ -55,6 +53,9 @@ impl OptionValue {
             return None;
         }
 
-        T::from_option_value(T::AtomType::read(self.data()?, data_type_parameter)?)
+        // SAFETY: data is guaranteed to be an atom by the host
+        let atom = unsafe { self.data()?.read().next_atom()? }.read(data_type)?;
+
+        T::from_option_value(atom)
     }
 }

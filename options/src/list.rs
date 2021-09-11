@@ -16,7 +16,9 @@ impl<'f> OptionsList<'f> {
     /// Returns an iterator over the slice.
     #[inline]
     pub fn iter(&self) -> OptionsListIter<'f> {
-        OptionsListIter { current: self.options_list }
+        OptionsListIter {
+            current: self.options_list,
+        }
     }
 }
 
@@ -45,7 +47,7 @@ impl<'a> IntoIterator for &'a OptionsList<'a> {
 }
 
 pub struct OptionsListIter<'a> {
-    current: &'a lv2_sys::LV2_Options_Option
+    current: &'a lv2_sys::LV2_Options_Option,
 }
 
 impl<'a> Iterator for OptionsListIter<'a> {

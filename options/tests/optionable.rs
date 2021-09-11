@@ -1,6 +1,9 @@
-use lv2_atom::scalar::Int;
+use lv2_atom::atoms::scalar::Int;
+use lv2_atom::Atom;
 use lv2_core::prelude::*;
+use lv2_options::collection::{OptionsCollection, OptionsSerializer};
 use lv2_options::prelude::*;
+use lv2_options::request::OptionRequestList;
 use lv2_urid::{HostMap, LV2Map};
 use std::any::Any;
 use std::ffi::c_void;
@@ -8,27 +11,24 @@ use std::os::raw::c_char;
 use std::pin::Pin;
 use urid::{uri, HashURIDMapper, Uri, UriBound, URID};
 use urid::{Map, URIDCollection};
-use lv2_options::request::OptionRequestList;
-use lv2_options::collection::{OptionsSerializer, OptionsCollection};
-use lv2_atom::Atom;
 
 #[uri("urn:lv2_options:test:SomeIntOption")]
 pub struct MyIntOption(i32);
 
 impl lv2_options::OptionType for MyIntOption {
-    type AtomType = lv2_atom::scalar::Int;
+    type AtomType = lv2_atom::atoms::scalar::Int;
 
-    fn from_option_value<'a>(value: &'a i32) -> Option<Self> where Self::AtomType: Atom<'a, 'a> {
+    fn from_option_value(value: &i32) -> Option<Self> {
         Some(Self(*value))
     }
 
-    fn as_option_value<'a>(&'a self) -> &'a i32 where Self::AtomType: Atom<'a, 'a> {
+    fn as_option_value(&self) -> &i32 {
         &self.0
     }
 }
 
 pub struct MyPluginOptions {
-    some_int_option: MyIntOption
+    some_int_option: MyIntOption,
 }
 
 #[derive(FeatureCollection)]
@@ -52,8 +52,8 @@ impl Plugin for OptionablePlugin {
         let options_serializer = MyIntOption::new_serializer(&features.map)?;
 
         let mut plugin = OptionablePlugin {
+            options: options_serializer.deserialize_new(&features.options)?,
             options_serializer,
-            options: options_serializer.deserialize_new(&features.options)?
         };
 
         Some(plugin)
@@ -75,11 +75,13 @@ impl Plugin for OptionablePlugin {
 
 impl OptionsInterface for OptionablePlugin {
     fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
-        self.options_serializer.respond_to_requests(&self.options, &mut requests)
+        self.options_serializer
+            .respond_to_requests(&self.options, &mut requests)
     }
 
     fn set(&mut self, options: OptionsList) -> Result<(), OptionsError> {
-        self.options_serializer.deserialize_to(&mut self.options, &options)
+        self.options_serializer
+            .deserialize_to(&mut self.options, &options)
     }
 }
 

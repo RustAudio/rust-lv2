@@ -1,10 +1,10 @@
-use lv2_atom::Atom;
+use lv2_atom::{Atom, AtomHandle};
 use urid::UriBound;
 
 pub mod error;
+pub mod request;
 pub mod subject;
 pub mod value;
-pub mod request;
 
 /// A trait representing an LV2 Option type.
 ///
@@ -32,17 +32,21 @@ pub mod request;
 /// }
 /// ```
 pub trait OptionType: UriBound + Sized {
-    type AtomType: UriBound;
+    type AtomType: Atom;
 
     /// Creates a new instance of this Option type from a given atom value.
     ///
     /// This method may return `None` if the Atom's value is invalid for this option type.
     ///
     /// This method is used to store option data when received by the host.
-    fn from_option_value<'a>(value: <Self::AtomType as Atom<'a, 'a>>::ReadHandle) -> Option<Self> where Self::AtomType: Atom<'a, 'a>;
+    fn from_option_value(
+        value: <<<Self as OptionType>::AtomType as Atom>::ReadHandle as AtomHandle>::Handle,
+    ) -> Option<Self>;
 
     /// Returns this Option's value as a reference to its Atom type.
     ///
     /// This method is used to send the option's value to the host when it is requested.
-    fn as_option_value<'a>(&'a self) -> <Self::AtomType as Atom<'a, 'a>>::ReadHandle  where Self::AtomType: Atom<'a, 'a>;
+    fn as_option_value(
+        &self,
+    ) -> <<<Self as OptionType>::AtomType as Atom>::ReadHandle as AtomHandle>::Handle;
 }

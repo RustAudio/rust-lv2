@@ -92,6 +92,12 @@ impl<A: ScalarAtom> Atom for A {
     }
 }
 
+impl<A: ScalarAtom> BackAsSpace for A {
+    fn back_as_space<'a>(handle: <Self::ReadHandle as AtomHandle<'a>>::Handle) -> &'a [u8] {
+        AlignedSpace::from_slice(::core::slice::from_ref(handle)).as_bytes()
+    }
+}
+
 /// Macro to atomate the definition of scalar atoms.
 macro_rules! make_scalar_atom {
     ($atom:ty, $internal:ty, $uri:expr, $urid:expr) => {

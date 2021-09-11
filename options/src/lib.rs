@@ -17,15 +17,15 @@
 //! See the [LV2 Options documentation](http://lv2plug.in/ns/ext/options) for more information.
 
 pub use option::error::OptionsError;
-pub use option::OptionType;
 pub use option::request;
 pub use option::subject::Subject;
 pub use option::value::OptionValue;
+pub use option::OptionType;
 
-pub mod extensions;
-mod option;
-pub mod list;
 pub mod collection;
+pub mod extensions;
+pub mod list;
+mod option;
 
 /// Contains the [`OptionsList`](features::OptionsList) feature.
 pub mod features {
@@ -34,8 +34,8 @@ pub mod features {
 
 /// Prelude of `lv2_options` for wildcard usage.
 pub mod prelude {
+    pub use crate::extensions::{OptionsDescriptor, OptionsInterface};
     pub use crate::list::OptionsList;
     pub use crate::OptionsError;
     pub use crate::Subject;
-    pub use crate::extensions::{OptionsDescriptor, OptionsInterface};
 }

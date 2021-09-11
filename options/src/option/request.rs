@@ -1,18 +1,18 @@
+use crate::{OptionType, OptionsError, Subject};
+use lv2_atom::{Atom, AtomHandle, BackAsSpace};
 use urid::URID;
-use lv2_atom::{Atom, BackAsSpace};
-use crate::{Subject, OptionType, OptionsError};
 
 #[repr(C)]
 // SAFETY: The last fields are left uninitialized by the host, it's up to the plugin to set them
 pub struct OptionRequest {
-    inner: lv2_sys::LV2_Options_Option
+    inner: lv2_sys::LV2_Options_Option,
 }
 
 impl OptionRequest {
     #[inline]
-    pub(crate)fn from_mut(option: &mut lv2_sys::LV2_Options_Option) -> &mut Self {
+    pub(crate) fn from_mut(option: &mut lv2_sys::LV2_Options_Option) -> &mut Self {
         // SAFETY: lv2_sys::LV2_Options_Option and OptionRequest have the same memory layout
-        unsafe {&mut *(option as *mut lv2_sys::LV2_Options_Option as *mut Self) }
+        unsafe { &mut *(option as *mut lv2_sys::LV2_Options_Option as *mut Self) }
     }
 
     #[inline]
@@ -31,14 +31,20 @@ impl OptionRequest {
     }
 
     #[inline]
-    pub fn has_response(&self) -> bool { self.inner.type_ != 0 }
+    pub fn has_response(&self) -> bool {
+        self.inner.type_ != 0
+    }
 
     #[inline]
-    pub fn try_respond<'a, T: OptionType>(&'a mut self,
-                                            option_type: URID<T>,
-                                            atom_type: URID<T::AtomType>,
-                                            value: &'a T
-    )  -> Result<(), OptionsError> where T::AtomType: BackAsSpace<'a> {
+    pub fn try_respond<'a, T: OptionType>(
+        &'a mut self,
+        option_type: URID<T>,
+        atom_type: URID<T::AtomType>,
+        value: &'a T,
+    ) -> Result<(), OptionsError>
+    where
+        T::AtomType: BackAsSpace,
+    {
         if !self.is(option_type) {
             return Err(OptionsError::BadKey);
         }
@@ -49,22 +55,22 @@ impl OptionRequest {
     }
 
     #[inline]
-    unsafe fn set_value_unchecked<'a, T: Atom<'a, 'a>>(
-        &'a mut self,
+    unsafe fn set_value_unchecked<T: Atom>(
+        &mut self,
         value_type: URID<T>,
-        value_handle: T::ReadHandle,
+        value_handle: <<T as Atom>::ReadHandle as AtomHandle>::Handle,
     ) where
-        T: BackAsSpace<'a>,
+        T: BackAsSpace,
     {
         let data = T::back_as_space(value_handle);
         self.inner.type_ = value_type.get();
         self.inner.size = data.len() as u32;
-        self.inner.value = data.data().unwrap().as_ptr().cast();
+        self.inner.value = data.as_ptr().cast();
     }
 }
 
 pub struct OptionRequestList<'a> {
-    ptr: &'a mut lv2_sys::LV2_Options_Option
+    ptr: &'a mut lv2_sys::LV2_Options_Option,
 }
 
 impl<'a> OptionRequestList<'a> {
@@ -81,7 +87,7 @@ impl<'a> OptionRequestList<'a> {
     }
 }
 
-impl<'a, 'list: 'a> IntoIterator for &'list mut OptionRequestList<'a >{
+impl<'a, 'list: 'a> IntoIterator for &'list mut OptionRequestList<'a> {
     type Item = &'a mut OptionRequest;
     type IntoIter = OptionRequestListIter<'a>;
 
@@ -92,7 +98,7 @@ impl<'a, 'list: 'a> IntoIterator for &'list mut OptionRequestList<'a >{
 }
 
 pub struct OptionRequestListIter<'a> {
-    current: &'a mut lv2_sys::LV2_Options_Option
+    current: &'a mut lv2_sys::LV2_Options_Option,
 }
 
 impl<'a> Iterator for OptionRequestListIter<'a> {
@@ -107,9 +113,7 @@ impl<'a> Iterator for OptionRequestListIter<'a> {
         // SAFETY: list is guaranteed by the host to end with a zeroed struct.
         // Therefore the pointer always points to a valid lv2_sys::LV2_Options_Option value
         // (only its contents may be incorrect if zeroed)
-        let next = unsafe {
-            &mut  *((self.current as *mut lv2_sys::LV2_Options_Option).add(1))
-        };
+        let next = unsafe { &mut *((self.current as *mut lv2_sys::LV2_Options_Option).add(1)) };
 
         let item = core::mem::replace(&mut self.current, next);
 

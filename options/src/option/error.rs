@@ -19,7 +19,9 @@ impl OptionsError {
     pub(crate) fn result_into_raw(value: Result<(), OptionsError>) -> lv2_sys::LV2_Options_Status {
         match value {
             Ok(()) => lv2_sys::LV2_Options_Status_LV2_OPTIONS_SUCCESS,
-            Err(OptionsError::BadSubject) => lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_SUBJECT,
+            Err(OptionsError::BadSubject) => {
+                lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_SUBJECT
+            }
             Err(OptionsError::BadKey) => lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_KEY,
             Err(OptionsError::BadValue) => lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_VALUE,
             Err(_) => lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_UNKNOWN,
@@ -30,7 +32,9 @@ impl OptionsError {
     pub(crate) fn from_raw(status: lv2_sys::LV2_Options_Status) -> Result<(), OptionsError> {
         match status {
             lv2_sys::LV2_Options_Status_LV2_OPTIONS_SUCCESS => Ok(()),
-            lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_SUBJECT => Err(OptionsError::BadSubject),
+            lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_SUBJECT => {
+                Err(OptionsError::BadSubject)
+            }
             lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_KEY => Err(OptionsError::BadKey),
             lv2_sys::LV2_Options_Status_LV2_OPTIONS_ERR_BAD_VALUE => Err(OptionsError::BadValue),
             _ => Err(OptionsError::Unknown),
@@ -44,7 +48,7 @@ impl Display for OptionsError {
             OptionsError::Unknown => "Unknown error while reading/writing Option",
             OptionsError::BadSubject => "Unknown Option subject",
             OptionsError::BadKey => "Unknown Option key",
-            OptionsError::BadValue => "Invalid Option value"
+            OptionsError::BadValue => "Invalid Option value",
         };
 
         write!(f, "{}", msg)
