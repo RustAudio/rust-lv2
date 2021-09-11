@@ -33,14 +33,12 @@
 //!     // Get the read handle to the sequence.
 //!     let input_sequence = ports.input.read(
 //!         urids.atom.sequence,
-//!         urids.units.beat
-//!     ).unwrap();
+//!     ).unwrap().read(urids.units.beat);
 //!
 //!     // Get the write handle to the sequence.
 //!     let mut output_sequence = ports.output.init(
 //!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
+//!     ).unwrap().with_unit(TimeStampURID::Frames(urids.units.frame));
 //!
 //!     // Iterate through all events in the input sequence.
 //!     for event in input_sequence {
@@ -49,7 +47,7 @@
 //!         // If the read atom is a 32-bit integer...
 //!         if let Some(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
+//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -134,7 +132,7 @@ pub trait Atom: UriBound {
     /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle>;
+    fn init(writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle>;
 }
 
 /// An atom of yet unknown type.

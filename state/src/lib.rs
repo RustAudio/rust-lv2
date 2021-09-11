@@ -29,7 +29,7 @@
 //!         // Try to draft a new property and store the float inside it.
 //!         store
 //!             .draft(URID::new(1000).unwrap())
-//!             .init(self.urids.float, self.internal)?;
+//!             .init(self.urids.float)?.set(self.internal).unwrap();
 //!
 //!         // Commit the written property.
 //!         // Otherwise, it will discarded.
@@ -38,9 +38,9 @@
 //!
 //!     fn restore(&mut self, store: RetrieveHandle, _: ()) -> Result<(), StateErr> {
 //!         // Try to restore the property.
-//!         self.internal = store
+//!         self.internal = *store
 //!             .retrieve(URID::new(1000).unwrap())?
-//!             .read(self.urids.float, ())?;
+//!             .read(self.urids.float)?;
 //!
 //!         // We're done.
 //!         Ok(())
@@ -179,7 +179,7 @@ mod test {
         );
         assert_eq!(
             Err(StateErr::Unknown),
-            StateErr::from(std::i32::MAX as sys::LV2_State_Status)
+            StateErr::from(i32::MAX as sys::LV2_State_Status)
         );
 
         assert_eq!(

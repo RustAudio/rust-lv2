@@ -52,23 +52,29 @@ impl State for Stateful {
     fn save(&self, mut store: StoreHandle, _: ()) -> Result<(), StateErr> {
         store
             .draft(URID::new(1000).unwrap())
-            .init(self.urids.float, self.internal)?;
+            .init(self.urids.float)?
+            .set(self.internal)
+            .ok_or(StateErr::Unknown)?;
         store
             .draft(URID::new(1001).unwrap())
-            .init(self.urids.vector(), self.urids.float)?
+            .init(self.urids.vector)?
+            .of_type(self.urids.float)
+            .ok_or(StateErr::Unknown)?
             .append(self.audio.as_ref());
 
         store.commit_all()
     }
 
     fn restore(&mut self, store: RetrieveHandle, _: ()) -> Result<(), StateErr> {
-        self.internal = store
+        self.internal = *store
             .retrieve(URID::new(1000).unwrap())?
-            .read(self.urids.float, ())?;
+            .read(self.urids.float)?;
         self.audio = Vec::from(
             store
                 .retrieve(URID::new(1001).unwrap())?
-                .read(self.urids.vector(), self.urids.float)?,
+                .read(self.urids.vector)?
+                .of_type(self.urids.float)
+                .ok_or(StateErr::BadData)?,
         );
         Ok(())
     }

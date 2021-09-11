@@ -30,8 +30,7 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
 use crate::*;
-use std::marker::{PhantomData, Unpin};
-use std::mem::MaybeUninit;
+use core::marker::{PhantomData, Unpin};
 use urid::UriBound;
 use urid::URID;
 
@@ -57,33 +56,39 @@ pub trait ScalarAtom: UriBound {
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     #[inline]
     fn write_scalar<'handle, 'space: 'handle>(
-        mut frame: AtomSpaceWriter<'space>,
+        frame: AtomSpaceWriter<'space>,
     ) -> Option<ScalarWriter<'handle, Self::InternalType>> {
-        let value = frame.write_value(MaybeUninit::<Self::InternalType>::uninit())?;
-        // Scalars have extra padding due to repr(C)
-        frame.allocate_padding_for::<AtomHeader>();
-        Some(ScalarWriter(value))
+        Some(ScalarWriter(frame.re_borrow(), PhantomData))
     }
 }
 
-pub struct ScalarWriter<'handle, T: Copy + 'static>(&'handle mut MaybeUninit<T>);
+pub struct ScalarWriter<'handle, T: Copy + 'static>(AtomSpaceWriter<'handle>, PhantomData<T>);
 
 impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
     #[inline]
-    pub fn set<'a>(&mut self, value: T) -> &mut T
+    pub fn set<'a>(&mut self, value: T) -> Option<&mut T>
     where
         'a: 'handle,
     {
-        crate::util::write_uninit(&mut self.0, value)
+        #[repr(align(8))]
+        #[derive(Copy, Clone)]
+        struct Padder;
+
+        #[derive(Copy, Clone)]
+        #[repr(C)]
+        struct ScalarValue<T: Copy + 'static>(T, Padder);
+
+        // Scalars have extra padding due to previous header in LV2_ATOM_Int and such
+        Some(&mut self.0.write_value(ScalarValue(value, Padder))?.0)
     }
 }
 
-struct ScalarReaderHandle<T: Copy + 'static>(PhantomData<T>);
+pub struct ScalarReaderHandle<T: Copy + 'static>(PhantomData<T>);
 impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarReaderHandle<T> {
     type Handle = &'handle T;
 }
 
-struct ScalarWriterHandle<T: Copy + 'static>(PhantomData<T>);
+pub struct ScalarWriterHandle<T: Copy + 'static>(PhantomData<T>);
 impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarWriterHandle<T> {
     type Handle = ScalarWriter<'handle, T>;
 }
@@ -228,7 +233,7 @@ mod tests {
                 .read(urid)
                 .unwrap();
 
-            assert_eq!(read_value, value);
+            assert_eq!(*read_value, value);
         }
     }
 

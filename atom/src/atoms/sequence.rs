@@ -37,7 +37,7 @@
 //!     // You have to provide the unit of the time stamps.
 //!     let mut output_sequence: SequenceWriter = ports.output.init(
 //!         urids.atom.sequence,
-//!     ).unwrap().with_unit(urids.units.beat);
+//!     ).unwrap().with_unit(TimeStampURID::BeatsPerMinute(urids.units.beat));
 //!
 //!     // Iterate through all events in the input sequence.
 //!     //
@@ -49,9 +49,9 @@
 //!         // An event contains a timestamp and an atom.
 //!         let (timestamp, atom): (TimeStamp, &UnidentifiedAtom) = event;
 //!         // If the read atom is a 32-bit integer...
-//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!         if let Some(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(integer * 2);
+//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2);
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -65,7 +65,6 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 use crate::space::reader::SpaceReader;
 use crate::*;
-use std::mem::MaybeUninit;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 use units::prelude::*;
 
@@ -86,12 +85,12 @@ unsafe impl UriBound for Sequence {
     const URI: &'static [u8] = sys::LV2_ATOM__Sequence;
 }
 
-struct SequenceReadHandle;
+pub struct SequenceReadHandle;
 impl<'handle> AtomHandle<'handle> for SequenceReadHandle {
     type Handle = SequenceHeaderReader<'handle>;
 }
 
-struct SequenceWriteHandle;
+pub struct SequenceWriteHandle;
 impl<'handle> AtomHandle<'handle> for SequenceWriteHandle {
     type Handle = SequenceHeaderWriter<'handle>;
 }
@@ -117,8 +116,7 @@ impl<'handle> SequenceHeaderReader<'handle> {
 }
 
 pub struct SequenceHeaderWriter<'handle> {
-    header: &'handle mut MaybeUninit<SequenceBody>,
-    frame: AtomSpaceWriter<'handle>,
+    writer: AtomSpaceWriter<'handle>,
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
@@ -131,10 +129,10 @@ impl<'a> SequenceHeaderWriter<'a> {
             pad: 0,
         });
 
-        crate::util::write_uninit(&mut self.header, header);
+        self.writer.write_value(header);
 
         SequenceWriter {
-            frame: self.frame,
+            writer: self.writer,
             unit: unit.into(),
             last_stamp: None,
         }
@@ -154,10 +152,8 @@ impl Atom for Sequence {
         Some(SequenceHeaderReader { reader, header })
     }
 
-    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        let header = frame.write_value(MaybeUninit::uninit())?;
-
-        Some(SequenceHeaderWriter { header, frame })
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        Some(SequenceHeaderWriter { writer: frame })
     }
 }
 
@@ -246,7 +242,7 @@ impl<'a> Iterator for SequenceIterator<'a> {
 
 /// The writing handle for sequences.
 pub struct SequenceWriter<'handle> {
-    frame: AtomSpaceWriter<'handle>,
+    writer: AtomSpaceWriter<'handle>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
@@ -280,7 +276,7 @@ impl<'handle> SequenceWriter<'handle> {
             }
         };
         self.last_stamp = Some(stamp);
-        self.frame.write_value(TimestampBody(raw_stamp))?;
+        self.writer.write_value(TimestampBody(raw_stamp))?;
 
         Some(())
     }
@@ -294,7 +290,7 @@ impl<'handle> SequenceWriter<'handle> {
         urid: URID<A>,
     ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
         self.write_time_stamp(stamp)?;
-        self.frame.init_atom(urid)
+        self.writer.init_atom(urid)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -305,7 +301,7 @@ impl<'handle> SequenceWriter<'handle> {
     pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Option<()> {
         self.write_time_stamp(stamp)?;
 
-        self.frame.forward_atom(atom)?;
+        self.writer.forward_atom(atom)?;
 
         Some(())
     }
@@ -326,7 +322,7 @@ mod tests {
     #[test]
     fn test_sequence() {
         let map = HashURIDMapper::new();
-        let urids = TestURIDCollection::from_map(&map).unwrap();
+        let urids: TestURIDCollection = TestURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
         let raw_space = raw_space.as_space_mut();
@@ -395,11 +391,11 @@ mod tests {
 
             let (stamp, atom) = reader.next().unwrap();
             assert_eq!(stamp, TimeStamp::Frames(0));
-            assert_eq!(atom.read::<Int>(urids.atom.int).unwrap(), 42);
+            assert_eq!(*atom.read::<Int>(urids.atom.int).unwrap(), 42);
 
             let (stamp, atom) = reader.next().unwrap();
             assert_eq!(stamp, TimeStamp::Frames(1));
-            assert_eq!(atom.read::<Long>(urids.atom.long).unwrap(), 17);
+            assert_eq!(*atom.read::<Long>(urids.atom.long).unwrap(), 17);
 
             assert!(reader.next().is_none());
         }

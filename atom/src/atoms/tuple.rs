@@ -15,13 +15,13 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
-//!     let input: TupleIterator = ports.input.read(urids.tuple, ()).unwrap();
-//!     let mut output: TupleWriter = ports.output.init(urids.tuple, ()).unwrap();
+//!     let input: TupleIterator = ports.input.read(urids.tuple).unwrap();
+//!     let mut output: TupleWriter = ports.output.init(urids.tuple).unwrap();
 //!     for atom in input {
-//!         if let Some(integer) = atom.read(urids.int, ()) {
-//!             output.init(urids.int, integer * 2).unwrap();
+//!         if let Some(integer) = atom.read(urids.int) {
+//!             output.init(urids.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
-//!             output.init(urids.int, -1).unwrap();
+//!             output.init(urids.int).unwrap().set(-1).unwrap();
 //!         }
 //!     }
 //! }
@@ -42,13 +42,13 @@ unsafe impl UriBound for Tuple {
     const URI: &'static [u8] = sys::LV2_ATOM__Tuple;
 }
 
-struct TupleReadHandle;
+pub struct TupleReadHandle;
 
 impl<'a> AtomHandle<'a> for TupleReadHandle {
     type Handle = TupleIterator<'a>;
 }
 
-struct TupleWriteHandle;
+pub struct TupleWriteHandle;
 
 impl<'a> AtomHandle<'a> for TupleWriteHandle {
     type Handle = TupleWriter<'a>;
@@ -123,7 +123,11 @@ mod tests {
             let mut cursor = raw_space.write();
             let mut writer = cursor.init_atom(urids.tuple).unwrap();
             {
-                let mut vector_writer = writer.init(urids.vector).unwrap().of_type(urids.int);
+                let mut vector_writer = writer
+                    .init(urids.vector)
+                    .unwrap()
+                    .of_type(urids.int)
+                    .unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
             writer.init(urids.int).unwrap().set(42);
@@ -165,9 +169,16 @@ mod tests {
         // reading
         {
             let body = unsafe { raw_space.read().next_atom().unwrap().body() };
-            let items: Vec<&UnidentifiedAtom> = unsafe { Tuple::read(body, ()) }.unwrap().collect();
-            assert_eq!(items[0].read(urids.vector, urids.int).unwrap(), [17; 9]);
-            assert_eq!(items[1].read(urids.int, ()).unwrap(), 42);
+            let items: Vec<&UnidentifiedAtom> = unsafe { Tuple::read(body) }.unwrap().collect();
+            assert_eq!(
+                items[0]
+                    .read(urids.vector)
+                    .unwrap()
+                    .of_type(urids.int)
+                    .unwrap(),
+                [17; 9]
+            );
+            assert_eq!(*items[1].read(urids.int).unwrap(), 42);
         }
     }
 }

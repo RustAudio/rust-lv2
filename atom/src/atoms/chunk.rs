@@ -38,12 +38,12 @@ unsafe impl UriBound for Chunk {
     const URI: &'static [u8] = sys::LV2_ATOM__Chunk;
 }
 
-struct ChunkReaderHandle;
+pub struct ChunkReaderHandle;
 impl<'handle> AtomHandle<'handle> for ChunkReaderHandle {
     type Handle = &'handle AtomSpace;
 }
 
-struct ChunkWriterHandle;
+pub struct ChunkWriterHandle;
 impl<'handle> AtomHandle<'handle> for ChunkWriterHandle {
     type Handle = AtomSpaceWriter<'handle>;
 }

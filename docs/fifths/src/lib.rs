@@ -42,24 +42,23 @@ impl Plugin for Fifths {
         // Get the reading handle of the input sequence.
         let input_sequence = ports
             .input
-            .read(self.urids.atom.sequence, self.urids.unit.beat)
-            .unwrap();
+            .read(self.urids.atom.sequence)
+            .unwrap()
+            .read(self.urids.unit.beat);
 
         // Initialise the output sequence and get the writing handle.
         let mut output_sequence = ports
             .output
-            .init(
-                self.urids.atom.sequence,
-                TimeStampURID::Frames(self.urids.unit.frame),
-            )
-            .unwrap();
+            .init(self.urids.atom.sequence)
+            .unwrap()
+            .with_unit(TimeStampURID::Frames(self.urids.unit.frame));
 
         for (timestamp, atom) in input_sequence {
             // Every message is forwarded, regardless of it's content.
             output_sequence.forward(timestamp, atom);
 
             // Retrieve the message.
-            let message = if let Some(message) = atom.read(self.urids.midi.wmidi, ()) {
+            let message = if let Some(message) = atom.read(self.urids.midi.wmidi) {
                 message
             } else {
                 continue;
@@ -71,11 +70,9 @@ impl Plugin for Fifths {
                     if let Ok(note) = note.step(7) {
                         // Write the fifth. Writing is done after initialization.
                         output_sequence
-                            .init(
-                                timestamp,
-                                self.urids.midi.wmidi,
-                                MidiMessage::NoteOn(channel, note, velocity),
-                            )
+                            .init(timestamp, self.urids.midi.wmidi)
+                            .unwrap()
+                            .set(MidiMessage::NoteOn(channel, note, velocity))
                             .unwrap();
                     }
                 }
@@ -83,12 +80,9 @@ impl Plugin for Fifths {
                     // Do the same thing for `NoteOff`.
                     if let Ok(note) = note.step(7) {
                         output_sequence
-                            .init(
-                                timestamp,
-                                self.urids.midi.wmidi,
-                                MidiMessage::NoteOff(channel, note, velocity),
-                            )
-                            .unwrap();
+                            .init(timestamp, self.urids.midi.wmidi)
+                            .unwrap()
+                            .set(MidiMessage::NoteOff(channel, note, velocity));
                     }
                 }
                 _ => (),

@@ -4,6 +4,7 @@
 //!
 //! If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
 use atom::prelude::*;
+use atom::AtomHandle;
 use urid::*;
 
 /// Midi Event.
@@ -15,20 +16,27 @@ unsafe impl UriBound for MidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl Atom for MidiEvent {
-    type ReadParameter = ();
-    type ReadHandle = &'handle [u8];
-    type WriteParameter = ();
-    type WriteHandle = AtomSpaceWriter<'handle, 'space>;
+pub struct MidiEventReadHandle;
 
-    unsafe fn read(body: &'handle AtomSpace, _: ()) -> Option<&'handle [u8]> {
+impl<'a> AtomHandle<'a> for MidiEventReadHandle {
+    type Handle = &'a [u8];
+}
+
+pub struct MidiEventWriteHandle;
+
+impl<'a> AtomHandle<'a> for MidiEventWriteHandle {
+    type Handle = AtomSpaceWriter<'a>;
+}
+
+impl Atom for MidiEvent {
+    type ReadHandle = MidiEventReadHandle;
+    type WriteHandle = MidiEventWriteHandle;
+
+    unsafe fn read<'handle, 'space: 'handle>(body: &'space AtomSpace) -> Option<&'handle [u8]> {
         Some(body.as_bytes())
     }
 
-    fn init(
-        frame: AtomSpaceWriter<'handle, 'space>,
-        _: (),
-    ) -> Option<AtomSpaceWriter<'handle, 'space>> {
+    fn init(frame: AtomSpaceWriter) -> Option<AtomSpaceWriter> {
         Some(frame)
     }
 }
