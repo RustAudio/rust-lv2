@@ -88,9 +88,7 @@ impl Atom for Literal {
     type ReadHandle = LiteralReadHandle;
     type WriteHandle = LiteralWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
@@ -141,9 +139,7 @@ impl Atom for String {
     type ReadHandle = StringReadHandle;
     type WriteHandle = StringWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         let data = body.as_bytes();
         let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
         Some(core::str::from_utf8(rust_str_bytes).ok()?)

@@ -97,9 +97,7 @@ impl<A: ScalarAtom> Atom for A {
     type ReadHandle = ScalarReaderHandle<A::InternalType>;
     type WriteHandle = ScalarWriterHandle<A::InternalType>;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         <A as ScalarAtom>::read_scalar(body)
     }
 

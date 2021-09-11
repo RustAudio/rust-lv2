@@ -12,12 +12,12 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 /// This buffer can be split and realigned, effectively allowing to read a stream of arbitrary types
 /// from a byte buffer, such as [`Atom`s](crate::Atom).
 ///
-/// Any operation that may lead to a misaligned `Space` is considered unsafe.
+/// Any operation that may lead to a misaligned `AlignedSpace` is considered unsafe.
 ///
 /// Note that only the start of the slice is aligned, not the end. This allows having a buffer that
 /// is bigger than a multiple of `T`'s alignment.
 ///
-/// Although they are aligned, `Space`s do not consider their contents to be initialized. Therefore,
+/// Although they are aligned, `AlignedSpace`s do not consider their contents to be initialized. Therefore,
 /// the only safe reading operations will return `MaybeUninit<T>`. Unsafe helper methods that assume
 /// the contents are initialized are also provided, for convenience.
 ///

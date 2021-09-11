@@ -58,9 +58,7 @@ impl Atom for Tuple {
     type ReadHandle = TupleReadHandle;
     type WriteHandle = TupleWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         Some(TupleIterator {
             reader: body.read(),
         })

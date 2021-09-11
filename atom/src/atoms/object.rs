@@ -124,9 +124,7 @@ impl Atom for Object {
     type ReadHandle = ObjectReaderHandle;
     type WriteHandle = ObjectWriterHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
@@ -161,9 +159,7 @@ impl Atom for Blank {
     type WriteHandle = <Object as Atom>::WriteHandle;
 
     #[inline]
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         Object::read(body)
     }
 
