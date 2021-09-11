@@ -86,22 +86,22 @@ unsafe impl UriBound for Sequence {
 }
 
 pub struct SequenceReadHandle;
-impl<'handle> AtomHandle<'handle> for SequenceReadHandle {
-    type Handle = SequenceHeaderReader<'handle>;
+impl<'a> AtomHandle<'a> for SequenceReadHandle {
+    type Handle = SequenceHeaderReader<'a>;
 }
 
 pub struct SequenceWriteHandle;
-impl<'handle> AtomHandle<'handle> for SequenceWriteHandle {
-    type Handle = SequenceHeaderWriter<'handle>;
+impl<'a> AtomHandle<'a> for SequenceWriteHandle {
+    type Handle = SequenceHeaderWriter<'a>;
 }
 
-pub struct SequenceHeaderReader<'handle> {
-    header: &'handle sys::LV2_Atom_Sequence_Body,
-    reader: SpaceReader<'handle>,
+pub struct SequenceHeaderReader<'a> {
+    header: &'a sys::LV2_Atom_Sequence_Body,
+    reader: SpaceReader<'a>,
 }
 
-impl<'handle> SequenceHeaderReader<'handle> {
-    pub fn read(self, bpm_urid: URID<Beat>) -> SequenceIterator<'handle> {
+impl<'a> SequenceHeaderReader<'a> {
+    pub fn read(self, bpm_urid: URID<Beat>) -> SequenceIterator<'a> {
         let unit = if self.header.unit == bpm_urid {
             TimeStampUnit::BeatsPerMinute
         } else {
@@ -115,8 +115,8 @@ impl<'handle> SequenceHeaderReader<'handle> {
     }
 }
 
-pub struct SequenceHeaderWriter<'handle> {
-    writer: AtomSpaceWriter<'handle>,
+pub struct SequenceHeaderWriter<'a> {
+    writer: AtomSpaceWriter<'a>,
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
@@ -239,13 +239,13 @@ impl<'a> Iterator for SequenceIterator<'a> {
 }
 
 /// The writing handle for sequences.
-pub struct SequenceWriter<'handle> {
-    writer: AtomSpaceWriter<'handle>,
+pub struct SequenceWriter<'a> {
+    writer: AtomSpaceWriter<'a>,
     unit: TimeStampUnit,
     last_stamp: Option<TimeStamp>,
 }
 
-impl<'handle> SequenceWriter<'handle> {
+impl<'a> SequenceWriter<'a> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:

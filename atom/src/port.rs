@@ -34,13 +34,13 @@ use urid::URID;
 /// A handle to read atoms from a port.
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to read atoms.
-pub struct PortReader<'space> {
-    atom: &'space UnidentifiedAtom,
+pub struct PortReader<'a> {
+    atom: &'a UnidentifiedAtom,
 }
 
-impl<'space> PortReader<'space> {
+impl<'a> PortReader<'a> {
     /// Create a new port reader.
-    fn new(atom: &'space UnidentifiedAtom) -> Self {
+    fn new(atom: &'a UnidentifiedAtom) -> Self {
         Self { atom }
     }
 
@@ -61,14 +61,14 @@ impl<'space> PortReader<'space> {
 /// A handle to write atoms into a port.
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
-pub struct PortWriter<'space> {
-    space: SpaceCursor<'space>,
+pub struct PortWriter<'a> {
+    space: SpaceCursor<'a>,
     has_been_written: bool,
 }
 
-impl<'space> PortWriter<'space> {
+impl<'a> PortWriter<'a> {
     /// Create a new port writer.
-    fn new(space: &'space mut AtomSpace) -> Self {
+    fn new(space: &'a mut AtomSpace) -> Self {
         Self {
             space: SpaceCursor::new(space.as_bytes_mut()),
             has_been_written: false,
@@ -82,8 +82,8 @@ impl<'space> PortWriter<'space> {
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
     /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn init<'a, 'write, A: crate::Atom>(
-        &'a mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
+    pub fn init<'b, 'write, A: crate::Atom>(
+        &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
     ) -> Option<<A::WriteHandle as AtomHandle<'write>>::Handle> {
         if !self.has_been_written {

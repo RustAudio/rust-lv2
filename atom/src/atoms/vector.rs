@@ -115,12 +115,12 @@ impl Atom for Vector {
 /// Handle to append elements to a vector.
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
-pub struct VectorWriter<'handle, A: ScalarAtom> {
-    writer: AtomSpaceWriter<'handle>,
+pub struct VectorWriter<'a, A: ScalarAtom> {
+    writer: AtomSpaceWriter<'a>,
     type_: PhantomData<A>,
 }
 
-impl<'handle, A: ScalarAtom> VectorWriter<'handle, A> {
+impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
     /// Push a single value to the vector.
     #[inline]
     pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {

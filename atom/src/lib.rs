@@ -90,8 +90,8 @@ pub mod prelude {
     pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
 }
 
-pub trait AtomHandle<'handle> {
-    type Handle: 'handle;
+pub trait AtomHandle<'a> {
+    type Handle: 'a;
 }
 
 /// Atom type.
@@ -103,12 +103,12 @@ pub trait Atom: UriBound {
     /// The return value of the `read` function.
     ///
     /// It may contain a reference to the atom and therefore may not outlive it.
-    type ReadHandle: for<'handle> AtomHandle<'handle>;
+    type ReadHandle: for<'a> AtomHandle<'a>;
 
     /// The return value of the `write` function.
     ///
     /// It may contain a reference to a `MutSpace` and therefore may not outlive it.
-    type WriteHandle: for<'handle> AtomHandle<'handle>;
+    type WriteHandle: for<'a> AtomHandle<'a>;
 
     /// Reads the body of the atom.
     ///
@@ -178,10 +178,7 @@ impl UnidentifiedAtom {
     /// Try to read the atom.
     ///
     /// To identify the atom, its URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
-    pub fn read<'handle, 'space: 'handle, A: Atom>(
-        &'space self,
-        urid: URID<A>,
-    ) -> Option<<A::ReadHandle as AtomHandle<'handle>>::Handle> {
+    pub fn read<A: Atom>(&self, urid: URID<A>) -> Option<<A::ReadHandle as AtomHandle>::Handle> {
         if self.header.urid() != urid {
             return None;
         }

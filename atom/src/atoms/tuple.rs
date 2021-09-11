@@ -86,11 +86,11 @@ impl<'a> Iterator for TupleIterator<'a> {
 }
 
 /// The writing handle to add atoms to a tuple.
-pub struct TupleWriter<'space> {
-    frame: AtomSpaceWriter<'space>,
+pub struct TupleWriter<'a> {
+    frame: AtomSpaceWriter<'a>,
 }
 
-impl<'space> TupleWriter<'space> {
+impl<'a> TupleWriter<'a> {
     /// Initialize a new tuple element.
     pub fn init<A: Atom>(
         &mut self,

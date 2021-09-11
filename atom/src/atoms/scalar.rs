@@ -55,21 +55,16 @@ pub trait ScalarAtom: UriBound {
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     #[inline]
-    fn write_scalar<'handle, 'space: 'handle>(
-        frame: AtomSpaceWriter<'space>,
-    ) -> Option<ScalarWriter<'handle, Self::InternalType>> {
+    fn write_scalar(frame: AtomSpaceWriter) -> Option<ScalarWriter<Self::InternalType>> {
         Some(ScalarWriter(frame.re_borrow(), PhantomData))
     }
 }
 
-pub struct ScalarWriter<'handle, T: Copy + 'static>(AtomSpaceWriter<'handle>, PhantomData<T>);
+pub struct ScalarWriter<'a, T: Copy + 'static>(AtomSpaceWriter<'a>, PhantomData<T>);
 
-impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
+impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
     #[inline]
-    pub fn set<'a>(&mut self, value: T) -> Option<&mut T>
-    where
-        'a: 'handle,
-    {
+    pub fn set(&mut self, value: T) -> Option<&mut T> {
         #[repr(align(8))]
         #[derive(Copy, Clone)]
         struct Padder;
@@ -84,13 +79,13 @@ impl<'handle, T: Copy + 'static> ScalarWriter<'handle, T> {
 }
 
 pub struct ScalarReaderHandle<T: Copy + 'static>(PhantomData<T>);
-impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarReaderHandle<T> {
-    type Handle = &'handle T;
+impl<'a, T: Copy + 'static> AtomHandle<'a> for ScalarReaderHandle<T> {
+    type Handle = &'a T;
 }
 
 pub struct ScalarWriterHandle<T: Copy + 'static>(PhantomData<T>);
-impl<'handle, T: Copy + 'static> AtomHandle<'handle> for ScalarWriterHandle<T> {
-    type Handle = ScalarWriter<'handle, T>;
+impl<'a, T: Copy + 'static> AtomHandle<'a> for ScalarWriterHandle<T> {
+    type Handle = ScalarWriter<'a, T>;
 }
 
 impl<A: ScalarAtom> Atom for A {
