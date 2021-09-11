@@ -70,9 +70,8 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
 use crate::space::reader::SpaceReader;
 use crate::*;
-use std::convert::TryFrom;
-use std::iter::Iterator;
-use std::mem::MaybeUninit;
+use core::convert::TryFrom;
+use core::iter::Iterator;
 use urid::UriBound;
 use urid::URID;
 
@@ -96,32 +95,28 @@ pub struct ObjectHeader {
     pub otype: URID,
 }
 
-struct ObjectReaderHandle;
+pub struct ObjectReaderHandle;
 impl<'handle> AtomHandle<'handle> for ObjectReaderHandle {
     type Handle = (ObjectHeader, ObjectReader<'handle>);
 }
 
-struct ObjectWriterHandle;
+pub struct ObjectWriterHandle;
 impl<'handle> AtomHandle<'handle> for ObjectWriterHandle {
     type Handle = ObjectHeaderWriter<'handle>;
 }
 
 pub struct ObjectHeaderWriter<'handle> {
-    header: &'handle mut MaybeUninit<sys::LV2_Atom_Object_Body>,
     frame: AtomSpaceWriter<'handle>,
 }
 
 impl<'handle> ObjectHeaderWriter<'handle> {
-    pub fn write_header(mut self, header: ObjectHeader) -> ObjectWriter<'handle> {
-        crate::util::write_uninit(
-            &mut self.header,
-            sys::LV2_Atom_Object_Body {
-                id: header.id.map(URID::get).unwrap_or(0),
-                otype: header.otype.get(),
-            },
-        );
+    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'handle>> {
+        self.frame.write_value(sys::LV2_Atom_Object_Body {
+            id: header.id.map(URID::get).unwrap_or(0),
+            otype: header.otype.get(),
+        })?;
 
-        ObjectWriter { frame: self.frame }
+        Some(ObjectWriter { frame: self.frame })
     }
 }
 
@@ -145,9 +140,8 @@ impl Atom for Object {
         Some((header, reader))
     }
 
-    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        let header = frame.write_value(MaybeUninit::uninit())?;
-        Some(ObjectHeaderWriter { header, frame })
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        Some(ObjectHeaderWriter { frame })
     }
 }
 
@@ -174,7 +168,7 @@ impl Atom for Blank {
     }
 
     #[inline]
-    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Object::init(frame)
     }
 }
@@ -339,10 +333,13 @@ mod tests {
         {
             let mut cursor = SpaceCursor::new(raw_space.as_bytes_mut());
             let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
-            let mut writer = Object::init(frame).unwrap().write_header(ObjectHeader {
-                id: None,
-                otype: object_type,
-            });
+            let mut writer = Object::init(frame)
+                .unwrap()
+                .write_header(ObjectHeader {
+                    id: None,
+                    otype: object_type,
+                })
+                .unwrap();
             {
                 writer.init(first_key, urids.int).unwrap().set(first_value);
             }

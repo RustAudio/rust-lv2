@@ -77,7 +77,8 @@ impl Plugin for Metro {
     fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         if let Some(control) = ports
             .control
-            .read(self.urids.atom.sequence, self.urids.unit.beat)
+            .read(self.urids.atom.sequence)
+            .map(|s| s.read(self.urids.unit.beat))
         {
             // Here, the final assembly of the pipeline is done. First, the event iterator is pre-processed to only emit an index and an `UnidentifiedAtom`. Then, the event iterator is wrapped into an `EventAtomizer`, which is then connected to an `EventReader` and the envelope. The resulting pipe consumes a `()` and emits the next frame of the envelope; It's already a compact pipeline.
             //

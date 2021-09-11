@@ -129,9 +129,13 @@ impl<T: 'static> AlignedSpace<T> {
     /// ```
     #[inline]
     pub fn align_from_bytes(data: &[u8]) -> Option<&Self> {
+        let data = data.get(crate::util::padding_for::<T>(data)?..)?;
+        if data.is_empty() {
+            return None;
+        }
+
         // SAFETY: We just aligned the slice start
-        data.get(crate::util::padding_for::<T>(data)?..)
-            .map(|data| unsafe { AlignedSpace::from_bytes_unchecked(data) })
+        Some(unsafe { AlignedSpace::from_bytes_unchecked(data) })
     }
 
     /// Creates a new mutable space from a mutable slice of bytes, slicing some bytes off its start it if necessary.
@@ -158,9 +162,13 @@ impl<T: 'static> AlignedSpace<T> {
     /// ```
     #[inline]
     pub fn align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
-        // SAFETY: We just aligned the slice's start
-        data.get_mut(crate::util::padding_for::<T>(data)?..)
-            .map(|data| unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
+        let data = data.get_mut(crate::util::padding_for::<T>(data)?..)?;
+        if data.is_empty() {
+            return None;
+        }
+
+        // SAFETY: We just aligned the slice start
+        Some(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
     }
 
     /// Creates a space from an empty slice.

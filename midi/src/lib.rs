@@ -32,15 +32,15 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: MyURIDs) {
 //!     // Retrieving the input and output sequence.
-//!     let input_sequence = ports.input.read(urids.atom.sequence, urids.units.beat).unwrap();
-//!     let mut output_sequence = ports.output.init(
-//!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
+//!     let input_sequence = ports.input.read(urids.atom.sequence).unwrap().read(urids.units.beat);
+//!     let mut output_sequence = ports.output
+//!     .init(urids.atom.sequence)
+//!     .unwrap()
+//!     .with_unit(TimeStampURID::Frames(urids.units.frame));
 //!
 //!     for (timestamp, atom) in input_sequence {
 //!         // If the atom encodes a message...
-//!         if let Some(message) = atom.read(urids.midi.wmidi, ()) {
+//!         if let Some(message) = atom.read(urids.midi.wmidi) {
 //!             // Calculate the message to send.
 //!             let message_to_send = match message {
 //!                 MidiMessage::NoteOn(channel, note, velocity) => {
@@ -54,7 +54,7 @@
 //!                 _ => message,
 //!             };
 //!             // Write the modulated message or forward it.
-//!             output_sequence.init(timestamp, urids.midi.wmidi, message_to_send);
+//!             output_sequence.init(timestamp, urids.midi.wmidi).unwrap().set(message_to_send).unwrap();
 //!         } else {
 //!             // Forward the other, uninterpreted message.
 //!             output_sequence.forward(timestamp, atom);

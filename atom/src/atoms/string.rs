@@ -30,7 +30,6 @@
 use crate::prelude::*;
 use crate::space::*;
 use crate::AtomHandle;
-use std::mem::MaybeUninit;
 use urid::*;
 
 /// An atom containing either a localized string or an RDF literal.
@@ -50,13 +49,12 @@ pub enum LiteralInfo {
 }
 
 pub struct LiteralInfoWriter<'a> {
-    body: &'a mut MaybeUninit<sys::LV2_Atom_Literal_Body>,
-    frame: AtomSpaceWriter<'a>,
+    writer: AtomSpaceWriter<'a>,
 }
 
 impl<'a> LiteralInfoWriter<'a> {
     pub fn write_info(mut self, info: LiteralInfo) -> StringWriter<'a> {
-        self.frame.write_value(match info {
+        self.writer.write_value(match info {
             LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                 lang: lang.get(),
                 datatype: 0,
@@ -68,19 +66,19 @@ impl<'a> LiteralInfoWriter<'a> {
         });
 
         StringWriter {
-            frame: self.frame,
+            writer: self.writer,
             has_nul_byte: false,
         }
     }
 }
 
-struct LiteralReadHandle;
+pub struct LiteralReadHandle;
 
 impl<'a> AtomHandle<'a> for LiteralReadHandle {
     type Handle = (LiteralInfo, &'a str);
 }
 
-struct LiteralWriteHandle;
+pub struct LiteralWriteHandle;
 
 impl<'a> AtomHandle<'a> for LiteralWriteHandle {
     type Handle = LiteralInfoWriter<'a>;
@@ -113,19 +111,18 @@ impl Atom for Literal {
     }
 
     #[inline]
-    fn init(mut frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        let body = frame.write_value(MaybeUninit::uninit())?;
-        Some(LiteralInfoWriter { body, frame })
+    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        Some(LiteralInfoWriter { writer: frame })
     }
 }
 
-struct StringReadHandle;
+pub struct StringReadHandle;
 
 impl<'a> AtomHandle<'a> for StringReadHandle {
     type Handle = &'a str;
 }
 
-struct StringWriteHandle;
+pub struct StringWriteHandle;
 
 impl<'a> AtomHandle<'a> for StringWriteHandle {
     type Handle = StringWriter<'a>;
@@ -154,7 +151,7 @@ impl Atom for String {
 
     fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
         Some(StringWriter {
-            frame,
+            writer: frame,
             has_nul_byte: false,
         })
     }
@@ -162,7 +159,7 @@ impl Atom for String {
 
 /// Handle to append strings to a string or literal.
 pub struct StringWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+    writer: AtomSpaceWriter<'a>,
     has_nul_byte: bool, // If this writer already wrote a null byte before.
 }
 
@@ -176,14 +173,14 @@ impl<'a> StringWriter<'a> {
         // Rewind to overwrite previously written nul_byte before appending the string.
         if self.has_nul_byte {
             // SAFETY: it is safe to overwrite the nul byte
-            if unsafe { !self.frame.rewind(1) } {
+            if unsafe { !self.writer.rewind(1) } {
                 return None; // Could not rewind
             }
         }
 
         // Manually write the bytes to make extra room for the nul byte
         let bytes = string.as_bytes();
-        let space = self.frame.allocate(bytes.len() + 1)?;
+        let space = self.writer.allocate(bytes.len() + 1)?;
         space[..bytes.len()].copy_from_slice(bytes);
         // SAFETY: space is guaranteed to be at least 1 byte large
         space[bytes.len()] = 0;

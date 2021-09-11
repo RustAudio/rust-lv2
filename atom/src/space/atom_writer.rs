@@ -17,6 +17,17 @@ pub struct AtomSpaceWriter<'handle> {
 
 impl<'handle> AtomSpaceWriter<'handle> {
     #[inline]
+    pub fn re_borrow<'a>(self) -> AtomSpaceWriter<'a>
+    where
+        'handle: 'a,
+    {
+        AtomSpaceWriter {
+            atom_header_index: self.atom_header_index,
+            parent: self.parent,
+        }
+    }
+
+    #[inline]
     pub fn atom_header(&self) -> AtomHeader {
         let previous = self
             .parent

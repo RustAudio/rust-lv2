@@ -144,7 +144,7 @@ mod tests {
         // writing a chunk to indicate the size of the space.
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.chunk, ()).unwrap();
+            let mut writer = space.init_atom(urids.chunk).unwrap();
             writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 
@@ -153,7 +153,7 @@ mod tests {
             let mut writer = unsafe {
                 AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
             };
-            writer.init::<Int>(urids.int, 42).unwrap();
+            writer.init::<Int>(urids.int).unwrap().set(42).unwrap();
         }
 
         // Reading
@@ -163,7 +163,7 @@ mod tests {
                 .read(urids.chunk)
                 .unwrap();
             let reader = unsafe { AtomPort::input_from_raw(NonNull::from(chunk).cast(), 0) };
-            assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);
+            assert_eq!(*reader.read::<Int>(urids.int).unwrap(), 42);
         }
     }
 }

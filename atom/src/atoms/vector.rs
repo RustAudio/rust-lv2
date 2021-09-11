@@ -19,8 +19,8 @@
 //! }
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
-//!     let input: &[i32] = ports.input.read(urids.vector(), urids.int).unwrap();
-//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector(), urids.int).unwrap();
+//!     let input: &[i32] = ports.input.read(urids.vector).unwrap().of_type(urids.int).unwrap();
+//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector).unwrap().of_type(urids.int).unwrap();
 //!     output.append(input).unwrap();
 //! }
 //! ```
@@ -45,13 +45,13 @@ unsafe impl UriBound for Vector {
     const URI: &'static [u8] = sys::LV2_ATOM__Vector;
 }
 
-struct VectorReadHandle;
+pub struct VectorReadHandle;
 
 impl<'a> AtomHandle<'a> for VectorReadHandle {
     type Handle = VectorReader<'a>;
 }
 
-struct VectorWriteHandle;
+pub struct VectorWriteHandle;
 
 impl<'a> AtomHandle<'a> for VectorWriteHandle {
     type Handle = VectorTypeWriter<'a>;
@@ -77,23 +77,22 @@ impl<'a> VectorReader<'a> {
 }
 
 pub struct VectorTypeWriter<'a> {
-    header: &'a mut MaybeUninit<sys::LV2_Atom_Vector_Body>,
     writer: AtomSpaceWriter<'a>,
 }
 
 impl<'a> VectorTypeWriter<'a> {
-    pub fn of_type<C: ScalarAtom>(mut self, atom_type: URID<C>) -> VectorWriter<'a, C> {
+    pub fn of_type<C: ScalarAtom>(mut self, atom_type: URID<C>) -> Option<VectorWriter<'a, C>> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: atom_type.get(),
             child_size: size_of::<C::InternalType>() as u32,
         };
 
-        crate::util::write_uninit(&mut self.header, body);
+        self.writer.write_value(body)?;
 
-        VectorWriter {
+        Some(VectorWriter {
             writer: self.writer,
             type_: PhantomData,
-        }
+        })
     }
 }
 
@@ -110,10 +109,8 @@ impl Atom for Vector {
         Some(VectorReader { reader, header })
     }
 
-    fn init(mut writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        let header = writer.write_value(MaybeUninit::uninit())?;
-
-        Some(VectorTypeWriter { writer, header })
+    fn init(writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+        Some(VectorTypeWriter { writer })
     }
 }
 
@@ -167,7 +164,11 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.vector(), urids.int).unwrap();
+            let mut writer = space
+                .init_atom(urids.vector)
+                .unwrap()
+                .of_type(urids.int)
+                .unwrap();
             writer.append(&[42; CHILD_COUNT - 1]);
             writer.push(1);
         }
@@ -194,7 +195,7 @@ mod tests {
         // reading
         {
             let atom = unsafe { raw_space.read().next_atom() }.unwrap();
-            let children: &[i32] = atom.read(urids.vector).unwrap();
+            let children: &[i32] = atom.read(urids.vector).unwrap().of_type(urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
             for i in 0..children.len() - 1 {

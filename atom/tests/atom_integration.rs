@@ -46,22 +46,23 @@ impl Plugin for AtomPlugin {
     fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         let sequence_reader = ports
             .input
-            .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)
-            .unwrap();
+            .read::<Sequence>(self.urids.atom.sequence)
+            .unwrap()
+            .read(self.urids.units.beat);
 
         let mut sequence_writer = ports
             .output
-            .init::<Sequence>(
-                self.urids.atom.sequence,
-                TimeStampURID::Frames(self.urids.units.frame),
-            )
-            .unwrap();
+            .init::<Sequence>(self.urids.atom.sequence)
+            .unwrap()
+            .with_unit(TimeStampURID::Frames(self.urids.units.frame));
 
         for (time_stamp, atom) in sequence_reader {
-            match atom.read(self.urids.atom.int, ()) {
+            match atom.read(self.urids.atom.int) {
                 Some(number) => {
                     sequence_writer
-                        .init::<Int>(time_stamp, self.urids.atom.int, number * 2)
+                        .init(time_stamp, self.urids.atom.int)
+                        .unwrap()
+                        .set(number * 2)
                         .unwrap();
                 }
                 None => {
@@ -105,21 +106,26 @@ fn main() {
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
         let mut writer = space
-            .init_atom(
-                urids.atom.sequence,
-                TimeStampURID::Frames(urids.units.frame),
-            )
-            .unwrap();
+            .init_atom(urids.atom.sequence)
+            .unwrap()
+            .with_unit(TimeStampURID::Frames(urids.units.frame));
         {
             let _ = writer
-                .init(TimeStamp::Frames(0), urids.atom.int, 42)
+                .init(TimeStamp::Frames(0), urids.atom.int)
+                .unwrap()
+                .set(42)
                 .unwrap();
         }
         writer
-            .init(TimeStamp::Frames(1), urids.atom.long, 17)
+            .init(TimeStamp::Frames(1), urids.atom.long)
+            .unwrap()
+            .set(17)
             .unwrap();
+
         writer
-            .init(TimeStamp::Frames(2), urids.atom.int, 3)
+            .init(TimeStamp::Frames(2), urids.atom.int)
+            .unwrap()
+            .set(3)
             .unwrap();
     }
 
@@ -129,7 +135,7 @@ fn main() {
     {
         let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
         space
-            .init_atom(urids.atom.chunk, ())
+            .init_atom(urids.atom.chunk)
             .unwrap()
             .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
@@ -174,21 +180,22 @@ fn main() {
 
     let chunk = unsafe { output_atom_space.read().next_atom() }
         .unwrap()
-        .read(urids.atom.chunk, ())
+        .read(urids.atom.chunk)
         .unwrap();
 
     // Asserting the result
     let sequence = unsafe { chunk.read().next_atom() }
         .unwrap()
-        .read(urids.atom.sequence, urids.units.beat)
-        .unwrap();
+        .read(urids.atom.sequence)
+        .unwrap()
+        .read(urids.units.beat);
 
     for (stamp, atom) in sequence {
         let stamp = stamp.as_frames().unwrap();
         match stamp {
-            0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),
-            1 => assert_eq!(atom.read(urids.atom.long, ()).unwrap(), 17),
-            2 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 6),
+            0 => assert_eq!(*atom.read(urids.atom.int).unwrap(), 84),
+            1 => assert_eq!(*atom.read(urids.atom.long).unwrap(), 17),
+            2 => assert_eq!(*atom.read(urids.atom.int).unwrap(), 6),
             _ => panic!("Invalid time stamp in sequence!"),
         }
     }

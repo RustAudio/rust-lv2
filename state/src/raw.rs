@@ -1,6 +1,7 @@
 use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
+use atom::AtomHandle;
 use atom::AtomHeader;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -116,16 +117,13 @@ impl<'a> StatePropertyWriter<'a> {
     /// Initialize the property.
     ///
     /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `Err(StateErr::Unknown)` is returned.
-    pub fn init<'read, A: Atom<'read, 'a>>(
+    pub fn init<'read, A: Atom>(
         &'a mut self,
         urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Result<A::WriteHandle, StateErr> {
+    ) -> Result<<A::WriteHandle as AtomHandle<'a>>::Handle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            self.cursor
-                .init_atom(urid, parameter)
-                .ok_or(StateErr::Unknown)
+            self.cursor.init_atom(urid).ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }
@@ -214,13 +212,12 @@ impl<'a> StatePropertyReader<'a> {
     /// This works like any atom reader: You pass the URID of the atom type as well as the type-specific argument, and if the desired type is the actual type of the data, a read handle is returned.
     ///
     /// If the desired and actual data types don't match, `Err(StateErr::BadType)` is returned.
-    pub fn read<A: Atom<'a, 'a>>(
+    pub fn read<A: Atom>(
         &self,
         urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Result<A::ReadHandle, StateErr> {
+    ) -> Result<<A::ReadHandle as AtomHandle<'a>>::Handle, StateErr> {
         if urid == self.type_ {
-            unsafe { A::read(self.body, parameter) }.ok_or(StateErr::Unknown)
+            unsafe { A::read(self.body) }.ok_or(StateErr::Unknown)
         } else {
             Err(StateErr::BadType)
         }
@@ -238,25 +235,32 @@ mod tests {
 
         store_handle
             .draft(URID::new(1).unwrap())
-            .init(urids.int, 17)
-            .unwrap();
+            .init(urids.int)
+            .unwrap()
+            .set(17);
         store_handle
             .draft(URID::new(2).unwrap())
-            .init(urids.float, 1.0)
-            .unwrap();
+            .init(urids.float)
+            .unwrap()
+            .set(1.0);
 
         store_handle.commit(URID::new(1).unwrap()).unwrap().unwrap();
 
         let mut vector_writer = store_handle.draft(URID::new(3).unwrap());
-        let mut vector_writer = vector_writer.init(urids.vector(), urids.int).unwrap();
+        let mut vector_writer = vector_writer
+            .init(urids.vector)
+            .unwrap()
+            .of_type(urids.int)
+            .unwrap();
         vector_writer.append(&[1, 2, 3, 4]).unwrap();
 
         store_handle.commit_all().unwrap();
 
         store_handle
             .draft(URID::new(4).unwrap())
-            .init(urids.int, 0)
-            .unwrap();
+            .init(urids.int)
+            .unwrap()
+            .set(0);
     }
 
     fn retrieve(storage: &mut Storage, urids: &AtomURIDCollection) {
@@ -264,18 +268,18 @@ mod tests {
 
         assert_eq!(
             17,
-            retrieve_handle
+            *retrieve_handle
                 .retrieve(URID::new(1).unwrap())
                 .unwrap()
-                .read(urids.int, ())
+                .read(urids.int)
                 .unwrap()
         );
         assert_eq!(
             1.0,
-            retrieve_handle
+            *retrieve_handle
                 .retrieve(URID::new(2).unwrap())
                 .unwrap()
-                .read(urids.float, ())
+                .read(urids.float)
                 .unwrap()
         );
         assert_eq!(
@@ -283,7 +287,9 @@ mod tests {
             retrieve_handle
                 .retrieve(URID::new(3).unwrap())
                 .unwrap()
-                .read(urids.vector(), urids.int)
+                .read(urids.vector)
+                .unwrap()
+                .of_type(urids.int)
                 .unwrap()
         );
         assert!(retrieve_handle.retrieve(URID::new(4).unwrap()).is_err());
@@ -311,9 +317,12 @@ mod tests {
                     });
                 }
                 3 => {
-                    assert_eq!(urids.vector::<Int>(), *type_);
+                    assert_eq!(urids.vector, *type_);
                     let space = AlignedSpace::try_from_bytes(value.as_slice()).unwrap();
-                    let data = unsafe { Vector::read(space, urids.int) }.unwrap();
+                    let data = unsafe { Vector::read(space) }
+                        .unwrap()
+                        .of_type(urids.int)
+                        .unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }
                 _ => panic!("Invalid key!"),

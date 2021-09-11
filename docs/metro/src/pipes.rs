@@ -324,21 +324,21 @@ impl<'a> Pipe for EventReader<'a> {
 
         if let Some(atom) = atom {
             if let Some((object_header, object_reader)) = atom
-                .read(self.atom_urids.object, ())
-                .or_else(|| atom.read(self.atom_urids.blank, ()))
+                .read(self.atom_urids.object)
+                .or_else(|| atom.read(self.atom_urids.blank))
             {
                 if object_header.otype == self.time_urids.position_class {
                     for (property_header, property) in object_reader {
                         if property_header.key == self.time_urids.bar_beat {
                             updates.beat_update = property
-                                .read(self.atom_urids.float, ())
-                                .map(|float| float as f64);
+                                .read(self.atom_urids.float)
+                                .map(|float| *float as f64);
                         }
                         if property_header.key == self.time_urids.beats_per_minute {
-                            updates.bpm_update = property.read(self.atom_urids.float, ());
+                            updates.bpm_update = property.read(self.atom_urids.float).copied();
                         }
                         if property_header.key == self.time_urids.speed {
-                            updates.speed_update = property.read(self.atom_urids.float, ());
+                            updates.speed_update = property.read(self.atom_urids.float).copied();
                         }
                     }
                 }
