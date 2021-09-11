@@ -96,21 +96,21 @@ pub struct ObjectHeader {
 }
 
 pub struct ObjectReaderHandle;
-impl<'handle> AtomHandle<'handle> for ObjectReaderHandle {
-    type Handle = (ObjectHeader, ObjectReader<'handle>);
+impl<'a> AtomHandle<'a> for ObjectReaderHandle {
+    type Handle = (ObjectHeader, ObjectReader<'a>);
 }
 
 pub struct ObjectWriterHandle;
-impl<'handle> AtomHandle<'handle> for ObjectWriterHandle {
-    type Handle = ObjectHeaderWriter<'handle>;
+impl<'a> AtomHandle<'a> for ObjectWriterHandle {
+    type Handle = ObjectHeaderWriter<'a>;
 }
 
-pub struct ObjectHeaderWriter<'handle> {
-    frame: AtomSpaceWriter<'handle>,
+pub struct ObjectHeaderWriter<'a> {
+    frame: AtomSpaceWriter<'a>,
 }
 
-impl<'handle> ObjectHeaderWriter<'handle> {
-    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'handle>> {
+impl<'a> ObjectHeaderWriter<'a> {
+    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'a>> {
         self.frame.write_value(sys::LV2_Atom_Object_Body {
             id: header.id.map(URID::get).unwrap_or(0),
             otype: header.otype.get(),

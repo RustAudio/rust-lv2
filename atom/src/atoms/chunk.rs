@@ -39,13 +39,13 @@ unsafe impl UriBound for Chunk {
 }
 
 pub struct ChunkReaderHandle;
-impl<'handle> AtomHandle<'handle> for ChunkReaderHandle {
-    type Handle = &'handle AtomSpace;
+impl<'a> AtomHandle<'a> for ChunkReaderHandle {
+    type Handle = &'a AtomSpace;
 }
 
 pub struct ChunkWriterHandle;
-impl<'handle> AtomHandle<'handle> for ChunkWriterHandle {
-    type Handle = AtomSpaceWriter<'handle>;
+impl<'a> AtomHandle<'a> for ChunkWriterHandle {
+    type Handle = AtomSpaceWriter<'a>;
 }
 
 impl Atom for Chunk {
