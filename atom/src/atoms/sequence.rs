@@ -143,9 +143,7 @@ impl Atom for Sequence {
     type ReadHandle = SequenceReadHandle;
     type WriteHandle = SequenceWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
 

@@ -51,9 +51,7 @@ impl Atom for WMidiEvent {
     type WriteHandle = WMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read<'handle, 'space: 'handle>(
-        space: &'space AtomSpace,
-    ) -> Option<wmidi::MidiMessage<'handle>> {
+    unsafe fn read(space: &AtomSpace) -> Option<wmidi::MidiMessage> {
         wmidi::MidiMessage::try_from(space.as_bytes()).ok()
     }
 
@@ -85,9 +83,7 @@ impl Atom for SystemExclusiveWMidiEvent {
     type WriteHandle = SystemExclusiveWMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read<'handle, 'space: 'handle>(
-        space: &'space AtomSpace,
-    ) -> Option<wmidi::MidiMessage<'handle>> {
+    unsafe fn read(space: &AtomSpace) -> Option<wmidi::MidiMessage> {
         WMidiEvent::read(space)
     }
 

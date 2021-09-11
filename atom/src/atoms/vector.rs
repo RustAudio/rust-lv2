@@ -100,9 +100,7 @@ impl Atom for Vector {
     type ReadHandle = VectorReadHandle;
     type WriteHandle = VectorWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(
-        body: &'space AtomSpace,
-    ) -> Option<<Self::ReadHandle as AtomHandle<'handle>>::Handle> {
+    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
 

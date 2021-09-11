@@ -32,7 +32,7 @@ impl Atom for MidiEvent {
     type ReadHandle = MidiEventReadHandle;
     type WriteHandle = MidiEventWriteHandle;
 
-    unsafe fn read<'handle, 'space: 'handle>(body: &'space AtomSpace) -> Option<&'handle [u8]> {
+    unsafe fn read(body: &AtomSpace) -> Option<&[u8]> {
         Some(body.as_bytes())
     }
 
