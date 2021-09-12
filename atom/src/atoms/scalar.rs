@@ -47,7 +47,7 @@ pub trait ScalarAtom: UriBound {
     ///
     /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
     #[inline]
-    unsafe fn read_scalar(body: &AtomSpace) -> Option<&Self::InternalType> {
+    unsafe fn read_scalar(body: &AtomSpace) -> Result<&Self::InternalType, AtomError> {
         body.read().next_value()
     }
 
@@ -55,8 +55,8 @@ pub trait ScalarAtom: UriBound {
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     #[inline]
-    fn write_scalar(frame: AtomSpaceWriter) -> Option<ScalarWriter<Self::InternalType>> {
-        Some(ScalarWriter(frame.re_borrow(), PhantomData))
+    fn write_scalar(frame: AtomSpaceWriter) -> Result<ScalarWriter<Self::InternalType>, AtomError> {
+        Ok(ScalarWriter(frame.re_borrow(), PhantomData))
     }
 }
 
@@ -64,7 +64,7 @@ pub struct ScalarWriter<'a, T: Copy + 'static>(AtomSpaceWriter<'a>, PhantomData<
 
 impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
     #[inline]
-    pub fn set(&mut self, value: T) -> Option<&mut T> {
+    pub fn set(&mut self, value: T) -> Result<&mut T, AtomError> {
         #[repr(align(8))]
         #[derive(Copy, Clone)]
         struct Padder;
@@ -74,7 +74,7 @@ impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
         struct ScalarValue<T: Copy + 'static>(T, Padder);
 
         // Scalars have extra padding due to previous header in LV2_ATOM_Int and such
-        Some(&mut self.0.write_value(ScalarValue(value, Padder))?.0)
+        Ok(&mut self.0.write_value(ScalarValue(value, Padder))?.0)
     }
 }
 
@@ -92,11 +92,15 @@ impl<A: ScalarAtom> Atom for A {
     type ReadHandle = ScalarReaderHandle<A::InternalType>;
     type WriteHandle = ScalarWriterHandle<A::InternalType>;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
         <A as ScalarAtom>::write_scalar(frame)
     }
 }

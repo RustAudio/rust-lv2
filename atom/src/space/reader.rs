@@ -1,4 +1,5 @@
 use crate::prelude::AlignedSpace;
+use crate::space::AtomError;
 use crate::{AtomHeader, UnidentifiedAtom};
 use std::mem::MaybeUninit;
 
@@ -13,73 +14,86 @@ impl<'a> SpaceReader<'a> {
     }
 
     #[inline]
-    fn next_uninit_value<T: 'static>(&mut self) -> Option<&'a MaybeUninit<T>> {
-        let space = AlignedSpace::align_from_bytes(self.space)?;
+    fn next_uninit_value<T: 'static>(&mut self) -> Result<&'a MaybeUninit<T>, AtomError> {
+        let space = AlignedSpace::try_align_from_bytes(self.space)?;
         let value_size = ::core::mem::size_of::<T>();
-        let (value, remaining) = space.split_at(value_size)?;
+        let (value, remaining) = space.try_split_at(value_size)?;
 
         self.space = remaining.as_bytes();
 
-        value.as_uninit()
+        // This shouldn't be possible, but it doesn't hurt to check
+        value.as_uninit().ok_or(AtomError::Unknown)
     }
 
     #[inline]
     fn next_uninit_value_slice<T: 'static>(
         &mut self,
         length: usize,
-    ) -> Option<&'a [MaybeUninit<T>]> {
-        let space = AlignedSpace::align_from_bytes(self.space)?;
+    ) -> Result<&'a [MaybeUninit<T>], AtomError> {
+        let space = AlignedSpace::try_align_from_bytes(self.space)?;
 
         let split_point = crate::util::value_index_to_byte_index::<T>(length);
-        let (data, remaining) = space.split_at(split_point)?;
+        let (data, remaining) = space.try_split_at(split_point)?;
 
         self.space = remaining.as_bytes();
 
-        Some(data.as_uninit_slice())
+        Ok(data.as_uninit_slice())
     }
 
     #[inline]
-    fn as_uninit_slice<T: 'static>(&self) -> Option<&'a [MaybeUninit<T>]> {
-        let space = AlignedSpace::align_from_bytes(self.space)?;
-        Some(space.as_uninit_slice())
+    fn as_uninit_slice<T: 'static>(&self) -> Result<&'a [MaybeUninit<T>], AtomError> {
+        let space = AlignedSpace::try_align_from_bytes(self.space)?;
+        Ok(space.as_uninit_slice())
     }
 
     #[inline]
-    pub unsafe fn as_slice<T: 'static>(&self) -> Option<&'a [T]> {
+    pub unsafe fn as_slice<T: 'static>(&self) -> Result<&'a [T], AtomError> {
         self.as_uninit_slice()
             .map(|s| crate::util::assume_init_slice(s))
     }
 
     #[inline]
-    pub unsafe fn next_slice<U: 'static>(&mut self, length: usize) -> Option<&'a [U]> {
+    pub unsafe fn next_slice<U: 'static>(&mut self, length: usize) -> Result<&'a [U], AtomError> {
         self.next_uninit_value_slice(length)
             .map(|s| crate::util::assume_init_slice(s))
     }
 
     #[inline]
-    pub fn next_bytes(&mut self, length: usize) -> Option<&'a [u8]> {
-        let bytes = self.space.get(..length)?;
+    pub fn next_bytes(&mut self, length: usize) -> Result<&'a [u8], AtomError> {
+        let bytes = self
+            .space
+            .get(..length)
+            .ok_or_else(|| AtomError::ReadingOutOfBounds {
+                requested: length,
+                capacity: self.space.len(),
+            })?;
+
         self.space = self.space.get(length..).unwrap_or(&[]);
 
-        Some(bytes)
+        Ok(bytes)
     }
 
     #[inline]
-    pub unsafe fn next_value<U: 'static>(&mut self) -> Option<&'a U> {
+    pub unsafe fn next_value<U: 'static>(&mut self) -> Result<&'a U, AtomError> {
         self.next_uninit_value()
             .map(|v| crate::util::assume_init_ref(v))
     }
 
     #[inline]
-    pub unsafe fn next_atom(&mut self) -> Option<&'a UnidentifiedAtom> {
-        let space = AlignedSpace::<AtomHeader>::align_from_bytes(&self.space)?;
-        let header = space.assume_init_value()?;
-        let (_, rest) = space.split_at(header.size_of_atom())?;
+    pub unsafe fn next_atom(&mut self) -> Result<&'a UnidentifiedAtom, AtomError> {
+        let space = AlignedSpace::<AtomHeader>::try_align_from_bytes(&self.space)?;
+        let header = space
+            .assume_init_value()
+            .ok_or_else(|| AtomError::ReadingOutOfBounds {
+                capacity: space.len(),
+                requested: core::mem::size_of::<AtomError>(),
+            })?;
+        let (_, rest) = space.try_split_at(header.size_of_atom())?;
 
         let atom = UnidentifiedAtom::from_header(header);
         self.space = rest.as_bytes();
 
-        Some(atom)
+        Ok(atom)
     }
 
     #[inline]
@@ -88,14 +102,14 @@ impl<'a> SpaceReader<'a> {
     }
 
     #[inline]
-    pub fn try_read<F, U>(&mut self, read_handler: F) -> Option<U>
+    pub fn try_read<F, U>(&mut self, read_handler: F) -> Result<U, AtomError>
     where
-        F: FnOnce(&mut Self) -> Option<U>,
+        F: FnOnce(&mut Self) -> Result<U, AtomError>,
     {
         let mut reader = Self { space: self.space };
         let value = read_handler(&mut reader)?;
         self.space = reader.remaining_bytes();
 
-        Some(value)
+        Ok(value)
     }
 }

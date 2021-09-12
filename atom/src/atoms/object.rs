@@ -110,13 +110,13 @@ pub struct ObjectHeaderWriter<'a> {
 }
 
 impl<'a> ObjectHeaderWriter<'a> {
-    pub fn write_header(mut self, header: ObjectHeader) -> Option<ObjectWriter<'a>> {
+    pub fn write_header(mut self, header: ObjectHeader) -> Result<ObjectWriter<'a>, AtomError> {
         self.frame.write_value(sys::LV2_Atom_Object_Body {
             id: header.id.map(URID::get).unwrap_or(0),
             otype: header.otype.get(),
         })?;
 
-        Some(ObjectWriter { frame: self.frame })
+        Ok(ObjectWriter { frame: self.frame })
     }
 }
 
@@ -124,22 +124,28 @@ impl Atom for Object {
     type ReadHandle = ObjectReaderHandle;
     type WriteHandle = ObjectWriterHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
-            otype: URID::try_from(header.otype).ok()?,
+            otype: URID::try_from(header.otype).map_err(|_| AtomError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })?,
         };
 
         let reader = ObjectReader { reader };
 
-        Some((header, reader))
+        Ok((header, reader))
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(ObjectHeaderWriter { frame })
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(ObjectHeaderWriter { frame })
     }
 }
 
@@ -159,12 +165,16 @@ impl Atom for Blank {
     type WriteHandle = <Object as Atom>::WriteHandle;
 
     #[inline]
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         Object::read(body)
     }
 
     #[inline]
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
         Object::init(frame)
     }
 }
@@ -183,6 +193,7 @@ impl<'a> Iterator for ObjectReader<'a> {
         // SAFETY: The fact that this contains a valid property is guaranteed by this type.
         self.reader
             .try_read(|reader| unsafe { Property::read_body(reader) })
+            .ok()
     }
 }
 
@@ -202,7 +213,7 @@ impl<'a> ObjectWriter<'a> {
         key: URID<K>,
         context: URID<T>,
         child_urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
         self.frame.init_atom(child_urid)
     }
@@ -216,7 +227,7 @@ impl<'a> ObjectWriter<'a> {
         &mut self,
         key: URID<K>,
         child_urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
         self.frame.init_atom(child_urid)
     }
@@ -262,17 +273,19 @@ impl Property {
     /// The caller must ensure that the given Space actually contains a valid property.
     unsafe fn read_body<'a>(
         reader: &mut SpaceReader<'a>,
-    ) -> Option<(PropertyHeader, &'a UnidentifiedAtom)> {
+    ) -> Result<(PropertyHeader, &'a UnidentifiedAtom), AtomError> {
         let header: &StrippedPropertyHeader = reader.next_value()?;
 
         let header = PropertyHeader {
-            key: URID::try_from(header.key).ok()?,
+            key: URID::try_from(header.key).map_err(|_| AtomError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })?,
             context: URID::try_from(header.context).ok(),
         };
 
         let atom = reader.next_atom()?;
 
-        Some((header, atom))
+        Ok((header, atom))
     }
 
     /// Write out the header of a property atom.
@@ -283,14 +296,14 @@ impl Property {
         space: &mut impl SpaceAllocator,
         key: URID<K>,
         context: Option<URID<C>>,
-    ) -> Option<()> {
+    ) -> Result<(), AtomError> {
         let header = StrippedPropertyHeader {
             key: key.get(),
             context: context.map(URID::get).unwrap_or(0),
         };
 
         space.write_value(header)?;
-        Some(())
+        Ok(())
     }
 }
 

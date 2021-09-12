@@ -1,4 +1,5 @@
-use crate::UnidentifiedAtom;
+use crate::space::AtomError;
+use crate::{Atom, UnidentifiedAtom};
 use urid::URID;
 
 #[repr(C, align(8))]
@@ -58,5 +59,18 @@ impl AtomHeader {
     #[inline]
     pub fn urid(self) -> URID {
         URID::new(self.inner.type_).unwrap()
+    }
+
+    #[inline]
+    pub fn check_urid<A: Atom>(self, other: URID<A>) -> Result<(), AtomError> {
+        if other == self.urid() {
+            Ok(())
+        } else {
+            Err(AtomError::InvalidAtomUrid {
+                expected_uri: A::uri(),
+                expected_urid: other.into_general(),
+                found_urid: self.urid(),
+            })
+        }
     }
 }

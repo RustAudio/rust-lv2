@@ -58,14 +58,14 @@ impl Plugin for AtomPlugin {
 
         for (time_stamp, atom) in sequence_reader {
             match atom.read(self.urids.atom.int) {
-                Some(number) => {
+                Ok(number) => {
                     sequence_writer
                         .init(time_stamp, self.urids.atom.int)
                         .unwrap()
                         .set(number * 2)
                         .unwrap();
                 }
-                None => {
+                Err(_) => {
                     sequence_writer.forward(time_stamp, atom).unwrap();
                 }
             }

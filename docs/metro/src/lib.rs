@@ -75,7 +75,7 @@ impl Plugin for Metro {
     }
 
     fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
-        if let Some(control) = ports
+        if let Ok(control) = ports
             .control
             .read(self.urids.atom.sequence)
             .map(|s| s.read(self.urids.unit.beat))

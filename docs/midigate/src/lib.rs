@@ -99,7 +99,7 @@ impl Plugin for Midigate {
                 continue;
             };
 
-            let message = if let Some(message) = message.read(self.urids.midi.wmidi) {
+            let message = if let Ok(message) = message.read(self.urids.midi.wmidi) {
                 message
             } else {
                 continue;

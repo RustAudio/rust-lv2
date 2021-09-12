@@ -53,13 +53,17 @@ impl Atom for Chunk {
     type WriteHandle = AtomSpaceWriterHandle;
 
     #[inline]
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
-        Some(body)
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+        Ok(body)
     }
 
     #[inline]
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(frame)
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(frame)
     }
 }
 

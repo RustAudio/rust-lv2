@@ -4,6 +4,7 @@
 //!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
 use atom::prelude::*;
+use atom::space::AtomError;
 use atom::AtomHandle;
 use std::convert::TryFrom;
 use urid::*;
@@ -39,10 +40,14 @@ pub struct WMidiEventWriter<'a> {
 
 impl<'a> WMidiEventWriter<'a> {
     #[inline]
-    pub fn set(mut self, message: wmidi::MidiMessage) -> Option<()> {
+    pub fn set(mut self, message: wmidi::MidiMessage) -> Result<(), AtomError> {
         let space = self.writer.allocate(message.bytes_size())?;
-        message.copy_to_slice(space).ok()?;
-        Some(())
+
+        // The error shouldn't be happening, as we allocated just as many bytes as needed
+        message
+            .copy_to_slice(space)
+            .map_err(|_| AtomError::Unknown)?;
+        Ok(())
     }
 }
 
@@ -51,13 +56,15 @@ impl Atom for WMidiEvent {
     type WriteHandle = WMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read(space: &AtomSpace) -> Option<wmidi::MidiMessage> {
-        wmidi::MidiMessage::try_from(space.as_bytes()).ok()
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomError> {
+        wmidi::MidiMessage::try_from(space.as_bytes()).map_err(|_| AtomError::InvalidAtomValue {
+            reading_type_uri: Self::uri(),
+        })
     }
 
     #[inline]
-    fn init(writer: AtomSpaceWriter) -> Option<WMidiEventWriter> {
-        Some(WMidiEventWriter { writer })
+    fn init(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomError> {
+        Ok(WMidiEventWriter { writer })
     }
 }
 
@@ -83,14 +90,14 @@ impl Atom for SystemExclusiveWMidiEvent {
     type WriteHandle = SystemExclusiveWMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read(space: &AtomSpace) -> Option<wmidi::MidiMessage> {
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomError> {
         WMidiEvent::read(space)
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<Writer> {
+    fn init(frame: AtomSpaceWriter) -> Result<Writer, AtomError> {
         let mut writer = Writer { frame };
         writer.write::<u8>(0xf0);
-        Some(writer)
+        Ok(writer)
     }
 }
 
@@ -105,12 +112,12 @@ pub struct Writer<'a> {
 
 impl<'a> Writer<'a> {
     #[inline]
-    pub fn write_raw(&mut self, data: &[u8]) -> Option<&mut [u8]> {
+    pub fn write_raw(&mut self, data: &[u8]) -> Result<&mut [u8], AtomError> {
         self.frame.write_bytes(data)
     }
 
     #[inline]
-    pub fn write<T>(&mut self, instance: T) -> Option<&mut T>
+    pub fn write<T>(&mut self, instance: T) -> Result<&mut T, AtomError>
     where
         T: Copy + Sized + 'static,
     {

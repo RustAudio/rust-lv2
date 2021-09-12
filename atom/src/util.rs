@@ -1,3 +1,4 @@
+use crate::space::AtomError;
 use std::mem::MaybeUninit;
 
 // This function is separate to ensure proper lifetimes
@@ -49,4 +50,9 @@ pub(crate) fn padding_for<T>(data: &[u8]) -> Option<usize> {
     } else {
         Some(value)
     }
+}
+
+#[inline]
+pub(crate) fn try_padding_for<T>(data: &[u8]) -> Result<usize, AtomError> {
+    padding_for::<T>(data).ok_or_else(|| AtomError::CannotComputeAlignment { ptr: data.as_ptr() })
 }

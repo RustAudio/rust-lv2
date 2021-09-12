@@ -120,7 +120,8 @@ pub trait Atom: UriBound {
     ///
     /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
     /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle>;
+    unsafe fn read(body: &AtomSpace)
+        -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError>;
 
     /// Initialize the body of the atom.
     ///
@@ -130,7 +131,9 @@ pub trait Atom: UriBound {
     /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn init(writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle>;
+    fn init(
+        writer: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError>;
 }
 
 /// An atom of yet unknown type.
@@ -149,8 +152,13 @@ impl UnidentifiedAtom {
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
     #[inline]
-    pub unsafe fn from_space(space: &AtomSpace) -> Option<&Self> {
-        Some(Self::from_header(space.assume_init_value()?))
+    pub unsafe fn from_space(space: &AtomSpace) -> Result<&Self, AtomError> {
+        Ok(Self::from_header(space.assume_init_value().ok_or_else(
+            || AtomError::ReadingOutOfBounds {
+                capacity: space.len(),
+                requested: ::core::mem::size_of::<AtomHeader>(),
+            },
+        )?))
     }
 
     /// Construct a new unidentified atom.
@@ -159,8 +167,16 @@ impl UnidentifiedAtom {
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
     #[inline]
-    pub unsafe fn from_space_mut(space: &mut AtomSpace) -> Option<&mut Self> {
-        Some(Self::from_header_mut(space.assume_init_value_mut()?))
+    pub unsafe fn from_space_mut(space: &mut AtomSpace) -> Result<&mut Self, AtomError> {
+        let len = space.len();
+        Ok(Self::from_header_mut(
+            space
+                .assume_init_value_mut()
+                .ok_or_else(|| AtomError::ReadingOutOfBounds {
+                    capacity: len,
+                    requested: ::core::mem::size_of::<AtomHeader>(),
+                })?,
+        ))
     }
 
     #[inline]
@@ -178,10 +194,11 @@ impl UnidentifiedAtom {
     /// Try to read the atom.
     ///
     /// To identify the atom, its URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
-    pub fn read<A: Atom>(&self, urid: URID<A>) -> Option<<A::ReadHandle as AtomHandle>::Handle> {
-        if self.header.urid() != urid {
-            return None;
-        }
+    pub fn read<A: Atom>(
+        &self,
+        urid: URID<A>,
+    ) -> Result<<A::ReadHandle as AtomHandle>::Handle, AtomError> {
+        self.header.check_urid(urid)?;
 
         // SAFETY: the fact that this contains a valid instance of A is checked above.
         unsafe { A::read(self.body()) }

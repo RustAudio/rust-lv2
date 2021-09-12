@@ -1,5 +1,5 @@
 use crate::header::AtomHeader;
-use crate::space::{AlignedSpace, SpaceAllocator, SpaceAllocatorImpl};
+use crate::space::{AlignedSpace, AtomError, SpaceAllocator, SpaceAllocatorImpl};
 use crate::AtomHandle;
 use urid::URID;
 
@@ -50,17 +50,24 @@ impl<'a> AtomSpaceWriter<'a> {
         unsafe { space.assume_init_value_mut().unwrap() }
     }
 
+    pub fn allocate_and_unwrap<T, F: FnOnce(&mut AtomSpaceWriter) -> Result<T, AtomError>>(
+        mut self,
+        operation: F,
+    ) -> Result<T, AtomError> {
+        operation(&mut self)
+    }
+
     /// Create a new framed space with the given parent and type URID.
     pub fn write_new<A: ?Sized>(
         parent: &'a mut impl SpaceAllocator,
         urid: URID<A>,
-    ) -> Option<Self> {
+    ) -> Result<Self, AtomError> {
         let atom = AtomHeader::new(urid);
 
         parent.write_value(atom)?;
         let atom_header_index = parent.allocated_bytes().len() - std::mem::size_of::<AtomHeader>();
 
-        Some(Self {
+        Ok(Self {
             atom_header_index,
             parent,
         })
@@ -69,18 +76,22 @@ impl<'a> AtomSpaceWriter<'a> {
 
 impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     #[inline]
-    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
+    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
         let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(
-            previous.get_mut(self.atom_header_index..)?,
-        )?;
-        let header = unsafe { space.assume_init_value_mut() }?;
+            previous
+                .get_mut(self.atom_header_index..)
+                .ok_or(AtomError::CannotUpdateAtomHeader)?,
+        )
+        .ok_or(AtomError::CannotUpdateAtomHeader)?;
+        let header =
+            unsafe { space.assume_init_value_mut() }.ok_or(AtomError::CannotUpdateAtomHeader)?;
 
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
         unsafe { header.set_size_of_body(header.size_of_body() + size) };
 
-        Some((previous, current))
+        Ok((previous, current))
     }
 
     #[inline]
