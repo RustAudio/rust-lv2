@@ -31,24 +31,25 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
 //!     // Get the read handle to the sequence.
-//!     let input_sequence = ports.input.read(
-//!         urids.atom.sequence,
-//!     ).unwrap().read(urids.units.beat);
+//!     let input_sequence = ports.input
+//!         .read(urids.atom.sequence)
+//!         .unwrap()
+//!         .with_unit(urids.units.frame)
+//!         .unwrap();
 //!
 //!     // Get the write handle to the sequence.
 //!     let mut output_sequence = ports.output.init(urids.atom.sequence)
 //!         .unwrap()
-//!         .with_unit(TimeStampURID::Frames(urids.units.frame))
+//!         .with_unit(urids.units.frame)
 //!         .unwrap();
 //!
 //!     // Iterate through all events in the input sequence.
-//!     for event in input_sequence {
-//!         // An event contains a timestamp and an atom.
-//!         let (timestamp, atom) = event;
+//!     // An event contains a timestamp and an atom.
+//!     for (timestamp, atom) in input_sequence {
 //!         // If the read atom is a 32-bit integer...
 //!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
+//!             output_sequence.new_event(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -80,7 +81,7 @@ pub mod prelude {
     pub use atoms::chunk::Chunk;
     pub use atoms::object::{Object, ObjectHeader, PropertyHeader};
     pub use atoms::scalar::{AtomURID, Bool, Double, Float, Int, Long};
-    pub use atoms::sequence::{Sequence, TimeStamp, TimeStampURID};
+    pub use atoms::sequence::Sequence;
     pub use atoms::string::{Literal, LiteralInfo, String};
     pub use atoms::tuple::Tuple;
     pub use atoms::vector::Vector;

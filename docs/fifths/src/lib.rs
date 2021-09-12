@@ -44,14 +44,15 @@ impl Plugin for Fifths {
             .input
             .read(self.urids.atom.sequence)
             .unwrap()
-            .read(self.urids.unit.beat);
+            .with_unit(self.urids.unit.frame)
+            .unwrap();
 
         // Initialise the output sequence and get the writing handle.
         let mut output_sequence = ports
             .output
             .init(self.urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(self.urids.unit.frame))
+            .with_unit(self.urids.unit.frame)
             .unwrap();
 
         for (timestamp, atom) in input_sequence {
@@ -71,7 +72,7 @@ impl Plugin for Fifths {
                     if let Ok(note) = note.step(7) {
                         // Write the fifth. Writing is done after initialization.
                         output_sequence
-                            .init(timestamp, self.urids.midi.wmidi)
+                            .new_event(timestamp, self.urids.midi.wmidi)
                             .unwrap()
                             .set(MidiMessage::NoteOn(channel, note, velocity))
                             .unwrap();
@@ -81,7 +82,7 @@ impl Plugin for Fifths {
                     // Do the same thing for `NoteOff`.
                     if let Ok(note) = note.step(7) {
                         output_sequence
-                            .init(timestamp, self.urids.midi.wmidi)
+                            .new_event(timestamp, self.urids.midi.wmidi)
                             .unwrap()
                             .set(MidiMessage::NoteOff(channel, note, velocity))
                             .unwrap();
