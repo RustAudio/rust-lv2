@@ -48,13 +48,19 @@ pub enum LiteralInfo {
     Datatype(URID),
 }
 
-pub struct LiteralInfoWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
-}
+impl LiteralInfo {
+    fn try_from_raw(header: &sys::LV2_Atom_Literal_Body) -> Option<Self> {
+        if header.lang != 0 && header.datatype == 0 {
+            Some(LiteralInfo::Language(URID::new(header.lang)?))
+        } else if header.lang == 0 && header.datatype != 0 {
+            Some(LiteralInfo::Datatype(URID::new(header.datatype)?))
+        } else {
+            None
+        }
+    }
 
-impl<'a> LiteralInfoWriter<'a> {
-    pub fn write_info(mut self, info: LiteralInfo) -> StringWriter<'a> {
-        self.writer.write_value(match info {
+    fn into_raw(self) -> sys::LV2_Atom_Literal_Body {
+        match self {
             LiteralInfo::Language(lang) => sys::LV2_Atom_Literal_Body {
                 lang: lang.get(),
                 datatype: 0,
@@ -63,7 +69,17 @@ impl<'a> LiteralInfoWriter<'a> {
                 lang: 0,
                 datatype: datatype.get(),
             },
-        });
+        }
+    }
+}
+
+pub struct LiteralInfoWriter<'a> {
+    writer: AtomSpaceWriter<'a>,
+}
+
+impl<'a> LiteralInfoWriter<'a> {
+    pub fn write_info(mut self, info: LiteralInfo) -> StringWriter<'a> {
+        self.writer.write_value(info.into_raw()); // FIXME
 
         StringWriter {
             writer: self.writer,
@@ -88,29 +104,32 @@ impl Atom for Literal {
     type ReadHandle = LiteralReadHandle;
     type WriteHandle = LiteralWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
-        let info = if header.lang != 0 && header.datatype == 0 {
-            LiteralInfo::Language(URID::new(header.lang)?)
-        } else if header.lang == 0 && header.datatype != 0 {
-            LiteralInfo::Datatype(URID::new(header.datatype)?)
-        } else {
-            return None;
-        };
+        let info =
+            LiteralInfo::try_from_raw(header).ok_or_else(|| AtomError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })?;
 
         let data = reader.remaining_bytes();
 
         std::str::from_utf8(&data[0..data.len() - 1])
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
-            .ok()
+            .map_err(|_| AtomError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })
             .map(|string| (info, string))
     }
 
     #[inline]
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(LiteralInfoWriter { writer: frame })
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(LiteralInfoWriter { writer: frame })
     }
 }
 
@@ -139,14 +158,26 @@ impl Atom for String {
     type ReadHandle = StringReadHandle;
     type WriteHandle = StringWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         let data = body.as_bytes();
-        let rust_str_bytes = data.get(..data.len() - 1)?; // removing the null-terminator
-        Some(core::str::from_utf8(rust_str_bytes).ok()?)
+        let rust_str_bytes =
+            data.get(..data.len() - 1)
+                .ok_or_else(|| AtomError::InvalidAtomValue {
+                    reading_type_uri: Self::uri(),
+                })?; // removing the null-terminator
+        Ok(
+            core::str::from_utf8(rust_str_bytes).map_err(|_| AtomError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })?,
+        )
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(StringWriter {
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(StringWriter {
             writer: frame,
             has_nul_byte: false,
         })
@@ -165,12 +196,12 @@ impl<'a> StringWriter<'a> {
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
-    pub fn append(&mut self, string: &str) -> Option<&mut str> {
+    pub fn append(&mut self, string: &str) -> Result<&mut str, AtomError> {
         // Rewind to overwrite previously written nul_byte before appending the string.
         if self.has_nul_byte {
             // SAFETY: it is safe to overwrite the nul byte
             if unsafe { !self.writer.rewind(1) } {
-                return None; // Could not rewind
+                return Err(AtomError::Unknown); // Could not rewind
             }
         }
 
@@ -183,7 +214,7 @@ impl<'a> StringWriter<'a> {
 
         self.has_nul_byte = true;
         // SAFETY: We just wrote that string, therefore it is guaranteed to be valid UTF-8
-        unsafe { Some(std::str::from_utf8_unchecked_mut(&mut space[..bytes.len()])) }
+        unsafe { Ok(std::str::from_utf8_unchecked_mut(&mut space[..bytes.len()])) }
     }
 }
 

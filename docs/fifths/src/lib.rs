@@ -54,11 +54,11 @@ impl Plugin for Fifths {
             .with_unit(TimeStampURID::Frames(self.urids.unit.frame));
 
         for (timestamp, atom) in input_sequence {
-            // Every message is forwarded, regardless of it's content.
-            output_sequence.forward(timestamp, atom);
+            // Every message is forwarded, regardless of its contents.
+            output_sequence.forward(timestamp, atom).unwrap();
 
             // Retrieve the message.
-            let message = if let Some(message) = atom.read(self.urids.midi.wmidi) {
+            let message = if let Ok(message) = atom.read(self.urids.midi.wmidi) {
                 message
             } else {
                 continue;
@@ -82,7 +82,8 @@ impl Plugin for Fifths {
                         output_sequence
                             .init(timestamp, self.urids.midi.wmidi)
                             .unwrap()
-                            .set(MidiMessage::NoteOff(channel, note, velocity));
+                            .set(MidiMessage::NoteOff(channel, note, velocity))
+                            .unwrap();
                     }
                 }
                 _ => (),

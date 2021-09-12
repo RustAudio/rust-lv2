@@ -63,11 +63,26 @@ pub struct VectorReader<'a> {
 }
 
 impl<'a> VectorReader<'a> {
-    pub fn of_type<C: ScalarAtom>(self, atom_type: URID<C>) -> Option<&'a [C::InternalType]> {
-        if self.header.child_type != atom_type
-            || self.header.child_size as usize != size_of::<C::InternalType>()
-        {
-            return None;
+    pub fn of_type<C: ScalarAtom>(
+        self,
+        atom_type: URID<C>,
+    ) -> Result<&'a [C::InternalType], AtomError> {
+        if self.header.child_type != atom_type {
+            return Err(AtomError::InvalidAtomUrid {
+                found_urid: URID::new(self.header.child_size).ok_or_else(|| {
+                    AtomError::InvalidAtomValue {
+                        reading_type_uri: Vector::uri(),
+                    }
+                })?,
+                expected_urid: atom_type.into_general(),
+                expected_uri: C::uri(),
+            });
+        }
+
+        if self.header.child_size as usize != size_of::<C::InternalType>() {
+            return Err(AtomError::InvalidAtomValue {
+                reading_type_uri: Vector::uri(),
+            });
         }
 
         // SAFETY: The data type has just been checked above, and we can assume this data was
@@ -81,7 +96,10 @@ pub struct VectorTypeWriter<'a> {
 }
 
 impl<'a> VectorTypeWriter<'a> {
-    pub fn of_type<C: ScalarAtom>(mut self, atom_type: URID<C>) -> Option<VectorWriter<'a, C>> {
+    pub fn of_type<C: ScalarAtom>(
+        mut self,
+        atom_type: URID<C>,
+    ) -> Result<VectorWriter<'a, C>, AtomError> {
         let body = sys::LV2_Atom_Vector_Body {
             child_type: atom_type.get(),
             child_size: size_of::<C::InternalType>() as u32,
@@ -89,7 +107,7 @@ impl<'a> VectorTypeWriter<'a> {
 
         self.writer.write_value(body)?;
 
-        Some(VectorWriter {
+        Ok(VectorWriter {
             writer: self.writer,
             type_: PhantomData,
         })
@@ -100,15 +118,19 @@ impl Atom for Vector {
     type ReadHandle = VectorReadHandle;
     type WriteHandle = VectorWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Vector_Body = reader.next_value()?;
 
-        Some(VectorReader { reader, header })
+        Ok(VectorReader { reader, header })
     }
 
-    fn init(writer: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(VectorTypeWriter { writer })
+    fn init(
+        writer: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(VectorTypeWriter { writer })
     }
 }
 
@@ -123,7 +145,7 @@ pub struct VectorWriter<'a, A: ScalarAtom> {
 impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
     /// Push a single value to the vector.
     #[inline]
-    pub fn push(&mut self, child: A::InternalType) -> Option<&mut A::InternalType> {
+    pub fn push(&mut self, child: A::InternalType) -> Result<&mut A::InternalType, AtomError> {
         self.writer.write_value(child)
     }
 
@@ -131,13 +153,19 @@ impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
     ///
     /// Using this method, you don't need to have the elements in memory before you can write them.
     #[inline]
-    pub fn allocate_uninit(&mut self, count: usize) -> Option<&mut [MaybeUninit<A::InternalType>]> {
+    pub fn allocate_uninit(
+        &mut self,
+        count: usize,
+    ) -> Result<&mut [MaybeUninit<A::InternalType>], AtomError> {
         self.writer.allocate_values(count)
     }
 
     /// Append multiple elements to the vector.
     #[inline]
-    pub fn append(&mut self, data: &[A::InternalType]) -> Option<&mut [A::InternalType]> {
+    pub fn append(
+        &mut self,
+        data: &[A::InternalType],
+    ) -> Result<&mut [A::InternalType], AtomError> {
         self.writer.write_values(data)
     }
 }

@@ -58,14 +58,18 @@ impl Atom for Tuple {
     type ReadHandle = TupleReadHandle;
     type WriteHandle = TupleWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
-        Some(TupleIterator {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+        Ok(TupleIterator {
             reader: body.read(),
         })
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(TupleWriter { frame })
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(TupleWriter { frame })
     }
 }
 
@@ -81,7 +85,7 @@ impl<'a> Iterator for TupleIterator<'a> {
 
     fn next(&mut self) -> Option<&'a UnidentifiedAtom> {
         // SAFETY: the validity of the given space is guaranteed by this type.
-        unsafe { self.reader.next_atom() }
+        unsafe { self.reader.next_atom() }.ok()
     }
 }
 
@@ -95,7 +99,7 @@ impl<'a> TupleWriter<'a> {
     pub fn init<A: Atom>(
         &mut self,
         child_urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
         self.frame.init_atom(child_urid)
     }
 }

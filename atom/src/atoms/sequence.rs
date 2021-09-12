@@ -129,7 +129,7 @@ impl<'a> SequenceHeaderWriter<'a> {
             pad: 0,
         });
 
-        self.writer.write_value(header);
+        self.writer.write_value(header); // FIXME
 
         SequenceWriter {
             writer: self.writer,
@@ -143,15 +143,19 @@ impl Atom for Sequence {
     type ReadHandle = SequenceReadHandle;
     type WriteHandle = SequenceWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Option<<Self::ReadHandle as AtomHandle>::Handle> {
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
 
-        Some(SequenceHeaderReader { reader, header })
+        Ok(SequenceHeaderReader { reader, header })
     }
 
-    fn init(frame: AtomSpaceWriter) -> Option<<Self::WriteHandle as AtomHandle>::Handle> {
-        Some(SequenceHeaderWriter { writer: frame })
+    fn init(
+        frame: AtomSpaceWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+        Ok(SequenceHeaderWriter { writer: frame })
     }
 }
 
@@ -219,22 +223,24 @@ impl<'a> Iterator for SequenceIterator<'a> {
     fn next(&mut self) -> Option<(TimeStamp, &'a UnidentifiedAtom)> {
         let unit = self.unit;
 
-        self.reader.try_read(|reader| {
-            // SAFETY: The validity of the space's contents is guaranteed by this type.
-            let raw_stamp: &RawTimeStamp = unsafe { reader.next_value()? };
+        self.reader
+            .try_read(|reader| {
+                // SAFETY: The validity of the space's contents is guaranteed by this type.
+                let raw_stamp: &RawTimeStamp = unsafe { reader.next_value()? };
 
-            let stamp = match unit {
-                TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
-                TimeStampUnit::BeatsPerMinute => unsafe {
-                    TimeStamp::BeatsPerMinute(raw_stamp.beats)
-                },
-            };
+                let stamp = match unit {
+                    TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
+                    TimeStampUnit::BeatsPerMinute => unsafe {
+                        TimeStamp::BeatsPerMinute(raw_stamp.beats)
+                    },
+                };
 
-            // SAFETY: The validity of the space's contents is guaranteed by this type.
-            let atom = unsafe { reader.next_atom()? };
+                // SAFETY: The validity of the space's contents is guaranteed by this type.
+                let atom = unsafe { reader.next_atom()? };
 
-            Some((stamp, atom))
-        })
+                Ok((stamp, atom))
+            })
+            .ok()
     }
 }
 
@@ -252,22 +258,26 @@ impl<'a> SequenceWriter<'a> {
     /// * The time stamp is not measured in our unit.
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
-    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Option<()> {
+    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Result<(), AtomError> {
         let raw_stamp = match self.unit {
             TimeStampUnit::Frames => {
-                let frames = stamp.as_frames()?;
+                let frames = stamp.as_frames().unwrap(); // TODO
                 if let Some(last_stamp) = self.last_stamp {
                     if last_stamp.as_frames().unwrap() > frames {
-                        return None;
+                        return Err(AtomError::InvalidAtomValue {
+                            reading_type_uri: Sequence::uri(),
+                        });
                     }
                 }
                 RawTimeStamp { frames }
             }
             TimeStampUnit::BeatsPerMinute => {
-                let beats = stamp.as_bpm()?;
+                let beats = stamp.as_bpm().unwrap(); // TODO
                 if let Some(last_stamp) = self.last_stamp {
                     if last_stamp.as_bpm().unwrap() > beats {
-                        return None;
+                        return Err(AtomError::InvalidAtomValue {
+                            reading_type_uri: Sequence::uri(),
+                        });
                     }
                 }
                 RawTimeStamp { beats }
@@ -276,7 +286,7 @@ impl<'a> SequenceWriter<'a> {
         self.last_stamp = Some(stamp);
         self.writer.write_value(TimestampBody(raw_stamp))?;
 
-        Some(())
+        Ok(())
     }
 
     /// Initialize an event.       
@@ -286,7 +296,7 @@ impl<'a> SequenceWriter<'a> {
         &mut self,
         stamp: TimeStamp,
         urid: URID<A>,
-    ) -> Option<<A::WriteHandle as AtomHandle>::Handle> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
         self.write_time_stamp(stamp)?;
         self.writer.init_atom(urid)
     }
@@ -296,12 +306,12 @@ impl<'a> SequenceWriter<'a> {
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Option<()> {
+    pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Result<(), AtomError> {
         self.write_time_stamp(stamp)?;
 
         self.writer.forward_atom(atom)?;
 
-        Some(())
+        Ok(())
     }
 }
 

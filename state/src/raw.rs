@@ -55,7 +55,7 @@ impl<'a> StoreHandle<'a> {
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space = space.as_space();
-        let atom = unsafe { space.read().next_atom() }.ok_or(StateErr::BadData)?;
+        let atom = unsafe { space.read().next_atom() }.map_err(|_| StateErr::BadData)?;
 
         let key = key.get();
         let data_ptr = atom.body().as_bytes().as_ptr() as *const c_void;
@@ -123,7 +123,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<<A::WriteHandle as AtomHandle<'a>>::Handle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            self.cursor.init_atom(urid).ok_or(StateErr::Unknown)
+            self.cursor.init_atom(urid).map_err(|_| StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }
@@ -217,7 +217,7 @@ impl<'a> StatePropertyReader<'a> {
         urid: URID<A>,
     ) -> Result<<A::ReadHandle as AtomHandle<'a>>::Handle, StateErr> {
         if urid == self.type_ {
-            unsafe { A::read(self.body) }.ok_or(StateErr::Unknown)
+            unsafe { A::read(self.body) }.map_err(|_| StateErr::Unknown)
         } else {
             Err(StateErr::BadType)
         }
@@ -237,12 +237,14 @@ mod tests {
             .draft(URID::new(1).unwrap())
             .init(urids.int)
             .unwrap()
-            .set(17);
+            .set(17)
+            .unwrap();
         store_handle
             .draft(URID::new(2).unwrap())
             .init(urids.float)
             .unwrap()
-            .set(1.0);
+            .set(1.0)
+            .unwrap();
 
         store_handle.commit(URID::new(1).unwrap()).unwrap().unwrap();
 

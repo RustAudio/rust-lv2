@@ -1,6 +1,6 @@
 use crate::header::AtomHeader;
 use crate::space::reader::SpaceReader;
-use crate::space::SpaceCursor;
+use crate::space::{AtomError, SpaceCursor};
 use core::mem::{align_of, size_of};
 use std::marker::PhantomData;
 use std::mem::{size_of_val, MaybeUninit};
@@ -34,7 +34,7 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 /// // ---
 ///
 /// // Bytes are already aligned, the whole slice will be available
-/// let space: &AlignedSpace<u64> = AlignedSpace::align_from_bytes(bytes).unwrap();
+/// let space: &AlignedSpace<u64> = AlignedSpace::try_align_from_bytes(bytes).unwrap();
 /// // SAFETY: we know the slice was initialized with proper u64 values.
 /// let read_values = unsafe { space.assume_init_slice() };
 /// assert_eq!(read_values, [42u64, 69]);
@@ -115,27 +115,37 @@ impl<T: 'static> AlignedSpace<T> {
     /// # Example
     ///
     /// ```
-    /// # use lv2_atom::space::AlignedSpace;
+    /// # use lv2_atom::space::{AlignedSpace, AtomError};
     /// let values = &[42u64, 69];
     /// // Transmuting to a slice of bytes
     /// let bytes: &[u8] = unsafe { values.align_to().1 };
     ///
     /// // The slice has space for both values
-    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(bytes).unwrap().values_len(), 2);
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
-    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert!(AlignedSpace::<u64>::align_from_bytes(&bytes[10..]).is_none());
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[10..]), Err(AtomError::ReadingOutOfBounds { capacity: 7, requested: 9 }));
     /// ```
     #[inline]
-    pub fn align_from_bytes(data: &[u8]) -> Option<&Self> {
-        let data = data.get(crate::util::padding_for::<T>(data)?..)?;
+    pub fn try_align_from_bytes(data: &[u8]) -> Result<&Self, AtomError> {
+        let padding = crate::util::try_padding_for::<T>(data)?;
+        let data = data
+            .get(padding..)
+            .ok_or_else(|| AtomError::ReadingOutOfBounds {
+                capacity: data.len(),
+                requested: padding + 1,
+            })?;
+
         if data.is_empty() {
-            return None;
+            return Err(AtomError::ReadingOutOfBounds {
+                capacity: data.len(),
+                requested: padding + 1,
+            });
         }
 
         // SAFETY: We just aligned the slice start
-        Some(unsafe { AlignedSpace::from_bytes_unchecked(data) })
+        Ok(unsafe { AlignedSpace::from_bytes_unchecked(data) })
     }
 
     /// Creates a new mutable space from a mutable slice of bytes, slicing some bytes off its start it if necessary.
@@ -275,47 +285,30 @@ impl<T: 'static> AlignedSpace<T> {
 
     /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
     #[inline]
-    fn split_bytes_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
+    fn split_bytes_at(&self, mid: usize) -> Result<(&Self, &[u8]), AtomError> {
         if mid > self.data.len() {
-            return None;
+            return Err(AtomError::ReadingOutOfBounds {
+                requested: mid,
+                capacity: self.data.len(),
+            });
         }
 
         let (start, end) = self.data.split_at(mid);
         // SAFETY: Because this data was the start of an existing Space, it was aligned already.
         let start = unsafe { Self::from_bytes_unchecked(start) };
 
-        Some((start, end))
+        Ok((start, end))
     }
 
     /// Try to retrieve space.
     ///
     /// This method calls [`split_raw`](#method.split_raw) and wraps the returned slice in an atom space. The second space is the space after the first one.
     #[inline]
-    pub fn split_at(&self, mid: usize) -> Option<(&Self, &Self)> {
+    pub fn try_split_at(&self, mid: usize) -> Result<(&Self, &Self), AtomError> {
         let (start, end) = self.split_bytes_at(mid)?;
-        let end = Self::align_from_bytes(end).unwrap_or_else(AlignedSpace::empty);
+        let end = Self::try_align_from_bytes(end).unwrap_or_else(|_| AlignedSpace::empty());
 
-        Some((start, end))
-    }
-
-    #[inline]
-    pub fn realign<U: 'static>(&self) -> Option<&AlignedSpace<U>> {
-        AlignedSpace::<U>::align_from_bytes(self.as_bytes())
-    }
-
-    #[inline]
-    pub fn realign_mut<U: 'static>(&mut self) -> Option<&mut AlignedSpace<U>> {
-        AlignedSpace::<U>::align_from_bytes_mut(self.as_bytes_mut())
-    }
-
-    #[inline]
-    pub fn aligned<U: 'static>(&self) -> Option<&AlignedSpace<U>> {
-        AlignedSpace::<U>::try_from_bytes(self.as_bytes())
-    }
-
-    #[inline]
-    pub fn aligned_mut<U: 'static>(&mut self) -> Option<&mut AlignedSpace<U>> {
-        AlignedSpace::<U>::try_from_bytes_mut(self.as_bytes_mut())
+        Ok((start, end))
     }
 
     /// Return the internal slice of the space.

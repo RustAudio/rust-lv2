@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 
-use crate::space::{AlignedSpace, SpaceAllocatorImpl};
+use crate::space::{AlignedSpace, AtomError, SpaceAllocatorImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -42,7 +42,10 @@ impl<T: Copy + 'static> VecSpace<T> {
     }
 
     #[inline]
-    fn reallocate_bytes_mut(&mut self, byte_range: Range<usize>) -> Option<(&mut [u8], &mut [u8])> {
+    fn reallocate_bytes_mut(
+        &mut self,
+        byte_range: Range<usize>,
+    ) -> Result<(&mut [u8], &mut [u8]), AtomError> {
         let byte_len = self.inner.len() * std::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -52,12 +55,16 @@ impl<T: Copy + 'static> VecSpace<T> {
         }
 
         let bytes = self.as_bytes_mut();
-        bytes.get(byte_range.clone())?; // To make sure everything is in range instead of panicking on split_at_mut
+        bytes
+            .get(byte_range.clone())
+            .ok_or(AtomError::ResizeFailed)?; // To make sure everything is in range instead of panicking on split_at_mut
         let (previous, allocatable) = bytes.split_at_mut(byte_range.start);
 
-        return Some((
+        return Ok((
             previous,
-            allocatable.get_mut(..byte_range.end - byte_range.start)?,
+            allocatable
+                .get_mut(..byte_range.end - byte_range.start)
+                .ok_or(AtomError::ResizeFailed)?,
         ));
     }
 
@@ -76,11 +83,15 @@ pub struct VecSpaceCursor<'vec, T> {
 }
 
 impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
-    fn allocate_and_split(&mut self, size: usize) -> Option<(&mut [u8], &mut [u8])> {
-        let end = self.allocated_length.checked_add(size)?;
+    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+        let end = self
+            .allocated_length
+            .checked_add(size)
+            .ok_or(AtomError::AllocatorOverflow)?;
+
         let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
 
-        if result.is_some() {
+        if result.is_ok() {
             self.allocated_length = end;
         }
 

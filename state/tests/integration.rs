@@ -54,12 +54,12 @@ impl State for Stateful {
             .draft(URID::new(1000).unwrap())
             .init(self.urids.float)?
             .set(self.internal)
-            .ok_or(StateErr::Unknown)?;
+            .map_err(|_| StateErr::Unknown)?;
         store
             .draft(URID::new(1001).unwrap())
             .init(self.urids.vector)?
             .of_type(self.urids.float)
-            .ok_or(StateErr::Unknown)?
+            .map_err(|_| StateErr::Unknown)?
             .append(self.audio.as_ref());
 
         store.commit_all()
@@ -74,7 +74,7 @@ impl State for Stateful {
                 .retrieve(URID::new(1001).unwrap())?
                 .read(self.urids.vector)?
                 .of_type(self.urids.float)
-                .ok_or(StateErr::BadData)?,
+                .map_err(|_| StateErr::BadData)?,
         );
         Ok(())
     }
