@@ -172,6 +172,7 @@ impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
 
 #[cfg(test)]
 mod tests {
+    use crate::atoms::AtomURIDCollection;
     use crate::space::*;
     use crate::AtomHeader;
     use std::mem::size_of;
@@ -182,7 +183,7 @@ mod tests {
         const CHILD_COUNT: usize = 17;
 
         let map = HashURIDMapper::new();
-        let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
+        let urids: AtomURIDCollection = AtomURIDCollection::from_map(&map).unwrap();
 
         let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
         let raw_space = raw_space.as_space_mut();
@@ -195,8 +196,9 @@ mod tests {
                 .unwrap()
                 .of_type(urids.int)
                 .unwrap();
-            writer.append(&[42; CHILD_COUNT - 1]);
-            writer.push(1);
+
+            writer.append(&[42; CHILD_COUNT - 1]).unwrap();
+            writer.push(1).unwrap();
         }
 
         // verifying

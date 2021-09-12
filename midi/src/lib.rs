@@ -36,11 +36,12 @@
 //!     let mut output_sequence = ports.output
 //!     .init(urids.atom.sequence)
 //!     .unwrap()
-//!     .with_unit(TimeStampURID::Frames(urids.units.frame));
+//!     .with_unit(TimeStampURID::Frames(urids.units.frame))
+//!     .unwrap();
 //!
 //!     for (timestamp, atom) in input_sequence {
 //!         // If the atom encodes a message...
-//!         if let Some(message) = atom.read(urids.midi.wmidi) {
+//!         if let Ok(message) = atom.read(urids.midi.wmidi) {
 //!             // Calculate the message to send.
 //!             let message_to_send = match message {
 //!                 MidiMessage::NoteOn(channel, note, velocity) => {

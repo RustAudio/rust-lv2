@@ -60,7 +60,8 @@ impl State for Stateful {
             .init(self.urids.vector)?
             .of_type(self.urids.float)
             .map_err(|_| StateErr::Unknown)?
-            .append(self.audio.as_ref());
+            .append(self.audio.as_ref())
+            .unwrap();
 
         store.commit_all()
     }

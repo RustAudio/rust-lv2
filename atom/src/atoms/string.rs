@@ -78,13 +78,12 @@ pub struct LiteralInfoWriter<'a> {
 }
 
 impl<'a> LiteralInfoWriter<'a> {
-    pub fn write_info(mut self, info: LiteralInfo) -> StringWriter<'a> {
-        self.writer.write_value(info.into_raw()); // FIXME
+    pub fn write_info(mut self, info: LiteralInfo) -> Result<StringWriter<'a>, AtomError> {
+        self.writer.write_value(info.into_raw())?;
 
-        StringWriter {
-            writer: self.writer,
-            has_nul_byte: false,
-        }
+        Ok(StringWriter {
+            writer: self.writer.terminated(0),
+        })
     }
 }
 
@@ -178,16 +177,14 @@ impl Atom for String {
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
         Ok(StringWriter {
-            writer: frame,
-            has_nul_byte: false,
+            writer: frame.terminated(0),
         })
     }
 }
 
 /// Handle to append strings to a string or literal.
 pub struct StringWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
-    has_nul_byte: bool, // If this writer already wrote a null byte before.
+    writer: Terminated<AtomSpaceWriter<'a>>,
 }
 
 impl<'a> StringWriter<'a> {
@@ -197,24 +194,10 @@ impl<'a> StringWriter<'a> {
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
     pub fn append(&mut self, string: &str) -> Result<&mut str, AtomError> {
-        // Rewind to overwrite previously written nul_byte before appending the string.
-        if self.has_nul_byte {
-            // SAFETY: it is safe to overwrite the nul byte
-            if unsafe { !self.writer.rewind(1) } {
-                return Err(AtomError::Unknown); // Could not rewind
-            }
-        }
+        let bytes = self.writer.write_bytes(string.as_bytes())?;
 
-        // Manually write the bytes to make extra room for the nul byte
-        let bytes = string.as_bytes();
-        let space = self.writer.allocate(bytes.len() + 1)?;
-        space[..bytes.len()].copy_from_slice(bytes);
-        // SAFETY: space is guaranteed to be at least 1 byte large
-        space[bytes.len()] = 0;
-
-        self.has_nul_byte = true;
         // SAFETY: We just wrote that string, therefore it is guaranteed to be valid UTF-8
-        unsafe { Ok(std::str::from_utf8_unchecked_mut(&mut space[..bytes.len()])) }
+        unsafe { Ok(std::str::from_utf8_unchecked_mut(bytes)) }
     }
 }
 
@@ -244,7 +227,7 @@ mod tests {
     #[test]
     fn test_literal() {
         let map = HashURIDMapper::new();
-        let urids = TestURIDs::from_map(&map).unwrap();
+        let urids: TestURIDs = TestURIDs::from_map(&map).unwrap();
 
         let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
         let raw_space = raw_space.as_space_mut();
@@ -256,7 +239,9 @@ mod tests {
             let mut writer = space
                 .init_atom(urids.atom.literal)
                 .unwrap()
-                .write_info(LiteralInfo::Language(urids.german.into_general()));
+                .write_info(LiteralInfo::Language(urids.german.into_general()))
+                .unwrap();
+
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

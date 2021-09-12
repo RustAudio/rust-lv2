@@ -36,16 +36,17 @@
 //!     ).unwrap().read(urids.units.beat);
 //!
 //!     // Get the write handle to the sequence.
-//!     let mut output_sequence = ports.output.init(
-//!         urids.atom.sequence,
-//!     ).unwrap().with_unit(TimeStampURID::Frames(urids.units.frame));
+//!     let mut output_sequence = ports.output.init(urids.atom.sequence)
+//!         .unwrap()
+//!         .with_unit(TimeStampURID::Frames(urids.units.frame))
+//!         .unwrap();
 //!
 //!     // Iterate through all events in the input sequence.
 //!     for event in input_sequence {
 //!         // An event contains a timestamp and an atom.
 //!         let (timestamp, atom) = event;
 //!         // If the read atom is a 32-bit integer...
-//!         if let Some(integer) = atom.read(urids.atom.int) {
+//!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
 //!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {

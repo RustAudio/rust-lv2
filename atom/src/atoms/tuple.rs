@@ -18,7 +18,7 @@
 //!     let input: TupleIterator = ports.input.read(urids.tuple).unwrap();
 //!     let mut output: TupleWriter = ports.output.init(urids.tuple).unwrap();
 //!     for atom in input {
-//!         if let Some(integer) = atom.read(urids.int) {
+//!         if let Ok(integer) = atom.read(urids.int) {
 //!             output.init(urids.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
 //!             output.init(urids.int).unwrap().set(-1).unwrap();
@@ -132,7 +132,7 @@ mod tests {
                     .unwrap();
                 vector_writer.append(&[17; 9]).unwrap();
             }
-            writer.init(urids.int).unwrap().set(42);
+            writer.init(urids.int).unwrap().set(42).unwrap();
         }
 
         // verifying

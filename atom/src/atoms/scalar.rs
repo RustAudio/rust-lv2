@@ -203,7 +203,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            space.init_atom(urid).unwrap().set(value);
+            space.init_atom(urid).unwrap().set(value).unwrap();
         }
 
         // verifying

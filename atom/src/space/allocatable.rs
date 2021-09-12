@@ -3,6 +3,7 @@ use crate::{Atom, AtomHandle, UnidentifiedAtom};
 use urid::URID;
 
 use crate::space::error::AtomError;
+use crate::space::terminated::Terminated;
 use core::mem::{size_of, size_of_val, MaybeUninit};
 
 /// A smart pointer that writes atom data to an internal slice.
@@ -13,8 +14,7 @@ use core::mem::{size_of, size_of_val, MaybeUninit};
 pub trait SpaceAllocatorImpl {
     fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError>;
 
-    #[must_use]
-    unsafe fn rewind(&mut self, byte_count: usize) -> bool;
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError>;
 
     fn allocated_bytes(&self) -> &[u8];
     fn allocated_bytes_mut(&mut self) -> &mut [u8];
@@ -49,7 +49,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
         let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
         let raw = self.allocate(size + required_padding)?;
 
-        AlignedSpace::align_from_bytes_mut(raw).ok_or_else(|| AtomError::Unknown)
+        AlignedSpace::try_align_from_bytes_mut(raw)
     }
 
     #[inline]
@@ -124,6 +124,11 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
         // SAFETY: Assume init: we just initialized the memory above
         Ok(unsafe { &mut *(space as *mut [_] as *mut [T]) })
     }
+
+    #[inline]
+    fn terminated(self, terminator: u8) -> Terminated<Self> {
+        Terminated::new(self, terminator)
+    }
 }
 
 impl<H: SpaceAllocatorImpl> SpaceAllocator for H {}
@@ -151,7 +156,7 @@ mod tests {
         assert_eq!(31, cursor.remaining_bytes().len());
 
         {
-            cursor.init_atom(INT_URID).unwrap().set(69);
+            cursor.init_atom(INT_URID).unwrap().set(69).unwrap();
             assert_eq!(8, cursor.remaining_bytes().len());
         }
 
