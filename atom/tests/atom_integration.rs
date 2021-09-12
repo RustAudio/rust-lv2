@@ -46,22 +46,23 @@ impl Plugin for AtomPlugin {
     fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         let sequence_reader = ports
             .input
-            .read::<Sequence>(self.urids.atom.sequence)
+            .read(self.urids.atom.sequence)
             .unwrap()
-            .read(self.urids.units.beat);
+            .with_unit(self.urids.units.frame)
+            .unwrap();
 
         let mut sequence_writer = ports
             .output
-            .init::<Sequence>(self.urids.atom.sequence)
+            .init(self.urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(self.urids.units.frame))
+            .with_unit(self.urids.units.frame)
             .unwrap();
 
         for (time_stamp, atom) in sequence_reader {
             match atom.read(self.urids.atom.int) {
                 Ok(number) => {
                     sequence_writer
-                        .init(time_stamp, self.urids.atom.int)
+                        .new_event(time_stamp, self.urids.atom.int)
                         .unwrap()
                         .set(number * 2)
                         .unwrap();
@@ -109,26 +110,22 @@ fn main() {
         let mut writer = space
             .init_atom(urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(urids.units.frame))
+            .with_unit(urids.units.frame)
             .unwrap();
         {
             let _ = writer
-                .init(TimeStamp::Frames(0), urids.atom.int)
+                .new_event(0, urids.atom.int)
                 .unwrap()
                 .set(42)
                 .unwrap();
         }
         writer
-            .init(TimeStamp::Frames(1), urids.atom.long)
+            .new_event(1, urids.atom.long)
             .unwrap()
             .set(17)
             .unwrap();
 
-        writer
-            .init(TimeStamp::Frames(2), urids.atom.int)
-            .unwrap()
-            .set(3)
-            .unwrap();
+        writer.new_event(2, urids.atom.int).unwrap().set(3).unwrap();
     }
 
     // preparing the output atom.
@@ -190,10 +187,10 @@ fn main() {
         .unwrap()
         .read(urids.atom.sequence)
         .unwrap()
-        .read(urids.units.beat);
+        .with_unit(urids.units.frame)
+        .unwrap();
 
     for (stamp, atom) in sequence {
-        let stamp = stamp.as_frames().unwrap();
         match stamp {
             0 => assert_eq!(*atom.read(urids.atom.int).unwrap(), 84),
             1 => assert_eq!(*atom.read(urids.atom.long).unwrap(), 17),

@@ -90,14 +90,11 @@ impl Plugin for Midigate {
             .control
             .read(self.urids.atom.sequence)
             .unwrap()
-            .read(self.urids.unit.beat);
+            .with_unit(self.urids.unit.frame)
+            .unwrap();
 
         for (timestamp, message) in control_sequence {
-            let timestamp: usize = if let Some(timestamp) = timestamp.as_frames() {
-                timestamp as usize
-            } else {
-                continue;
-            };
+            let timestamp = timestamp as usize;
 
             let message = if let Ok(message) = message.read(self.urids.midi.wmidi) {
                 message

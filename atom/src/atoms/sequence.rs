@@ -29,15 +29,16 @@
 //!     // The reading method needs the URID of the BPM unit to tell if the time stamp
 //!     // is measured in beats or in frames. If the atom doesn't says that it's measured
 //!     // in beats, it is assumed that it is measured in frames.
-//!     let input_sequence: SequenceIterator = ports.input
+//!     let input_sequence: SequenceIterator<Frame> = ports.input
 //!         .read(urids.atom.sequence)
-//!         .unwrap().read(urids.units.beat);
+//!         .unwrap()
+//!         .with_unit(urids.units.frame).unwrap();
 //!
 //!     // Get the write handle to the sequence.
 //!     // You have to provide the unit of the time stamps.
-//!     let mut output_sequence: SequenceWriter = ports.output.init(urids.atom.sequence)
+//!     let mut output_sequence: SequenceWriter<Frame> = ports.output.init(urids.atom.sequence)
 //!         .unwrap()
-//!         .with_unit(TimeStampURID::BeatsPerMinute(urids.units.beat))
+//!         .with_unit(urids.units.frame)
 //!         .unwrap();
 //!
 //!     // Iterate through all events in the input sequence.
@@ -48,11 +49,11 @@
 //!     // The sequence writer, however, assures that the written time stamps are monotonic.
 //!     for event in input_sequence {
 //!         // An event contains a timestamp and an atom.
-//!         let (timestamp, atom): (TimeStamp, &UnidentifiedAtom) = event;
+//!         let (timestamp, atom): (i64, &UnidentifiedAtom) = event;
 //!         // If the read atom is a 32-bit integer...
 //!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
+//!             output_sequence.new_event(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -64,18 +65,17 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
+mod unit;
+
 use crate::space::reader::SpaceReader;
 use crate::*;
+use std::marker::PhantomData;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
-use units::prelude::*;
+pub use unit::*;
 
 #[repr(C, align(8))]
 #[derive(Copy, Clone)]
 struct SequenceBody(sys::LV2_Atom_Sequence_Body);
-
-#[repr(C, align(8))]
-#[derive(Copy, Clone)]
-struct TimestampBody(RawTimeStamp);
 
 /// An atom containing a sequence of time-stamped events.
 ///
@@ -102,16 +102,23 @@ pub struct SequenceHeaderReader<'a> {
 }
 
 impl<'a> SequenceHeaderReader<'a> {
-    pub fn read(self, bpm_urid: URID<Beat>) -> SequenceIterator<'a> {
-        let unit = if self.header.unit == bpm_urid {
-            TimeStampUnit::BeatsPerMinute
+    pub fn with_unit<U: SequenceUnit>(
+        self,
+        unit_urid: URID<U>,
+    ) -> Result<SequenceIterator<'a, U>, AtomError> {
+        if (self.header.unit == 0 && U::TYPE == SequenceUnitType::Frame)
+            || (self.header.unit == unit_urid)
+        {
+            Ok(SequenceIterator {
+                reader: self.reader,
+                unit_type: PhantomData,
+            })
         } else {
-            TimeStampUnit::Frames
-        };
-
-        SequenceIterator {
-            reader: self.reader,
-            unit,
+            Err(AtomError::InvalidUrid {
+                expected_uri: U::uri(),
+                expected_urid: unit_urid.into_general(),
+                found_urid: self.header.unit,
+            })
         }
     }
 }
@@ -121,12 +128,12 @@ pub struct SequenceHeaderWriter<'a> {
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
-    pub fn with_unit(mut self, unit: TimeStampURID) -> Result<SequenceWriter<'a>, AtomError> {
+    pub fn with_unit<U: SequenceUnit>(
+        mut self,
+        unit_urid: URID<U>,
+    ) -> Result<SequenceWriter<'a, U>, AtomError> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
-            unit: match unit {
-                TimeStampURID::BeatsPerMinute(urid) => urid.get(),
-                TimeStampURID::Frames(urid) => urid.get(),
-            },
+            unit: unit_urid.get(),
             pad: 0,
         });
 
@@ -134,7 +141,6 @@ impl<'a> SequenceHeaderWriter<'a> {
 
         Ok(SequenceWriter {
             writer: self.writer,
-            unit: unit.into(),
             last_stamp: None,
         })
     }
@@ -160,81 +166,23 @@ impl Atom for Sequence {
     }
 }
 
-/// The measuring units of time stamps.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum TimeStampUnit {
-    Frames,
-    BeatsPerMinute,
-}
-
-/// An event time stamp.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TimeStamp {
-    Frames(i64),
-    BeatsPerMinute(f64),
-}
-
-/// The measuring units of time stamps, with their URIDs.
-#[derive(Clone, Copy)]
-pub enum TimeStampURID {
-    Frames(URID<Frame>),
-    BeatsPerMinute(URID<Beat>),
-}
-
-impl From<TimeStampURID> for TimeStampUnit {
-    fn from(urid: TimeStampURID) -> TimeStampUnit {
-        match urid {
-            TimeStampURID::Frames(_) => TimeStampUnit::Frames,
-            TimeStampURID::BeatsPerMinute(_) => TimeStampUnit::BeatsPerMinute,
-        }
-    }
-}
-
-impl TimeStamp {
-    pub fn as_frames(self) -> Option<i64> {
-        match self {
-            Self::Frames(frame) => Some(frame),
-            _ => None,
-        }
-    }
-
-    pub fn as_bpm(self) -> Option<f64> {
-        match self {
-            Self::BeatsPerMinute(bpm) => Some(bpm),
-            _ => None,
-        }
-    }
-}
-
 /// An iterator over all events in a sequence.
-pub struct SequenceIterator<'a> {
+pub struct SequenceIterator<'a, U: SequenceUnit> {
     reader: SpaceReader<'a>,
-    unit: TimeStampUnit,
+    unit_type: PhantomData<U>,
 }
 
-impl<'a> SequenceIterator<'a> {
-    pub fn unit(&self) -> TimeStampUnit {
-        self.unit
-    }
-}
+impl<'a, U: SequenceUnit> Iterator for SequenceIterator<'a, U> {
+    type Item = (U::Value, &'a UnidentifiedAtom);
 
-impl<'a> Iterator for SequenceIterator<'a> {
-    type Item = (TimeStamp, &'a UnidentifiedAtom);
-
-    fn next(&mut self) -> Option<(TimeStamp, &'a UnidentifiedAtom)> {
-        let unit = self.unit;
-
+    fn next(&mut self) -> Option<(U::Value, &'a UnidentifiedAtom)> {
         self.reader
             .try_read(|reader| {
                 // SAFETY: The validity of the space's contents is guaranteed by this type.
                 let raw_stamp: &RawTimeStamp = unsafe { reader.next_value()? };
 
-                let stamp = match unit {
-                    TimeStampUnit::Frames => unsafe { TimeStamp::Frames(raw_stamp.frames) },
-                    TimeStampUnit::BeatsPerMinute => unsafe {
-                        TimeStamp::BeatsPerMinute(raw_stamp.beats)
-                    },
-                };
+                // SAFETY: The validity of the unit type is guaranteed by this type.
+                let stamp = unsafe { U::convert_from_raw(*raw_stamp) };
 
                 // SAFETY: The validity of the space's contents is guaranteed by this type.
                 let atom = unsafe { reader.next_atom()? };
@@ -246,46 +194,28 @@ impl<'a> Iterator for SequenceIterator<'a> {
 }
 
 /// The writing handle for sequences.
-pub struct SequenceWriter<'a> {
+pub struct SequenceWriter<'a, U: SequenceUnit> {
     writer: AtomSpaceWriter<'a>,
-    unit: TimeStampUnit,
-    last_stamp: Option<TimeStamp>,
+    last_stamp: Option<U::Value>,
 }
 
-impl<'a> SequenceWriter<'a> {
+impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     /// Write out the time stamp and update `last_stamp`.
     ///
     /// This method returns `Ǹone` if:
-    /// * The time stamp is not measured in our unit.
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
-    fn write_time_stamp(&mut self, stamp: TimeStamp) -> Result<(), AtomError> {
-        let raw_stamp = match self.unit {
-            TimeStampUnit::Frames => {
-                let frames = stamp.as_frames().unwrap(); // TODO
-                if let Some(last_stamp) = self.last_stamp {
-                    if last_stamp.as_frames().unwrap() > frames {
-                        return Err(AtomError::InvalidAtomValue {
-                            reading_type_uri: Sequence::uri(),
-                        });
-                    }
-                }
-                RawTimeStamp { frames }
+    fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomError> {
+        if let Some(last_stamp) = self.last_stamp {
+            if last_stamp > time_stamp {
+                return Err(AtomError::InvalidAtomValue {
+                    reading_type_uri: Sequence::uri(),
+                });
             }
-            TimeStampUnit::BeatsPerMinute => {
-                let beats = stamp.as_bpm().unwrap(); // TODO
-                if let Some(last_stamp) = self.last_stamp {
-                    if last_stamp.as_bpm().unwrap() > beats {
-                        return Err(AtomError::InvalidAtomValue {
-                            reading_type_uri: Sequence::uri(),
-                        });
-                    }
-                }
-                RawTimeStamp { beats }
-            }
-        };
-        self.last_stamp = Some(stamp);
-        self.writer.write_value(TimestampBody(raw_stamp))?;
+        }
+
+        self.last_stamp = Some(time_stamp);
+        self.writer.write_value(U::convert_into_raw(time_stamp))?;
 
         Ok(())
     }
@@ -293,12 +223,12 @@ impl<'a> SequenceWriter<'a> {
     /// Initialize an event.       
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn init<A: Atom>(
+    pub fn new_event<A: Atom>(
         &mut self,
-        stamp: TimeStamp,
+        time_stamp: U::Value,
         urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
-        self.write_time_stamp(stamp)?;
+        self.write_time_stamp(time_stamp)?;
         self.writer.init_atom(urid)
     }
 
@@ -307,8 +237,12 @@ impl<'a> SequenceWriter<'a> {
     /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
-    pub fn forward(&mut self, stamp: TimeStamp, atom: &UnidentifiedAtom) -> Result<(), AtomError> {
-        self.write_time_stamp(stamp)?;
+    pub fn forward(
+        &mut self,
+        time_stamp: U::Value,
+        atom: &UnidentifiedAtom,
+    ) -> Result<(), AtomError> {
+        self.write_time_stamp(time_stamp)?;
 
         self.writer.forward_atom(atom)?;
 
@@ -321,6 +255,7 @@ mod tests {
     use crate::atoms::sequence::*;
     use crate::prelude::*;
     use std::mem::size_of;
+    use units::UnitURIDCollection;
 
     #[derive(URIDCollection)]
     struct TestURIDCollection {
@@ -342,17 +277,17 @@ mod tests {
             let mut writer = space
                 .init_atom(urids.atom.sequence)
                 .unwrap()
-                .with_unit(TimeStampURID::Frames(urids.units.frame))
+                .with_unit(urids.units.frame)
                 .unwrap();
 
             writer
-                .init::<Int>(TimeStamp::Frames(0), urids.atom.int)
+                .new_event(0, urids.atom.int)
                 .unwrap()
                 .set(42)
                 .unwrap();
 
             writer
-                .init::<Long>(TimeStamp::Frames(1), urids.atom.long)
+                .new_event(1, urids.atom.long)
                 .unwrap()
                 .set(17)
                 .unwrap();
@@ -397,16 +332,15 @@ mod tests {
                 .unwrap()
                 .read(urids.atom.sequence)
                 .unwrap()
-                .read(urids.units.beat);
-
-            assert_eq!(reader.unit(), TimeStampUnit::Frames);
+                .with_unit(urids.units.frame)
+                .unwrap();
 
             let (stamp, atom) = reader.next().unwrap();
-            assert_eq!(stamp, TimeStamp::Frames(0));
+            assert_eq!(stamp, 0);
             assert_eq!(*atom.read::<Int>(urids.atom.int).unwrap(), 42);
 
             let (stamp, atom) = reader.next().unwrap();
-            assert_eq!(stamp, TimeStamp::Frames(1));
+            assert_eq!(stamp, 1);
             assert_eq!(*atom.read::<Long>(urids.atom.long).unwrap(), 17);
 
             assert!(reader.next().is_none());

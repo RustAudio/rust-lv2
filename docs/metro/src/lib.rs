@@ -78,13 +78,12 @@ impl Plugin for Metro {
         if let Ok(control) = ports
             .control
             .read(self.urids.atom.sequence)
-            .map(|s| s.read(self.urids.unit.beat))
+            .and_then(|s| s.with_unit(self.urids.unit.beat))
         {
             // Here, the final assembly of the pipeline is done. First, the event iterator is pre-processed to only emit an index and an `UnidentifiedAtom`. Then, the event iterator is wrapped into an `EventAtomizer`, which is then connected to an `EventReader` and the envelope. The resulting pipe consumes a `()` and emits the next frame of the envelope; It's already a compact pipeline.
             //
             // Then, the final pipeline is constructed using some lazy pipes: The first one splits a `()` to a tuple of `()`, which is then connected to a tuple of the envelope and the pre-constructed sampler. A tuple of two pipes is also a pipe; The two pipes are processed in parallel. Then, the emitted envelope and sample frame are multiplied to one frame.
-            let control =
-                control.map(|(timestamp, event)| (timestamp.as_frames().unwrap() as usize, event));
+            let control = control.map(|(timestamp, event)| (timestamp as usize, event));
 
             let complete_envelope = EventAtomizer::new(control).compose()
                 >> EventReader::new(&self.urids.atom, &self.urids.time)

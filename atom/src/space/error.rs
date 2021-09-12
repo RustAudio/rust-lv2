@@ -27,6 +27,11 @@ pub enum AtomError {
         expected_urid: URID,
         found_urid: URID,
     },
+    InvalidUrid {
+        expected_uri: &'static Uri,
+        expected_urid: URID,
+        found_urid: u32,
+    },
     ReadingOutOfBounds {
         capacity: usize,
         requested: usize,
