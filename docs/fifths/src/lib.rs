@@ -51,7 +51,8 @@ impl Plugin for Fifths {
             .output
             .init(self.urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(self.urids.unit.frame));
+            .with_unit(TimeStampURID::Frames(self.urids.unit.frame))
+            .unwrap();
 
         for (timestamp, atom) in input_sequence {
             // Every message is forwarded, regardless of its contents.

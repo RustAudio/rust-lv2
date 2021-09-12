@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum AtomError {
     OutOfSpace {
         used: usize,
@@ -16,6 +16,10 @@ pub enum AtomError {
     ResizeFailed,
     CannotUpdateAtomHeader,
     AtomAlreadyWritten,
+    RewindError {
+        requested: usize,
+        capacity: usize,
+    },
 
     // Reading
     InvalidAtomUrid {

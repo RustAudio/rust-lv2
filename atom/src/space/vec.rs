@@ -100,14 +100,17 @@ impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
 
     #[inline]
     #[allow(unsafe_code)]
-    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
         if self.allocated_length < byte_count {
-            return false;
+            return Err(AtomError::RewindError {
+                requested: byte_count,
+                capacity: self.allocated_length,
+            });
         }
 
         self.allocated_length -= byte_count;
 
-        true
+        Ok(())
     }
 
     #[inline]

@@ -54,7 +54,8 @@ impl Plugin for AtomPlugin {
             .output
             .init::<Sequence>(self.urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(self.urids.units.frame));
+            .with_unit(TimeStampURID::Frames(self.urids.units.frame))
+            .unwrap();
 
         for (time_stamp, atom) in sequence_reader {
             match atom.read(self.urids.atom.int) {
@@ -108,7 +109,8 @@ fn main() {
         let mut writer = space
             .init_atom(urids.atom.sequence)
             .unwrap()
-            .with_unit(TimeStampURID::Frames(urids.units.frame));
+            .with_unit(TimeStampURID::Frames(urids.units.frame))
+            .unwrap();
         {
             let _ = writer
                 .init(TimeStamp::Frames(0), urids.atom.int)

@@ -95,16 +95,14 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     }
 
     #[inline]
-    unsafe fn rewind(&mut self, byte_count: usize) -> bool {
-        let rewound = self.parent.rewind(byte_count);
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
+        self.parent.rewind(byte_count)?;
         let header = self.atom_header_mut();
 
-        if rewound {
-            // SAFETY: Reducing the size of the atom is fine
-            header.set_size_of_body(header.size_of_body() - byte_count);
-        }
+        // SAFETY: Reducing the size of the atom is fine if rewind was successful
+        header.set_size_of_body(header.size_of_body() - byte_count);
 
-        rewound
+        Ok(())
     }
 
     #[inline]

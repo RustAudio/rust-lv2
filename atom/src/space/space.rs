@@ -125,21 +125,23 @@ impl<T: 'static> AlignedSpace<T> {
     /// // The slice now only has space for a single value
     /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[10..]), Err(AtomError::ReadingOutOfBounds { capacity: 7, requested: 9 }));
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[9..]).err().unwrap(), AtomError::ReadingOutOfBounds { capacity: 7, requested: 8 });
     /// ```
     #[inline]
     pub fn try_align_from_bytes(data: &[u8]) -> Result<&Self, AtomError> {
         let padding = crate::util::try_padding_for::<T>(data)?;
+        let data_len = data.len();
+
         let data = data
             .get(padding..)
             .ok_or_else(|| AtomError::ReadingOutOfBounds {
-                capacity: data.len(),
+                capacity: data_len,
                 requested: padding + 1,
             })?;
 
         if data.is_empty() {
             return Err(AtomError::ReadingOutOfBounds {
-                capacity: data.len(),
+                capacity: data_len,
                 requested: padding + 1,
             });
         }
@@ -158,27 +160,39 @@ impl<T: 'static> AlignedSpace<T> {
     /// # Example
     ///
     /// ```
-    /// # use lv2_atom::space::AlignedSpace;
+    /// # use lv2_atom::space::{AlignedSpace, AtomError};
     /// let values = &mut [42u64, 69];
     /// // Transmuting to a slice of bytes
     /// let bytes: &mut [u8] = unsafe { values.align_to_mut().1 };
     ///
     /// // The slice has space for both values
-    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(bytes).unwrap().values_len(), 2);
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
-    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[10..]).is_none());
+    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(&mut bytes[9..]).err().unwrap(), AtomError::ReadingOutOfBounds { capacity: 7, requested: 8 });
     /// ```
     #[inline]
-    pub fn align_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
-        let data = data.get_mut(crate::util::padding_for::<T>(data)?..)?;
+    pub fn try_align_from_bytes_mut(data: &mut [u8]) -> Result<&mut Self, AtomError> {
+        let padding = crate::util::try_padding_for::<T>(data)?;
+        let data_len = data.len();
+
+        let data = data
+            .get_mut(padding..)
+            .ok_or_else(|| AtomError::ReadingOutOfBounds {
+                capacity: data_len,
+                requested: padding + 1,
+            })?;
+
         if data.is_empty() {
-            return None;
+            return Err(AtomError::ReadingOutOfBounds {
+                capacity: data_len,
+                requested: padding + 1,
+            });
         }
 
         // SAFETY: We just aligned the slice start
-        Some(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
+        Ok(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
     }
 
     /// Creates a space from an empty slice.

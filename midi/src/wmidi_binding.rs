@@ -4,7 +4,7 @@
 //!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
 use atom::prelude::*;
-use atom::space::AtomError;
+use atom::space::{AtomError, Terminated};
 use atom::AtomHandle;
 use std::convert::TryFrom;
 use urid::*;
@@ -94,10 +94,12 @@ impl Atom for SystemExclusiveWMidiEvent {
         WMidiEvent::read(space)
     }
 
-    fn init(frame: AtomSpaceWriter) -> Result<Writer, AtomError> {
-        let mut writer = Writer { frame };
-        writer.write::<u8>(0xf0);
-        Ok(writer)
+    fn init(mut frame: AtomSpaceWriter) -> Result<Writer, AtomError> {
+        frame.write_value(0xf0u8)?;
+
+        Ok(Writer {
+            frame: frame.terminated(0xf7),
+        })
     }
 }
 
@@ -107,7 +109,7 @@ impl Atom for SystemExclusiveWMidiEvent {
 ///
 /// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
 pub struct Writer<'a> {
-    frame: AtomSpaceWriter<'a>,
+    frame: Terminated<AtomSpaceWriter<'a>>,
 }
 
 impl<'a> Writer<'a> {
@@ -122,13 +124,6 @@ impl<'a> Writer<'a> {
         T: Copy + Sized + 'static,
     {
         self.frame.write_value(instance)
-    }
-}
-
-// TODO: use rewind instead of relying on a Drop
-impl<'a> Drop for Writer<'a> {
-    fn drop(&mut self) {
-        self.write::<u8>(0xf7);
     }
 }
 
@@ -194,7 +189,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space.init_atom(urid).unwrap();
-            writer.write_raw(&[1, 2, 3, 4]);
+            writer.write_raw(&[1, 2, 3, 4]).unwrap();
         }
 
         // verifying

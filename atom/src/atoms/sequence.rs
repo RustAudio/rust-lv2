@@ -35,9 +35,10 @@
 //!
 //!     // Get the write handle to the sequence.
 //!     // You have to provide the unit of the time stamps.
-//!     let mut output_sequence: SequenceWriter = ports.output.init(
-//!         urids.atom.sequence,
-//!     ).unwrap().with_unit(TimeStampURID::BeatsPerMinute(urids.units.beat));
+//!     let mut output_sequence: SequenceWriter = ports.output.init(urids.atom.sequence)
+//!         .unwrap()
+//!         .with_unit(TimeStampURID::BeatsPerMinute(urids.units.beat))
+//!         .unwrap();
 //!
 //!     // Iterate through all events in the input sequence.
 //!     //
@@ -49,9 +50,9 @@
 //!         // An event contains a timestamp and an atom.
 //!         let (timestamp, atom): (TimeStamp, &UnidentifiedAtom) = event;
 //!         // If the read atom is a 32-bit integer...
-//!         if let Some(integer) = atom.read(urids.atom.int) {
+//!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2);
+//!             output_sequence.init(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
 //!             output_sequence.forward(timestamp, atom).unwrap();
@@ -120,7 +121,7 @@ pub struct SequenceHeaderWriter<'a> {
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
-    pub fn with_unit(mut self, unit: TimeStampURID) -> SequenceWriter<'a> {
+    pub fn with_unit(mut self, unit: TimeStampURID) -> Result<SequenceWriter<'a>, AtomError> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
             unit: match unit {
                 TimeStampURID::BeatsPerMinute(urid) => urid.get(),
@@ -129,13 +130,13 @@ impl<'a> SequenceHeaderWriter<'a> {
             pad: 0,
         });
 
-        self.writer.write_value(header); // FIXME
+        self.writer.write_value(header)?;
 
-        SequenceWriter {
+        Ok(SequenceWriter {
             writer: self.writer,
             unit: unit.into(),
             last_stamp: None,
-        }
+        })
     }
 }
 
@@ -341,17 +342,20 @@ mod tests {
             let mut writer = space
                 .init_atom(urids.atom.sequence)
                 .unwrap()
-                .with_unit(TimeStampURID::Frames(urids.units.frame));
+                .with_unit(TimeStampURID::Frames(urids.units.frame))
+                .unwrap();
 
             writer
                 .init::<Int>(TimeStamp::Frames(0), urids.atom.int)
                 .unwrap()
-                .set(42);
+                .set(42)
+                .unwrap();
 
             writer
                 .init::<Long>(TimeStamp::Frames(1), urids.atom.long)
                 .unwrap()
-                .set(17);
+                .set(17)
+                .unwrap();
         }
 
         // verifying

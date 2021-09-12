@@ -35,7 +35,7 @@
 //!     /// Iterate through all properties of the object.
 //!     for (property_header, atom) in object_reader {
 //!         // If the property is an integer...
-//!         if let Some(integer) = atom.read(urids.atom.int) {
+//!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Print it!
 //!             println!(
 //!                 "Property No. {} has integer value {}",
@@ -350,13 +350,18 @@ mod tests {
                 })
                 .unwrap();
             {
-                writer.init(first_key, urids.int).unwrap().set(first_value);
+                writer
+                    .init(first_key, urids.int)
+                    .unwrap()
+                    .set(first_value)
+                    .unwrap();
             }
             {
                 writer
                     .init(second_key, urids.float)
                     .unwrap()
-                    .set(second_value);
+                    .set(second_value)
+                    .unwrap();
             }
         }
 

@@ -262,7 +262,8 @@ mod tests {
             .draft(URID::new(4).unwrap())
             .init(urids.int)
             .unwrap()
-            .set(0);
+            .set(0)
+            .unwrap();
     }
 
     fn retrieve(storage: &mut Storage, urids: &AtomURIDCollection) {
