@@ -119,6 +119,10 @@ pub unsafe trait UriBound {
     }
 }
 
+unsafe impl<U: UriBound> UriBound for Option<U> {
+    const URI: &'static [u8] = U::URI;
+}
+
 /// Representation of a URI for fast comparisons.
 ///
 /// A URID is basically a number which represents a URI, which makes the identification of other features faster and easier. The mapping of URIs to URIDs is handled by a something that implements the [`Map`](trait.Map.html) trait. A given URID can also be converted back to a URI with an implementation of the [`Unmap`](trait.Unmap.html) trait. However, these implementations should obviously be linked.

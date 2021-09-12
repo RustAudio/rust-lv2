@@ -1,14 +1,16 @@
-use crate::{OptionType, OptionsError, Subject};
+use crate::{OptionType, OptionValue, OptionsError, Subject};
 use lv2_atom::{Atom, AtomHandle, BackAsSpace};
+use std::marker::PhantomData;
 use urid::URID;
 
 #[repr(C)]
 // SAFETY: The last fields are left uninitialized by the host, it's up to the plugin to set them
-pub struct OptionRequest {
+pub struct OptionRequest<'a> {
     inner: lv2_sys::LV2_Options_Option,
+    lifetime: PhantomData<&'a OptionValue>,
 }
 
-impl OptionRequest {
+impl<'a> OptionRequest<'a> {
     #[inline]
     pub(crate) fn from_mut(option: &mut lv2_sys::LV2_Options_Option) -> &mut Self {
         // SAFETY: lv2_sys::LV2_Options_Option and OptionRequest have the same memory layout
@@ -36,8 +38,8 @@ impl OptionRequest {
     }
 
     #[inline]
-    pub fn try_respond<'a, T: OptionType>(
-        &'a mut self,
+    pub fn try_respond<T: OptionType>(
+        &mut self,
         option_type: URID<T>,
         atom_type: URID<T::AtomType>,
         value: &'a T,
@@ -74,8 +76,15 @@ pub struct OptionRequestList<'a> {
 }
 
 impl<'a> OptionRequestList<'a> {
-    pub fn iter_mut<'list: 'a>(&'list mut self) -> OptionRequestListIter<'a> {
-        OptionRequestListIter { current: self.ptr }
+    #[inline]
+    pub fn iter_mut<'list>(&'list mut self) -> OptionRequestListIter<'a, 'list>
+    where
+        'a: 'list,
+    {
+        OptionRequestListIter {
+            current: self.ptr,
+            value_lifetime: PhantomData,
+        }
     }
 }
 
@@ -87,9 +96,9 @@ impl<'a> OptionRequestList<'a> {
     }
 }
 
-impl<'a, 'list: 'a> IntoIterator for &'list mut OptionRequestList<'a> {
-    type Item = &'a mut OptionRequest;
-    type IntoIter = OptionRequestListIter<'a>;
+impl<'value: 'list, 'list> IntoIterator for &'list mut OptionRequestList<'value> {
+    type Item = &'list mut OptionRequest<'value>;
+    type IntoIter = OptionRequestListIter<'value, 'list>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -97,12 +106,13 @@ impl<'a, 'list: 'a> IntoIterator for &'list mut OptionRequestList<'a> {
     }
 }
 
-pub struct OptionRequestListIter<'a> {
-    current: &'a mut lv2_sys::LV2_Options_Option,
+pub struct OptionRequestListIter<'value: 'list, 'list> {
+    current: &'list mut lv2_sys::LV2_Options_Option,
+    value_lifetime: PhantomData<&'value OptionValue>,
 }
 
-impl<'a> Iterator for OptionRequestListIter<'a> {
-    type Item = &'a mut OptionRequest;
+impl<'value: 'list, 'list> Iterator for OptionRequestListIter<'value, 'list> {
+    type Item = &'list mut OptionRequest<'value>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

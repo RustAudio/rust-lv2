@@ -1,5 +1,4 @@
 use lv2_atom::atoms::scalar::Int;
-use lv2_atom::Atom;
 use lv2_core::prelude::*;
 use lv2_options::collection::{OptionsCollection, OptionsSerializer};
 use lv2_options::prelude::*;
@@ -9,8 +8,8 @@ use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use std::pin::Pin;
-use urid::{uri, HashURIDMapper, Uri, UriBound, URID};
-use urid::{Map, URIDCollection};
+use urid::Map;
+use urid::{uri, HashURIDMapper, Uri, UriBound};
 
 #[uri("urn:lv2_options:test:SomeIntOption")]
 pub struct MyIntOption(i32);
@@ -39,8 +38,8 @@ pub struct PluginFeatures<'a> {
 
 #[uri("urn:lv2_options:test:OptionablePlugin")]
 pub struct OptionablePlugin {
-    options: MyIntOption,
-    options_serializer: OptionsSerializer<MyIntOption>,
+    options: Option<MyIntOption>,
+    options_serializer: OptionsSerializer<Option<MyIntOption>>,
 }
 
 impl Plugin for OptionablePlugin {
@@ -49,14 +48,14 @@ impl Plugin for OptionablePlugin {
     type AudioFeatures = ();
 
     fn new(_plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self> {
-        let options_serializer = MyIntOption::new_serializer(&features.map)?;
+        let options_serializer = <Option<MyIntOption>>::new_serializer(&features.map)?;
 
-        let mut plugin = OptionablePlugin {
-            options: options_serializer.deserialize_new(&features.options)?,
+        Some(OptionablePlugin {
+            options: options_serializer
+                .deserialize_new(&features.options)
+                .unwrap(),
             options_serializer,
-        };
-
-        Some(plugin)
+        })
     }
 
     fn run(
@@ -65,7 +64,7 @@ impl Plugin for OptionablePlugin {
         _features: &mut Self::AudioFeatures,
         _sample_count: u32,
     ) {
-        todo!()
+        unimplemented!()
     }
 
     fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
@@ -113,7 +112,7 @@ pub fn test_optionable_plugin() {
         key: map.map_type::<MyIntOption>().unwrap().get(),
         size: ::core::mem::size_of::<i32>() as u32,
         type_: map.map_type::<Int>().unwrap().get(),
-        value: core::ptr::null(),
+        value: &option_value as *const _ as *const _,
     };
 
     let end = lv2_sys::LV2_Options_Option {
@@ -126,7 +125,6 @@ pub fn test_optionable_plugin() {
     };
 
     let options = &mut [option, end];
-    options[0].value = &option_value as *const i32 as *const _;
 
     let options_feature = Box::pin(lv2_sys::LV2_Feature {
         URI: OptionsList::URI.as_ptr() as *const i8,

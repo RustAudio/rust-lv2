@@ -1,4 +1,4 @@
 mod buffer_sizes;
 pub mod options;
 
-pub use buffer_sizes::{BufferSizes, BufferSizesURIDCollection};
+pub use buffer_sizes::BufferSizes;

@@ -1,4 +1,4 @@
-use lv2_atom::{Atom, AtomHandle};
+use lv2_atom::{Atom, AtomHandle, BackAsSpace};
 use urid::UriBound;
 
 pub mod error;
@@ -32,7 +32,7 @@ pub mod value;
 /// }
 /// ```
 pub trait OptionType: UriBound + Sized {
-    type AtomType: Atom;
+    type AtomType: BackAsSpace;
 
     /// Creates a new instance of this Option type from a given atom value.
     ///
@@ -50,3 +50,20 @@ pub trait OptionType: UriBound + Sized {
         &self,
     ) -> <<<Self as OptionType>::AtomType as Atom>::ReadHandle as AtomHandle>::Handle;
 }
+
+/*
+impl<O: OptionType> OptionType for Option<O> {
+    type AtomType = O::AtomType;
+
+    fn from_option_value(
+        value: <<<Self as OptionType>::AtomType as Atom>::ReadHandle as AtomHandle>::Handle,
+    ) -> Option<Self> {
+        Some(O::from_option_value(value))
+    }
+
+    fn as_option_value(
+        &self,
+    ) -> <<<Self as OptionType>::AtomType as Atom>::ReadHandle as AtomHandle>::Handle {
+        todo!()
+    }
+}*/

@@ -4,6 +4,7 @@ use urid::UriBound;
 /// A simple macro to automate the definition of the u32 options available in this module
 macro_rules! make_option {
     ($name:ident, $uri:expr) => {
+        #[derive(Copy, Clone, Debug, Default)]
         pub struct $name(i32);
 
         impl $name {

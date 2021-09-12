@@ -1,6 +1,7 @@
 use crate::option::subject::Subject;
-use lv2_atom::prelude::AlignedSpace;
-use lv2_atom::Atom;
+use crate::OptionsError;
+use lv2_atom::space::AtomSpace;
+use lv2_atom::{Atom, AtomHandle};
 use urid::URID;
 
 #[repr(C)]
@@ -26,7 +27,7 @@ impl OptionValue {
     }
 
     #[inline]
-    pub fn data(&self) -> Option<&AlignedSpace<u8>> {
+    pub fn data(&self) -> Option<&[u8]> {
         // SAFETY: lifetime of the returned atom value is guaranteed by lifetime of the current Option pointer
         // And the validity of these pointers are guaranteed by the host
         let slice = unsafe {
@@ -36,7 +37,7 @@ impl OptionValue {
             )
         };
 
-        Some(AlignedSpace::from_slice(slice))
+        Some(slice)
     }
 
     #[inline]
@@ -44,18 +45,25 @@ impl OptionValue {
         &self,
         option_type: URID<T>,
         data_type: URID<T::AtomType>,
-    ) -> Option<T> {
+    ) -> Result<T, OptionsError> {
         if !self.is(option_type) {
-            return None;
+            return Err(OptionsError::BadKey);
         }
 
         if self.inner.type_ != data_type {
-            return None;
+            return Err(OptionsError::BadValue);
         }
 
-        // SAFETY: data is guaranteed to be an atom by the host
-        let atom = unsafe { self.data()?.read().next_atom()? }.read(data_type)?;
+        // SAFETY: data is guaranteed to be an atom by the host, and atom type is checked above
+        let atom = unsafe { self.atom_value::<T::AtomType>() }.ok_or(OptionsError::BadValue)?;
 
-        T::from_option_value(atom)
+        T::from_option_value(atom).ok_or(OptionsError::BadValue)
+    }
+
+    unsafe fn atom_value<T: Atom>(
+        &self,
+    ) -> Option<<<T as Atom>::ReadHandle as AtomHandle>::Handle> {
+        // TODO: Atoms can actually be from non-aligned spaces
+        T::read(AtomSpace::from_bytes_unchecked(self.data()?))
     }
 }
