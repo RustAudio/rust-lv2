@@ -24,6 +24,7 @@
 //! }
 //! ```
 use crate::header::AtomHeader;
+use crate::space::error::{AtomReadError, AtomWriteError};
 use crate::space::*;
 use crate::{AtomHandle, UnidentifiedAtom};
 use lv2_core::port::PortType;
@@ -53,7 +54,7 @@ impl<'a> PortReader<'a> {
     pub fn read<A: crate::Atom>(
         &self,
         urid: URID<A>,
-    ) -> Result<<A::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         self.atom.read(urid)
     }
 }
@@ -85,7 +86,7 @@ impl<'a> PortWriter<'a> {
     pub fn init<'b, 'write, A: crate::Atom>(
         &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle<'write>>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle<'write>>::Handle, AtomWriteError> {
         if !self.has_been_written {
             self.has_been_written = true;
             // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
@@ -94,7 +95,7 @@ impl<'a> PortWriter<'a> {
             };
             space.init_atom(urid)
         } else {
-            Err(AtomError::AtomAlreadyWritten)
+            Err(AtomWriteError::AtomAlreadyWritten)
         }
     }
 }

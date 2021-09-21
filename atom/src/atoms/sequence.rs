@@ -67,7 +67,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 mod unit;
 
-use crate::space::reader::SpaceReader;
+use crate::space::SpaceReader;
 use crate::*;
 use std::marker::PhantomData;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
@@ -105,7 +105,7 @@ impl<'a> SequenceHeaderReader<'a> {
     pub fn with_unit<U: SequenceUnit>(
         self,
         unit_urid: URID<U>,
-    ) -> Result<SequenceIterator<'a, U>, AtomError> {
+    ) -> Result<SequenceIterator<'a, U>, AtomReadError> {
         if (self.header.unit == 0 && U::TYPE == SequenceUnitType::Frame)
             || (self.header.unit == unit_urid)
         {
@@ -114,7 +114,7 @@ impl<'a> SequenceHeaderReader<'a> {
                 unit_type: PhantomData,
             })
         } else {
-            Err(AtomError::InvalidUrid {
+            Err(AtomReadError::InvalidUrid {
                 expected_uri: U::uri(),
                 expected_urid: unit_urid.into_general(),
                 found_urid: self.header.unit,
@@ -131,7 +131,7 @@ impl<'a> SequenceHeaderWriter<'a> {
     pub fn with_unit<U: SequenceUnit>(
         mut self,
         unit_urid: URID<U>,
-    ) -> Result<SequenceWriter<'a, U>, AtomError> {
+    ) -> Result<SequenceWriter<'a, U>, AtomWriteError> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
             unit: unit_urid.get(),
             pad: 0,
@@ -152,7 +152,7 @@ impl Atom for Sequence {
 
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Sequence_Body = reader.next_value()?;
 
@@ -161,7 +161,7 @@ impl Atom for Sequence {
 
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(SequenceHeaderWriter { writer: frame })
     }
 }
@@ -205,11 +205,11 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     /// This method returns `Ǹone` if:
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
-    fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomError> {
+    fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomWriteError> {
         if let Some(last_stamp) = self.last_stamp {
             if last_stamp > time_stamp {
-                return Err(AtomError::InvalidAtomValue {
-                    reading_type_uri: Sequence::uri(),
+                return Err(AtomWriteError::WritingIllegalState {
+                    writing_type_uri: Sequence::uri(),
                 });
             }
         }
@@ -227,7 +227,7 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         &mut self,
         time_stamp: U::Value,
         urid: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         self.write_time_stamp(time_stamp)?;
         self.writer.init_atom(urid)
     }
@@ -241,7 +241,7 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         &mut self,
         time_stamp: U::Value,
         atom: &UnidentifiedAtom,
-    ) -> Result<(), AtomError> {
+    ) -> Result<(), AtomWriteError> {
         self.write_time_stamp(time_stamp)?;
 
         self.writer.forward_atom(atom)?;

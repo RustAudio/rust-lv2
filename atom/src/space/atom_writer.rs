@@ -1,13 +1,6 @@
 use crate::header::AtomHeader;
-use crate::space::{AlignedSpace, AtomError, SpaceAllocator, SpaceAllocatorImpl};
-use crate::AtomHandle;
+use crate::space::{error::AtomWriteError, AlignedSpace, SpaceAllocator, SpaceAllocatorImpl};
 use urid::URID;
-
-pub struct AtomSpaceWriterHandle;
-
-impl<'a> AtomHandle<'a> for AtomSpaceWriterHandle {
-    type Handle = AtomSpaceWriter<'a>;
-}
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'a> {
@@ -50,10 +43,10 @@ impl<'a> AtomSpaceWriter<'a> {
         unsafe { space.assume_init_value_mut().unwrap() }
     }
 
-    pub fn allocate_and_unwrap<T, F: FnOnce(&mut AtomSpaceWriter) -> Result<T, AtomError>>(
+    pub fn allocate_and_unwrap<T, F: FnOnce(&mut AtomSpaceWriter) -> Result<T, AtomWriteError>>(
         mut self,
         operation: F,
-    ) -> Result<T, AtomError> {
+    ) -> Result<T, AtomWriteError> {
         operation(&mut self)
     }
 
@@ -61,7 +54,7 @@ impl<'a> AtomSpaceWriter<'a> {
     pub fn write_new<A: ?Sized>(
         parent: &'a mut impl SpaceAllocator,
         urid: URID<A>,
-    ) -> Result<Self, AtomError> {
+    ) -> Result<Self, AtomWriteError> {
         let atom = AtomHeader::new(urid);
 
         parent.write_value(atom)?;
@@ -76,17 +69,20 @@ impl<'a> AtomSpaceWriter<'a> {
 
 impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     #[inline]
-    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+    fn allocate_and_split(
+        &mut self,
+        size: usize,
+    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
         let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(
             previous
                 .get_mut(self.atom_header_index..)
-                .ok_or(AtomError::CannotUpdateAtomHeader)?,
+                .ok_or(AtomWriteError::CannotUpdateAtomHeader)?,
         )
-        .ok_or(AtomError::CannotUpdateAtomHeader)?;
-        let header =
-            unsafe { space.assume_init_value_mut() }.ok_or(AtomError::CannotUpdateAtomHeader)?;
+        .ok_or(AtomWriteError::CannotUpdateAtomHeader)?;
+        let header = unsafe { space.assume_init_value_mut() }
+            .ok_or(AtomWriteError::CannotUpdateAtomHeader)?;
 
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
         unsafe { header.set_size_of_body(header.size_of_body() + size) };
@@ -95,7 +91,7 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     }
 
     #[inline]
-    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         self.parent.rewind(byte_count)?;
         let header = self.atom_header_mut();
 

@@ -1,4 +1,5 @@
-use crate::space::{AtomError, SpaceAllocatorImpl};
+use crate::space::error::AtomWriteError;
+use crate::space::SpaceAllocatorImpl;
 
 pub struct Terminated<W: SpaceAllocatorImpl> {
     inner: W,
@@ -17,7 +18,10 @@ impl<W: SpaceAllocatorImpl> Terminated<W> {
 }
 
 impl<W: SpaceAllocatorImpl> SpaceAllocatorImpl for Terminated<W> {
-    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+    fn allocate_and_split(
+        &mut self,
+        size: usize,
+    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         if self.wrote_terminator_byte {
             // SAFETY: We checked we already wrote the terminator byte, and it is safe to be overwritten
             unsafe { self.inner.rewind(1)? };
@@ -31,7 +35,7 @@ impl<W: SpaceAllocatorImpl> SpaceAllocatorImpl for Terminated<W> {
     }
 
     #[inline]
-    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         self.inner.rewind(byte_count)
     }
 

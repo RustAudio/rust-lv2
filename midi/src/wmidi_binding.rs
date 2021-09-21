@@ -4,7 +4,7 @@
 //!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
 use atom::prelude::*;
-use atom::space::{AtomError, Terminated};
+use atom::space::{error::*, Terminated};
 use atom::AtomHandle;
 use std::convert::TryFrom;
 use urid::*;
@@ -40,13 +40,13 @@ pub struct WMidiEventWriter<'a> {
 
 impl<'a> WMidiEventWriter<'a> {
     #[inline]
-    pub fn set(mut self, message: wmidi::MidiMessage) -> Result<(), AtomError> {
+    pub fn set(mut self, message: wmidi::MidiMessage) -> Result<(), AtomWriteError> {
         let space = self.writer.allocate(message.bytes_size())?;
 
         // The error shouldn't be happening, as we allocated just as many bytes as needed
         message
             .copy_to_slice(space)
-            .map_err(|_| AtomError::Unknown)?;
+            .map_err(|_| AtomWriteError::Unknown)?;
         Ok(())
     }
 }
@@ -56,14 +56,16 @@ impl Atom for WMidiEvent {
     type WriteHandle = WMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomError> {
-        wmidi::MidiMessage::try_from(space.as_bytes()).map_err(|_| AtomError::InvalidAtomValue {
-            reading_type_uri: Self::uri(),
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomReadError> {
+        wmidi::MidiMessage::try_from(space.as_bytes()).map_err(|_| {
+            AtomReadError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            }
         })
     }
 
     #[inline]
-    fn init(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomError> {
+    fn init(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomWriteError> {
         Ok(WMidiEventWriter { writer })
     }
 }
@@ -90,11 +92,11 @@ impl Atom for SystemExclusiveWMidiEvent {
     type WriteHandle = SystemExclusiveWMidiEventWriteHandle;
 
     #[inline]
-    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomError> {
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomReadError> {
         WMidiEvent::read(space)
     }
 
-    fn init(mut frame: AtomSpaceWriter) -> Result<Writer, AtomError> {
+    fn init(mut frame: AtomSpaceWriter) -> Result<Writer, AtomWriteError> {
         frame.write_value(0xf0u8)?;
 
         Ok(Writer {
@@ -114,12 +116,12 @@ pub struct Writer<'a> {
 
 impl<'a> Writer<'a> {
     #[inline]
-    pub fn write_raw(&mut self, data: &[u8]) -> Result<&mut [u8], AtomError> {
+    pub fn write_raw(&mut self, data: &[u8]) -> Result<&mut [u8], AtomWriteError> {
         self.frame.write_bytes(data)
     }
 
     #[inline]
-    pub fn write<T>(&mut self, instance: T) -> Result<&mut T, AtomError>
+    pub fn write<T>(&mut self, instance: T) -> Result<&mut T, AtomWriteError>
     where
         T: Copy + Sized + 'static,
     {
@@ -157,7 +159,7 @@ mod tests {
 
         // verifying
         {
-            let atom = unsafe { UnidentifiedAtom::from_space(&raw_space) }.unwrap();
+            let atom = unsafe { UnidentifiedAtom::from_space(raw_space) }.unwrap();
             assert_eq!(atom.header().urid(), urid);
             assert_eq!(atom.header().size_of_body(), 3);
 
@@ -168,7 +170,7 @@ mod tests {
 
         // reading
         {
-            let space = unsafe { UnidentifiedAtom::from_space(&raw_space) }
+            let space = unsafe { UnidentifiedAtom::from_space(raw_space) }
                 .unwrap()
                 .body();
 

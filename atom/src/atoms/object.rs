@@ -68,7 +68,7 @@
 //!
 //! # Specification
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Object](http://lv2plug.in/ns/ext/atom/atom.html#Object).
-use crate::space::reader::SpaceReader;
+use crate::space::SpaceReader;
 use crate::*;
 use core::convert::TryFrom;
 use core::iter::Iterator;
@@ -110,7 +110,10 @@ pub struct ObjectHeaderWriter<'a> {
 }
 
 impl<'a> ObjectHeaderWriter<'a> {
-    pub fn write_header(mut self, header: ObjectHeader) -> Result<ObjectWriter<'a>, AtomError> {
+    pub fn write_header(
+        mut self,
+        header: ObjectHeader,
+    ) -> Result<ObjectWriter<'a>, AtomWriteError> {
         self.frame.write_value(sys::LV2_Atom_Object_Body {
             id: header.id.map(URID::get).unwrap_or(0),
             otype: header.otype.get(),
@@ -126,13 +129,13 @@ impl Atom for Object {
 
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Object_Body = reader.next_value()?;
 
         let header = ObjectHeader {
             id: URID::try_from(header.id).ok(),
-            otype: URID::try_from(header.otype).map_err(|_| AtomError::InvalidAtomValue {
+            otype: URID::try_from(header.otype).map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
             })?,
         };
@@ -144,7 +147,7 @@ impl Atom for Object {
 
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(ObjectHeaderWriter { frame })
     }
 }
@@ -167,14 +170,14 @@ impl Atom for Blank {
     #[inline]
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         Object::read(body)
     }
 
     #[inline]
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Object::init(frame)
     }
 }
@@ -213,7 +216,7 @@ impl<'a> ObjectWriter<'a> {
         key: URID<K>,
         context: URID<T>,
         child_urid: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
         self.frame.init_atom(child_urid)
     }
@@ -227,7 +230,7 @@ impl<'a> ObjectWriter<'a> {
         &mut self,
         key: URID<K>,
         child_urid: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
         self.frame.init_atom(child_urid)
     }
@@ -273,11 +276,11 @@ impl Property {
     /// The caller must ensure that the given Space actually contains a valid property.
     unsafe fn read_body<'a>(
         reader: &mut SpaceReader<'a>,
-    ) -> Result<(PropertyHeader, &'a UnidentifiedAtom), AtomError> {
+    ) -> Result<(PropertyHeader, &'a UnidentifiedAtom), AtomReadError> {
         let header: &StrippedPropertyHeader = reader.next_value()?;
 
         let header = PropertyHeader {
-            key: URID::try_from(header.key).map_err(|_| AtomError::InvalidAtomValue {
+            key: URID::try_from(header.key).map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
             })?,
             context: URID::try_from(header.context).ok(),
@@ -296,7 +299,7 @@ impl Property {
         space: &mut impl SpaceAllocator,
         key: URID<K>,
         context: Option<URID<C>>,
-    ) -> Result<(), AtomError> {
+    ) -> Result<(), AtomWriteError> {
         let header = StrippedPropertyHeader {
             key: key.get(),
             context: context.map(URID::get).unwrap_or(0),

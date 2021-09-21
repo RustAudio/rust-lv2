@@ -30,7 +30,7 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Tuple](http://lv2plug.in/ns/ext/atom/atom.html#Tuple)
-use crate::space::reader::SpaceReader;
+use crate::space::SpaceReader;
 use crate::*;
 
 /// An atom  containing a series of other atoms.
@@ -60,7 +60,7 @@ impl Atom for Tuple {
 
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         Ok(TupleIterator {
             reader: body.read(),
         })
@@ -68,7 +68,7 @@ impl Atom for Tuple {
 
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(TupleWriter { frame })
     }
 }
@@ -99,7 +99,7 @@ impl<'a> TupleWriter<'a> {
     pub fn init<A: Atom>(
         &mut self,
         child_urid: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         self.frame.init_atom(child_urid)
     }
 }
