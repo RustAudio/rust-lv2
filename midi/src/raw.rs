@@ -4,7 +4,7 @@
 //!
 //! If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
 use atom::prelude::*;
-use atom::space::AtomError;
+use atom::space::error::*;
 use atom::AtomHandle;
 use urid::*;
 
@@ -33,11 +33,11 @@ impl Atom for MidiEvent {
     type ReadHandle = MidiEventReadHandle;
     type WriteHandle = MidiEventWriteHandle;
 
-    unsafe fn read(body: &AtomSpace) -> Result<&[u8], AtomError> {
+    unsafe fn read(body: &AtomSpace) -> Result<&[u8], AtomReadError> {
         Ok(body.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter) -> Result<AtomSpaceWriter, AtomError> {
+    fn init(frame: AtomSpaceWriter) -> Result<AtomSpaceWriter, AtomWriteError> {
         Ok(frame)
     }
 }

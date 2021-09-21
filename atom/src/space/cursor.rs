@@ -1,4 +1,5 @@
-use crate::space::{AtomError, SpaceAllocatorImpl};
+use crate::space::error::AtomWriteError;
+use crate::space::SpaceAllocatorImpl;
 
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
@@ -16,14 +17,17 @@ impl<'a> SpaceCursor<'a> {
 
 impl<'a> SpaceAllocatorImpl for SpaceCursor<'a> {
     #[inline]
-    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+    fn allocate_and_split(
+        &mut self,
+        size: usize,
+    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let allocated_length = self.allocated_length;
         let data_len = self.data.len();
         let (allocated, allocatable) = self.data.split_at_mut(allocated_length);
 
         let new_allocation = allocatable
             .get_mut(..size)
-            .ok_or_else(|| AtomError::OutOfSpace {
+            .ok_or(AtomWriteError::OutOfSpace {
                 used: allocated_length,
                 capacity: data_len,
                 requested: size,
@@ -32,17 +36,17 @@ impl<'a> SpaceAllocatorImpl for SpaceCursor<'a> {
         self.allocated_length = self
             .allocated_length
             .checked_add(size)
-            .ok_or(AtomError::AllocatorOverflow)?;
+            .ok_or(AtomWriteError::AllocatorOverflow)?;
 
         Ok((allocated, new_allocation))
     }
 
     #[inline]
-    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         if self.allocated_length < byte_count {
-            return Err(AtomError::RewindError {
+            return Err(AtomWriteError::RewindError {
                 requested: byte_count,
-                capacity: self.allocated_length,
+                available: self.allocated_length,
             });
         }
 

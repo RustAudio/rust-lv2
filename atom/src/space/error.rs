@@ -1,27 +1,59 @@
+use std::any::TypeId;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum AtomError {
+#[non_exhaustive]
+pub enum AlignmentError {
+    CannotComputeAlignment { type_id: TypeId, ptr: *const u8 },
+}
+
+impl From<AlignmentError> for AtomWriteError {
+    #[inline]
+    fn from(error: AlignmentError) -> Self {
+        AtomWriteError::AlignmentError(error)
+    }
+}
+
+impl From<AlignmentError> for AtomReadError {
+    #[inline]
+    fn from(error: AlignmentError) -> Self {
+        AtomReadError::AlignmentError(error)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum AtomWriteError {
     OutOfSpace {
         used: usize,
         capacity: usize,
         requested: usize,
-    },
-    CannotComputeAlignment {
-        ptr: *const u8,
     },
     AllocatorOverflow,
     ResizeFailed,
     CannotUpdateAtomHeader,
     AtomAlreadyWritten,
     RewindError {
+        available: usize,
         requested: usize,
-        capacity: usize,
     },
+    WritingOutOfBounds {
+        available: usize,
+        requested: usize,
+    },
+    WritingIllegalState {
+        writing_type_uri: &'static Uri,
+    },
+    AlignmentError(AlignmentError),
 
-    // Reading
+    Unknown,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum AtomReadError {
     InvalidAtomUrid {
         expected_uri: &'static Uri,
         expected_urid: URID,
@@ -33,14 +65,21 @@ pub enum AtomError {
         found_urid: u32,
     },
     ReadingOutOfBounds {
-        capacity: usize,
+        available: usize,
         requested: usize,
     },
     InvalidAtomValue {
         reading_type_uri: &'static Uri,
     },
+    AlignmentError(AlignmentError),
 
     Unknown,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum AtomError {
+    ReadError(AtomReadError),
+    WriteError(AtomWriteError),
 }
 
 impl Display for AtomError {
@@ -50,3 +89,17 @@ impl Display for AtomError {
 }
 
 impl Error for AtomError {}
+
+impl From<AtomReadError> for AtomError {
+    #[inline]
+    fn from(error: AtomReadError) -> Self {
+        AtomError::ReadError(error)
+    }
+}
+
+impl From<AtomWriteError> for AtomError {
+    #[inline]
+    fn from(error: AtomWriteError) -> Self {
+        AtomError::WriteError(error)
+    }
+}

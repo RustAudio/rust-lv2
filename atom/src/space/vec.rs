@@ -1,6 +1,7 @@
 #![deny(unsafe_code)]
 
-use crate::space::{AlignedSpace, AtomError, SpaceAllocatorImpl};
+use crate::space::error::AtomWriteError;
+use crate::space::{AlignedSpace, SpaceAllocatorImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -45,7 +46,7 @@ impl<T: Copy + 'static> VecSpace<T> {
     fn reallocate_bytes_mut(
         &mut self,
         byte_range: Range<usize>,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let byte_len = self.inner.len() * std::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -57,14 +58,14 @@ impl<T: Copy + 'static> VecSpace<T> {
         let bytes = self.as_bytes_mut();
         bytes
             .get(byte_range.clone())
-            .ok_or(AtomError::ResizeFailed)?; // To make sure everything is in range instead of panicking on split_at_mut
+            .ok_or(AtomWriteError::ResizeFailed)?; // To make sure everything is in range instead of panicking on split_at_mut
         let (previous, allocatable) = bytes.split_at_mut(byte_range.start);
 
         return Ok((
             previous,
             allocatable
                 .get_mut(..byte_range.end - byte_range.start)
-                .ok_or(AtomError::ResizeFailed)?,
+                .ok_or(AtomWriteError::ResizeFailed)?,
         ));
     }
 
@@ -83,11 +84,14 @@ pub struct VecSpaceCursor<'vec, T> {
 }
 
 impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
-    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError> {
+    fn allocate_and_split(
+        &mut self,
+        size: usize,
+    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let end = self
             .allocated_length
             .checked_add(size)
-            .ok_or(AtomError::AllocatorOverflow)?;
+            .ok_or(AtomWriteError::AllocatorOverflow)?;
 
         let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
 
@@ -100,11 +104,11 @@ impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
 
     #[inline]
     #[allow(unsafe_code)]
-    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError> {
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         if self.allocated_length < byte_count {
-            return Err(AtomError::RewindError {
+            return Err(AtomWriteError::RewindError {
                 requested: byte_count,
-                capacity: self.allocated_length,
+                available: self.allocated_length,
             });
         }
 

@@ -2,10 +2,6 @@ use lv2_sys::LV2_Atom_Event__bindgen_ty_1;
 use lv2_units::units::{Beat, Frame};
 use urid::UriBound;
 
-#[repr(C, align(8))]
-#[derive(Copy, Clone)]
-pub struct TimestampBody(LV2_Atom_Event__bindgen_ty_1);
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum SequenceUnitType {
     Beat,
@@ -21,7 +17,7 @@ pub trait SequenceUnit: UriBound + private::Sealed {
     unsafe fn convert_from_raw(raw: sys::LV2_Atom_Event__bindgen_ty_1) -> Self::Value;
 
     #[doc(hidden)]
-    fn convert_into_raw(value: Self::Value) -> TimestampBody;
+    fn convert_into_raw(value: Self::Value) -> private::TimestampBody;
 }
 
 impl SequenceUnit for Beat {
@@ -34,8 +30,8 @@ impl SequenceUnit for Beat {
     }
 
     #[inline]
-    fn convert_into_raw(value: Self::Value) -> TimestampBody {
-        TimestampBody(LV2_Atom_Event__bindgen_ty_1 { beats: value })
+    fn convert_into_raw(value: Self::Value) -> private::TimestampBody {
+        private::TimestampBody(LV2_Atom_Event__bindgen_ty_1 { beats: value })
     }
 }
 
@@ -49,13 +45,17 @@ impl SequenceUnit for Frame {
     }
 
     #[inline]
-    fn convert_into_raw(value: Self::Value) -> TimestampBody {
-        TimestampBody(LV2_Atom_Event__bindgen_ty_1 { frames: value })
+    fn convert_into_raw(value: Self::Value) -> private::TimestampBody {
+        private::TimestampBody(LV2_Atom_Event__bindgen_ty_1 { frames: value })
     }
 }
 
 mod private {
     use super::*;
+
+    #[repr(C, align(8))]
+    #[derive(Copy, Clone)]
+    pub struct TimestampBody(pub LV2_Atom_Event__bindgen_ty_1);
 
     pub trait Sealed {}
 

@@ -24,12 +24,13 @@
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
+use crate::space::error::{AtomReadError, AtomWriteError};
 use crate::space::*;
 use crate::AtomSpaceWriter;
 use crate::{Atom, AtomHandle};
 use urid::UriBound;
 
-/// An atom containing memory of undefined type.
+/// An atom containing an arbitrary byte buffer.
 ///
 /// [See also the module documentation.](index.html)
 pub struct Chunk;
@@ -50,19 +51,19 @@ impl<'a> AtomHandle<'a> for ChunkWriterHandle {
 
 impl Atom for Chunk {
     type ReadHandle = ChunkReaderHandle;
-    type WriteHandle = AtomSpaceWriterHandle;
+    type WriteHandle = ChunkWriterHandle;
 
     #[inline]
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         Ok(body)
     }
 
     #[inline]
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(frame)
     }
 }

@@ -28,8 +28,10 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#String](http://lv2plug.in/ns/ext/atom/atom.html#String)
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Literal](http://lv2plug.in/ns/ext/atom/atom.html#Literal)
 use crate::prelude::*;
+use crate::space::error::{AtomReadError, AtomWriteError};
 use crate::space::*;
 use crate::AtomHandle;
+use std::ffi::CStr;
 use urid::*;
 
 /// An atom containing either a localized string or an RDF literal.
@@ -78,7 +80,7 @@ pub struct LiteralInfoWriter<'a> {
 }
 
 impl<'a> LiteralInfoWriter<'a> {
-    pub fn write_info(mut self, info: LiteralInfo) -> Result<StringWriter<'a>, AtomError> {
+    pub fn write_info(mut self, info: LiteralInfo) -> Result<StringWriter<'a>, AtomWriteError> {
         self.writer.write_value(info.into_raw())?;
 
         Ok(StringWriter {
@@ -105,12 +107,12 @@ impl Atom for Literal {
 
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
         let mut reader = body.read();
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
         let info =
-            LiteralInfo::try_from_raw(header).ok_or_else(|| AtomError::InvalidAtomValue {
+            LiteralInfo::try_from_raw(header).ok_or_else(|| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
             })?;
 
@@ -118,7 +120,7 @@ impl Atom for Literal {
 
         std::str::from_utf8(&data[0..data.len() - 1])
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
-            .map_err(|_| AtomError::InvalidAtomValue {
+            .map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
             })
             .map(|string| (info, string))
@@ -127,7 +129,7 @@ impl Atom for Literal {
     #[inline]
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(LiteralInfoWriter { writer: frame })
     }
 }
@@ -159,23 +161,25 @@ impl Atom for String {
 
     unsafe fn read(
         body: &AtomSpace,
-    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomError> {
-        let data = body.as_bytes();
-        let rust_str_bytes =
-            data.get(..data.len() - 1)
-                .ok_or_else(|| AtomError::InvalidAtomValue {
-                    reading_type_uri: Self::uri(),
-                })?; // removing the null-terminator
-        Ok(
-            core::str::from_utf8(rust_str_bytes).map_err(|_| AtomError::InvalidAtomValue {
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
+        let c_str = CStr::from_bytes_with_nul(body.as_bytes()).map_err(|_| {
+            AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
-            })?,
-        )
+            }
+        })?;
+
+        let str = c_str
+            .to_str()
+            .map_err(|_| AtomReadError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+            })?;
+
+        Ok(str)
     }
 
     fn init(
         frame: AtomSpaceWriter,
-    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(StringWriter {
             writer: frame.terminated(0),
         })
@@ -193,7 +197,7 @@ impl<'a> StringWriter<'a> {
     /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
     ///
     /// If the internal space for the atom is not big enough, this method returns `None`.
-    pub fn append(&mut self, string: &str) -> Result<&mut str, AtomError> {
+    pub fn append(&mut self, string: &str) -> Result<&mut str, AtomWriteError> {
         let bytes = self.writer.write_bytes(string.as_bytes())?;
 
         // SAFETY: We just wrote that string, therefore it is guaranteed to be valid UTF-8

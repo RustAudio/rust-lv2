@@ -2,7 +2,7 @@ use crate::space::{AlignedSpace, AtomSpaceWriter};
 use crate::{Atom, AtomHandle, UnidentifiedAtom};
 use urid::URID;
 
-use crate::space::error::AtomError;
+use crate::space::error::AtomWriteError;
 use crate::space::terminated::Terminated;
 use core::mem::{size_of, size_of_val, MaybeUninit};
 
@@ -12,9 +12,10 @@ use core::mem::{size_of, size_of_val, MaybeUninit};
 ///
 // TODO: Find proper name
 pub trait SpaceAllocatorImpl {
-    fn allocate_and_split(&mut self, size: usize) -> Result<(&mut [u8], &mut [u8]), AtomError>;
+    fn allocate_and_split(&mut self, size: usize)
+        -> Result<(&mut [u8], &mut [u8]), AtomWriteError>;
 
-    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomError>;
+    unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError>;
 
     fn allocated_bytes(&self) -> &[u8];
     fn allocated_bytes_mut(&mut self) -> &mut [u8];
@@ -29,12 +30,12 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
     #[inline]
-    fn allocate(&mut self, size: usize) -> Result<&mut [u8], AtomError> {
+    fn allocate(&mut self, size: usize) -> Result<&mut [u8], AtomWriteError> {
         self.allocate_and_split(size).map(|(_, s)| s)
     }
 
     #[inline]
-    fn allocate_padding_for<T: 'static>(&mut self) -> Result<(), AtomError> {
+    fn allocate_padding_for<T: 'static>(&mut self) -> Result<(), AtomWriteError> {
         let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
         self.allocate(required_padding)?;
 
@@ -45,7 +46,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     fn allocate_aligned<T: 'static>(
         &mut self,
         size: usize,
-    ) -> Result<&mut AlignedSpace<T>, AtomError> {
+    ) -> Result<&mut AlignedSpace<T>, AtomWriteError> {
         let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
         let raw = self.allocate(size + required_padding)?;
 
@@ -53,7 +54,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     }
 
     #[inline]
-    fn allocate_value<T: 'static>(&mut self) -> Result<&mut MaybeUninit<T>, AtomError> {
+    fn allocate_value<T: 'static>(&mut self) -> Result<&mut MaybeUninit<T>, AtomWriteError> {
         let space = self.allocate_aligned(size_of::<MaybeUninit<T>>())?;
         // SAFETY: We used size_of, so we are sure that the allocated space is exactly big enough for T.
         Ok(unsafe { space.as_uninit_mut_unchecked() })
@@ -63,7 +64,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     fn allocate_values<T: 'static>(
         &mut self,
         count: usize,
-    ) -> Result<&mut [MaybeUninit<T>], AtomError> {
+    ) -> Result<&mut [MaybeUninit<T>], AtomWriteError> {
         let space = self.allocate_aligned(count * std::mem::size_of::<T>())?;
         Ok(space.as_uninit_slice_mut())
     }
@@ -72,7 +73,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     fn init_atom<A: Atom>(
         &mut self,
         atom_type: URID<A>,
-    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomError> {
+    ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         let space = AtomSpaceWriter::write_new(self, atom_type)?;
         A::init(space)
     }
@@ -81,7 +82,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     fn forward_atom(
         &mut self,
         atom: &UnidentifiedAtom,
-    ) -> Result<&mut UnidentifiedAtom, AtomError> {
+    ) -> Result<&mut UnidentifiedAtom, AtomWriteError> {
         let resulting_space = self.allocate_aligned(atom.atom_space().len())?;
         resulting_space
             .as_bytes_mut()
@@ -92,14 +93,14 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     }
 
     #[inline]
-    fn write_bytes(&mut self, bytes: &[u8]) -> Result<&mut [u8], AtomError> {
+    fn write_bytes(&mut self, bytes: &[u8]) -> Result<&mut [u8], AtomWriteError> {
         let space = self.allocate(bytes.len())?;
         space.copy_from_slice(bytes);
         Ok(space)
     }
 
     #[inline]
-    fn write_value<T: 'static>(&mut self, value: T) -> Result<&mut T, AtomError>
+    fn write_value<T: 'static>(&mut self, value: T) -> Result<&mut T, AtomWriteError>
     where
         T: Copy + Sized + 'static,
     {
@@ -110,7 +111,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
         Ok(crate::util::write_uninit(space, value))
     }
 
-    fn write_values<T>(&mut self, values: &[T]) -> Result<&mut [T], AtomError>
+    fn write_values<T>(&mut self, values: &[T]) -> Result<&mut [T], AtomWriteError>
     where
         T: Copy + Sized + 'static,
     {
