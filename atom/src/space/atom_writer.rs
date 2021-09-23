@@ -69,12 +69,13 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
         let space = AlignedSpace::<AtomHeader>::from_bytes_mut(
-            previous
-                .get_mut(self.atom_header_index..)
-                .ok_or(AtomWriteError::CannotUpdateAtomHeader)?,
+            // PANIC: We rely on the parent allocator not shifting bytes around
+            &mut previous[self.atom_header_index..],
         )?;
+
+        // SAFETY: We rely on the parent allocator not shifting bytes around
         let header = unsafe { space.assume_init_value_mut() }
-            .ok_or(AtomWriteError::CannotUpdateAtomHeader)?;
+            .expect("Unable to locate Atom Header. This is a bug due to an incorrect Allocator implementation");
 
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
         unsafe { header.set_size_of_body(header.size_of_body() + size) };

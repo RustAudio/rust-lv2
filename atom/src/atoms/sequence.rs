@@ -202,7 +202,9 @@ pub struct SequenceWriter<'a, U: SequenceUnit> {
 impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     /// Write out the time stamp and update `last_stamp`.
     ///
-    /// This method returns `Ǹone` if:
+    /// # Errors
+    ///
+    /// This method returns an error if either:
     /// * The last time stamp is younger than the time stamp.
     /// * Space is insufficient.
     fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomWriteError> {

@@ -16,6 +16,11 @@ pub trait SpaceAllocatorImpl {
     /// # Safety
     ///
     /// While implementations MUST return a
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the given size, added to the length of the total allocated bytes
+    /// overflow an [`usize`].
     fn allocate_and_split(&mut self, size: usize)
         -> Result<(&mut [u8], &mut [u8]), AtomWriteError>;
 

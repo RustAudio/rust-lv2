@@ -56,17 +56,14 @@ impl<T: Copy + 'static> VecSpace<T> {
         }
 
         let bytes = self.as_bytes_mut();
-        bytes
-            .get(byte_range.clone())
-            .ok_or(AtomWriteError::ResizeFailed)?; // To make sure everything is in range instead of panicking on split_at_mut
+
+        // PANIC: We just resized to the accommodate the maximum value in the given range.
         let (previous, allocatable) = bytes.split_at_mut(byte_range.start);
 
-        return Ok((
+        Ok((
             previous,
-            allocatable
-                .get_mut(..byte_range.end - byte_range.start)
-                .ok_or(AtomWriteError::ResizeFailed)?,
-        ));
+            &mut allocatable[..byte_range.end - byte_range.start],
+        ))
     }
 
     #[inline]
@@ -91,7 +88,7 @@ impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
         let end = self
             .allocated_length
             .checked_add(size)
-            .ok_or(AtomWriteError::AllocatorOverflow)?;
+            .expect("Allocation overflow");
 
         let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
 
@@ -106,9 +103,9 @@ impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
     #[allow(unsafe_code)]
     unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         if self.allocated_length < byte_count {
-            return Err(AtomWriteError::RewindError {
+            return Err(AtomWriteError::RewindBeyondAllocated {
                 requested: byte_count,
-                available: self.allocated_length,
+                allocated: self.allocated_length,
             });
         }
 

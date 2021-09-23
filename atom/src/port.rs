@@ -64,7 +64,6 @@ impl<'a> PortReader<'a> {
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
 pub struct PortWriter<'a> {
     space: SpaceCursor<'a>,
-    has_been_written: bool,
 }
 
 impl<'a> PortWriter<'a> {
@@ -72,7 +71,6 @@ impl<'a> PortWriter<'a> {
     fn new(space: &'a mut AtomSpace) -> Self {
         Self {
             space: SpaceCursor::new(space.as_bytes_mut()),
-            has_been_written: false,
         }
     }
 
@@ -82,21 +80,18 @@ impl<'a> PortWriter<'a> {
     ///
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
-    /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
+    /// # Errors
+    ///
+    /// This method can return an error if the buffer isn't big enough to initialize the given atom's header.
     pub fn init<'b, 'write, A: crate::Atom>(
         &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle<'write>>::Handle, AtomWriteError> {
-        if !self.has_been_written {
-            self.has_been_written = true;
-            // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
-            let space: &'write mut SpaceCursor<'write> = unsafe {
-                ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
-            };
-            space.init_atom(urid)
-        } else {
-            Err(AtomWriteError::AtomAlreadyWritten)
-        }
+        // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
+        let space: &'write mut SpaceCursor<'write> = unsafe {
+            ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
+        };
+        space.init_atom(urid)
     }
 }
 

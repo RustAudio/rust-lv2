@@ -44,9 +44,9 @@ impl<'a> WMidiEventWriter<'a> {
         let space = self.writer.allocate(message.bytes_size())?;
 
         // The error shouldn't be happening, as we allocated just as many bytes as needed
-        message
-            .copy_to_slice(space)
-            .map_err(|_| AtomWriteError::Unknown)?;
+        message.copy_to_slice(space).expect(
+            "Could not copy MIDI message to allocated bytes. This is a bug, most likely due to an incorrect allocator implementation",
+        );
         Ok(())
     }
 }

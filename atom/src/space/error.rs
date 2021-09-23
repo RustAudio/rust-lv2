@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
 
+/// A Helper struct to store data about a type for alignment error messages
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TypeData {
     name: &'static str,
@@ -29,6 +30,7 @@ impl Display for TypeData {
     }
 }
 
+/// The actual, currently private, alignment error
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub(crate) enum AlignmentErrorInner {
@@ -48,6 +50,9 @@ pub(crate) enum AlignmentErrorInner {
     },
 }
 
+/// An alignment error, returned by [`AlignedSpace`].
+///
+/// This error occurs when a byte buffer is unaligned, or could not be aligned.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AlignmentError(pub(crate) AlignmentErrorInner);
 
@@ -65,32 +70,41 @@ impl From<AlignmentError> for AtomReadError {
     }
 }
 
+/// Errors that can occur while writing atoms to a byte buffer.
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum AtomWriteError {
+    /// A write operation could not proceed because there is not enough space in the allocatable buffer.
     OutOfSpace {
+        /// The amount currently used in the buffer, in bytes.
         used: usize,
+        /// The total capacity of the buffer, in bytes.
         capacity: usize,
+        /// The requested amount of bytes to be allocated in the buffer, in bytes.
+        ///
+        /// If this error occurred, most likely this is higher than the remaining amount of bytes available.
         requested: usize,
     },
-    AllocatorOverflow,
-    ResizeFailed,
-    CannotUpdateAtomHeader,
-    AtomAlreadyWritten,
-    RewindError {
-        available: usize,
+    /// An allocator tried to be rewound beyond the amount of already allocated bytes
+    RewindBeyondAllocated {
+        /// The amount of already allocated bytes
+        allocated: usize,
+        /// The amount of bytes requested to be rewound
+        ///
+        /// If this error occurred, most likely this is higher than the amount of allocated bytes
         requested: usize,
     },
+    /// A write operation tried to occur outside of the buffer's bounds
     WritingOutOfBounds {
+        /// The amount of available bytes in the buffer
         available: usize,
+        /// The requested amount of bytes
         requested: usize,
     },
     WritingIllegalState {
         writing_type_uri: &'static Uri,
     },
     AlignmentError(AlignmentError),
-
-    Unknown,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -114,8 +128,6 @@ pub enum AtomReadError {
         reading_type_uri: &'static Uri,
     },
     AlignmentError(AlignmentError),
-
-    Unknown,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
