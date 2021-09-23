@@ -36,7 +36,7 @@ impl<'a> SpaceAllocatorImpl for SpaceCursor<'a> {
         self.allocated_length = self
             .allocated_length
             .checked_add(size)
-            .ok_or(AtomWriteError::AllocatorOverflow)?;
+            .expect("Allocation overflow");
 
         Ok((allocated, new_allocation))
     }
@@ -44,9 +44,9 @@ impl<'a> SpaceAllocatorImpl for SpaceCursor<'a> {
     #[inline]
     unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError> {
         if self.allocated_length < byte_count {
-            return Err(AtomWriteError::RewindError {
+            return Err(AtomWriteError::RewindBeyondAllocated {
                 requested: byte_count,
-                available: self.allocated_length,
+                allocated: self.allocated_length,
             });
         }
 

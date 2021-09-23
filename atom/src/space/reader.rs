@@ -22,8 +22,10 @@ impl<'a> SpaceReader<'a> {
 
         self.space = remaining.as_bytes();
 
-        // Failure shouldn't be possible, but it doesn't hurt to check
-        value.as_uninit().ok_or(AtomReadError::Unknown)
+        // PANIC: We just split_at the right amount of bytes for a value of T, there should be enough space
+        Ok(value
+            .as_uninit()
+            .expect("Not enough space for an uninit value"))
     }
 
     #[inline]
