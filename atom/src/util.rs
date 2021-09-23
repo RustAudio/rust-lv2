@@ -1,5 +1,4 @@
-use crate::space::error::AlignmentError;
-use std::any::TypeId;
+use crate::space::error::{AlignmentError, AlignmentErrorInner, TypeData};
 use std::mem::MaybeUninit;
 
 // This function is separate to ensure proper lifetimes
@@ -47,10 +46,12 @@ pub(crate) fn byte_index_to_value_index<T>(size: usize) -> usize {
 pub(crate) fn try_padding_for<T: 'static>(data: &[u8]) -> Result<usize, AlignmentError> {
     let value = data.as_ptr().align_offset(::core::mem::align_of::<T>());
     if value == usize::MAX {
-        Err(AlignmentError::CannotComputeAlignment {
-            type_id: TypeId::of::<T>(),
-            ptr: data.as_ptr(),
-        })
+        Err(AlignmentError(
+            AlignmentErrorInner::CannotComputeAlignment {
+                type_id: TypeData::of::<T>(),
+                ptr: data.as_ptr(),
+            },
+        ))
     } else {
         Ok(value)
     }

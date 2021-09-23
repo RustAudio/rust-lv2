@@ -27,7 +27,7 @@ impl<'a> AtomSpaceWriter<'a> {
             .allocated_bytes()
             .get(self.atom_header_index..)
             .unwrap();
-        let space = AlignedSpace::try_from_bytes(previous).unwrap();
+        let space = AlignedSpace::from_bytes(previous).unwrap();
 
         unsafe { *space.assume_init_value().unwrap() }
     }
@@ -38,16 +38,9 @@ impl<'a> AtomSpaceWriter<'a> {
             .allocated_bytes_mut()
             .get_mut(self.atom_header_index..)
             .unwrap();
-        let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(previous).unwrap();
+        let space = AlignedSpace::<AtomHeader>::from_bytes_mut(previous).unwrap();
 
         unsafe { space.assume_init_value_mut().unwrap() }
-    }
-
-    pub fn allocate_and_unwrap<T, F: FnOnce(&mut AtomSpaceWriter) -> Result<T, AtomWriteError>>(
-        mut self,
-        operation: F,
-    ) -> Result<T, AtomWriteError> {
-        operation(&mut self)
     }
 
     /// Create a new framed space with the given parent and type URID.
@@ -75,12 +68,11 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
-        let space = AlignedSpace::<AtomHeader>::try_from_bytes_mut(
+        let space = AlignedSpace::<AtomHeader>::from_bytes_mut(
             previous
                 .get_mut(self.atom_header_index..)
                 .ok_or(AtomWriteError::CannotUpdateAtomHeader)?,
-        )
-        .ok_or(AtomWriteError::CannotUpdateAtomHeader)?;
+        )?;
         let header = unsafe { space.assume_init_value_mut() }
             .ok_or(AtomWriteError::CannotUpdateAtomHeader)?;
 

@@ -1,8 +1,9 @@
 use crate::header::AtomHeader;
-use crate::space::error::{AtomReadError, AtomWriteError};
+use crate::space::error::{AlignmentError, AlignmentErrorInner, TypeData};
 use crate::space::SpaceCursor;
 use crate::space::SpaceReader;
 use core::mem::{align_of, size_of};
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 use std::mem::{size_of_val, MaybeUninit};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
@@ -35,12 +36,13 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 /// // ---
 ///
 /// // Bytes are already aligned, the whole slice will be available
-/// let space: &AlignedSpace<u64> = AlignedSpace::try_align_from_bytes(bytes).unwrap();
+/// let space: &AlignedSpace<u64> = AlignedSpace::align_from_bytes(bytes).unwrap();
 /// // SAFETY: we know the slice was initialized with proper u64 values.
 /// let read_values = unsafe { space.assume_init_slice() };
 /// assert_eq!(read_values, [42u64, 69]);
 /// ```
 ///
+#[derive(Eq, PartialEq)]
 #[repr(transparent)]
 pub struct AlignedSpace<T> {
     _type: PhantomData<T>,
@@ -65,17 +67,20 @@ impl<T: 'static> AlignedSpace<T> {
     /// // Transmuting to a slice of bytes
     /// let bytes: &[u8] = unsafe { values.align_to().1 };
     ///
-    /// assert!(AlignedSpace::<u64>::try_from_bytes(bytes).is_some());
-    /// assert!(AlignedSpace::<u64>::try_from_bytes(&bytes[1..]).is_none());
+    /// assert!(AlignedSpace::<u64>::from_bytes(bytes).is_ok());
+    /// assert!(AlignedSpace::<u64>::from_bytes(&bytes[1..]).is_err());
     /// ```
     #[inline]
-    pub fn try_from_bytes(data: &[u8]) -> Option<&Self> {
+    pub fn from_bytes(data: &[u8]) -> Result<&Self, AlignmentError> {
         if data.as_ptr() as usize % align_of::<T>() != 0 {
-            return None;
+            return Err(AlignmentError(AlignmentErrorInner::UnalignedBuffer {
+                type_id: TypeData::of::<T>(),
+                ptr: data.as_ptr(),
+            }));
         }
 
         // SAFETY: We just checked above that the pointer is correctly aligned
-        Some(unsafe { AlignedSpace::from_bytes_unchecked(data) })
+        Ok(unsafe { AlignedSpace::from_bytes_unchecked(data) })
     }
 
     /// Creates a new mutable space from a mutable slice of bytes.
@@ -93,17 +98,20 @@ impl<T: 'static> AlignedSpace<T> {
     /// // Transmuting to a slice of bytes
     /// let bytes: &mut [u8] = unsafe { values.align_to_mut().1 };
     ///
-    /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(bytes).is_some());
-    /// assert!(AlignedSpace::<u64>::try_from_bytes_mut(&mut bytes[1..]).is_none());
+    /// assert!(AlignedSpace::<u64>::from_bytes_mut(bytes).is_ok());
+    /// assert!(AlignedSpace::<u64>::from_bytes_mut(&mut bytes[1..]).is_err());
     /// ```
     #[inline]
-    pub fn try_from_bytes_mut(data: &mut [u8]) -> Option<&mut Self> {
+    pub fn from_bytes_mut(data: &mut [u8]) -> Result<&mut Self, AlignmentError> {
         if data.as_ptr() as usize % align_of::<T>() != 0 {
-            return None;
+            return Err(AlignmentError(AlignmentErrorInner::UnalignedBuffer {
+                type_id: TypeData::of::<T>(),
+                ptr: data.as_ptr(),
+            }));
         }
 
         // SAFETY: We just checked above that the pointer is correctly aligned
-        Some(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
+        Ok(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
     }
 
     /// Creates a new space from a slice of bytes, slicing some bytes off its start it if necessary.
@@ -122,30 +130,27 @@ impl<T: 'static> AlignedSpace<T> {
     /// let bytes: &[u8] = unsafe { values.align_to().1 };
     ///
     /// // The slice has space for both values
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(bytes).unwrap().values_len(), 2);
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(&bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes(&bytes[9..]).err().unwrap(), AtomReadError::ReadingOutOfBounds { available: 7, requested: 8 });
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes(&bytes[9..]).unwrap().values_len(), 0);
+    /// // The slice cannot be aligned
+    /// assert!(AlignedSpace::<u64>::align_from_bytes(&bytes[10..11]).is_err());
     /// ```
     #[inline]
-    pub fn try_align_from_bytes(data: &[u8]) -> Result<&Self, AtomReadError> {
+    pub fn align_from_bytes(data: &[u8]) -> Result<&Self, AlignmentError> {
         let padding = crate::util::try_padding_for::<T>(data)?;
         let data_len = data.len();
 
-        let data = data
-            .get(padding..)
-            .ok_or_else(|| AtomReadError::ReadingOutOfBounds {
-                available: data_len,
-                requested: padding + 1,
-            })?;
-
-        if data.is_empty() {
-            return Err(AtomReadError::ReadingOutOfBounds {
-                available: data_len,
-                requested: padding + 1,
-            });
-        }
+        let data = data.get(padding..).ok_or_else(|| {
+            AlignmentError(AlignmentErrorInner::NotEnoughSpaceToRealign {
+                ptr: data.as_ptr(),
+                available_size: data_len,
+                required_padding: padding + 1,
+                type_id: TypeData::of::<T>(),
+            })
+        })?;
 
         // SAFETY: We just aligned the slice start
         Ok(unsafe { AlignedSpace::from_bytes_unchecked(data) })
@@ -167,30 +172,28 @@ impl<T: 'static> AlignedSpace<T> {
     /// let bytes: &mut [u8] = unsafe { values.align_to_mut().1 };
     ///
     /// // The slice has space for both values
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(bytes).unwrap().values_len(), 2);
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(bytes).unwrap().values_len(), 2);
     /// // The slice now only has space for a single value
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[1..]).unwrap().values_len(), 1);
     /// // The slice doesn't have space for any value anymore
-    /// assert_eq!(AlignedSpace::<u64>::try_align_from_bytes_mut(&mut bytes[9..]).err().unwrap(), AtomWriteError::WritingOutOfBounds { available: 7, requested: 8 });
+    /// assert_eq!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[9..]).unwrap().values_len(), 0);
+    /// // The slice cannot be aligned
+    /// assert!(AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[10..11]).is_err());
     /// ```
     #[inline]
-    pub fn try_align_from_bytes_mut(data: &mut [u8]) -> Result<&mut Self, AtomWriteError> {
+    pub fn align_from_bytes_mut(data: &mut [u8]) -> Result<&mut Self, AlignmentError> {
         let padding = crate::util::try_padding_for::<T>(data)?;
         let data_len = data.len();
+        let data_ptr = data.as_ptr();
 
-        let data = data
-            .get_mut(padding..)
-            .ok_or(AtomWriteError::WritingOutOfBounds {
-                available: data_len,
-                requested: padding + 1,
-            })?;
-
-        if data.is_empty() {
-            return Err(AtomWriteError::WritingOutOfBounds {
-                available: data_len,
-                requested: padding + 1,
-            });
-        }
+        let data = data.get_mut(padding..).ok_or_else(|| {
+            AlignmentError(AlignmentErrorInner::NotEnoughSpaceToRealign {
+                ptr: data_ptr,
+                available_size: data_len,
+                required_padding: padding + 1,
+                type_id: TypeData::of::<T>(),
+            })
+        })?;
 
         // SAFETY: We just aligned the slice start
         Ok(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
@@ -233,7 +236,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Calling this method with an unaligned slice will result from UB.
     ///
-    /// For a safe, checked version, see [`Space::try_from_bytes`].
+    /// For a safe, checked version, see [`Space::from_bytes`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
@@ -250,7 +253,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Otherwise, reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
-    /// For a safe, checked version, see [`Space::try_from_bytes_mut`].
+    /// For a safe, checked version, see [`Space::from_bytes_mut`].
     // NOTE: This method will always be used internally instead of the constructor, to make sure that
     // the unsafety is explicit and accounted for.
     #[inline(always)]
@@ -300,12 +303,16 @@ impl<T: 'static> AlignedSpace<T> {
 
     /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
     #[inline]
-    fn split_bytes_at(&self, mid: usize) -> Result<(&Self, &[u8]), AtomReadError> {
+    fn split_bytes_at(&self, mid: usize) -> Result<(&Self, &[u8]), AlignmentError> {
         if mid > self.data.len() {
-            return Err(AtomReadError::ReadingOutOfBounds {
-                requested: mid,
-                available: self.data.len(),
-            });
+            return Err(AlignmentError(
+                AlignmentErrorInner::NotEnoughSpaceToRealign {
+                    ptr: self.data.as_ptr(),
+                    available_size: self.data.len(),
+                    required_padding: mid + 1,
+                    type_id: TypeData::of::<T>(),
+                },
+            ));
         }
 
         let (start, end) = self.data.split_at(mid);
@@ -319,9 +326,9 @@ impl<T: 'static> AlignedSpace<T> {
     ///
     /// This method calls [`split_raw`](#method.split_raw) and wraps the returned slice in an atom space. The second space is the space after the first one.
     #[inline]
-    pub fn try_split_at(&self, mid: usize) -> Result<(&Self, &Self), AtomReadError> {
+    pub fn split_at(&self, mid: usize) -> Result<(&Self, &Self), AlignmentError> {
         let (start, end) = self.split_bytes_at(mid)?;
-        let end = Self::try_align_from_bytes(end).unwrap_or_else(|_| AlignedSpace::empty());
+        let end = Self::align_from_bytes(end).unwrap_or_else(|_| AlignedSpace::empty());
 
         Ok((start, end))
     }
@@ -454,26 +461,32 @@ impl<T: 'static> AlignedSpace<T> {
     }
 }
 
+impl<T> Debug for AlignedSpace<T> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.data, f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::space::error::{AlignmentError, AlignmentErrorInner, TypeData};
     use crate::space::*;
     use crate::AtomHeader;
     use std::mem::{size_of, size_of_val};
     use urid::*;
 
     #[test]
-    fn align_from_bytes() {
+    fn from_bytes() {
         let values = &mut [42u64, 69];
         let bytes = unsafe { values.align_to_mut().1 };
 
         assert_eq!(
-            AlignedSpace::<u64>::try_from_bytes(bytes).unwrap().len(),
+            AlignedSpace::<u64>::from_bytes(bytes).unwrap().len(),
             ::core::mem::size_of::<u64>() * 2
         );
         assert_eq!(
-            AlignedSpace::<u64>::try_from_bytes_mut(bytes)
-                .unwrap()
-                .len(),
+            AlignedSpace::<u64>::from_bytes_mut(bytes).unwrap().len(),
             ::core::mem::size_of::<u64>() * 2
         );
 
@@ -487,32 +500,94 @@ mod tests {
             ::core::mem::size_of::<u64>() * 2
         );
 
-        assert!(AlignedSpace::<u64>::try_from_bytes(&bytes[1..]).is_none());
-        assert!(AlignedSpace::<u64>::try_from_bytes_mut(&mut bytes[1..]).is_none());
+        assert_eq!(
+            AlignedSpace::<u64>::from_bytes(&bytes[1..]),
+            Err(AlignmentError(AlignmentErrorInner::UnalignedBuffer {
+                type_id: TypeData::of::<u64>(),
+                ptr: bytes[1..].as_ptr()
+            }))
+        );
+
+        let ptr = bytes[1..].as_ptr();
+        assert_eq!(
+            AlignedSpace::<u64>::from_bytes_mut(&mut bytes[1..]),
+            Err(AlignmentError(AlignmentErrorInner::UnalignedBuffer {
+                type_id: TypeData::of::<u64>(),
+                ptr
+            }))
+        );
     }
 
     #[test]
-    fn test_split_atom() {
-        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
-        let space = space.as_space_mut();
-        let urid: URID = unsafe { URID::new_unchecked(17) };
+    fn align_from_bytes() {
+        let values = &mut [42u64, 69];
+        let bytes = unsafe { values.align_to_mut().1 };
 
-        // Writing an integer atom.
-        unsafe {
-            *(space.as_bytes_mut().as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
-                atom: sys::LV2_Atom {
-                    size: size_of::<i32>() as u32,
-                    type_: urid.get(),
-                },
-                body: 42,
-            };
+        let size = ::core::mem::size_of::<u64>();
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes(bytes).unwrap().len(),
+            size * 2
+        );
 
-            let atom = space.read().next_atom().unwrap();
-            let body = atom.body().as_bytes();
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes_mut(bytes)
+                .unwrap()
+                .len(),
+            size * 2
+        );
 
-            assert_eq!(size_of::<i32>(), size_of_val(body));
-            assert_eq!(42, *(body.as_ptr() as *const i32));
-        }
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes(&bytes[1..])
+                .unwrap()
+                .len(),
+            size
+        );
+
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[1..])
+                .unwrap()
+                .len(),
+            size
+        );
+
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes(&bytes[9..])
+                .unwrap()
+                .len(),
+            0
+        );
+
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[9..])
+                .unwrap()
+                .len(),
+            0
+        );
+
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes(&bytes[9..11]),
+            Err(AlignmentError(
+                AlignmentErrorInner::NotEnoughSpaceToRealign {
+                    type_id: TypeData::of::<u64>(),
+                    ptr: bytes[9..11].as_ptr(),
+                    available_size: 2,
+                    required_padding: 8
+                }
+            ))
+        );
+
+        let ptr = bytes[9..11].as_ptr();
+        assert_eq!(
+            AlignedSpace::<u64>::align_from_bytes_mut(&mut bytes[9..11]),
+            Err(AlignmentError(
+                AlignmentErrorInner::NotEnoughSpaceToRealign {
+                    type_id: TypeData::of::<u64>(),
+                    ptr,
+                    available_size: 2,
+                    required_padding: 8
+                }
+            ))
+        );
     }
 
     fn test_mut_space<'a>(mut space: impl SpaceAllocator) {

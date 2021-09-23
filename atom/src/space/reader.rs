@@ -3,6 +3,7 @@ use crate::space::error::AtomReadError;
 use crate::{AtomHeader, UnidentifiedAtom};
 use std::mem::MaybeUninit;
 
+#[derive(Clone)]
 pub struct SpaceReader<'a> {
     space: &'a [u8],
 }
@@ -15,13 +16,13 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     fn next_uninit_value<T: 'static>(&mut self) -> Result<&'a MaybeUninit<T>, AtomReadError> {
-        let space = AlignedSpace::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
         let value_size = ::core::mem::size_of::<T>();
-        let (value, remaining) = space.try_split_at(value_size)?;
+        let (value, remaining) = space.split_at(value_size)?;
 
         self.space = remaining.as_bytes();
 
-        // This shouldn't be possible, but it doesn't hurt to check
+        // Failure shouldn't be possible, but it doesn't hurt to check
         value.as_uninit().ok_or(AtomReadError::Unknown)
     }
 
@@ -30,10 +31,10 @@ impl<'a> SpaceReader<'a> {
         &mut self,
         length: usize,
     ) -> Result<&'a [MaybeUninit<T>], AtomReadError> {
-        let space = AlignedSpace::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
 
         let split_point = crate::util::value_index_to_byte_index::<T>(length);
-        let (data, remaining) = space.try_split_at(split_point)?;
+        let (data, remaining) = space.split_at(split_point)?;
 
         self.space = remaining.as_bytes();
 
@@ -42,7 +43,7 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     fn as_uninit_slice<T: 'static>(&self) -> Result<&'a [MaybeUninit<T>], AtomReadError> {
-        let space = AlignedSpace::try_align_from_bytes(self.space)?;
+        let space = AlignedSpace::align_from_bytes(self.space)?;
         Ok(space.as_uninit_slice())
     }
 
@@ -84,14 +85,14 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     pub unsafe fn next_atom(&mut self) -> Result<&'a UnidentifiedAtom, AtomReadError> {
-        let space = AlignedSpace::<AtomHeader>::try_align_from_bytes(&self.space)?;
+        let space = AlignedSpace::<AtomHeader>::align_from_bytes(&self.space)?;
         let header = space
             .assume_init_value()
             .ok_or(AtomReadError::ReadingOutOfBounds {
                 available: space.len(),
                 requested: core::mem::size_of::<AtomHeader>(),
             })?;
-        let (_, rest) = space.try_split_at(header.size_of_atom())?;
+        let (_, rest) = space.split_at(header.size_of_atom())?;
 
         let atom = UnidentifiedAtom::from_header(header);
         self.space = rest.as_bytes();
@@ -114,5 +115,37 @@ impl<'a> SpaceReader<'a> {
         self.space = reader.remaining_bytes();
 
         Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::space::VecSpace;
+    use std::mem::{size_of, size_of_val};
+    use urid::URID;
+
+    #[test]
+    fn test_read_atom() {
+        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let space = space.as_space_mut();
+        let urid: URID = unsafe { URID::new_unchecked(17) };
+
+        // Writing an integer atom.
+        unsafe {
+            *(space.as_bytes_mut().as_mut_ptr() as *mut sys::LV2_Atom_Int) = sys::LV2_Atom_Int {
+                atom: sys::LV2_Atom {
+                    size: size_of::<i32>() as u32,
+                    type_: urid.get(),
+                },
+                body: 42,
+            };
+
+            let atom = space.read().next_atom().unwrap();
+            let body = atom.body().as_bytes();
+
+            assert_eq!(size_of::<i32>(), size_of_val(body));
+            assert_eq!(42, *(body.as_ptr() as *const i32));
+        }
     }
 }
