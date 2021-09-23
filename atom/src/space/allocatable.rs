@@ -12,6 +12,10 @@ use core::mem::{size_of, size_of_val, MaybeUninit};
 ///
 // TODO: Find proper name
 pub trait SpaceAllocatorImpl {
+    ///
+    /// # Safety
+    ///
+    /// While implementations MUST return a
     fn allocate_and_split(&mut self, size: usize)
         -> Result<(&mut [u8], &mut [u8]), AtomWriteError>;
 
@@ -31,7 +35,9 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
     #[inline]
     fn allocate(&mut self, size: usize) -> Result<&mut [u8], AtomWriteError> {
-        self.allocate_and_split(size).map(|(_, s)| s)
+        let (_previous, allocated) = self.allocate_and_split(size)?;
+        assert_eq!(allocated.len(), size);
+        Ok(allocated)
     }
 
     #[inline]
@@ -50,7 +56,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
         let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
         let raw = self.allocate(size + required_padding)?;
 
-        AlignedSpace::try_align_from_bytes_mut(raw)
+        Ok(AlignedSpace::align_from_bytes_mut(raw)?)
     }
 
     #[inline]

@@ -1,13 +1,55 @@
-use std::any::TypeId;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum AlignmentError {
-    CannotComputeAlignment { type_id: TypeId, ptr: *const u8 },
+pub(crate) struct TypeData {
+    name: &'static str,
+    size: usize,
+    align: usize,
 }
+
+impl TypeData {
+    pub(crate) fn of<T: 'static>() -> Self {
+        Self {
+            name: core::any::type_name::<T>(),
+            size: core::mem::size_of::<T>(),
+            align: core::mem::align_of::<T>(),
+        }
+    }
+}
+
+impl Display for TypeData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} (size: {}, align: {})",
+            self.name, self.size, self.align
+        )
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
+pub(crate) enum AlignmentErrorInner {
+    CannotComputeAlignment {
+        type_id: TypeData,
+        ptr: *const u8,
+    },
+    UnalignedBuffer {
+        type_id: TypeData,
+        ptr: *const u8,
+    },
+    NotEnoughSpaceToRealign {
+        type_id: TypeData,
+        ptr: *const u8,
+        required_padding: usize,
+        available_size: usize,
+    },
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AlignmentError(pub(crate) AlignmentErrorInner);
 
 impl From<AlignmentError> for AtomWriteError {
     #[inline]

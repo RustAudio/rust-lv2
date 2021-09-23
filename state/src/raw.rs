@@ -175,7 +175,7 @@ impl<'a> RetrieveHandle<'a> {
 
         Ok(StatePropertyReader::new(
             type_,
-            AlignedSpace::try_from_bytes(space).ok_or(StateErr::BadData)?,
+            AlignedSpace::from_bytes(space).map_err(|_| StateErr::BadData)?,
         ))
     }
 }
@@ -321,7 +321,7 @@ mod tests {
                 }
                 3 => {
                     assert_eq!(urids.vector, *type_);
-                    let space = AlignedSpace::try_from_bytes(value.as_slice()).unwrap();
+                    let space = AlignedSpace::from_bytes(value.as_slice()).unwrap();
                     let data = unsafe { Vector::read(space) }
                         .unwrap()
                         .of_type(urids.int)
