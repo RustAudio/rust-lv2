@@ -296,7 +296,7 @@ impl Property {
     /// This method simply writes out the content of the header to the space and returns `Some(())` if it's successful.
     #[inline]
     fn write_header<K: ?Sized, C: ?Sized>(
-        space: &mut impl SpaceAllocator,
+        space: &mut impl SpaceWriter,
         key: URID<K>,
         context: Option<URID<C>>,
     ) -> Result<(), AtomWriteError> {

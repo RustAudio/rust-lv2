@@ -87,7 +87,7 @@ pub mod prelude {
     pub use atoms::tuple::Tuple;
     pub use atoms::vector::Vector;
     pub use port::AtomPort;
-    pub use space::{AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceAllocator};
+    pub use space::{AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceWriter};
 
     use crate::*;
     pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
@@ -167,7 +167,7 @@ impl UnidentifiedAtom {
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
     #[inline]
     pub unsafe fn from_space_mut(space: &mut AtomSpace) -> Result<&mut Self, AtomWriteError> {
-        let available = space.len();
+        let available = space.bytes_len();
 
         Ok(Self::from_header_mut(
             space

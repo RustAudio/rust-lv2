@@ -1,27 +1,14 @@
 use crate::header::AtomHeader;
-use crate::space::{
-    error::AtomWriteError, AlignedSpace, AtomSpace, SpaceAllocator, SpaceAllocatorImpl,
-};
+use crate::space::{error::AtomWriteError, AtomSpace, SpaceWriter, SpaceWriterImpl};
 use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
 pub struct AtomSpaceWriter<'a> {
     atom_header_index: usize,
-    parent: &'a mut (dyn SpaceAllocatorImpl),
+    parent: &'a mut (dyn SpaceWriterImpl),
 }
 
 impl<'a> AtomSpaceWriter<'a> {
-    #[inline]
-    pub fn re_borrow<'b>(self) -> AtomSpaceWriter<'b>
-    where
-        'a: 'b,
-    {
-        AtomSpaceWriter {
-            atom_header_index: self.atom_header_index,
-            parent: self.parent,
-        }
-    }
-
     #[inline]
     pub fn atom_header(&self) -> AtomHeader {
         let previous = self
@@ -48,7 +35,7 @@ impl<'a> AtomSpaceWriter<'a> {
 
     /// Create a new framed space with the given parent and type URID.
     pub fn write_new<A: ?Sized>(
-        parent: &'a mut impl SpaceAllocator,
+        parent: &'a mut impl SpaceWriter,
         urid: URID<A>,
     ) -> Result<Self, AtomWriteError> {
         let atom = AtomHeader::new(urid);
@@ -63,7 +50,7 @@ impl<'a> AtomSpaceWriter<'a> {
     }
 }
 
-impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
+impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
     #[inline]
     fn allocate_and_split(
         &mut self,
@@ -123,7 +110,7 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
 mod tests {
     use crate::prelude::AtomSpaceWriter;
     use crate::space::cursor::SpaceCursor;
-    use crate::space::{SpaceAllocator, VecSpace};
+    use crate::space::{SpaceWriter, VecSpace};
     use crate::AtomHeader;
     use core::mem::size_of;
     use urid::URID;
