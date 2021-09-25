@@ -22,7 +22,7 @@
 //!     let read_value: &f32 = ports.input.read(urids.float).unwrap();
 //!
 //!     // Writing is done with the value of the atom.
-//!     ports.output.init(urids.float).unwrap().set(17.0);
+//!     ports.output.write(urids.float).unwrap().set(17.0);
 //! }
 //! ```
 //!
@@ -100,7 +100,7 @@ impl<A: ScalarAtom> Atom for A {
         <A as ScalarAtom>::read_scalar(body)
     }
 
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         <A as ScalarAtom>::write_scalar(frame)

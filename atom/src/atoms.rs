@@ -6,11 +6,10 @@ pub mod string;
 pub mod tuple;
 pub mod vector;
 
-pub use crate::header::AtomHeader;
 use urid::*;
 
+/// An URID collection of all standard atom types, provided for convenience.
 #[derive(Clone, URIDCollection)]
-/// Collection with the URIDs of all `UriBound`s in this crate.
 pub struct AtomURIDCollection {
     pub blank: URID<object::Blank>,
     pub double: URID<scalar::Double>,

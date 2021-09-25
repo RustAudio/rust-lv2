@@ -39,7 +39,7 @@
 //!         .unwrap();
 //!
 //!     let mut output_sequence = ports.output
-//!         .init(urids.atom.sequence)
+//!         .write(urids.atom.sequence)
 //!         .unwrap()
 //!         .with_unit(urids.units.frame)
 //!         .unwrap();

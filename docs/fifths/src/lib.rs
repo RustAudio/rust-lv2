@@ -50,7 +50,7 @@ impl Plugin for Fifths {
         // Initialise the output sequence and get the writing handle.
         let mut output_sequence = ports
             .output
-            .init(self.urids.atom.sequence)
+            .write(self.urids.atom.sequence)
             .unwrap()
             .with_unit(self.urids.unit.frame)
             .unwrap();

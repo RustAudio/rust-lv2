@@ -20,7 +20,7 @@
 //!     // Read an integer from the port and print it.
 //!     println!("My input is: {}", ports.input.read(urids.int).unwrap());
 //!     // Write the integer `42` to the port.
-//!     ports.output.init(urids.int).unwrap();
+//!     ports.output.write(urids.int).unwrap();
 //! }
 //! ```
 use crate::header::AtomHeader;
@@ -49,7 +49,10 @@ impl<'a> PortReader<'a> {
     ///
     /// In order to identify the atom, the reader needs to know it's URID. Also, some atoms require a parameter. However, you can simply pass `()` in most cases.
     ///
-    /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
+    /// # Errors
+    ///
+    /// This method can return any read error if the given URID doesn't match the contained atom,
+    /// or if any other read error occurred.
     #[inline]
     pub fn read<A: crate::Atom>(
         &self,
@@ -83,7 +86,7 @@ impl<'a> PortWriter<'a> {
     /// # Errors
     ///
     /// This method can return an error if the buffer isn't big enough to initialize the given atom's header.
-    pub fn init<'b, 'write, A: crate::Atom>(
+    pub fn write<'b, 'write, A: crate::Atom>(
         &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle<'write>>::Handle, AtomWriteError> {
@@ -149,7 +152,7 @@ mod tests {
             let mut writer = unsafe {
                 AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
             };
-            writer.init::<Int>(urids.int).unwrap().set(42).unwrap();
+            writer.write::<Int>(urids.int).unwrap().set(42).unwrap();
         }
 
         // Reading

@@ -84,7 +84,7 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         atom_type: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         let space = AtomSpaceWriter::write_new(self, atom_type)?;
-        A::init(space)
+        A::write(space)
     }
 
     #[inline]
@@ -145,10 +145,8 @@ impl<H> SpaceWriter for H where H: SpaceWriterImpl {}
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::{Int, SpaceWriter};
-    use crate::space::cursor::SpaceCursor;
-    use crate::space::{SpaceWriterImpl, VecSpace};
-    use crate::AtomHeader;
+    use crate::atom_prelude::*;
+    use crate::prelude::*;
     use urid::URID;
 
     // SAFETY: this is just for testing, values aren't actually read using this URID.

@@ -3,9 +3,7 @@
 //! This implementation is very low-level; Basically an alias for a chunk. It should only be used by those who don't want additional dependencies or want to modify messages directly.
 //!
 //! If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
-use atom::prelude::*;
-use atom::space::error::*;
-use atom::AtomHandle;
+use atom::atom_prelude::*;
 use urid::*;
 
 /// Midi Event.
@@ -37,7 +35,7 @@ impl Atom for MidiEvent {
         Ok(body.as_bytes())
     }
 
-    fn init(frame: AtomSpaceWriter) -> Result<AtomSpaceWriter, AtomWriteError> {
+    fn write(frame: AtomSpaceWriter) -> Result<AtomSpaceWriter, AtomWriteError> {
         Ok(frame)
     }
 }

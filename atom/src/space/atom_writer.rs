@@ -108,10 +108,7 @@ impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::AtomSpaceWriter;
-    use crate::space::cursor::SpaceCursor;
-    use crate::space::{SpaceWriter, VecSpace};
-    use crate::AtomHeader;
+    use crate::atom_prelude::*;
     use core::mem::size_of;
     use urid::URID;
 

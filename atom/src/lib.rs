@@ -15,6 +15,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_units::prelude::*;
 //! use urid::*;
+//! use lv2_atom::space::error::AtomError;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -29,19 +30,16 @@
 //! }
 //!
 //! /// Something like a plugin's run method.
-//! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
+//! fn run(ports: &mut MyPorts, urids: &MyURIDs) -> Result<(), AtomError> {
 //!     // Get the read handle to the sequence.
 //!     let input_sequence = ports.input
-//!         .read(urids.atom.sequence)
-//!         .unwrap()
-//!         .with_unit(urids.units.frame)
-//!         .unwrap();
+//!         .read(urids.atom.sequence)?
+//!         .with_unit(urids.units.frame)?;
 //!
 //!     // Get the write handle to the sequence.
-//!     let mut output_sequence = ports.output.init(urids.atom.sequence)
-//!         .unwrap()
-//!         .with_unit(urids.units.frame)
-//!         .unwrap();
+//!     let mut output_sequence = ports.output
+//!         .write(urids.atom.sequence)?
+//!         .with_unit(urids.units.frame)?;
 //!
 //!     // Iterate through all events in the input sequence.
 //!     // An event contains a timestamp and an atom.
@@ -49,18 +47,24 @@
 //!         // If the read atom is a 32-bit integer...
 //!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.new_event(timestamp, urids.atom.int).unwrap().set(*integer * 2).unwrap();
+//!             output_sequence.new_event(timestamp, urids.atom.int)?.set(*integer * 2)?;
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
-//!             output_sequence.forward(timestamp, atom).unwrap();
+//!             output_sequence.forward(timestamp, atom)?;
 //!         }
 //!     }
+//!
+//!     Ok(())
 //! }
 //! ```
 //!
 //! # Internals
 //!
 //! Internally, all atoms are powered by the structs in the [`space`](space/index.html) module. They safely abstract the reading and writing process and assure that no memory is improperly accessed or leaked and that alignments are upheld. If you simply want to use the atoms in this crate, you don't need to deal with. They are only interesting if you want to create your own atom types.
+
+#![warn(clippy::missing_errors_doc)]
+#![warn(clippy::missing_panics_doc)]
+
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
@@ -75,22 +79,37 @@ mod header;
 pub mod port;
 pub mod space;
 
+mod unidentified;
 pub(crate) mod util;
+pub use unidentified::UnidentifiedAtom;
 
 /// Prelude of `lv2_atom` for wildcard usage.
 pub mod prelude {
-    pub use atoms::chunk::Chunk;
-    pub use atoms::object::{Object, ObjectHeader, PropertyHeader};
-    pub use atoms::scalar::{AtomURID, Bool, Double, Float, Int, Long};
-    pub use atoms::sequence::Sequence;
-    pub use atoms::string::{Literal, LiteralInfo, String};
-    pub use atoms::tuple::Tuple;
-    pub use atoms::vector::Vector;
+    pub use atoms::{
+        chunk::Chunk,
+        object::{Object, ObjectHeader, PropertyHeader},
+        scalar::{AtomURID, Bool, Double, Float, Int, Long},
+        sequence::Sequence,
+        string::{Literal, LiteralInfo, String},
+        tuple::Tuple,
+        vector::Vector,
+    };
     pub use port::AtomPort;
-    pub use space::{AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceWriter};
 
     use crate::*;
     pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
+}
+
+/// A special prelude re-exporting all utilities to implement custom atom types.
+pub mod atom_prelude {
+    pub use crate::prelude::*;
+
+    pub use crate::space::{
+        error::{AlignmentError, AtomError, AtomReadError, AtomWriteError},
+        AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceCursor, SpaceWriter, SpaceWriterImpl,
+        Terminated, VecSpace,
+    };
+    pub use crate::{Atom, AtomHandle, AtomHeader, UnidentifiedAtom};
 }
 
 pub trait AtomHandle<'a> {
@@ -135,136 +154,7 @@ pub trait Atom: UriBound {
     /// The frame of the atom was already initialized, containing the URID.
     ///
     /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn init(
+    fn write(
         writer: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError>;
-}
-
-/// An atom of yet unknown type.
-///
-/// This is used by reading handles that have to return a reference to an atom, but can not check it's type. This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct UnidentifiedAtom {
-    header: AtomHeader,
-}
-
-impl UnidentifiedAtom {
-    /// Construct a new unidentified atom.
-    ///
-    /// # Safety
-    ///
-    /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
-    #[inline]
-    pub unsafe fn from_space(space: &AtomSpace) -> Result<&Self, AtomReadError> {
-        Ok(Self::from_header(space.read().next_value()?))
-    }
-
-    /// Construct a new unidentified atom.
-    ///
-    /// # Safety
-    ///
-    /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
-    #[inline]
-    pub unsafe fn from_space_mut(space: &mut AtomSpace) -> Result<&mut Self, AtomWriteError> {
-        let available = space.bytes_len();
-
-        Ok(Self::from_header_mut(
-            space
-                .assume_init_slice_mut()
-                .get_mut(0)
-                .ok_or(AtomWriteError::WritingOutOfBounds {
-                    available,
-                    requested: ::core::mem::size_of::<AtomHeader>(),
-                })?,
-        ))
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_header(header: &AtomHeader) -> &Self {
-        // SAFETY: UnidentifiedAtom is repr(C) and has AtomHeader as its only field, so transmuting between the two is safe.
-        &*(header as *const _ as *const _)
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_header_mut(header: &mut AtomHeader) -> &mut Self {
-        // SAFETY: UnidentifiedAtom is repr(C) and has AtomHeader as its only field, so transmuting between the two is safe.
-        &mut *(header as *mut _ as *mut _)
-    }
-
-    /// Try to read the atom.
-    ///
-    /// To identify the atom, its URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
-    pub fn read<A: Atom>(
-        &self,
-        urid: URID<A>,
-    ) -> Result<<A::ReadHandle as AtomHandle>::Handle, AtomReadError> {
-        self.header.check_urid(urid)?;
-
-        // SAFETY: the fact that this contains a valid instance of A is checked above.
-        unsafe { A::read(self.body()) }
-    }
-
-    #[inline]
-    pub fn header(&self) -> &AtomHeader {
-        &self.header
-    }
-
-    #[inline]
-    fn body_bytes(&self) -> &[u8] {
-        if self.header.size_of_body() == 0 {
-            &[]
-        } else {
-            // SAFETY: This type's constructor ensures the atom's body is valid
-            // The edge case of an empty body is also checked above.
-            let ptr = unsafe { (self as *const UnidentifiedAtom).add(1) };
-
-            // SAFETY: This type's constructor ensures the atom's body is valid
-            unsafe { ::core::slice::from_raw_parts(ptr.cast(), self.header.size_of_body()) }
-        }
-    }
-
-    #[inline]
-    fn body_bytes_mut(&mut self) -> &mut [u8] {
-        if self.header.size_of_body() == 0 {
-            &mut []
-        } else {
-            // SAFETY: This type's constructor ensures the atom's body is valid
-            // The edge case of an empty body is also checked above.
-            let ptr = unsafe { (self as *mut UnidentifiedAtom).add(1) };
-
-            // SAFETY: This type's constructor ensures the atom's body is valid
-            unsafe { ::core::slice::from_raw_parts_mut(ptr.cast(), self.header.size_of_body()) }
-        }
-    }
-
-    #[inline]
-    pub fn atom_space(&self) -> &AtomSpace {
-        let ptr = self as *const UnidentifiedAtom as *const u8;
-        let bytes = unsafe { ::core::slice::from_raw_parts(ptr, self.header.size_of_atom()) };
-
-        // SAFETY: the bytes are necessarily aligned, since they point to the aligned AtomHeader
-        unsafe { AtomSpace::from_bytes_unchecked(bytes) }
-    }
-
-    #[inline]
-    pub fn atom_space_mut(&mut self) -> &mut AtomSpace {
-        let ptr = self as *mut UnidentifiedAtom as *mut u8;
-        let bytes = unsafe { ::core::slice::from_raw_parts_mut(ptr, self.header.size_of_atom()) };
-
-        // SAFETY: the bytes are necessarily aligned, since they point to the aligned AtomHeader
-        unsafe { AtomSpace::from_bytes_mut_unchecked(bytes) }
-    }
-
-    #[inline]
-    pub fn body(&self) -> &AtomSpace {
-        // SAFETY: the bytes are necessarily aligned, since they are right after the aligned AtomHeader
-        unsafe { AtomSpace::from_bytes_unchecked(self.body_bytes()) }
-    }
-
-    #[inline]
-    pub fn body_mut(&mut self) -> &mut AtomSpace {
-        // SAFETY: the bytes are necessarily aligned, since they are right after the aligned AtomHeader
-        unsafe { AtomSpace::from_bytes_mut_unchecked(self.body_bytes_mut()) }
-    }
 }
