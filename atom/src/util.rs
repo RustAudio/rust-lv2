@@ -21,6 +21,11 @@ pub(crate) unsafe fn assume_init_slice<T>(slice: &[MaybeUninit<T>]) -> &[T] {
 }
 
 #[inline]
+pub(crate) unsafe fn assume_init_slice_mut<T>(slice: &mut [MaybeUninit<T>]) -> &mut [T] {
+    &mut *(slice as *mut _ as *mut [T])
+}
+
+#[inline]
 pub(crate) fn write_uninit<T>(uninit: &mut MaybeUninit<T>, value: T) -> &mut T {
     *uninit = MaybeUninit::new(value);
     // SAFETY: we just wrote the value, therefore it is initialized now

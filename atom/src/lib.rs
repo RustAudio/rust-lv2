@@ -157,12 +157,7 @@ impl UnidentifiedAtom {
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
     #[inline]
     pub unsafe fn from_space(space: &AtomSpace) -> Result<&Self, AtomReadError> {
-        Ok(Self::from_header(space.assume_init_value().ok_or_else(
-            || AtomReadError::ReadingOutOfBounds {
-                available: space.len(),
-                requested: ::core::mem::size_of::<AtomHeader>(),
-            },
-        )?))
+        Ok(Self::from_header(space.read().next_value()?))
     }
 
     /// Construct a new unidentified atom.
@@ -174,12 +169,15 @@ impl UnidentifiedAtom {
     pub unsafe fn from_space_mut(space: &mut AtomSpace) -> Result<&mut Self, AtomWriteError> {
         let available = space.len();
 
-        Ok(Self::from_header_mut(space.assume_init_value_mut().ok_or(
-            AtomWriteError::WritingOutOfBounds {
-                available,
-                requested: ::core::mem::size_of::<AtomHeader>(),
-            },
-        )?))
+        Ok(Self::from_header_mut(
+            space
+                .assume_init_slice_mut()
+                .get_mut(0)
+                .ok_or(AtomWriteError::WritingOutOfBounds {
+                    available,
+                    requested: ::core::mem::size_of::<AtomHeader>(),
+                })?,
+        ))
     }
 
     #[inline]

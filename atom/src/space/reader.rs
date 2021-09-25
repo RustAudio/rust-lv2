@@ -8,6 +8,19 @@ pub struct SpaceReader<'a> {
     space: &'a [u8],
 }
 
+#[inline]
+fn split_space<T: 'static>(
+    space: &AlignedSpace<T>,
+    bytes: usize,
+) -> Result<(&AlignedSpace<T>, &[u8]), AtomReadError> {
+    space
+        .split_at(bytes)
+        .ok_or(AtomReadError::ReadingOutOfBounds {
+            requested: bytes,
+            available: space.len(),
+        })
+}
+
 impl<'a> SpaceReader<'a> {
     #[inline]
     pub fn new(space: &'a [u8]) -> Self {
@@ -18,13 +31,14 @@ impl<'a> SpaceReader<'a> {
     fn next_uninit_value<T: 'static>(&mut self) -> Result<&'a MaybeUninit<T>, AtomReadError> {
         let space = AlignedSpace::align_from_bytes(self.space)?;
         let value_size = ::core::mem::size_of::<T>();
-        let (value, remaining) = space.split_at(value_size)?;
+        let (value, remaining) = split_space(space, value_size)?;
 
-        self.space = remaining.as_bytes();
+        self.space = remaining;
 
         // PANIC: We just split_at the right amount of bytes for a value of T, there should be enough space
         Ok(value
-            .as_uninit()
+            .as_uninit_slice()
+            .get(0)
             .expect("Not enough space for an uninit value"))
     }
 
@@ -36,9 +50,9 @@ impl<'a> SpaceReader<'a> {
         let space = AlignedSpace::align_from_bytes(self.space)?;
 
         let split_point = crate::util::value_index_to_byte_index::<T>(length);
-        let (data, remaining) = space.split_at(split_point)?;
+        let (data, remaining) = split_space(space, split_point)?;
 
-        self.space = remaining.as_bytes();
+        self.space = remaining;
 
         Ok(data.as_uninit_slice())
     }
@@ -89,15 +103,16 @@ impl<'a> SpaceReader<'a> {
     pub unsafe fn next_atom(&mut self) -> Result<&'a UnidentifiedAtom, AtomReadError> {
         let space = AlignedSpace::<AtomHeader>::align_from_bytes(&self.space)?;
         let header = space
-            .assume_init_value()
+            .assume_init_slice()
+            .get(0)
             .ok_or(AtomReadError::ReadingOutOfBounds {
                 available: space.len(),
                 requested: core::mem::size_of::<AtomHeader>(),
             })?;
-        let (_, rest) = space.split_at(header.size_of_atom())?;
+        let (_, rest) = split_space(space, header.size_of_atom())?;
 
         let atom = UnidentifiedAtom::from_header(header);
-        self.space = rest.as_bytes();
+        self.space = rest;
 
         Ok(atom)
     }
