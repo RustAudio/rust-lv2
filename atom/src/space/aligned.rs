@@ -30,7 +30,7 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 /// ```
 /// # use lv2_atom::space::AlignedSpace;
 /// let values = &[42u64, 69];
-/// // Transmuting to a slice of bytes
+/// // Transmuting to a slice of bytes. Imagine those bytes are sent over an external buffer
 /// let bytes: &[u8] = unsafe { values.align_to().1 };
 ///
 /// // ---
@@ -56,7 +56,7 @@ impl<T: 'static> AlignedSpace<T> {
     ///
     /// # Errors
     ///
-    /// This method returns [`None`](Option::None) if the given slice's offset is not aligned
+    /// This method returns an [`AlignmentError`] if the given slice is not aligned
     /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
     ///
     /// # Example
@@ -87,7 +87,7 @@ impl<T: 'static> AlignedSpace<T> {
     ///
     /// # Errors
     ///
-    /// This method returns [`None`](Option::None) if the given slice's offset is not aligned
+    /// This method returns an [`AlignmentError`] if the given slice is not aligned
     /// (i.e. if it's pointer's value is not a multiple of `align_of::<T>()` bytes).
     ///
     /// # Example
@@ -114,11 +114,11 @@ impl<T: 'static> AlignedSpace<T> {
         Ok(unsafe { AlignedSpace::from_bytes_mut_unchecked(data) })
     }
 
-    /// Creates a new space from a slice of bytes, slicing some bytes off its start it if necessary.
+    /// Creates a new space from a slice of bytes, slicing some bytes off its start if necessary.
     ///
     /// # Errors
     ///
-    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
+    /// This method returns an [`AlignmentError`] if the given slice's is too small to contain
     /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
     ///
     /// # Example
@@ -156,12 +156,12 @@ impl<T: 'static> AlignedSpace<T> {
         Ok(unsafe { AlignedSpace::from_bytes_unchecked(data) })
     }
 
-    /// Creates a new mutable space from a mutable slice of bytes, slicing some bytes off its start it if necessary.
+    /// Creates a new mutable space from a mutable slice of bytes, slicing some bytes off its start if necessary.
     ///
     /// # Errors
     ///
-    /// This method returns [`None`](Option::None) if the given slice's is too small to contain
-    /// aligned bytes (e.g. if it's smaller than `align_of::<T>()` bytes).
+    /// This method returns an [`AlignmentError`] if the given slice's is too small to contain
+    /// aligned bytes (e.g. if no byte in it is properly aligned).
     ///
     /// # Example
     ///
@@ -210,8 +210,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// ```
     #[inline]
     pub fn empty<'a>() -> &'a AlignedSpace<T> {
-        // SAFETY: empty slices are always aligned
-        unsafe { Self::from_bytes_unchecked(&[]) }
+        Self::from_slice(&[])
     }
 
     /// Creates an empty mutable space.
@@ -225,8 +224,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// ```
     #[inline]
     pub fn empty_mut<'a>() -> &'a mut AlignedSpace<T> {
-        // SAFETY: empty slices are always aligned
-        unsafe { Self::from_bytes_mut_unchecked(&mut []) }
+        Self::from_slice_mut(&mut [])
     }
 
     /// Creates a new space from a slice of bytes, without checking for padding correctness.
@@ -303,34 +301,30 @@ impl<T: 'static> AlignedSpace<T> {
 
     /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
     #[inline]
-    fn split_bytes_at(&self, mid: usize) -> Result<(&Self, &[u8]), AlignmentError> {
+    pub fn split_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
         if mid > self.data.len() {
-            return Err(AlignmentError(
-                AlignmentErrorInner::NotEnoughSpaceToRealign {
-                    ptr: self.data.as_ptr(),
-                    available_size: self.data.len(),
-                    required_padding: mid + 1,
-                    type_id: TypeData::of::<T>(),
-                },
-            ));
+            return None;
         }
 
         let (start, end) = self.data.split_at(mid);
         // SAFETY: Because this data was the start of an existing Space, it was aligned already.
         let start = unsafe { Self::from_bytes_unchecked(start) };
 
-        Ok((start, end))
+        Some((start, end))
     }
 
-    /// Try to retrieve space.
-    ///
-    /// This method calls [`split_raw`](#method.split_raw) and wraps the returned slice in an atom space. The second space is the space after the first one.
+    /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
     #[inline]
-    pub fn split_at(&self, mid: usize) -> Result<(&Self, &Self), AlignmentError> {
-        let (start, end) = self.split_bytes_at(mid)?;
-        let end = Self::align_from_bytes(end).unwrap_or_else(|_| AlignedSpace::empty());
+    pub fn split_at_mut(&mut self, mid: usize) -> Option<(&mut Self, &mut [u8])> {
+        if mid > self.data.len() {
+            return None;
+        }
 
-        Ok((start, end))
+        let (start, end) = self.data.split_at_mut(mid);
+        // SAFETY: Because this data was the start of an existing Space, it was aligned already.
+        let start = unsafe { Self::from_bytes_mut_unchecked(start) };
+
+        Some((start, end))
     }
 
     /// Return the internal slice of the space.
@@ -363,58 +357,6 @@ impl<T: 'static> AlignedSpace<T> {
         self.data.is_empty()
     }
 
-    #[inline]
-    pub(crate) unsafe fn assume_init_value(&self) -> Option<&T> {
-        // SAFETY: The caller has to ensure this slice actually points to initialized memory.
-        Some(crate::util::assume_init_ref(self.as_uninit()?))
-    }
-
-    #[inline]
-    pub(crate) unsafe fn assume_init_value_mut(&mut self) -> Option<&mut T> {
-        // SAFETY: The caller has to ensure this slice actually points to initialized memory.
-        Some(crate::util::assume_init_mut(self.as_uninit_mut()?))
-    }
-
-    /// Gets a `T`-aligned pointer to the contents.
-    ///split_for_type
-    /// This methods returns [`None`](Option::None) if the space is not large enough for a value of type `T`.
-    #[inline]
-    pub fn as_uninit(&self) -> Option<&MaybeUninit<T>> {
-        if self.data.len() < size_of::<T>() {
-            return None;
-        }
-
-        // SAFETY: We just checked that the space was actually big enough, and the alignment is guaranteed by this type.
-        Some(unsafe { self.as_uninit_unchecked() })
-    }
-
-    /// Gets a `T`-aligned pointer to the contents.
-    ///split_for_type
-    /// This methods returns [`None`](Option::None) if the space is not large enough for a value of type `T`.
-    #[inline]
-    fn as_uninit_mut(&mut self) -> Option<&mut MaybeUninit<T>> {
-        if self.data.len() < size_of::<T>() {
-            return None;
-        }
-
-        // SAFETY: We just checked that the space was actually big enough, and the alignment is guaranteed by this type.
-        Some(unsafe { self.as_uninit_mut_unchecked() })
-    }
-
-    /// Gets a `T`-aligned pointer to the contents, but without checking that there actually is enough space to hold `T`.
-    #[inline]
-    unsafe fn as_uninit_unchecked(&self) -> &MaybeUninit<T> {
-        // SAFETY: The caller has to ensure that the space is actually big enough.
-        &*(self.data.as_ptr() as *const MaybeUninit<T>)
-    }
-
-    /// Gets a `T`-aligned mutable pointer to the contents, but without checking that there actually is enough space to hold `T`.
-    #[inline]
-    pub(crate) unsafe fn as_uninit_mut_unchecked(&mut self) -> &mut MaybeUninit<T> {
-        // SAFETY: The caller has to ensure that the space is actually big enough.
-        &mut *(self.data.as_ptr() as *mut MaybeUninit<T>)
-    }
-
     /// Gets the contents as a slice of potentially uninitialized `T`s.
     ///
     /// The resulting slice contains as many values as can fit in the original space.
@@ -430,11 +372,6 @@ impl<T: 'static> AlignedSpace<T> {
         }
     }
 
-    #[inline]
-    pub unsafe fn assume_init_slice(&self) -> &[T] {
-        crate::util::assume_init_slice(self.as_uninit_slice())
-    }
-
     /// Gets the contents as a slice of potentially uninitialized `T`s.
     ///
     /// The resulting slice contains as many values as can fit in the original space.
@@ -448,6 +385,16 @@ impl<T: 'static> AlignedSpace<T> {
                 self.data.len() / size_of::<T>(),
             )
         }
+    }
+
+    #[inline]
+    pub unsafe fn assume_init_slice(&self) -> &[T] {
+        crate::util::assume_init_slice(self.as_uninit_slice())
+    }
+
+    #[inline]
+    pub unsafe fn assume_init_slice_mut(&mut self) -> &mut [T] {
+        crate::util::assume_init_slice_mut(self.as_uninit_slice_mut())
     }
 
     #[inline]

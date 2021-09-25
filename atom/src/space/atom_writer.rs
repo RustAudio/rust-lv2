@@ -1,5 +1,7 @@
 use crate::header::AtomHeader;
-use crate::space::{error::AtomWriteError, AlignedSpace, SpaceAllocator, SpaceAllocatorImpl};
+use crate::space::{
+    error::AtomWriteError, AlignedSpace, AtomSpace, SpaceAllocator, SpaceAllocatorImpl,
+};
 use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
@@ -27,20 +29,21 @@ impl<'a> AtomSpaceWriter<'a> {
             .allocated_bytes()
             .get(self.atom_header_index..)
             .unwrap();
-        let space = AlignedSpace::from_bytes(previous).unwrap();
+        let space = AtomSpace::from_bytes(previous).unwrap();
 
-        unsafe { *space.assume_init_value().unwrap() }
+        unsafe { space.assume_init_slice()[0] }
     }
 
+    #[inline]
     fn atom_header_mut(&mut self) -> &mut AtomHeader {
         let previous = self
             .parent
             .allocated_bytes_mut()
             .get_mut(self.atom_header_index..)
             .unwrap();
-        let space = AlignedSpace::<AtomHeader>::from_bytes_mut(previous).unwrap();
+        let space = AtomSpace::from_bytes_mut(previous).unwrap();
 
-        unsafe { space.assume_init_value_mut().unwrap() }
+        unsafe { &mut space.assume_init_slice_mut()[0] }
     }
 
     /// Create a new framed space with the given parent and type URID.
@@ -68,13 +71,14 @@ impl<'a> SpaceAllocatorImpl for AtomSpaceWriter<'a> {
     ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
         let (previous, current) = self.parent.allocate_and_split(size)?;
 
-        let space = AlignedSpace::<AtomHeader>::from_bytes_mut(
+        let space = AtomSpace::from_bytes_mut(
             // PANIC: We rely on the parent allocator not shifting bytes around
             &mut previous[self.atom_header_index..],
         )?;
 
-        // SAFETY: We rely on the parent allocator not shifting bytes around
-        let header = unsafe { space.assume_init_value_mut() }
+        // SAFETY: We already initialized that part of the buffer
+        let header = unsafe { space.assume_init_slice_mut() }
+            .get_mut(0)
             .expect("Unable to locate Atom Header. This is a bug due to an incorrect Allocator implementation");
 
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated

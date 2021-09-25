@@ -68,7 +68,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     fn allocate_value<T: 'static>(&mut self) -> Result<&mut MaybeUninit<T>, AtomWriteError> {
         let space = self.allocate_aligned(size_of::<MaybeUninit<T>>())?;
         // SAFETY: We used size_of, so we are sure that the allocated space is exactly big enough for T.
-        Ok(unsafe { space.as_uninit_mut_unchecked() })
+        Ok(unsafe { space.as_uninit_slice_mut().get_unchecked_mut(0) })
     }
 
     #[inline]
@@ -117,7 +117,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     {
         let space = self.allocate_aligned(size_of_val(&value))?;
         // SAFETY: We used size_of_val, so we are sure that the allocated space is exactly big enough for T.
-        let space = unsafe { space.as_uninit_mut_unchecked() };
+        let space = unsafe { space.as_uninit_slice_mut().get_unchecked_mut(0) };
 
         Ok(crate::util::write_uninit(space, value))
     }
