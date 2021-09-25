@@ -10,8 +10,7 @@ use core::mem::{size_of, size_of_val, MaybeUninit};
 ///
 /// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
 ///
-// TODO: Find proper name
-pub trait SpaceAllocatorImpl {
+pub trait SpaceWriterImpl {
     ///
     /// # Safety
     ///
@@ -33,8 +32,7 @@ pub trait SpaceAllocatorImpl {
     fn remaining_bytes_mut(&mut self) -> &mut [u8];
 }
 
-// TODO: Find proper name
-pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
+pub trait SpaceWriter: SpaceWriterImpl + Sized {
     /// Try to allocate memory on the internal data slice.
     ///
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
@@ -94,7 +92,7 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
         &mut self,
         atom: &UnidentifiedAtom,
     ) -> Result<&mut UnidentifiedAtom, AtomWriteError> {
-        let resulting_space = self.allocate_aligned(atom.atom_space().len())?;
+        let resulting_space = self.allocate_aligned(atom.atom_space().bytes_len())?;
         resulting_space
             .as_bytes_mut()
             .copy_from_slice(atom.atom_space().as_bytes());
@@ -143,13 +141,13 @@ pub trait SpaceAllocator: SpaceAllocatorImpl + Sized {
     }
 }
 
-impl<H: SpaceAllocatorImpl> SpaceAllocator for H {}
+impl<H> SpaceWriter for H where H: SpaceWriterImpl {}
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::{Int, SpaceAllocator};
+    use crate::prelude::{Int, SpaceWriter};
     use crate::space::cursor::SpaceCursor;
-    use crate::space::{SpaceAllocatorImpl, VecSpace};
+    use crate::space::{SpaceWriterImpl, VecSpace};
     use crate::AtomHeader;
     use urid::URID;
 

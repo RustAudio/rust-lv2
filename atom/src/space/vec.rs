@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
 use crate::space::error::AtomWriteError;
-use crate::space::{AlignedSpace, SpaceAllocatorImpl};
+use crate::space::{AlignedSpace, SpaceWriterImpl};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -80,7 +80,7 @@ pub struct VecSpaceCursor<'vec, T> {
     allocated_length: usize,
 }
 
-impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(
         &mut self,
         size: usize,
@@ -143,7 +143,7 @@ impl<'vec, T: Copy + 'static> SpaceAllocatorImpl for VecSpaceCursor<'vec, T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::space::{SpaceAllocator, VecSpace};
+    use crate::space::{SpaceWriter, VecSpace};
 
     #[test]
     pub fn test_lifetimes() {

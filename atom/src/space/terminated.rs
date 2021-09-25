@@ -1,13 +1,38 @@
 use crate::space::error::AtomWriteError;
-use crate::space::SpaceAllocatorImpl;
+use crate::space::SpaceWriterImpl;
 
-pub struct Terminated<W: SpaceAllocatorImpl> {
+/// An helper space writer, that wraps an existing writer and makes sure all writes are
+/// terminated with a given terminator byte.
+///
+/// Further writes overwrite the added terminator byte, and append a new one.
+///
+/// This helper is useful to implement Atom writer for null-terminated strings, for instance.
+///
+/// # Example
+///
+/// ```
+/// use lv2_atom::space::{SpaceCursor, SpaceWriter, SpaceWriterImpl, Terminated};
+/// let mut buffer = [0; 20];
+/// // Our underlying allocator
+/// let cursor = SpaceCursor::new(&mut buffer);
+///
+/// let mut writer = Terminated::new(cursor, 0x42); // Alternative: use cursor.terminated().
+///
+/// writer.write_bytes(b"Hello, world!").unwrap();
+/// assert_eq!(writer.allocated_bytes(), b"Hello, world!\x42");
+///
+/// writer.write_bytes(b" Boop!").unwrap();
+/// assert_eq!(&buffer, b"Hello, world! Boop!\x42");
+///
+/// ```
+pub struct Terminated<W: SpaceWriterImpl> {
     inner: W,
     terminator: u8,
     wrote_terminator_byte: bool,
 }
 
-impl<W: SpaceAllocatorImpl> Terminated<W> {
+impl<W: SpaceWriterImpl> Terminated<W> {
+    /// Creates a new Terminated writer, from an inner writer and a given terminator byte.
     pub fn new(inner: W, terminator: u8) -> Self {
         Self {
             inner,
@@ -15,9 +40,14 @@ impl<W: SpaceAllocatorImpl> Terminated<W> {
             wrote_terminator_byte: false,
         }
     }
+
+    /// Unwraps the `Terminated` helper and returns the underlying allocator.
+    pub fn into_inner(self) -> W {
+        self.inner
+    }
 }
 
-impl<W: SpaceAllocatorImpl> SpaceAllocatorImpl for Terminated<W> {
+impl<W: SpaceWriterImpl> SpaceWriterImpl for Terminated<W> {
     fn allocate_and_split(
         &mut self,
         size: usize,

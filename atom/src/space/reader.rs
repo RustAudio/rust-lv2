@@ -17,7 +17,7 @@ fn split_space<T: 'static>(
         .split_at(bytes)
         .ok_or(AtomReadError::ReadingOutOfBounds {
             requested: bytes,
-            available: space.len(),
+            available: space.bytes_len(),
         })
 }
 
@@ -106,7 +106,7 @@ impl<'a> SpaceReader<'a> {
             .assume_init_slice()
             .get(0)
             .ok_or(AtomReadError::ReadingOutOfBounds {
-                available: space.len(),
+                available: space.bytes_len(),
                 requested: core::mem::size_of::<AtomHeader>(),
             })?;
         let (_, rest) = split_space(space, header.size_of_atom())?;

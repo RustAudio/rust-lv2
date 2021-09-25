@@ -112,7 +112,7 @@ mod tests {
         {
             let data =
                 unsafe { Chunk::read(raw_space.read().next_atom().unwrap().body()) }.unwrap();
-            assert_eq!(data.len(), SLICE_LENGTH);
+            assert_eq!(data.bytes_len(), SLICE_LENGTH);
 
             for (i, value) in data.as_bytes().iter().enumerate() {
                 assert_eq!(*value as usize, i);

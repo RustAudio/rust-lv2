@@ -58,7 +58,7 @@ pub trait ScalarAtom: UriBound {
     fn write_scalar(
         frame: AtomSpaceWriter,
     ) -> Result<ScalarWriter<Self::InternalType>, AtomWriteError> {
-        Ok(ScalarWriter(frame.re_borrow(), PhantomData))
+        Ok(ScalarWriter(frame, PhantomData))
     }
 }
 
