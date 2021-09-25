@@ -20,7 +20,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let input: &[i32] = ports.input.read(urids.vector).unwrap().of_type(urids.int).unwrap();
-//!     let mut output: VectorWriter<Int> = ports.output.init(urids.vector).unwrap().of_type(urids.int).unwrap();
+//!     let mut output: VectorWriter<Int> = ports.output.write(urids.vector).unwrap().of_type(urids.int).unwrap();
 //!     output.append(input).unwrap();
 //! }
 //! ```
@@ -128,7 +128,7 @@ impl Atom for Vector {
         Ok(VectorReader { reader, header })
     }
 
-    fn init(
+    fn write(
         writer: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(VectorTypeWriter { writer })

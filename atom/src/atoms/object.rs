@@ -7,6 +7,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
 //! use urid::*;
+//! use lv2_atom::atoms::object::ObjectHeader;
 //!
 //! #[uri("urn:object-class")]
 //! struct ObjectClass;
@@ -52,7 +53,7 @@
 //!     }
 //!
 //!     // Initialize the object.
-//!     let mut object_writer = ports.output.init(urids.atom.object)
+//!     let mut object_writer = ports.output.write(urids.atom.object)
 //!         .unwrap()
 //!         .write_header(
 //!             ObjectHeader {
@@ -145,7 +146,7 @@ impl Atom for Object {
         Ok((header, reader))
     }
 
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(ObjectHeaderWriter { frame })
@@ -175,10 +176,10 @@ impl Atom for Blank {
     }
 
     #[inline]
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
-        Object::init(frame)
+        Object::write(frame)
     }
 }
 
@@ -312,6 +313,7 @@ impl Property {
 
 #[cfg(test)]
 mod tests {
+    use crate::atoms::object::{ObjectHeader, PropertyHeader};
     use crate::prelude::*;
     use crate::space::*;
     use crate::AtomHeader;
@@ -345,7 +347,7 @@ mod tests {
         {
             let mut cursor = SpaceCursor::new(raw_space.as_bytes_mut());
             let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
-            let mut writer = Object::init(frame)
+            let mut writer = Object::write(frame)
                 .unwrap()
                 .write_header(ObjectHeader {
                     id: None,

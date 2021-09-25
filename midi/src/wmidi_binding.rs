@@ -3,9 +3,7 @@
 //! This is the high-level and recommended module for MIDI message handling. The contained atom type can convert the raw MIDI message to rustic enumerations and back.
 //!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
-use atom::prelude::*;
-use atom::space::{error::*, Terminated};
-use atom::AtomHandle;
+use atom::atom_prelude::*;
 use std::convert::TryFrom;
 use urid::*;
 
@@ -65,7 +63,7 @@ impl Atom for WMidiEvent {
     }
 
     #[inline]
-    fn init(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomWriteError> {
+    fn write(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomWriteError> {
         Ok(WMidiEventWriter { writer })
     }
 }
@@ -96,7 +94,7 @@ impl Atom for SystemExclusiveWMidiEvent {
         WMidiEvent::read(space)
     }
 
-    fn init(mut frame: AtomSpaceWriter) -> Result<Writer, AtomWriteError> {
+    fn write(mut frame: AtomSpaceWriter) -> Result<Writer, AtomWriteError> {
         frame.write_value(0xf0u8)?;
 
         Ok(Writer {

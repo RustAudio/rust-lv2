@@ -36,7 +36,7 @@
 //!
 //!     // Get the write handle to the sequence.
 //!     // You have to provide the unit of the time stamps.
-//!     let mut output_sequence: SequenceWriter<Frame> = ports.output.init(urids.atom.sequence)
+//!     let mut output_sequence: SequenceWriter<Frame> = ports.output.write(urids.atom.sequence)
 //!         .unwrap()
 //!         .with_unit(urids.units.frame)
 //!         .unwrap();
@@ -159,7 +159,7 @@ impl Atom for Sequence {
         Ok(SequenceHeaderReader { reader, header })
     }
 
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(SequenceHeaderWriter { writer: frame })

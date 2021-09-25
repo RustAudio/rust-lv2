@@ -18,7 +18,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let input: &str = ports.input.read(urids.string).unwrap();
-//!     let mut writer: StringWriter = ports.output.init(urids.string).unwrap();
+//!     let mut writer: StringWriter = ports.output.write(urids.string).unwrap();
 //!     writer.append(input).unwrap();
 //! }
 //! ```
@@ -127,7 +127,7 @@ impl Atom for Literal {
     }
 
     #[inline]
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(LiteralInfoWriter { writer: frame })
@@ -177,7 +177,7 @@ impl Atom for String {
         Ok(str)
     }
 
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(StringWriter {

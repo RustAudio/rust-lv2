@@ -53,7 +53,7 @@ impl Plugin for AtomPlugin {
 
         let mut sequence_writer = ports
             .output
-            .init(self.urids.atom.sequence)
+            .write(self.urids.atom.sequence)
             .unwrap()
             .with_unit(self.urids.units.frame)
             .unwrap();

@@ -16,7 +16,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let input: TupleIterator = ports.input.read(urids.tuple).unwrap();
-//!     let mut output: TupleWriter = ports.output.init(urids.tuple).unwrap();
+//!     let mut output: TupleWriter = ports.output.write(urids.tuple).unwrap();
 //!     for atom in input {
 //!         if let Ok(integer) = atom.read(urids.int) {
 //!             output.init(urids.int).unwrap().set(*integer * 2).unwrap();
@@ -66,7 +66,7 @@ impl Atom for Tuple {
         })
     }
 
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(TupleWriter { frame })

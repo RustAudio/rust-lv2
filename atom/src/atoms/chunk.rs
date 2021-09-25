@@ -7,6 +7,8 @@
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
 //!
+//! use lv2_atom::space::{AtomSpace, AtomSpaceWriter, SpaceWriter};
+//!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
 //!     input: InputPort<AtomPort>,
@@ -15,9 +17,10 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let in_chunk: &AtomSpace = ports.input.read(urids.chunk).unwrap();
-//!     let mut out_chunk: AtomSpaceWriter = ports.output.init(urids.chunk).unwrap();
+//!     let mut out_chunk: AtomSpaceWriter = ports.output.write(urids.chunk).unwrap();
 //!
-//!     out_chunk.write_bytes(in_chunk.as_bytes()).unwrap();
+//!     let bytes = in_chunk.as_bytes();
+//!     out_chunk.write_bytes(bytes).unwrap();
 //! }
 //! ```
 //!
@@ -61,7 +64,7 @@ impl Atom for Chunk {
     }
 
     #[inline]
-    fn init(
+    fn write(
         frame: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(frame)
