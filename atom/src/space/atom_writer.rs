@@ -1,5 +1,7 @@
 use crate::header::AtomHeader;
-use crate::space::{error::AtomWriteError, AtomSpace, SpaceWriter, SpaceWriterImpl};
+use crate::space::{
+    error::AtomWriteError, AtomSpace, SpaceWriter, SpaceWriterImpl, SpaceWriterSplitAllocation,
+};
 use urid::URID;
 
 /// A `MutSpace` that tracks the amount of allocated space in an atom header.
@@ -55,12 +57,12 @@ impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
     fn allocate_and_split(
         &mut self,
         size: usize,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
-        let (previous, current) = self.parent.allocate_and_split(size)?;
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError> {
+        let alloc = self.parent.allocate_and_split(size)?;
 
         let space = AtomSpace::from_bytes_mut(
             // PANIC: We rely on the parent allocator not shifting bytes around
-            &mut previous[self.atom_header_index..],
+            &mut alloc.previous[self.atom_header_index..],
         )?;
 
         // SAFETY: We already initialized that part of the buffer
@@ -71,7 +73,7 @@ impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
         // SAFETY: We just allocated `size` additional bytes for the body, we know they are properly allocated
         unsafe { header.set_size_of_body(header.size_of_body() + size) };
 
-        Ok((previous, current))
+        Ok(alloc)
     }
 
     #[inline]

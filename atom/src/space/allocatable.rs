@@ -6,30 +6,76 @@ use crate::space::error::AtomWriteError;
 use crate::space::terminated::Terminated;
 use core::mem::{size_of, size_of_val, MaybeUninit};
 
-/// A smart pointer that writes atom data to an internal slice.
+/// The result of a [`SpaceWriter`](SpaceWriterImpl) allocation.
 ///
-/// The methods provided by this trait are fairly minimalistic. More convenient writing methods are implemented for `dyn MutSpace`.
+/// This structure allows simultaneous access to both the newly allocated slice, and all previously
+/// allocated bytes.
+pub struct SpaceWriterSplitAllocation<'a> {
+    pub previous: &'a mut [u8],
+    pub allocated: &'a mut [u8],
+}
+
+/// An object-safe trait to allocate bytes from a contiguous buffer to write Atom data into.
 ///
+/// Implementors of this trait act like a sort of cursor, continuously
+///
+/// This trait is very bare-bones, in order to be trait-object-safe. As an user, you probably want
+/// to use the [`SpaceWriter`] trait, a child trait with many more utilities available, and with a
+/// blanket implementation for all types that implement [`SpaceWriterImpl`].
+///
+/// The term "allocate" is used very loosely here, as even a simple cursor over a mutable byte
+/// buffer (e.g. [`SpaceCursor`](crate::space::SpaceCursor)) can "allocate" bytes using this trait.
+///
+/// This trait is useful to abstract over many types of buffers, including ones than can track the
+/// amount of allocated bytes into an atom header (i.e. [`AtomSpaceWriter`]).
 pub trait SpaceWriterImpl {
+    /// Allocates a new byte buffer of the requested size. A mutable reference to both the newly
+    /// allocated slice and all previously allocated bytes is returned (through [`SpaceWriterSplitAllocation`]),
+    /// allowing some implementations to update previous data as well.
     ///
-    /// # Safety
+    /// # Errors
     ///
-    /// While implementations MUST return a
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate..
     ///
     /// # Panics
     ///
-    /// This function may panic if the given size, added to the length of the total allocated bytes
-    /// overflow an [`usize`].
-    fn allocate_and_split(&mut self, size: usize)
-        -> Result<(&mut [u8], &mut [u8]), AtomWriteError>;
+    /// This function may panic if the given size, added to the length of the total allocated bytes,
+    /// overflows an [`usize`].
+    fn allocate_and_split(
+        &mut self,
+        size: usize,
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError>;
 
+    /// Rewinds the writer by a given amount of bytes, allowing to overwrite previously allocated
+    /// bytes.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if `byte_count` is greater than the amount of all already
+    /// allocated bytes.
+    ///
+    /// # Safety
+    ///
+    /// Rewinding may allow other atoms to be overwritten, and thus completely invalidate their
+    /// contents and internal structure. The caller is responsible to ensure that the exposed data
+    /// is safe to be overwritten.
     unsafe fn rewind(&mut self, byte_count: usize) -> Result<(), AtomWriteError>;
 
+    /// Returns a slice pointing to the previously allocated bytes.
     fn allocated_bytes(&self) -> &[u8];
-    fn allocated_bytes_mut(&mut self) -> &mut [u8];
 
+    /// Returns a mutable slice pointing to the previously allocated bytes.
+    ///
+    /// # Safety
+    ///
+    /// Accessing allocated bytes may allow other atoms to be overwritten, and thus completely
+    /// invalidate their contents and internal structure. The caller is responsible to ensure that
+    /// the exposed data is safe to be overwritten.
+    unsafe fn allocated_bytes_mut(&mut self) -> &mut [u8];
+
+    /// Returns a slice pointing to the remaining, uninitialized bytes.
     fn remaining_bytes(&self) -> &[u8];
-    fn remaining_bytes_mut(&mut self) -> &mut [u8];
 }
 
 pub trait SpaceWriter: SpaceWriterImpl + Sized {
@@ -38,9 +84,9 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
     /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
     #[inline]
     fn allocate(&mut self, size: usize) -> Result<&mut [u8], AtomWriteError> {
-        let (_previous, allocated) = self.allocate_and_split(size)?;
-        assert_eq!(allocated.len(), size);
-        Ok(allocated)
+        let allocated = self.allocate_and_split(size)?;
+        assert_eq!(allocated.allocated.len(), size);
+        Ok(allocated.allocated)
     }
 
     #[inline]

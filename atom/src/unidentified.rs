@@ -14,6 +14,9 @@ pub struct UnidentifiedAtom {
 impl UnidentifiedAtom {
     /// Construct a new unidentified atom.
     ///
+    /// # Errors
+    /// This methods returns a read error if the given space is too small to accommodate the atom header.
+    ///
     /// # Safety
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.

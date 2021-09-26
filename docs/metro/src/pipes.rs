@@ -43,7 +43,7 @@ where
 fn test_sampler() {
     let sample: Vec<u8> = vec![1, 2, 3, 4];
     let mut sampler = Sampler::new(sample);
-    for i in (0..32).chain(32..0) {
+    for i in (0..32).chain((0..32).rev()) {
         assert_eq!((i % 4 + 1) as u8, sampler.next(i));
     }
 }

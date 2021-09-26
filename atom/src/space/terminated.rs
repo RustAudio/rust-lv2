@@ -1,5 +1,5 @@
 use crate::space::error::AtomWriteError;
-use crate::space::SpaceWriterImpl;
+use crate::space::{SpaceWriterImpl, SpaceWriterSplitAllocation};
 
 /// An helper space writer, that wraps an existing writer and makes sure all writes are
 /// terminated with a given terminator byte.
@@ -51,17 +51,23 @@ impl<W: SpaceWriterImpl> SpaceWriterImpl for Terminated<W> {
     fn allocate_and_split(
         &mut self,
         size: usize,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError> {
         if self.wrote_terminator_byte {
             // SAFETY: We checked we already wrote the terminator byte, and it is safe to be overwritten
             unsafe { self.inner.rewind(1)? };
         }
 
-        let (allocated, allocatable) = self.inner.allocate_and_split(size + 1)?;
-        allocatable[size] = self.terminator;
+        let SpaceWriterSplitAllocation {
+            previous,
+            allocated,
+        } = self.inner.allocate_and_split(size + 1)?;
+        allocated[size] = self.terminator;
         self.wrote_terminator_byte = true;
 
-        Ok((allocated, &mut allocatable[..size]))
+        Ok(SpaceWriterSplitAllocation {
+            previous,
+            allocated: &mut allocated[..size],
+        })
     }
 
     #[inline]
@@ -75,17 +81,12 @@ impl<W: SpaceWriterImpl> SpaceWriterImpl for Terminated<W> {
     }
 
     #[inline]
-    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+    unsafe fn allocated_bytes_mut(&mut self) -> &mut [u8] {
         self.inner.allocated_bytes_mut()
     }
 
     #[inline]
     fn remaining_bytes(&self) -> &[u8] {
         self.inner.remaining_bytes()
-    }
-
-    #[inline]
-    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        self.inner.remaining_bytes_mut()
     }
 }

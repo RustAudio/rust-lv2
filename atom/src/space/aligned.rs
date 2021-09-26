@@ -394,21 +394,35 @@ impl<T: 'static> AlignedSpace<T> {
         }
     }
 
+    /// Gets the contents as a slice of `T`s that are all assumed to be initialized.
+    ///
+    /// # Safety
+    ///
+    /// Calling this when the space's content is not yet fully initialized causes undefined behavior.
+    /// It is up to the caller to guarantee that the underlying buffer really is in an initialized state.
     #[inline]
     pub unsafe fn assume_init_slice(&self) -> &[T] {
         crate::util::assume_init_slice(self.as_uninit_slice())
     }
 
+    /// Gets the contents as a mutable slice of `T`s that are all assumed to be initialized.
+    ///
+    /// # Safety
+    ///
+    /// Calling this when the space's content is not yet fully initialized causes undefined behavior.
+    /// It is up to the caller to guarantee that the underlying buffer really is in an initialized state.
     #[inline]
     pub unsafe fn assume_init_slice_mut(&mut self) -> &mut [T] {
         crate::util::assume_init_slice_mut(self.as_uninit_slice_mut())
     }
 
+    /// An helper method that creates a new [`SpaceReader`] from the space's contents.
     #[inline]
     pub fn read(&self) -> SpaceReader {
         SpaceReader::new(self.as_bytes())
     }
 
+    /// An helper method that creates a new [`Cursor`] from the mutable space's contents.
     #[inline]
     pub fn write(&mut self) -> SpaceCursor {
         SpaceCursor::new(self.as_bytes_mut())
@@ -560,13 +574,13 @@ mod tests {
         );
     }
 
-    fn test_mut_space<'a>(mut space: impl SpaceWriter) {
+    fn test_mut_space(mut space: impl SpaceWriter) {
         let map = HashURIDMapper::new();
         let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
         let mut test_data: Vec<u8> = vec![0; 128];
-        for i in 0..test_data.len() {
-            test_data[i] = i as u8;
+        for (i, data) in test_data.iter_mut().enumerate() {
+            *data = i as u8;
         }
 
         let written_data = space.write_bytes(test_data.as_slice()).unwrap();
@@ -595,8 +609,8 @@ mod tests {
             let mut atom_frame = AtomSpaceWriter::write_new(space, urids.chunk).unwrap();
 
             let mut test_data: Vec<u8> = vec![0; 24];
-            for i in 0..test_data.len() {
-                test_data[i] = i as u8;
+            for (i, data) in test_data.iter_mut().enumerate() {
+                *data = i as u8;
             }
 
             let written_data = atom_frame.write_bytes(&test_data).unwrap();

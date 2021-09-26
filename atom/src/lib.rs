@@ -136,12 +136,14 @@ pub trait Atom: UriBound {
     ///
     /// The passed space exactly covers the body of the atom, excluding the header.
     ///
-    /// If the atom is malformed, this method returns `None`.
+    /// # Errors
+    /// This method may return any error if the atom in the given space is somehow malformed, or if
+    /// there wasn't enough space to read it properly.
     ///
     /// # Safety
     ///
-    /// The caller needs to ensure that the given [`Space`] contains a valid instance of this atom,
-    /// or the resulting `ReadHandle` will be completely invalid, and Undefined Behavior will happen.
+    /// The caller needs to ensure that the given [`AtomSpace`] contains a valid instance of this atom,
+    /// or the resulting `ReadHandle` will be completely invalid, triggering Undefined Behavior.
     unsafe fn read(
         body: &AtomSpace,
     ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError>;
@@ -153,7 +155,11 @@ pub trait Atom: UriBound {
     ///
     /// The frame of the atom was already initialized, containing the URID.
     ///
-    /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
+    /// # Errors
+    ///
+    /// This method may return an error if the buffer is out of space, or if any invalid state is
+    /// observed. In those cases, the written data may be incomplete and should be discarded.
+    ///
     fn write(
         writer: AtomSpaceWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError>;
