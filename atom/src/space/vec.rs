@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
 use crate::space::error::AtomWriteError;
-use crate::space::{AlignedSpace, SpaceWriterImpl};
+use crate::space::{AlignedSpace, SpaceWriterImpl, SpaceWriterSplitAllocation};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -46,7 +46,7 @@ impl<T: Copy + 'static> VecSpace<T> {
     fn reallocate_bytes_mut(
         &mut self,
         byte_range: Range<usize>,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError> {
         let byte_len = self.inner.len() * std::mem::size_of::<T>();
         let max = byte_range.start.max(byte_range.end);
 
@@ -60,10 +60,10 @@ impl<T: Copy + 'static> VecSpace<T> {
         // PANIC: We just resized to the accommodate the maximum value in the given range.
         let (previous, allocatable) = bytes.split_at_mut(byte_range.start);
 
-        Ok((
+        Ok(SpaceWriterSplitAllocation {
             previous,
-            &mut allocatable[..byte_range.end - byte_range.start],
-        ))
+            allocated: &mut allocatable[..byte_range.end - byte_range.start],
+        })
     }
 
     #[inline]
@@ -84,7 +84,7 @@ impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(
         &mut self,
         size: usize,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError> {
         let end = self
             .allocated_length
             .checked_add(size)

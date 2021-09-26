@@ -1,5 +1,5 @@
 use crate::space::error::AtomWriteError;
-use crate::space::SpaceWriterImpl;
+use crate::space::{SpaceWriterImpl, SpaceWriterSplitAllocation};
 
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
@@ -20,12 +20,12 @@ impl<'a> SpaceWriterImpl for SpaceCursor<'a> {
     fn allocate_and_split(
         &mut self,
         size: usize,
-    ) -> Result<(&mut [u8], &mut [u8]), AtomWriteError> {
+    ) -> Result<SpaceWriterSplitAllocation, AtomWriteError> {
         let allocated_length = self.allocated_length;
         let data_len = self.data.len();
-        let (allocated, allocatable) = self.data.split_at_mut(allocated_length);
+        let (previous, allocatable) = self.data.split_at_mut(allocated_length);
 
-        let new_allocation = allocatable
+        let allocated = allocatable
             .get_mut(..size)
             .ok_or(AtomWriteError::OutOfSpace {
                 used: allocated_length,
@@ -38,7 +38,10 @@ impl<'a> SpaceWriterImpl for SpaceCursor<'a> {
             .checked_add(size)
             .expect("Allocation overflow");
 
-        Ok((allocated, new_allocation))
+        Ok(SpaceWriterSplitAllocation {
+            previous,
+            allocated,
+        })
     }
 
     #[inline]
