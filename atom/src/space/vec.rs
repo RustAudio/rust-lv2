@@ -120,7 +120,8 @@ impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
     }
 
     #[inline]
-    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+    #[allow(unsafe_code)]
+    unsafe fn allocated_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.vec.as_bytes_mut()[..self.allocated_length]
     }
 
@@ -130,14 +131,6 @@ impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
             .as_bytes()
             .get(self.allocated_length..)
             .unwrap_or(&[])
-    }
-
-    #[inline]
-    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        self.vec
-            .as_bytes_mut()
-            .get_mut(self.allocated_length..)
-            .unwrap_or(&mut [])
     }
 }
 

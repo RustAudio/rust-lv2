@@ -241,7 +241,7 @@ mod tests {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
             let mut writer = space
-                .init_atom(urids.atom.literal)
+                .write_atom(urids.atom.literal)
                 .unwrap()
                 .write_info(LiteralInfo::Language(urids.german.into_general()))
                 .unwrap();
@@ -302,7 +302,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
 
-            let mut writer = space.init_atom(urids.string).unwrap();
+            let mut writer = space.write_atom(urids.string).unwrap();
             writer.append(SAMPLE0).unwrap();
             writer.append(SAMPLE1).unwrap();
         }

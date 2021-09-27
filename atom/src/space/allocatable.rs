@@ -36,7 +36,7 @@ pub trait SpaceWriterImpl {
     /// # Errors
     ///
     /// This method may return an error if the writer ran out of space in its internal buffer, and
-    /// is unable to reallocate..
+    /// is unable to reallocate the buffer.
     ///
     /// # Panics
     ///
@@ -79,9 +79,12 @@ pub trait SpaceWriterImpl {
 }
 
 pub trait SpaceWriter: SpaceWriterImpl + Sized {
-    /// Try to allocate memory on the internal data slice.
+    /// Allocates and returns a new mutable byte buffer of the requested size, in bytes.
     ///
-    /// After the memory has been allocated, the `MutSpace` can not allocate it again. The next allocated slice is directly behind it.
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer.
     #[inline]
     fn allocate(&mut self, size: usize) -> Result<&mut [u8], AtomWriteError> {
         let allocated = self.allocate_and_split(size)?;
@@ -89,14 +92,16 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(allocated.allocated)
     }
 
-    #[inline]
-    fn allocate_padding_for<T: 'static>(&mut self) -> Result<(), AtomWriteError> {
-        let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
-        self.allocate(required_padding)?;
-
-        Ok(())
-    }
-
+    /// Allocates and returns a new aligned mutable byte buffer of the requested size, in bytes.
+    ///
+    /// The resulting buffer is guaranteed to be aligned to the alignment requirements of the given
+    /// type `T`, meaning a value of type `T` can be safely written into it directly.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
     fn allocate_aligned<T: 'static>(
         &mut self,
@@ -108,6 +113,17 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(AlignedSpace::align_from_bytes_mut(raw)?)
     }
 
+    /// Allocates room in the byte buffer for a single value of type `T`.
+    ///
+    /// A mutable reference to the allocated buffer is returned as a
+    /// [`MaybeUninit`](core::mem::maybe_uninit::MaybeUninit),
+    /// as the resulting memory buffer is most likely going to be uninitialized.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
     fn allocate_value<T: 'static>(&mut self) -> Result<&mut MaybeUninit<T>, AtomWriteError> {
         let space = self.allocate_aligned(size_of::<MaybeUninit<T>>())?;
@@ -115,6 +131,17 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(unsafe { space.as_uninit_slice_mut().get_unchecked_mut(0) })
     }
 
+    /// Allocates room in the byte buffer for multiple values of type `T`.
+    ///
+    /// A mutable reference to the allocated buffer is returned as a slice of
+    /// [`MaybeUninit`](core::mem::maybe_uninit::MaybeUninit)s,
+    /// as the resulting memory buffer is most likely going to be uninitialized.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
     fn allocate_values<T: 'static>(
         &mut self,
@@ -124,8 +151,18 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(space.as_uninit_slice_mut())
     }
 
+    /// Writes an atom of a given type into the buffer.
+    ///
+    /// This method only initializes the new Atom header with the given type, tracking its
+    /// size, and returns the [writer](crate::Atom::write) associated to the given Atom type.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
-    fn init_atom<A: Atom>(
+    fn write_atom<A: Atom>(
         &mut self,
         atom_type: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
@@ -133,8 +170,18 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         A::write(space)
     }
 
+    /// Copies an already fully initialized atom of any type into the buffer.
+    ///
+    /// This method will simply copy the atom's bytes into the buffer, unchanged, and unaware of its
+    /// internal representation.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
-    fn forward_atom(
+    fn copy_atom(
         &mut self,
         atom: &UnidentifiedAtom,
     ) -> Result<&mut UnidentifiedAtom, AtomWriteError> {
@@ -181,6 +228,11 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(unsafe { &mut *(space as *mut [_] as *mut [T]) })
     }
 
+    /// Makes all further operations from this writer write a given terminator byte.
+    ///
+    /// This method is a simple helper for [`Terminated::new`](Terminated::new)
+    ///
+    /// See the documentation for [`Terminated`](Terminated) for more information.
     #[inline]
     fn terminated(self, terminator: u8) -> Terminated<Self> {
         Terminated::new(self, terminator)
@@ -210,7 +262,7 @@ mod tests {
         assert_eq!(31, cursor.remaining_bytes().len());
 
         {
-            cursor.init_atom(INT_URID).unwrap().set(69).unwrap();
+            cursor.write_atom(INT_URID).unwrap().set(69).unwrap();
             assert_eq!(8, cursor.remaining_bytes().len());
         }
 

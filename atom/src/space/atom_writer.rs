@@ -25,9 +25,7 @@ impl<'a> AtomSpaceWriter<'a> {
 
     #[inline]
     fn atom_header_mut(&mut self) -> &mut AtomHeader {
-        let previous = self
-            .parent
-            .allocated_bytes_mut()
+        let previous = unsafe { self.parent.allocated_bytes_mut() }
             .get_mut(self.atom_header_index..)
             .unwrap();
         let space = AtomSpace::from_bytes_mut(previous).unwrap();
@@ -93,18 +91,13 @@ impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
     }
 
     #[inline]
-    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+    unsafe fn allocated_bytes_mut(&mut self) -> &mut [u8] {
         self.parent.allocated_bytes_mut()
     }
 
     #[inline]
     fn remaining_bytes(&self) -> &[u8] {
         self.parent.remaining_bytes()
-    }
-
-    #[inline]
-    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        self.parent.remaining_bytes_mut()
     }
 }
 

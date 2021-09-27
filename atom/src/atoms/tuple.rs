@@ -100,7 +100,7 @@ impl<'a> TupleWriter<'a> {
         &mut self,
         child_urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
-        self.frame.init_atom(child_urid)
+        self.frame.write_atom(child_urid)
     }
 }
 
@@ -123,7 +123,7 @@ mod tests {
         // writing
         {
             let mut cursor = raw_space.write();
-            let mut writer = cursor.init_atom(urids.tuple).unwrap();
+            let mut writer = cursor.write_atom(urids.tuple).unwrap();
             {
                 let mut vector_writer = writer
                     .init(urids.vector)

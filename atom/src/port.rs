@@ -94,7 +94,7 @@ impl<'a> PortWriter<'a> {
         let space: &'write mut SpaceCursor<'write> = unsafe {
             ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
         };
-        space.init_atom(urid)
+        space.write_atom(urid)
     }
 }
 
@@ -143,7 +143,7 @@ mod tests {
         // writing a chunk to indicate the size of the space.
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.chunk).unwrap();
+            let mut writer = space.write_atom(urids.chunk).unwrap();
             writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 

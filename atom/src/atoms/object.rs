@@ -219,7 +219,7 @@ impl<'a> ObjectWriter<'a> {
         child_urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        self.frame.init_atom(child_urid)
+        self.frame.write_atom(child_urid)
     }
 
     /// Initialize a new property.
@@ -233,7 +233,7 @@ impl<'a> ObjectWriter<'a> {
         child_urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
-        self.frame.init_atom(child_urid)
+        self.frame.write_atom(child_urid)
     }
 }
 

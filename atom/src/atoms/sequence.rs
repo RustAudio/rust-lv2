@@ -222,7 +222,7 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         Ok(())
     }
 
-    /// Initialize an event.       
+    /// Initialize an event.
     ///
     /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
     pub fn new_event<A: Atom>(
@@ -231,7 +231,7 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         self.write_time_stamp(time_stamp)?;
-        self.writer.init_atom(urid)
+        self.writer.write_atom(urid)
     }
 
     /// Forward an unidentified atom to the sequence.
@@ -246,7 +246,7 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     ) -> Result<(), AtomWriteError> {
         self.write_time_stamp(time_stamp)?;
 
-        self.writer.forward_atom(atom)?;
+        self.writer.copy_atom(atom)?;
 
         Ok(())
     }
@@ -277,7 +277,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space
-                .init_atom(urids.atom.sequence)
+                .write_atom(urids.atom.sequence)
                 .unwrap()
                 .with_unit(urids.units.frame)
                 .unwrap();
