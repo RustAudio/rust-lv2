@@ -89,7 +89,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urids.chunk).unwrap();
+            let mut writer = space.write_atom(urids.chunk).unwrap();
             let data = writer.allocate(SLICE_LENGTH).unwrap();
 
             for (i, value) in data.into_iter().enumerate() {

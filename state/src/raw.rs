@@ -123,7 +123,7 @@ impl<'a> StatePropertyWriter<'a> {
     ) -> Result<<A::WriteHandle as AtomHandle<'a>>::Handle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            self.cursor.init_atom(urid).map_err(|_| StateErr::Unknown)
+            self.cursor.write_atom(urid).map_err(|_| StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }

@@ -193,7 +193,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             let mut writer = space
-                .init_atom(urids.vector)
+                .write_atom(urids.vector)
                 .unwrap()
                 .of_type(urids.int)
                 .unwrap();

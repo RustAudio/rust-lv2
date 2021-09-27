@@ -149,7 +149,7 @@ mod tests {
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
             space
-                .init_atom(urid)
+                .write_atom(urid)
                 .unwrap()
                 .set(reference_message.clone())
                 .unwrap();
@@ -188,7 +188,7 @@ mod tests {
         // writing
         {
             let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
-            let mut writer = space.init_atom(urid).unwrap();
+            let mut writer = space.write_atom(urid).unwrap();
             writer.write_raw(&[1, 2, 3, 4]).unwrap();
         }
 

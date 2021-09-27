@@ -64,17 +64,12 @@ impl<'a> SpaceWriterImpl for SpaceCursor<'a> {
     }
 
     #[inline]
-    fn allocated_bytes_mut(&mut self) -> &mut [u8] {
+    unsafe fn allocated_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.data[..self.allocated_length]
     }
 
     #[inline]
     fn remaining_bytes(&self) -> &[u8] {
         &self.data[self.allocated_length..]
-    }
-
-    #[inline]
-    fn remaining_bytes_mut(&mut self) -> &mut [u8] {
-        &mut self.data[self.allocated_length..]
     }
 }
