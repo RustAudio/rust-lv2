@@ -79,7 +79,7 @@ impl<'a> StoreHandle<'a> {
 
     /// Commit one specific property.
     ///
-    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occured while storing the property.
+    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occurred while storing the property.
     pub fn commit<K: ?Sized>(&mut self, key: URID<K>) -> Option<Result<(), StateErr>> {
         let key = key.into_general();
         let space = self.properties.remove(&key)?;
@@ -117,7 +117,7 @@ impl<'a> StatePropertyWriter<'a> {
     /// Initialize the property.
     ///
     /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `Err(StateErr::Unknown)` is returned.
-    pub fn init<'read, A: Atom>(
+    pub fn init<A: Atom>(
         &'a mut self,
         urid: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle<'a>>::Handle, StateErr> {
@@ -278,12 +278,13 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(
-            1.0,
-            *retrieve_handle
+            1.0f32.to_ne_bytes(),
+            retrieve_handle
                 .retrieve(URID::new(2).unwrap())
                 .unwrap()
                 .read(urids.float)
                 .unwrap()
+                .to_ne_bytes()
         );
         assert_eq!(
             [1, 2, 3, 4],
@@ -315,9 +316,10 @@ mod tests {
                 }
                 2 => {
                     assert_eq!(urids.float, *type_);
-                    assert_eq!(1.0, unsafe {
-                        *(value.as_slice() as *const _ as *const f32)
-                    });
+                    assert_eq!(
+                        1.0f32.to_ne_bytes(),
+                        unsafe { *(value.as_slice() as *const _ as *const f32) }.to_ne_bytes()
+                    );
                 }
                 3 => {
                     assert_eq!(urids.vector, *type_);

@@ -92,7 +92,7 @@ mod tests {
             let mut writer = space.write_atom(urids.chunk).unwrap();
             let data = writer.allocate(SLICE_LENGTH).unwrap();
 
-            for (i, value) in data.into_iter().enumerate() {
+            for (i, value) in data.iter_mut().enumerate() {
                 *value = i as u8;
             }
 

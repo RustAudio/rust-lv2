@@ -229,8 +229,8 @@ mod tests {
             let children: &[i32] = atom.read(urids.vector).unwrap().of_type(urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
-            for i in 0..children.len() - 1 {
-                assert_eq!(children[i], 42);
+            for i in children {
+                assert_eq!(*i, 42);
             }
             assert_eq!(children[children.len() - 1], 1);
         }
