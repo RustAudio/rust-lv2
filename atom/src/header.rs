@@ -66,7 +66,7 @@ impl AtomHeader {
         if other == self.urid() {
             Ok(())
         } else {
-            Err(AtomReadError::InvalidAtomUrid {
+            Err(AtomReadError::AtomUridMismatch {
                 expected_uri: A::uri(),
                 expected_urid: other.into_general(),
                 found_urid: self.urid(),

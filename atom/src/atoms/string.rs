@@ -51,13 +51,11 @@ pub enum LiteralInfo {
 }
 
 impl LiteralInfo {
-    fn try_from_raw(header: &sys::LV2_Atom_Literal_Body) -> Option<Self> {
-        if header.lang != 0 && header.datatype == 0 {
-            Some(LiteralInfo::Language(URID::new(header.lang)?))
-        } else if header.lang == 0 && header.datatype != 0 {
-            Some(LiteralInfo::Datatype(URID::new(header.datatype)?))
-        } else {
-            None
+    fn try_from_raw(header: &sys::LV2_Atom_Literal_Body) -> Result<Self, &'static str> {
+        match (URID::new(header.lang), URID::new(header.datatype)) {
+            (Some(urid), _) => Ok(LiteralInfo::Language(urid)),
+            (None, Some(urid)) => Ok(LiteralInfo::Datatype(urid)),
+            (None, None) => Err("Invalid Literal header: neither lang or datatype URIDs are set"),
         }
     }
 
@@ -112,8 +110,9 @@ impl Atom for Literal {
         let header: &sys::LV2_Atom_Literal_Body = reader.next_value()?;
 
         let info =
-            LiteralInfo::try_from_raw(header).ok_or_else(|| AtomReadError::InvalidAtomValue {
+            LiteralInfo::try_from_raw(header).map_err(|err| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: err,
             })?;
 
         let data = reader.remaining_bytes();
@@ -122,6 +121,7 @@ impl Atom for Literal {
             .or_else(|error| std::str::from_utf8(&data[0..error.valid_up_to()]))
             .map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "Literal contents are invalid UTF-8",
             })
             .map(|string| (info, string))
     }
@@ -165,6 +165,7 @@ impl Atom for String {
         let c_str = CStr::from_bytes_with_nul(body.as_bytes()).map_err(|_| {
             AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "String value is not null-terminated",
             }
         })?;
 
@@ -172,6 +173,7 @@ impl Atom for String {
             .to_str()
             .map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "String contents are invalid UTF-8",
             })?;
 
         Ok(str)

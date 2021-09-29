@@ -1,12 +1,14 @@
 use crate::space::error::AtomWriteError;
 use crate::space::{SpaceAllocator, SpaceWriterSplitAllocation};
 
+/// A lightweight [`SpaceWriter`] that writes into a mutable byte buffer using a cursor.
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
     allocated_length: usize,
 }
 
 impl<'a> SpaceCursor<'a> {
+    /// Create a new [`SpaceCursor`] from a given mutable byte buffer.
     pub fn new(data: &'a mut [u8]) -> Self {
         Self {
             data,

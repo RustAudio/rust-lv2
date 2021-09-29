@@ -210,8 +210,10 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomWriteError> {
         if let Some(last_stamp) = self.last_stamp {
             if last_stamp > time_stamp {
-                return Err(AtomWriteError::WritingIllegalState {
+                return Err(AtomWriteError::IllegalOperation {
                     writing_type_uri: Sequence::uri(),
+                    error_message:
+                        "Attempted to write event with an earlier timestamp than the previous event",
                 });
             }
         }

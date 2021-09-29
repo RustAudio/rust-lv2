@@ -58,6 +58,7 @@ impl Atom for WMidiEvent {
         wmidi::MidiMessage::try_from(space.as_bytes()).map_err(|_| {
             AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "Invalid MIDI message",
             }
         })
     }

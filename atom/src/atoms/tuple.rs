@@ -159,7 +159,7 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int);
 
-            let vector_items = unsafe { reader.next_slice::<i32>(9) }.unwrap();
+            let vector_items = unsafe { reader.next_values::<i32>(9) }.unwrap();
             assert_eq!(vector_items, &[17; 9]);
 
             let int: &sys::LV2_Atom_Int = unsafe { reader.next_value() }.unwrap();

@@ -270,12 +270,9 @@ impl<T: ?Sized> Hash for URID<T> {
 impl std::convert::TryFrom<u32> for URID {
     type Error = ();
 
+    #[inline]
     fn try_from(value: u32) -> Result<URID, ()> {
-        if value == 0 {
-            Err(())
-        } else {
-            Ok(unsafe { URID::new_unchecked(value) })
-        }
+        URID::new(value).ok_or(())
     }
 }
 
