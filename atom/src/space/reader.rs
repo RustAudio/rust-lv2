@@ -68,7 +68,7 @@ impl<'a> SpaceReader<'a> {
     }
 
     #[inline]
-    pub unsafe fn next_slice<U: 'static>(
+    pub unsafe fn next_values<U: 'static>(
         &mut self,
         length: usize,
     ) -> Result<&'a [U], AtomReadError> {

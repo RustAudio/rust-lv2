@@ -138,6 +138,7 @@ impl Atom for Object {
             id: URID::try_from(header.id).ok(),
             otype: URID::try_from(header.otype).map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "Invalid object type URID: 0",
             })?,
         };
 
@@ -283,6 +284,7 @@ impl Property {
         let header = PropertyHeader {
             key: URID::try_from(header.key).map_err(|_| AtomReadError::InvalidAtomValue {
                 reading_type_uri: Self::uri(),
+                error_message: "Invalid object property key URID: 0",
             })?,
             context: URID::try_from(header.context).ok(),
         };

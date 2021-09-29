@@ -36,7 +36,7 @@ use crate::*;
 use std::marker::PhantomData;
 use std::mem::{size_of, MaybeUninit};
 
-/// An atom containg an array of scalar atom bodies.
+/// An atom containing an homogenous array of scalar atom bodies.
 ///
 /// [See also the module documentation.](index.html)
 pub struct Vector;
@@ -69,11 +69,12 @@ impl<'a> VectorReader<'a> {
     ) -> Result<&'a [C::InternalType], AtomReadError> {
         if self.header.child_type != atom_type {
             let found_urid =
-                URID::new(self.header.child_size).ok_or(AtomReadError::InvalidAtomValue {
+                URID::new(self.header.child_type).ok_or(AtomReadError::InvalidAtomValue {
                     reading_type_uri: Vector::uri(),
+                    error_message: "Invalid child type URID (0)",
                 })?;
 
-            return Err(AtomReadError::InvalidAtomUrid {
+            return Err(AtomReadError::AtomUridMismatch {
                 found_urid,
                 expected_urid: atom_type.into_general(),
                 expected_uri: C::uri(),
@@ -83,6 +84,7 @@ impl<'a> VectorReader<'a> {
         if self.header.child_size as usize != size_of::<C::InternalType>() {
             return Err(AtomReadError::InvalidAtomValue {
                 reading_type_uri: Vector::uri(),
+                error_message: "child_size value does not match actual size of type",
             });
         }
 
@@ -214,7 +216,7 @@ mod tests {
             assert_eq!(vector.body.child_size as usize, size_of::<i32>());
             assert_eq!(vector.body.child_type, urids.int.get());
 
-            let children = unsafe { reader.next_slice::<i32>(CHILD_COUNT) }.unwrap();
+            let children = unsafe { reader.next_values::<i32>(CHILD_COUNT) }.unwrap();
             for value in &children[0..children.len() - 1] {
                 assert_eq!(*value, 42);
             }
