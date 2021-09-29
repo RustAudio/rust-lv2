@@ -1,5 +1,5 @@
 use crate::space::error::AtomReadError;
-use crate::{Atom, UnidentifiedAtom};
+use crate::Atom;
 use urid::URID;
 
 #[repr(C, align(8))]
@@ -32,16 +32,6 @@ impl AtomHeader {
     }
 
     #[inline]
-    pub unsafe fn assume_full_atom(&self) -> &UnidentifiedAtom {
-        UnidentifiedAtom::from_header(self)
-    }
-
-    #[inline]
-    pub unsafe fn assume_full_atom_mut(&mut self) -> &mut UnidentifiedAtom {
-        UnidentifiedAtom::from_header_mut(self)
-    }
-
-    #[inline]
     pub(crate) unsafe fn set_size_of_body(&mut self, size: usize) {
         self.inner.size = size as u32;
     }
@@ -58,7 +48,7 @@ impl AtomHeader {
 
     #[inline]
     pub fn urid(self) -> URID {
-        URID::new(self.inner.type_).unwrap()
+        URID::new(self.inner.type_).expect("Invalid header URID type.")
     }
 
     #[inline]

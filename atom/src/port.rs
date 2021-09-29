@@ -112,13 +112,13 @@ impl PortType for AtomPort {
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
         let header = AtomHeader::from_raw(pointer.cast().as_ref());
-        PortReader::new(header.assume_full_atom())
+        PortReader::new(UnidentifiedAtom::from_header(header))
     }
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
         let header = AtomHeader::from_raw_mut(pointer.cast().as_mut());
-        PortWriter::new(header.assume_full_atom_mut().body_mut())
+        PortWriter::new(UnidentifiedAtom::from_header_mut(header).body_mut())
     }
 }
 

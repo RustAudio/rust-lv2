@@ -452,7 +452,7 @@ fn check_alignment<T: 'static>(data: &[u8]) -> Result<(), AlignmentError> {
 mod tests {
     use crate::space::error::{AlignmentError, AlignmentErrorInner, TypeData};
     use crate::space::*;
-    use crate::AtomHeader;
+    use crate::{AtomHeader, UnidentifiedAtom};
     use std::mem::{size_of, size_of_val};
     use urid::*;
 
@@ -593,9 +593,7 @@ mod tests {
         let written_atom_addr = written_atom as *mut _ as *mut _;
 
         let created_space = unsafe {
-            AtomHeader::from_raw(written_atom)
-                .assume_full_atom()
-                .atom_space()
+            UnidentifiedAtom::from_header(AtomHeader::from_raw(written_atom)).atom_space()
         };
 
         assert!(::core::ptr::eq(

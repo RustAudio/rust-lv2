@@ -99,7 +99,7 @@ impl<'a> SpaceReader<'a> {
 
     #[inline]
     pub unsafe fn next_atom(&mut self) -> Result<&'a UnidentifiedAtom, AtomReadError> {
-        let space = AlignedSpace::<AtomHeader>::align_from_bytes(&self.space)?;
+        let space = AlignedSpace::<AtomHeader>::align_from_bytes(self.space)?;
         let header = space
             .assume_init_slice()
             .get(0)

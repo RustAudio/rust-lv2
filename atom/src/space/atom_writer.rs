@@ -30,20 +30,15 @@ pub struct AtomWriter<'a> {
 
 impl<'a> AtomWriter<'a> {
     /// Retrieves a copy of the header this writer is currently tracking.
-    ///
-    /// # Panics
-    ///
-    /// This method may panic if it cannot locate the atom header it is currently tracking. Such
-    /// an error can only happen in the event of an invalid [`SpaceAllocator`] implementation,
-    /// however.
     #[inline]
     pub fn atom_header(&self) -> AtomHeader {
         let previous = self
             .parent
             .allocated_bytes()
             .get(self.atom_header_index..)
-            .unwrap();
-        let space = AtomSpace::from_bytes(previous).unwrap();
+            .expect("Unable to locate atom header");
+
+        let space = AtomSpace::from_bytes(previous).expect("Atom header location is unaligned");
 
         unsafe { space.assume_init_slice()[0] }
     }

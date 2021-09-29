@@ -9,6 +9,22 @@ pub struct VecSpace<T> {
     inner: Vec<MaybeUninit<T>>,
 }
 
+impl<T: Copy + 'static> Default for VecSpace<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: Copy + 'static> Clone for VecSpace<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
 impl<T: Copy + 'static> VecSpace<T> {
     #[inline]
     pub fn new() -> Self {

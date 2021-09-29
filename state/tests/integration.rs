@@ -101,7 +101,7 @@ fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
         .unwrap()
     };
 
-    assert_eq!(42.0, plugin.internal);
+    assert_eq!(42.0f32.to_ne_bytes(), plugin.internal.to_ne_bytes());
     assert_eq!(0, plugin.audio.len());
 
     plugin
@@ -120,14 +120,12 @@ fn test_save_n_restore() {
             .unwrap();
         (extension.save.unwrap(), extension.restore.unwrap())
     };
-    assert!(store_fn == StateDescriptor::<Stateful>::extern_save);
-    assert!(restore_fn == StateDescriptor::<Stateful>::extern_restore);
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
     first_plugin.run(&mut (), &mut (), 32);
 
-    assert_eq!(17.0, first_plugin.internal);
+    assert_eq!(17.0f32.to_ne_bytes(), first_plugin.internal.to_ne_bytes());
     assert_eq!(32, first_plugin.audio.len());
 
     unsafe {
@@ -152,6 +150,6 @@ fn test_save_n_restore() {
         )
     };
 
-    assert_eq!(17.0, second_plugin.internal);
+    assert_eq!(17.0f32.to_ne_bytes(), second_plugin.internal.to_ne_bytes());
     assert_eq!(32, second_plugin.audio.len());
 }

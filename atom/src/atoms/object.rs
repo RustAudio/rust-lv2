@@ -213,7 +213,7 @@ impl<'a> ObjectWriter<'a> {
     /// Initialize a new property with a context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
-    pub fn init_with_context<'read, K: ?Sized, T: ?Sized, A: Atom>(
+    pub fn init_with_context<K: ?Sized, T: ?Sized, A: Atom>(
         &mut self,
         key: URID<K>,
         context: URID<T>,
