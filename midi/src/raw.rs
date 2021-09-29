@@ -24,7 +24,7 @@ impl<'a> AtomHandle<'a> for MidiEventReadHandle {
 pub struct MidiEventWriteHandle;
 
 impl<'a> AtomHandle<'a> for MidiEventWriteHandle {
-    type Handle = AtomSpaceWriter<'a>;
+    type Handle = AtomWriter<'a>;
 }
 
 impl Atom for MidiEvent {
@@ -35,7 +35,7 @@ impl Atom for MidiEvent {
         Ok(body.as_bytes())
     }
 
-    fn write(frame: AtomSpaceWriter) -> Result<AtomSpaceWriter, AtomWriteError> {
+    fn write(frame: AtomWriter) -> Result<AtomWriter, AtomWriteError> {
         Ok(frame)
     }
 }

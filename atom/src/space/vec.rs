@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
 use crate::space::error::AtomWriteError;
-use crate::space::{AlignedSpace, SpaceWriterImpl, SpaceWriterSplitAllocation};
+use crate::space::{AlignedSpace, SpaceAllocator, SpaceWriterSplitAllocation};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
@@ -80,7 +80,7 @@ pub struct VecSpaceCursor<'vec, T> {
     allocated_length: usize,
 }
 
-impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceAllocator for VecSpaceCursor<'vec, T> {
     fn allocate_and_split(
         &mut self,
         size: usize,
@@ -137,6 +137,7 @@ impl<'vec, T: Copy + 'static> SpaceWriterImpl for VecSpaceCursor<'vec, T> {
 #[cfg(test)]
 mod tests {
     use crate::space::{SpaceWriter, VecSpace};
+    use crate::AtomHeader;
 
     #[test]
     pub fn test_lifetimes() {
@@ -150,5 +151,23 @@ mod tests {
 
         let _other_cursor = buffer.cursor();
         let _other_cursor2 = buffer.cursor();
+    }
+
+    #[test]
+    pub fn test_alignment() {
+        fn aligned_vec<T: Copy + 'static>() {
+            let space = VecSpace::<T>::new_with_capacity(4);
+            assert_eq!(
+                space.as_bytes().as_ptr() as usize % ::core::mem::align_of::<T>(),
+                0
+            );
+        }
+
+        // Testing with some random types with different alignments
+        aligned_vec::<u8>();
+        aligned_vec::<u16>();
+        aligned_vec::<u32>();
+        aligned_vec::<u64>();
+        aligned_vec::<AtomHeader>();
     }
 }

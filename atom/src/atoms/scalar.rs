@@ -55,14 +55,12 @@ pub trait ScalarAtom: UriBound {
     ///
     /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
     #[inline]
-    fn write_scalar(
-        frame: AtomSpaceWriter,
-    ) -> Result<ScalarWriter<Self::InternalType>, AtomWriteError> {
+    fn write_scalar(frame: AtomWriter) -> Result<ScalarWriter<Self::InternalType>, AtomWriteError> {
         Ok(ScalarWriter(frame, PhantomData))
     }
 }
 
-pub struct ScalarWriter<'a, T: Copy + 'static>(AtomSpaceWriter<'a>, PhantomData<T>);
+pub struct ScalarWriter<'a, T: Copy + 'static>(AtomWriter<'a>, PhantomData<T>);
 
 impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
     #[inline]
@@ -101,7 +99,7 @@ impl<A: ScalarAtom> Atom for A {
     }
 
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         <A as ScalarAtom>::write_scalar(frame)
     }

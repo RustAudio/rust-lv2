@@ -1,5 +1,5 @@
 use crate::space::error::AtomWriteError;
-use crate::space::{SpaceWriterImpl, SpaceWriterSplitAllocation};
+use crate::space::{SpaceAllocator, SpaceWriterSplitAllocation};
 
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
@@ -15,7 +15,7 @@ impl<'a> SpaceCursor<'a> {
     }
 }
 
-impl<'a> SpaceWriterImpl for SpaceCursor<'a> {
+impl<'a> SpaceAllocator for SpaceCursor<'a> {
     #[inline]
     fn allocate_and_split(
         &mut self,

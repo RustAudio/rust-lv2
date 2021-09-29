@@ -1,16 +1,41 @@
 use crate::header::AtomHeader;
 use crate::space::{
-    error::AtomWriteError, AtomSpace, SpaceWriter, SpaceWriterImpl, SpaceWriterSplitAllocation,
+    error::AtomWriteError, AtomSpace, SpaceAllocator, SpaceWriter, SpaceWriterSplitAllocation,
 };
 use urid::URID;
 
-/// A `MutSpace` that tracks the amount of allocated space in an atom header.
-pub struct AtomSpaceWriter<'a> {
+/// A [`SpaceWriter`] that tracks the amount of allocated space in an atom header.
+///
+/// This allows for writing dynamic, variable-size atoms without having to track their size manually.
+///
+/// # Example
+///
+/// ```
+/// use lv2_atom::atom_prelude::*;
+/// use urid::URID;
+///
+/// let mut buf = vec![0; 64];
+/// let mut cursor = SpaceCursor::new(&mut buf);
+///
+/// let mut writer = AtomWriter::write_new(&mut cursor, URID::new(42).unwrap()).unwrap();
+///
+/// let message = b"Hello, world!";
+/// writer.write_bytes(message).unwrap();
+/// assert_eq!(writer.atom_header().size_of_body(), message.len());
+/// ```
+pub struct AtomWriter<'a> {
     atom_header_index: usize,
-    parent: &'a mut (dyn SpaceWriterImpl),
+    parent: &'a mut (dyn SpaceAllocator),
 }
 
-impl<'a> AtomSpaceWriter<'a> {
+impl<'a> AtomWriter<'a> {
+    /// Retrieves a copy of the header this writer is currently tracking.
+    ///
+    /// # Panics
+    ///
+    /// This method may panic if it cannot locate the atom header it is currently tracking. Such
+    /// an error can only happen in the event of an invalid [`SpaceAllocator`] implementation,
+    /// however.
     #[inline]
     pub fn atom_header(&self) -> AtomHeader {
         let previous = self
@@ -33,7 +58,14 @@ impl<'a> AtomSpaceWriter<'a> {
         unsafe { &mut space.assume_init_slice_mut()[0] }
     }
 
-    /// Create a new framed space with the given parent and type URID.
+    /// Writes an atom header into the given [`SpaceWriter`], and returns a new writer that starts
+    /// tracking its size.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     pub fn write_new<A: ?Sized>(
         parent: &'a mut impl SpaceWriter,
         urid: URID<A>,
@@ -50,7 +82,7 @@ impl<'a> AtomSpaceWriter<'a> {
     }
 }
 
-impl<'a> SpaceWriterImpl for AtomSpaceWriter<'a> {
+impl<'a> SpaceAllocator for AtomWriter<'a> {
     #[inline]
     fn allocate_and_split(
         &mut self,
@@ -115,7 +147,7 @@ mod tests {
         // writing
         {
             let mut root = SpaceCursor::new(raw_space);
-            let mut frame = AtomSpaceWriter::write_new(&mut root, URID::new(1).unwrap()).unwrap();
+            let mut frame = AtomWriter::write_new(&mut root, URID::new(1).unwrap()).unwrap();
             frame.write_value(42u32).unwrap();
             frame.write_value(17u32).unwrap();
         }

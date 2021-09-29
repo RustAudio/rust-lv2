@@ -67,7 +67,7 @@ impl Atom for Tuple {
     }
 
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(TupleWriter { frame })
     }
@@ -91,7 +91,7 @@ impl<'a> Iterator for TupleIterator<'a> {
 
 /// The writing handle to add atoms to a tuple.
 pub struct TupleWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+    frame: AtomWriter<'a>,
 }
 
 impl<'a> TupleWriter<'a> {
