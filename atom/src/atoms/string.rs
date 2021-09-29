@@ -76,7 +76,7 @@ impl LiteralInfo {
 }
 
 pub struct LiteralInfoWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
 }
 
 impl<'a> LiteralInfoWriter<'a> {
@@ -128,7 +128,7 @@ impl Atom for Literal {
 
     #[inline]
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(LiteralInfoWriter { writer: frame })
     }
@@ -178,7 +178,7 @@ impl Atom for String {
     }
 
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(StringWriter {
             writer: frame.terminated(0),
@@ -188,7 +188,7 @@ impl Atom for String {
 
 /// Handle to append strings to a string or literal.
 pub struct StringWriter<'a> {
-    writer: Terminated<AtomSpaceWriter<'a>>,
+    writer: Terminated<AtomWriter<'a>>,
 }
 
 impl<'a> StringWriter<'a> {

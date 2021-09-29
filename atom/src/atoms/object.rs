@@ -107,7 +107,7 @@ impl<'a> AtomHandle<'a> for ObjectWriterHandle {
 }
 
 pub struct ObjectHeaderWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+    frame: AtomWriter<'a>,
 }
 
 impl<'a> ObjectHeaderWriter<'a> {
@@ -147,7 +147,7 @@ impl Atom for Object {
     }
 
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(ObjectHeaderWriter { frame })
     }
@@ -177,7 +177,7 @@ impl Atom for Blank {
 
     #[inline]
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Object::write(frame)
     }
@@ -205,7 +205,7 @@ impl<'a> Iterator for ObjectReader<'a> {
 ///
 /// This handle is a safeguard to assure that a object is always a series of properties.
 pub struct ObjectWriter<'a> {
-    frame: AtomSpaceWriter<'a>,
+    frame: AtomWriter<'a>,
 }
 
 impl<'a> ObjectWriter<'a> {
@@ -346,7 +346,7 @@ mod tests {
         // writing
         {
             let mut cursor = SpaceCursor::new(raw_space.as_bytes_mut());
-            let frame = AtomSpaceWriter::write_new(&mut cursor, urids.object).unwrap();
+            let frame = AtomWriter::write_new(&mut cursor, urids.object).unwrap();
             let mut writer = Object::write(frame)
                 .unwrap()
                 .write_header(ObjectHeader {

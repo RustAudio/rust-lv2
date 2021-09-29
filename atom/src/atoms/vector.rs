@@ -93,7 +93,7 @@ impl<'a> VectorReader<'a> {
 }
 
 pub struct VectorTypeWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
 }
 
 impl<'a> VectorTypeWriter<'a> {
@@ -129,7 +129,7 @@ impl Atom for Vector {
     }
 
     fn write(
-        writer: AtomSpaceWriter,
+        writer: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(VectorTypeWriter { writer })
     }
@@ -139,7 +139,7 @@ impl Atom for Vector {
 ///
 /// This works by allocating a slice of memory behind the vector and then writing your data to it.
 pub struct VectorWriter<'a, A: ScalarAtom> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
     type_: PhantomData<A>,
 }
 

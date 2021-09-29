@@ -124,7 +124,7 @@ impl<'a> SequenceHeaderReader<'a> {
 }
 
 pub struct SequenceHeaderWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
@@ -160,7 +160,7 @@ impl Atom for Sequence {
     }
 
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(SequenceHeaderWriter { writer: frame })
     }
@@ -195,7 +195,7 @@ impl<'a, U: SequenceUnit> Iterator for SequenceIterator<'a, U> {
 
 /// The writing handle for sequences.
 pub struct SequenceWriter<'a, U: SequenceUnit> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
     last_stamp: Option<U::Value>,
 }
 

@@ -7,7 +7,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_atom::prelude::*;
 //!
-//! use lv2_atom::space::{AtomSpace, AtomSpaceWriter, SpaceWriter};
+//! use lv2_atom::space::{AtomSpace, AtomWriter, SpaceWriter};
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -17,7 +17,7 @@
 //!
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     let in_chunk: &AtomSpace = ports.input.read(urids.chunk).unwrap();
-//!     let mut out_chunk: AtomSpaceWriter = ports.output.write(urids.chunk).unwrap();
+//!     let mut out_chunk: AtomWriter = ports.output.write(urids.chunk).unwrap();
 //!
 //!     let bytes = in_chunk.as_bytes();
 //!     out_chunk.write_bytes(bytes).unwrap();
@@ -29,7 +29,7 @@
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Chunk](http://lv2plug.in/ns/ext/atom/atom.html#Chunk)
 use crate::space::error::{AtomReadError, AtomWriteError};
 use crate::space::*;
-use crate::AtomSpaceWriter;
+use crate::AtomWriter;
 use crate::{Atom, AtomHandle};
 use urid::UriBound;
 
@@ -49,7 +49,7 @@ impl<'a> AtomHandle<'a> for ChunkReaderHandle {
 
 pub struct ChunkWriterHandle;
 impl<'a> AtomHandle<'a> for ChunkWriterHandle {
-    type Handle = AtomSpaceWriter<'a>;
+    type Handle = AtomWriter<'a>;
 }
 
 impl Atom for Chunk {
@@ -65,7 +65,7 @@ impl Atom for Chunk {
 
     #[inline]
     fn write(
-        frame: AtomSpaceWriter,
+        frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Ok(frame)
     }

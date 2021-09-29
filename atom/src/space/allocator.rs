@@ -1,4 +1,4 @@
-use crate::space::{AlignedSpace, AtomSpaceWriter};
+use crate::space::{AlignedSpace, AtomWriter};
 use crate::{Atom, AtomHandle, UnidentifiedAtom};
 use urid::URID;
 
@@ -6,7 +6,7 @@ use crate::space::error::AtomWriteError;
 use crate::space::terminated::Terminated;
 use core::mem::{size_of, size_of_val, MaybeUninit};
 
-/// The result of a [`SpaceWriter`](SpaceWriterImpl) allocation.
+/// The result of a [`SpaceAllocator`](SpaceAllocator) allocation.
 ///
 /// This structure allows simultaneous access to both the newly allocated slice, and all previously
 /// allocated bytes.
@@ -17,18 +17,19 @@ pub struct SpaceWriterSplitAllocation<'a> {
 
 /// An object-safe trait to allocate bytes from a contiguous buffer to write Atom data into.
 ///
-/// Implementors of this trait act like a sort of cursor, continuously
+/// Implementors of this trait act like a sort of cursor, each allocation being contiguous with the
+/// previous one.
 ///
 /// This trait is very bare-bones, in order to be trait-object-safe. As an user, you probably want
 /// to use the [`SpaceWriter`] trait, a child trait with many more utilities available, and with a
-/// blanket implementation for all types that implement [`SpaceWriterImpl`].
+/// blanket implementation for all types that implement [`SpaceAllocator`].
 ///
 /// The term "allocate" is used very loosely here, as even a simple cursor over a mutable byte
 /// buffer (e.g. [`SpaceCursor`](crate::space::SpaceCursor)) can "allocate" bytes using this trait.
 ///
 /// This trait is useful to abstract over many types of buffers, including ones than can track the
 /// amount of allocated bytes into an atom header (i.e. [`AtomSpaceWriter`]).
-pub trait SpaceWriterImpl {
+pub trait SpaceAllocator {
     /// Allocates a new byte buffer of the requested size. A mutable reference to both the newly
     /// allocated slice and all previously allocated bytes is returned (through [`SpaceWriterSplitAllocation`]),
     /// allowing some implementations to update previous data as well.
@@ -78,8 +79,20 @@ pub trait SpaceWriterImpl {
     fn remaining_bytes(&self) -> &[u8];
 }
 
-pub trait SpaceWriter: SpaceWriterImpl + Sized {
+pub trait SpaceWriter: SpaceAllocator + Sized {
     /// Allocates and returns a new mutable byte buffer of the requested size, in bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lv2_atom::atom_prelude::*;
+    ///
+    /// let mut buffer = vec![0; 64];
+    /// let mut writer = SpaceCursor::new(&mut buffer);
+    ///
+    /// let allocated = writer.allocate(5).unwrap();
+    /// assert_eq!(allocated.len(), 5);
+    /// ```
     ///
     /// # Errors
     ///
@@ -97,6 +110,18 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
     /// The resulting buffer is guaranteed to be aligned to the alignment requirements of the given
     /// type `T`, meaning a value of type `T` can be safely written into it directly.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// use lv2_atom::atom_prelude::*;
+    ///
+    /// let mut buffer = vec![0; 64];
+    /// let mut writer = SpaceCursor::new(&mut buffer);
+    ///
+    /// let allocated = writer.allocate_aligned(5).unwrap();
+    /// assert_eq!(allocated.len(), 5);
+    /// ```
+    ///
     /// # Errors
     ///
     /// This method may return an error if the writer ran out of space in its internal buffer, and
@@ -105,10 +130,10 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
     #[inline]
     fn allocate_aligned<T: 'static>(
         &mut self,
-        size: usize,
+        byte_size: usize,
     ) -> Result<&mut AlignedSpace<T>, AtomWriteError> {
         let required_padding = crate::util::try_padding_for::<T>(self.remaining_bytes())?;
-        let raw = self.allocate(size + required_padding)?;
+        let raw = self.allocate(byte_size + required_padding)?;
 
         Ok(AlignedSpace::align_from_bytes_mut(raw)?)
     }
@@ -118,6 +143,20 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
     /// A mutable reference to the allocated buffer is returned as a
     /// [`MaybeUninit`](core::mem::maybe_uninit::MaybeUninit),
     /// as the resulting memory buffer is most likely going to be uninitialized.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lv2_atom::atom_prelude::*;
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buffer = vec![0; 64];
+    /// let mut writer = SpaceCursor::new(&mut buffer);
+    ///
+    /// let allocated = writer.allocate_value().unwrap();
+    /// *allocated = MaybeUninit::new(42u32);
+    /// assert_eq!(unsafe { allocated.assume_init() }, 42);
+    /// ```
     ///
     /// # Errors
     ///
@@ -166,7 +205,7 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         &mut self,
         atom_type: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
-        let space = AtomSpaceWriter::write_new(self, atom_type)?;
+        let space = AtomWriter::write_new(self, atom_type)?;
         A::write(space)
     }
 
@@ -194,6 +233,11 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         unsafe { UnidentifiedAtom::from_space_mut(resulting_space) }
     }
 
+    /// Writes the given bytes into the buffer.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer.
     #[inline]
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<&mut [u8], AtomWriteError> {
         let space = self.allocate(bytes.len())?;
@@ -201,8 +245,15 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(space)
     }
 
+    /// Writes the given value into the buffer.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     #[inline]
-    fn write_value<T: 'static>(&mut self, value: T) -> Result<&mut T, AtomWriteError>
+    fn write_value<T>(&mut self, value: T) -> Result<&mut T, AtomWriteError>
     where
         T: Copy + Sized + 'static,
     {
@@ -213,6 +264,13 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
         Ok(crate::util::write_uninit(space, value))
     }
 
+    /// Writes the given values into the buffer.
+    ///
+    /// # Errors
+    ///
+    /// This method may return an error if the writer ran out of space in its internal buffer, and
+    /// is unable to reallocate the buffer, or if the padding and/or alignment requirements couldn't
+    /// be met.
     fn write_values<T>(&mut self, values: &[T]) -> Result<&mut [T], AtomWriteError>
     where
         T: Copy + Sized + 'static,
@@ -239,7 +297,7 @@ pub trait SpaceWriter: SpaceWriterImpl + Sized {
     }
 }
 
-impl<H> SpaceWriter for H where H: SpaceWriterImpl {}
+impl<H> SpaceWriter for H where H: SpaceAllocator {}
 
 #[cfg(test)]
 mod tests {
@@ -247,33 +305,33 @@ mod tests {
     use crate::prelude::*;
     use urid::URID;
 
-    // SAFETY: this is just for testing, values aren't actually read using this URID.
-    const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
-
     #[test]
-    fn test_init_atom_lifetimes() {
-        let mut space = VecSpace::<AtomHeader>::new_with_capacity(4);
-        assert_eq!(space.as_bytes().as_ptr() as usize % 8, 0); // TODO: move this, this is a test for boxed
+    fn test_write_value() {
+        let mut space = vec![0; 32];
 
-        let mut cursor = SpaceCursor::new(space.as_bytes_mut()); // The pointer that is going to be moved as we keep writing.
+        let mut cursor = SpaceCursor::new(&mut space);
         let new_value = cursor.write_value(42u8).unwrap();
 
         assert_eq!(42, *new_value);
         assert_eq!(31, cursor.remaining_bytes().len());
+    }
+
+    // SAFETY: this is just for testing, values aren't actually read using this URID.
+    const INT_URID: URID<Int> = unsafe { URID::new_unchecked(5) };
+
+    #[test]
+    fn test_write_atom() {
+        let mut space = vec![0; 32];
+
+        let mut cursor = SpaceCursor::new(&mut space);
 
         {
             cursor.write_atom(INT_URID).unwrap().set(69).unwrap();
-            assert_eq!(8, cursor.remaining_bytes().len());
+            assert_eq!(16, cursor.remaining_bytes().len());
         }
 
-        /*assert_eq!(
-            space.as_bytes(),
-            [
-                // FIXME: this test is endianness-sensitive
-                42, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 5, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0,
-            ]
-        );*/
-        assert_eq!(32, space.as_bytes().len());
+        assert_eq!(space[0..4], 8u32.to_ne_bytes());
+        assert_eq!(space[4..8], 5u32.to_ne_bytes());
+        assert_eq!(space[8..12], 69u32.to_ne_bytes());
     }
 }

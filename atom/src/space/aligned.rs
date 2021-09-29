@@ -369,7 +369,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The resulting slice contains as many values as can fit in the original space.
     /// This means there might be less bytes in this slice than in this space, or zero if the space is too small for a single value.
     #[inline]
-    pub(crate) fn as_uninit_slice(&self) -> &[MaybeUninit<T>] {
+    pub fn as_uninit_slice(&self) -> &[MaybeUninit<T>] {
         // SAFETY: This type ensures alignment, so casting aligned bytes to uninitialized memory is safe.
         unsafe {
             ::core::slice::from_raw_parts(
@@ -384,7 +384,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The resulting slice contains as many values as can fit in the original space.
     /// This means there might be less bytes in this slice than in this space, or zero if the space is too small for a single value.
     #[inline]
-    pub(crate) fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
+    pub fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
         // SAFETY: This type ensures alignment, so casting aligned bytes to uninitialized memory is safe.
         unsafe {
             ::core::slice::from_raw_parts_mut(
@@ -574,7 +574,7 @@ mod tests {
         );
     }
 
-    fn test_mut_space(mut space: impl SpaceWriter) {
+    fn test_writer(mut space: impl SpaceWriter) {
         let map = HashURIDMapper::new();
         let urids = crate::atoms::AtomURIDCollection::from_map(&map).unwrap();
 
@@ -606,7 +606,7 @@ mod tests {
 
         {
             let space: &mut _ = &mut space;
-            let mut atom_frame = AtomSpaceWriter::write_new(space, urids.chunk).unwrap();
+            let mut atom_frame = AtomWriter::write_new(space, urids.chunk).unwrap();
 
             let mut test_data: Vec<u8> = vec![0; 24];
             for (i, data) in test_data.iter_mut().enumerate() {
@@ -634,7 +634,7 @@ mod tests {
         let mut memory = [0; MEMORY_SIZE];
         let cursor = SpaceCursor::new(&mut memory[..]);
 
-        test_mut_space(cursor);
+        test_writer(cursor);
     }
 
     #[test]

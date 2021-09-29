@@ -106,8 +106,8 @@ pub mod atom_prelude {
 
     pub use crate::space::{
         error::{AlignmentError, AtomError, AtomReadError, AtomWriteError},
-        AlignedSpace, AtomSpace, AtomSpaceWriter, SpaceCursor, SpaceWriter, SpaceWriterImpl,
-        Terminated, VecSpace,
+        AlignedSpace, AtomSpace, AtomWriter, SpaceAllocator, SpaceCursor, SpaceWriter, Terminated,
+        VecSpace,
     };
     pub use crate::{Atom, AtomHandle, AtomHeader, UnidentifiedAtom};
 }
@@ -161,6 +161,6 @@ pub trait Atom: UriBound {
     /// observed. In those cases, the written data may be incomplete and should be discarded.
     ///
     fn write(
-        writer: AtomSpaceWriter,
+        writer: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError>;
 }

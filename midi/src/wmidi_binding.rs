@@ -33,7 +33,7 @@ impl<'a> AtomHandle<'a> for WMidiEventWriteHandle {
 }
 
 pub struct WMidiEventWriter<'a> {
-    writer: AtomSpaceWriter<'a>,
+    writer: AtomWriter<'a>,
 }
 
 impl<'a> WMidiEventWriter<'a> {
@@ -63,7 +63,7 @@ impl Atom for WMidiEvent {
     }
 
     #[inline]
-    fn write(writer: AtomSpaceWriter) -> Result<WMidiEventWriter, AtomWriteError> {
+    fn write(writer: AtomWriter) -> Result<WMidiEventWriter, AtomWriteError> {
         Ok(WMidiEventWriter { writer })
     }
 }
@@ -94,7 +94,7 @@ impl Atom for SystemExclusiveWMidiEvent {
         WMidiEvent::read(space)
     }
 
-    fn write(mut frame: AtomSpaceWriter) -> Result<Writer, AtomWriteError> {
+    fn write(mut frame: AtomWriter) -> Result<Writer, AtomWriteError> {
         frame.write_value(0xf0u8)?;
 
         Ok(Writer {
@@ -109,7 +109,7 @@ impl Atom for SystemExclusiveWMidiEvent {
 ///
 /// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
 pub struct Writer<'a> {
-    frame: Terminated<AtomSpaceWriter<'a>>,
+    frame: Terminated<AtomWriter<'a>>,
 }
 
 impl<'a> Writer<'a> {
