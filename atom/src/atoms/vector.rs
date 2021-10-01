@@ -57,12 +57,20 @@ impl<'a> AtomHandle<'a> for VectorWriteHandle {
     type Handle = VectorTypeWriter<'a>;
 }
 
+/// A type-state for the Vector Reader, that reads the header of a vector to figure out its internal
+/// type.
 pub struct VectorReader<'a> {
     reader: SpaceReader<'a>,
     header: &'a sys::LV2_Atom_Vector_Body,
 }
 
 impl<'a> VectorReader<'a> {
+    /// Attempts to read the vector as containing a given atom type.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the type or size of the atoms contained do not match the
+    /// vector being currently read.
     pub fn of_type<C: ScalarAtom>(
         self,
         atom_type: URID<C>,
@@ -92,6 +100,26 @@ impl<'a> VectorReader<'a> {
         // properly initialized by the host.
         Ok(unsafe { self.reader.as_slice() }?)
     }
+
+    /// Returns the length, i.e. number of elements in the vector, without knowing their type.
+    ///
+    /// This can be figured out thanks to the `child_size` attribute in a vector atom header.
+    ///
+    /// This will always return zero if the elements are zero-sized.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.reader
+            .remaining_bytes()
+            .len()
+            .checked_div(self.header.child_size as usize)
+            .unwrap_or(0)
+    }
+
+    /// Returns if the vector is empty, i.e. its `len` is zero.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub struct VectorTypeWriter<'a> {
@@ -99,6 +127,12 @@ pub struct VectorTypeWriter<'a> {
 }
 
 impl<'a> VectorTypeWriter<'a> {
+    /// Initializes the vector with the given child type URID.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn of_type<C: ScalarAtom>(
         mut self,
         atom_type: URID<C>,
@@ -147,14 +181,24 @@ pub struct VectorWriter<'a, A: ScalarAtom> {
 
 impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
     /// Push a single value to the vector.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     #[inline]
     pub fn push(&mut self, child: A::InternalType) -> Result<&mut A::InternalType, AtomWriteError> {
         self.writer.write_value(child)
     }
 
-    /// Append a slice of undefined memory to the vector.
+    /// Allocates a slice of initialized memory from the vector.
     ///
-    /// Using this method, you don't need to have the elements in memory before you can write them.
+    /// This is useful if you need deferred initialization of the vector's contents.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     #[inline]
     pub fn allocate_uninit(
         &mut self,
@@ -164,6 +208,11 @@ impl<'a, A: ScalarAtom> VectorWriter<'a, A> {
     }
 
     /// Append multiple elements to the vector.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     #[inline]
     pub fn append(
         &mut self,
