@@ -27,6 +27,10 @@ impl UnidentifiedAtom {
 
     /// Construct a new unidentified atom.
     ///
+    /// # Errors
+    ///
+    /// This method will return an error if the atom's header is out of bounds of the given buffer.
+    ///
     /// # Safety
     ///
     /// The caller has to ensure that the given space actually contains both a valid atom header, and a valid corresponding atom body.
@@ -57,9 +61,16 @@ impl UnidentifiedAtom {
         &mut *(header as *mut _ as *mut _)
     }
 
-    /// Try to read the atom.
+    /// Try to read the atom as being of a given type.
     ///
-    /// To identify the atom, its URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
+    /// If the atom was identified, a reading handle is returned.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the atom's type does not match the given URID.
+    ///
+    /// An error will also be returned if the atom's header is out of bounds, or if any other
+    /// read error occurs.
     pub fn read<A: Atom>(
         &self,
         urid: URID<A>,
