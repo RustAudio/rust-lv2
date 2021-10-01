@@ -1,4 +1,4 @@
-use lv2_atom::{Atom, AtomHandle, BackAsSpace};
+use lv2_atom::{Atom, AtomAsBytes, AtomHandle};
 use urid::UriBound;
 
 pub mod error;
@@ -20,7 +20,7 @@ pub mod value;
 /// pub struct SomeIntOption(i32);
 ///
 /// impl OptionType for SomeIntOption {
-///     type AtomType = lv2_atom::scalar::Int;
+///     type AtomType = lv2_atom::atoms::scalar::Int;
 ///
 ///     fn from_option_value(value: &i32) -> Option<Self> {
 ///         Some(Self(*value))
@@ -32,7 +32,7 @@ pub mod value;
 /// }
 /// ```
 pub trait OptionType: UriBound + Sized {
-    type AtomType: BackAsSpace;
+    type AtomType: AtomAsBytes;
 
     /// Creates a new instance of this Option type from a given atom value.
     ///

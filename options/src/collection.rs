@@ -176,7 +176,7 @@ pub mod __implementation {
                     Some(value) => self.inner.deserialize_to(value, options),
                     None => match self.inner.deserialize_new(options) {
                         Ok(v) => {
-                            destination.insert(v);
+                            let _ = destination.insert(v);
                             Ok(())
                         }
                         Err(e) => Err(e),

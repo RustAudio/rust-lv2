@@ -164,3 +164,28 @@ pub trait Atom: UriBound {
         writer: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError>;
 }
+
+/// An Atom super-trait that allows to get a byte slice from an atom's read handle.
+///
+/// Some LV2 APIs (such as `Option`) request a data pointer to the value of a given atom type, but
+/// in many cases that pointer can be simply retrieved from a reference to a raw value. Most notably,
+/// pointers to any scalar value (e.g. `&i32`) can be safely turned into a byte slice (`&[u8]).
+///
+/// However, not all atoms have this capability, hence the need for a separate trait that is not
+/// implemented for all types.
+///
+/// # Example
+///
+/// ```
+/// use lv2_atom::atoms::scalar::Int;
+/// use lv2_atom::AtomAsBytes;
+///
+/// let value: i32 = 42;
+/// let bytes: &[u8] = Int::read_as_bytes(&value);
+///
+/// assert_eq!(bytes.len(), ::core::mem::size_of::<i32>())
+/// ```
+pub trait AtomAsBytes: Atom {
+    /// Returns the type returned by an Atom's read handle as a byte slice.
+    fn read_as_bytes<'a>(handle: <Self::ReadHandle as AtomHandle<'a>>::Handle) -> &'a [u8];
+}

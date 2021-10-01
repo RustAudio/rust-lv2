@@ -1,5 +1,5 @@
 use crate::{OptionType, OptionValue, OptionsError, Subject};
-use lv2_atom::{Atom, AtomHandle, BackAsSpace};
+use lv2_atom::{Atom, AtomAsBytes, AtomHandle};
 use std::marker::PhantomData;
 use urid::URID;
 
@@ -45,7 +45,7 @@ impl<'a> OptionRequest<'a> {
         value: &'a T,
     ) -> Result<(), OptionsError>
     where
-        T::AtomType: BackAsSpace,
+        T::AtomType: AtomAsBytes,
     {
         if !self.is(option_type) {
             return Err(OptionsError::BadKey);
@@ -62,9 +62,9 @@ impl<'a> OptionRequest<'a> {
         value_type: URID<T>,
         value_handle: <<T as Atom>::ReadHandle as AtomHandle>::Handle,
     ) where
-        T: BackAsSpace,
+        T: AtomAsBytes,
     {
-        let data = T::back_as_space(value_handle);
+        let data = T::read_as_bytes(value_handle);
         self.inner.type_ = value_type.get();
         self.inner.size = data.len() as u32;
         self.inner.value = data.as_ptr().cast();

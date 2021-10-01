@@ -34,8 +34,10 @@ pub mod features {
 
 /// Prelude of `lv2_options` for wildcard usage.
 pub mod prelude {
-    pub use crate::extensions::{OptionsDescriptor, OptionsInterface};
-    pub use crate::list::OptionsList;
-    pub use crate::OptionsError;
-    pub use crate::Subject;
+    pub use crate::{
+        extensions::{OptionsDescriptor, OptionsInterface},
+        list::OptionsList,
+        request::{OptionRequest, OptionRequestList},
+        OptionsError, Subject,
+    };
 }

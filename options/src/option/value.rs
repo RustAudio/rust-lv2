@@ -64,6 +64,6 @@ impl OptionValue {
         &self,
     ) -> Option<<<T as Atom>::ReadHandle as AtomHandle>::Handle> {
         // TODO: Atoms can actually be from non-aligned spaces
-        T::read(AtomSpace::from_bytes_unchecked(self.data()?))
+        T::read(AtomSpace::from_bytes_unchecked(self.data()?)).ok()
     }
 }

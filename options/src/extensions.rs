@@ -24,24 +24,20 @@ use urid::UriBound;
 /// #
 /// # use urid::{URID, Uri, URIDCollection, uri, Map, UriBound};
 /// # use std::any::Any;
+/// # use lv2_atom::atoms::scalar::Int;
+/// use lv2_options::collection::OptionsSerializer;
 /// #
-/// # impl<'a> OptionType<'a> for SomeIntOption {
-/// #    type AtomType = lv2_atom::scalar::Int;
+/// # impl OptionType for SomeIntOption {
+/// #    type AtomType = Int;
 /// #
 /// # fn from_option_value(value: &i32) -> Option<Self> {
 /// #        Some(Self(*value))
 /// #    }
 /// #
-/// #    fn as_option_value(&'a self) -> &'a i32 {
+/// #    fn as_option_value(&self) -> &i32 {
 /// #        &self.0
 /// #    }
 /// # }
-/// #
-/// # #[derive(URIDCollection)]
-/// pub struct PluginUridCollection {
-///     some_int_option: URID<SomeIntOption>,
-///     int: URID<lv2_atom::scalar::Int>,
-/// }
 /// #
 /// # #[derive(FeatureCollection)]
 /// # pub struct PluginFeatures<'a> {
@@ -51,7 +47,7 @@ use urid::UriBound;
 /// # #[uri("urn:lv2_options:test:OptionablePlugin")]
 /// pub struct OptionablePlugin {
 ///     some_int: SomeIntOption,
-///     urids: PluginUridCollection,
+///     some_int_serializer: OptionsSerializer<SomeIntOption>,
 /// }
 /// #
 /// # impl Plugin for OptionablePlugin {
@@ -82,26 +78,12 @@ use urid::UriBound;
 /// pub struct SomeIntOption(i32);
 ///
 /// impl OptionsInterface for OptionablePlugin {
-///    fn get<'a>(&'a self, mut writer: OptionsWriter<'a>) -> Result<(), OptionsError> {
-///         writer.process(|subject, options| match subject { // We will want to get/set our opions differently depending on the subject
-///             Subject::Instance => { // In our case however, only our instance has an option
-///                 options.handle(self.urids.some_int_option, self.urids.int, || {
-///                     &self.some_int
-///                 });
-///             }
-///             _ => {}
-///         })
+///    fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
+///         self.some_int_serializer.respond_to_requests(&self.some_int, &mut requests)
 ///     }
 ///
 ///     fn set(&mut self, options: OptionsList) -> Result<(), OptionsError> {
-///         options.process(|subject, options| match subject {
-///             Subject::Instance => {
-///                 options.handle(self.urids.some_int_option, self.urids.int, (), |value| {
-///                     self.some_int = value
-///                 })
-///             }
-///             _ => {}
-///         })
+///         self.some_int_serializer.deserialize_to(&mut self.some_int, &options)
 ///     }
 /// }
 /// ```
