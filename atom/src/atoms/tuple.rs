@@ -95,7 +95,12 @@ pub struct TupleWriter<'a> {
 }
 
 impl<'a> TupleWriter<'a> {
-    /// Initialize a new tuple element.
+    /// Initialize a new tuple element atom of a given type.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn init<A: Atom>(
         &mut self,
         child_urid: URID<A>,

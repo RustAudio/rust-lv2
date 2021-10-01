@@ -1,6 +1,7 @@
 use crate::atom_prelude::*;
 use std::mem::MaybeUninit;
 
+/// A cursor-like struct to help read contiguous memory regions for atoms.
 #[derive(Clone)]
 pub struct SpaceReader<'a> {
     space: &'a [u8],
@@ -56,26 +57,52 @@ impl<'a> SpaceReader<'a> {
     }
 
     #[inline]
-    fn as_uninit_slice<T: 'static>(&self) -> Result<&'a [MaybeUninit<T>], AtomReadError> {
+    fn as_uninit_slice<T: 'static>(&self) -> Result<&'a [MaybeUninit<T>], AlignmentError> {
         let space = AlignedSpace::align_from_bytes(self.space)?;
         Ok(space.as_uninit_slice())
     }
 
+    /// Returns the remaining bytes as a slice of type a given type `T`.
+    ///
+    /// # Errors
+    ///
+    /// This methods returns an error if the slice couldn't get correctly aligned for the type `T`.
+    ///
+    /// # Safety
+    ///
+    /// The caller of this method has to ensure the buffer is filled with properly initialized
+    /// values of type `T`.
     #[inline]
-    pub unsafe fn as_slice<T: 'static>(&self) -> Result<&'a [T], AtomReadError> {
+    pub unsafe fn as_slice<T: 'static>(&self) -> Result<&'a [T], AlignmentError> {
         self.as_uninit_slice()
             .map(|s| crate::util::assume_init_slice(s))
     }
 
+    /// Returns the next remaining bytes as a slice of type a given type `T` and length.
+    ///
+    /// # Errors
+    ///
+    /// This methods returns an error if the slice couldn't get correctly aligned for the type `T`,
+    /// or if `length` is out of bounds.
+    ///
+    /// # Safety
+    ///
+    /// The caller of this method has to ensure the requested slice is filled with properly
+    /// initialized values of type `T`.
     #[inline]
-    pub unsafe fn next_values<U: 'static>(
+    pub unsafe fn next_values<T: 'static>(
         &mut self,
         length: usize,
-    ) -> Result<&'a [U], AtomReadError> {
+    ) -> Result<&'a [T], AtomReadError> {
         self.next_uninit_value_slice(length)
             .map(|s| crate::util::assume_init_slice(s))
     }
 
+    /// Returns the next `length` bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `length` is out of bounds.
     #[inline]
     pub fn next_bytes(&mut self, length: usize) -> Result<&'a [u8], AtomReadError> {
         let bytes = self
@@ -91,12 +118,36 @@ impl<'a> SpaceReader<'a> {
         Ok(bytes)
     }
 
+    /// Returns the next value as a given type `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is too big for the remaining buffer, or if the buffer cannot
+    /// be aligned to match the value's alignment requirements.
+    ///
+    /// # Safety
+    ///
+    /// The caller is responsible to ensure that a properly initialized value of type `T` is present.
     #[inline]
-    pub unsafe fn next_value<U: 'static>(&mut self) -> Result<&'a U, AtomReadError> {
+    pub unsafe fn next_value<T: 'static>(&mut self) -> Result<&'a T, AtomReadError> {
         self.next_uninit_value()
             .map(|v| crate::util::assume_init_ref(v))
     }
 
+    /// Returns the next atom.
+    ///
+    /// This method reads the next atom header, and then returns both the header and the associated
+    /// body as an [`UnidentifiedAtom`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is too big for the remaining buffer, if the buffer cannot
+    /// be aligned to match the value's alignment requirements, or if the atom's body side is out
+    /// of bounds.
+    ///
+    /// # Safety
+    ///
+    /// The caller is responsible to ensure that a properly initialized atom is present.
     #[inline]
     pub unsafe fn next_atom(&mut self) -> Result<&'a UnidentifiedAtom, AtomReadError> {
         let space = AlignedSpace::<AtomHeader>::align_from_bytes(self.space)?;
@@ -120,12 +171,17 @@ impl<'a> SpaceReader<'a> {
         self.space
     }
 
+    /// Performs a given reading operation, but only advance the cursor if the operation is successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns whichever errors the given operation handler returned.
     #[inline]
     pub fn try_read<F, U>(&mut self, read_handler: F) -> Result<U, AtomReadError>
     where
         F: FnOnce(&mut Self) -> Result<U, AtomReadError>,
     {
-        let mut reader = Self { space: self.space };
+        let mut reader = self.clone();
         let value = read_handler(&mut reader)?;
         self.space = reader.remaining_bytes();
 

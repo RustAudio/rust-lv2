@@ -90,7 +90,7 @@ impl<'a> VectorReader<'a> {
 
         // SAFETY: The data type has just been checked above, and we can assume this data was
         // properly initialized by the host.
-        unsafe { self.reader.as_slice() }
+        Ok(unsafe { self.reader.as_slice() }?)
     }
 }
 
@@ -217,7 +217,8 @@ mod tests {
             assert_eq!(vector.body.child_type, urids.int.get());
 
             let children = unsafe { reader.next_values::<i32>(CHILD_COUNT) }.unwrap();
-            for value in &children[0..children.len() - 1] {
+            assert_eq!(children.len(), CHILD_COUNT);
+            for value in &children[..CHILD_COUNT - 1] {
                 assert_eq!(*value, 42);
             }
             assert_eq!(children[children.len() - 1], 1);
@@ -229,7 +230,7 @@ mod tests {
             let children: &[i32] = atom.read(urids.vector).unwrap().of_type(urids.int).unwrap();
 
             assert_eq!(children.len(), CHILD_COUNT);
-            for i in children {
+            for i in &children[..CHILD_COUNT - 1] {
                 assert_eq!(*i, 42);
             }
             assert_eq!(children[children.len() - 1], 1);

@@ -96,18 +96,26 @@ impl<'a> AtomHandle<'a> for SequenceWriteHandle {
     type Handle = SequenceHeaderWriter<'a>;
 }
 
+/// A type-state for the Sequence Reader, that reads the header of a sequence.
+#[derive(Clone)]
 pub struct SequenceHeaderReader<'a> {
     header: &'a sys::LV2_Atom_Sequence_Body,
     reader: SpaceReader<'a>,
 }
 
 impl<'a> SequenceHeaderReader<'a> {
+    /// Tries to read the sequence as having timestamps of the given type.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an `InvalidUrid` error if the given timestamp type URID does not
+    /// match the one of the sequence being currently read.
     pub fn with_unit<U: SequenceUnit>(
         self,
-        unit_urid: URID<U>,
+        timestamp_unit_urid: URID<U>,
     ) -> Result<SequenceIterator<'a, U>, AtomReadError> {
         if (self.header.unit == 0 && U::TYPE == SequenceUnitType::Frame)
-            || (self.header.unit == unit_urid)
+            || (self.header.unit == timestamp_unit_urid)
         {
             Ok(SequenceIterator {
                 reader: self.reader,
@@ -116,24 +124,33 @@ impl<'a> SequenceHeaderReader<'a> {
         } else {
             Err(AtomReadError::InvalidUrid {
                 expected_uri: U::uri(),
-                expected_urid: unit_urid.into_general(),
+                expected_urid: timestamp_unit_urid.into_general(),
                 found_urid: self.header.unit,
             })
         }
     }
 }
 
+/// A type-state for the Sequence Writer, that writes the header of a sequence.
 pub struct SequenceHeaderWriter<'a> {
     writer: AtomWriter<'a>,
 }
 
 impl<'a> SequenceHeaderWriter<'a> {
+    /// Initializes the sequence with the given timestamp type URID.
+    ///
+    /// The timestamp type can be either [`Frame`](lv2_units::units::Frame) or [`Beat`](lv2_units::units::Beat).
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn with_unit<U: SequenceUnit>(
         mut self,
-        unit_urid: URID<U>,
+        timestamp_unit_urid: URID<U>,
     ) -> Result<SequenceWriter<'a, U>, AtomWriteError> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
-            unit: unit_urid.get(),
+            unit: timestamp_unit_urid.get(),
             pad: 0,
         });
 
@@ -204,9 +221,11 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
     ///
     /// # Errors
     ///
-    /// This method returns an error if either:
-    /// * The last time stamp is younger than the time stamp.
-    /// * Space is insufficient.
+    /// This method will return an error if the given timestamp is smaller than the last written
+    /// timestamp (if any).
+    ///
+    /// This method will also return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     fn write_time_stamp(&mut self, time_stamp: U::Value) -> Result<(), AtomWriteError> {
         if let Some(last_stamp) = self.last_stamp {
             if last_stamp > time_stamp {
@@ -224,9 +243,15 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         Ok(())
     }
 
-    /// Initialize an event.
+    /// Initialize an event's atom, with the given timestamp.
     ///
-    /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
+    /// # Errors
+    ///
+    /// This method will return an error if the given timestamp is smaller than the last written
+    /// timestamp (if any).
+    ///
+    /// This method will also return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn new_event<A: Atom>(
         &mut self,
         time_stamp: U::Value,
@@ -236,11 +261,15 @@ impl<'a, U: SequenceUnit> SequenceWriter<'a, U> {
         self.writer.write_atom(urid)
     }
 
-    /// Forward an unidentified atom to the sequence.
+    /// Writes an unidentified atom to the sequence, with the given timestamp.
     ///
-    /// If your cannot identify the type of the atom but have to write it, you can simply forward it.
+    /// # Errors
     ///
-    /// The time stamp has to be measured in the unit of the sequence. If the time stamp is measured in the wrong unit, is younger than the last written time stamp or space is insufficient, this method returns `None`.
+    /// This method will return an error if the given timestamp is smaller than the last written
+    /// timestamp (if any).
+    ///
+    /// This method will also return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn forward(
         &mut self,
         time_stamp: U::Value,

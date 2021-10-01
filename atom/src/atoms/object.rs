@@ -63,7 +63,7 @@
 //!     ).unwrap();
 //!
 //!     // Write a property to the object.
-//!     object_writer.init(urids.property_a, urids.atom.int).unwrap();
+//!     object_writer.new_property(urids.property_a, urids.atom.int).unwrap();
 //! }
 //! ```
 //!
@@ -106,11 +106,18 @@ impl<'a> AtomHandle<'a> for ObjectWriterHandle {
     type Handle = ObjectHeaderWriter<'a>;
 }
 
+/// A type-state for the Object Writer, that writes the header of an object.
 pub struct ObjectHeaderWriter<'a> {
     frame: AtomWriter<'a>,
 }
 
 impl<'a> ObjectHeaderWriter<'a> {
+    /// Initializes the object with the given header.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn write_header(
         mut self,
         header: ObjectHeader,
@@ -210,31 +217,41 @@ pub struct ObjectWriter<'a> {
 }
 
 impl<'a> ObjectWriter<'a> {
-    /// Initialize a new property with a context.
+    /// Initializes a new property, with a given context.
     ///
     /// This method does the same as [`init`](#method.init), but also sets the context URID.
-    pub fn init_with_context<K: ?Sized, T: ?Sized, A: Atom>(
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
+    pub fn new_property_with_context<K: ?Sized, T: ?Sized, A: Atom>(
         &mut self,
         key: URID<K>,
         context: URID<T>,
-        child_urid: URID<A>,
+        atom_type: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key.into_general(), Some(context))?;
-        self.frame.write_atom(child_urid)
+        self.frame.write_atom(atom_type)
     }
 
-    /// Initialize a new property.
+    /// Initializes a new property.
     ///
     /// This method writes out the header of a property and returns a reference to the space, so the property values can be written.
     ///
     /// Properties also have a context URID internally, which is rarely used. If you want to add one, use [`init_with_context`](#method.init_with_context).
-    pub fn init<K: ?Sized, A: Atom>(
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
+    pub fn new_property<K: ?Sized, A: Atom>(
         &mut self,
         key: URID<K>,
-        child_urid: URID<A>,
+        atom_type: URID<A>,
     ) -> Result<<A::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
         Property::write_header(&mut self.frame, key, None::<URID<()>>)?;
-        self.frame.write_atom(child_urid)
+        self.frame.write_atom(atom_type)
     }
 }
 
@@ -358,14 +375,14 @@ mod tests {
                 .unwrap();
             {
                 writer
-                    .init(first_key, urids.int)
+                    .new_property(first_key, urids.int)
                     .unwrap()
                     .set(first_value)
                     .unwrap();
             }
             {
                 writer
-                    .init(second_key, urids.float)
+                    .new_property(second_key, urids.float)
                     .unwrap()
                     .set(second_value)
                     .unwrap();

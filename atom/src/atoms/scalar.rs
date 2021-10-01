@@ -35,34 +35,21 @@ use urid::UriBound;
 use urid::URID;
 
 /// An atom that only contains a single, scalar value.
-///
-/// Since scalar values are so simple, the reading and writing methods are exactly the same.
 pub trait ScalarAtom: UriBound {
     /// The internal representation of the atom.
     ///
-    /// For example, the `Int` atom has the internal type of `i32`, which is `i32` on most platforms.
+    /// For example, the `Int` atom has the internal type of `i32`.
     type InternalType: Unpin + Copy + Send + Sync + Sized + 'static;
-
-    /// Try to read the atom from a space.
-    ///
-    /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
-    #[inline]
-    unsafe fn read_scalar(body: &AtomSpace) -> Result<&Self::InternalType, AtomReadError> {
-        body.read().next_value()
-    }
-
-    /// Try to write the atom into a space.
-    ///
-    /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    #[inline]
-    fn write_scalar(frame: AtomWriter) -> Result<ScalarWriter<Self::InternalType>, AtomWriteError> {
-        Ok(ScalarWriter(frame, PhantomData))
-    }
 }
 
 pub struct ScalarWriter<'a, T: Copy + 'static>(AtomWriter<'a>, PhantomData<T>);
 
 impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
+    /// Sets the value of the scalar
+    ///
+    /// # Errors
+    ///
+    /// Returns an error is the underlying buffer is out of space for the new scalar value.
     #[inline]
     pub fn set(&mut self, value: T) -> Result<&mut T, AtomWriteError> {
         #[repr(align(8))]
@@ -95,13 +82,13 @@ impl<A: ScalarAtom> Atom for A {
     unsafe fn read(
         body: &AtomSpace,
     ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
-        <A as ScalarAtom>::read_scalar(body)
+        body.read().next_value()
     }
 
     fn write(
         frame: AtomWriter,
     ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
-        <A as ScalarAtom>::write_scalar(frame)
+        Ok(ScalarWriter(frame, PhantomData))
     }
 }
 
