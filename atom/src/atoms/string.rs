@@ -73,11 +73,18 @@ impl LiteralInfo {
     }
 }
 
+/// A type-state for the Literal Writer, that writes the info header of a literal.
 pub struct LiteralInfoWriter<'a> {
     writer: AtomWriter<'a>,
 }
 
 impl<'a> LiteralInfoWriter<'a> {
+    /// Initializes the literal with the given info.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     pub fn write_info(mut self, info: LiteralInfo) -> Result<StringWriter<'a>, AtomWriteError> {
         self.writer.write_value(info.into_raw())?;
 
@@ -194,11 +201,15 @@ pub struct StringWriter<'a> {
 }
 
 impl<'a> StringWriter<'a> {
-    /// Append a string.
+    /// Appends a string to the atom's buffer.
     ///
-    /// This method copies the given string to the end of the string atom/literal and then returns a mutable reference to the copy.
+    /// This method copies the given string to the end of the string atom, and then returns a
+    /// mutable reference to the copy.
     ///
-    /// If the internal space for the atom is not big enough, this method returns `None`.
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer for,
+    /// the given additional string, or if any other write error occurs.
     pub fn append(&mut self, string: &str) -> Result<&mut str, AtomWriteError> {
         let bytes = self.writer.write_bytes(string.as_bytes())?;
 

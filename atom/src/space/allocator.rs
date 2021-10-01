@@ -118,8 +118,8 @@ pub trait SpaceWriter: SpaceAllocator + Sized {
     /// let mut buffer = vec![0; 64];
     /// let mut writer = SpaceCursor::new(&mut buffer);
     ///
-    /// let allocated = writer.allocate_aligned(5).unwrap();
-    /// assert_eq!(allocated.len(), 5);
+    /// let allocated = writer.allocate_aligned::<u64>(5).unwrap();
+    /// assert_eq!(allocated.bytes_len(), 5);
     /// ```
     ///
     /// # Errors
