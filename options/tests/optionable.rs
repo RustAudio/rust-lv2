@@ -47,10 +47,10 @@ impl OptionsInterface for OptionablePlugin {
 
     fn set(&mut self, options: OptionsList) -> Result<(), OptionsError> {
         assert_eq!(self.options.values.some_int_option.0, 42);
-        let result = self.options.deserialize(&options);
+        self.options.deserialize(&options)?;
         assert_eq!(self.options.values.some_int_option.0, 69);
 
-        result
+        Ok(())
     }
 }
 
