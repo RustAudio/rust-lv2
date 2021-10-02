@@ -681,7 +681,7 @@ pub const LV2_WORKER__schedule: &'static [u8; 41usize] =
     b"http://lv2plug.in/ns/ext/worker#schedule\0";
 pub type va_list = *mut ::std::os::raw::c_char;
 #[doc = " The header of an atom:Atom."]
-#[repr(C)]
+#[repr(C, align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct LV2_Atom {
     #[doc = "< Size in bytes, not including type and size."]
@@ -1755,7 +1755,7 @@ pub const LV2_Options_Status_LV2_OPTIONS_ERR_BAD_KEY: LV2_Options_Status = 4;
 #[doc = "< Invalid/unsupported value."]
 pub const LV2_Options_Status_LV2_OPTIONS_ERR_BAD_VALUE: LV2_Options_Status = 8;
 #[doc = " A status code for option functions."]
-pub type LV2_Options_Status = i32;
+pub type LV2_Options_Status = u32;
 #[doc = "Interface for dynamically setting options (LV2_OPTIONS__interface)."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]

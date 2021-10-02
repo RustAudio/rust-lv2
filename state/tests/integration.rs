@@ -52,23 +52,30 @@ impl State for Stateful {
     fn save(&self, mut store: StoreHandle, _: ()) -> Result<(), StateErr> {
         store
             .draft(URID::new(1000).unwrap())
-            .init(self.urids.float, self.internal)?;
+            .init(self.urids.float)?
+            .set(self.internal)
+            .map_err(|_| StateErr::Unknown)?;
         store
             .draft(URID::new(1001).unwrap())
-            .init(self.urids.vector(), self.urids.float)?
-            .append(self.audio.as_ref());
+            .init(self.urids.vector)?
+            .of_type(self.urids.float)
+            .map_err(|_| StateErr::Unknown)?
+            .append(self.audio.as_ref())
+            .unwrap();
 
         store.commit_all()
     }
 
     fn restore(&mut self, store: RetrieveHandle, _: ()) -> Result<(), StateErr> {
-        self.internal = store
+        self.internal = *store
             .retrieve(URID::new(1000).unwrap())?
-            .read(self.urids.float, ())?;
+            .read(self.urids.float)?;
         self.audio = Vec::from(
             store
                 .retrieve(URID::new(1001).unwrap())?
-                .read(self.urids.vector(), self.urids.float)?,
+                .read(self.urids.vector)?
+                .of_type(self.urids.float)
+                .map_err(|_| StateErr::BadData)?,
         );
         Ok(())
     }
@@ -89,12 +96,12 @@ fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
         // Constructing the plugin.
         Stateful::new(
             &PluginInfo::new(Stateful::uri(), Path::new("./"), 44100.0),
-            &mut Features { map: map },
+            &mut Features { map },
         )
         .unwrap()
     };
 
-    assert_eq!(42.0, plugin.internal);
+    assert_eq!(42.0f32.to_ne_bytes(), plugin.internal.to_ne_bytes());
     assert_eq!(0, plugin.audio.len());
 
     plugin
@@ -113,14 +120,12 @@ fn test_save_n_restore() {
             .unwrap();
         (extension.save.unwrap(), extension.restore.unwrap())
     };
-    assert!(store_fn == StateDescriptor::<Stateful>::extern_save);
-    assert!(restore_fn == StateDescriptor::<Stateful>::extern_restore);
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
     first_plugin.run(&mut (), &mut (), 32);
 
-    assert_eq!(17.0, first_plugin.internal);
+    assert_eq!(17.0f32.to_ne_bytes(), first_plugin.internal.to_ne_bytes());
     assert_eq!(32, first_plugin.audio.len());
 
     unsafe {
@@ -145,6 +150,6 @@ fn test_save_n_restore() {
         )
     };
 
-    assert_eq!(17.0, second_plugin.internal);
+    assert_eq!(17.0f32.to_ne_bytes(), second_plugin.internal.to_ne_bytes());
     assert_eq!(32, second_plugin.audio.len());
 }

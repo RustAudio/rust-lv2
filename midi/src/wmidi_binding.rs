@@ -3,7 +3,7 @@
 //! This is the high-level and recommended module for MIDI message handling. The contained atom type can convert the raw MIDI message to rustic enumerations and back.
 //!
 //! If you want to have raw, low-level access to the messages, you should use the [raw module](../raw/index.html).
-use atom::prelude::*;
+use atom::atom_prelude::*;
 use std::convert::TryFrom;
 use urid::*;
 
@@ -20,26 +20,52 @@ unsafe impl UriBound for WMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for WMidiEvent
-where
-    'a: 'b,
-{
-    type ReadParameter = ();
-    type ReadHandle = wmidi::MidiMessage<'a>;
-    type WriteParameter = wmidi::MidiMessage<'static>;
-    type WriteHandle = ();
+pub struct WMidiEventReadHandle;
 
-    fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
-        space
-            .data()
-            .and_then(|bytes| wmidi::MidiMessage::try_from(bytes).ok())
+impl<'a> AtomHandle<'a> for WMidiEventReadHandle {
+    type Handle = wmidi::MidiMessage<'a>;
+}
+
+pub struct WMidiEventWriteHandle;
+
+impl<'a> AtomHandle<'a> for WMidiEventWriteHandle {
+    type Handle = WMidiEventWriter<'a>;
+}
+
+pub struct WMidiEventWriter<'a> {
+    writer: AtomWriter<'a>,
+}
+
+impl<'a> WMidiEventWriter<'a> {
+    #[inline]
+    pub fn set(mut self, message: wmidi::MidiMessage) -> Result<(), AtomWriteError> {
+        let space = self.writer.allocate(message.bytes_size())?;
+
+        // The error shouldn't be happening, as we allocated just as many bytes as needed
+        message.copy_to_slice(space).expect(
+            "Could not copy MIDI message to allocated bytes. This is a bug, most likely due to an incorrect allocator implementation",
+        );
+        Ok(())
+    }
+}
+
+impl Atom for WMidiEvent {
+    type ReadHandle = WMidiEventReadHandle;
+    type WriteHandle = WMidiEventWriteHandle;
+
+    #[inline]
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomReadError> {
+        wmidi::MidiMessage::try_from(space.as_bytes()).map_err(|_| {
+            AtomReadError::InvalidAtomValue {
+                reading_type_uri: Self::uri(),
+                error_message: "Invalid MIDI message",
+            }
+        })
     }
 
-    fn init(mut frame: FramedMutSpace<'a, 'b>, message: wmidi::MidiMessage<'b>) -> Option<()> {
-        frame
-            .allocate(message.bytes_size(), false)
-            .and_then(|(_, space)| message.copy_to_slice(space).ok())
-            .map(|_| ())
+    #[inline]
+    fn write(writer: AtomWriter) -> Result<WMidiEventWriter, AtomWriteError> {
+        Ok(WMidiEventWriter { writer })
     }
 }
 
@@ -54,23 +80,27 @@ unsafe impl UriBound for SystemExclusiveWMidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for SystemExclusiveWMidiEvent
-where
-    'a: 'b,
-{
-    type ReadParameter = ();
-    type ReadHandle = wmidi::MidiMessage<'a>;
-    type WriteParameter = ();
-    type WriteHandle = Writer<'a, 'b>;
+pub struct SystemExclusiveWMidiEventWriteHandle;
 
-    fn read(space: Space<'a>, _: ()) -> Option<wmidi::MidiMessage<'a>> {
-        WMidiEvent::read(space, ())
+impl<'a> AtomHandle<'a> for SystemExclusiveWMidiEventWriteHandle {
+    type Handle = Writer<'a>;
+}
+
+impl Atom for SystemExclusiveWMidiEvent {
+    type ReadHandle = WMidiEventReadHandle;
+    type WriteHandle = SystemExclusiveWMidiEventWriteHandle;
+
+    #[inline]
+    unsafe fn read(space: &AtomSpace) -> Result<wmidi::MidiMessage, AtomReadError> {
+        WMidiEvent::read(space)
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<Writer<'a, 'b>> {
-        let mut writer = Writer { frame };
-        writer.write::<u8>(&0xf0);
-        Some(writer)
+    fn write(mut frame: AtomWriter) -> Result<Writer, AtomWriteError> {
+        frame.write_value(0xf0u8)?;
+
+        Ok(Writer {
+            frame: frame.terminated(0xf7),
+        })
     }
 }
 
@@ -79,39 +109,31 @@ where
 /// This writing handle is similar to a chunk's `ByteWriter`: You can allocate space, write raw bytes and generic values.
 ///
 /// The "start of system exclusive" status byte is written by [`SystemExclusiveWMidiEvent::init`](struct.SystemExclusiveWMidiEvent.html#method.init) method and the "end of system exclusive" status byte is written when the writer is dropped.
-pub struct Writer<'a, 'b> {
-    frame: FramedMutSpace<'a, 'b>,
+pub struct Writer<'a> {
+    frame: Terminated<AtomWriter<'a>>,
 }
 
-impl<'a, 'b> Writer<'a, 'b> {
-    pub fn allocate(&mut self, size: usize) -> Option<&'a mut [u8]> {
-        self.frame.allocate(size, false).map(|(_, slice)| slice)
+impl<'a> Writer<'a> {
+    #[inline]
+    pub fn write_raw(&mut self, data: &[u8]) -> Result<&mut [u8], AtomWriteError> {
+        self.frame.write_bytes(data)
     }
 
-    pub fn write_raw(&mut self, data: &[u8]) -> Option<&'a mut [u8]> {
-        self.frame.write_raw(data, false)
-    }
-
-    pub fn write<T>(&mut self, instance: &T) -> Option<&'a mut T>
+    #[inline]
+    pub fn write<T>(&mut self, instance: T) -> Result<&mut T, AtomWriteError>
     where
-        T: Unpin + Copy + Send + Sync + Sized + 'static,
+        T: Copy + Sized + 'static,
     {
-        (&mut self.frame as &mut dyn MutSpace).write(instance, false)
-    }
-}
-
-impl<'a, 'b> Drop for Writer<'a, 'b> {
-    fn drop(&mut self) {
-        self.write::<u8>(&0xf7);
+        self.frame.write_value(instance)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::wmidi_binding::*;
-    use atom::space::RootMutSpace;
+    use lv2_atom::space::{SpaceCursor, VecSpace};
+    use lv2_atom::AtomHeader;
     use std::convert::TryFrom;
-    use std::mem::size_of;
     use wmidi::*;
 
     #[test]
@@ -119,35 +141,39 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<WMidiEvent>().unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
         let reference_message =
             MidiMessage::NoteOn(Channel::Ch1, Note::A0, Velocity::try_from(125).unwrap());
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            (&mut space as &mut dyn MutSpace)
-                .init(urid, reference_message.clone())
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
+            space
+                .write_atom(urid)
+                .unwrap()
+                .set(reference_message.clone())
                 .unwrap();
         }
 
         // verifying
         {
-            let (header, raw_space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
-            let header = unsafe { &*(header.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(header.type_, urid);
-            assert_eq!(header.size as usize, 3);
+            let atom = unsafe { UnidentifiedAtom::from_space(raw_space) }.unwrap();
+            assert_eq!(atom.header().urid(), urid);
+            assert_eq!(atom.header().size_of_body(), 3);
 
-            let (message, _) = raw_space.split_at(3);
+            let message = &atom.body().as_bytes()[..3];
             let message = MidiMessage::try_from(message).unwrap();
             assert_eq!(message, reference_message);
         }
 
         // reading
         {
-            let space = Space::from_reference(raw_space.as_ref());
+            let space = unsafe { UnidentifiedAtom::from_space(raw_space) }
+                .unwrap()
+                .body();
 
-            let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
+            let message = unsafe { WMidiEvent::read(space) }.unwrap();
             assert_eq!(message, reference_message);
         }
     }
@@ -157,31 +183,29 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid = map.map_type::<SystemExclusiveWMidiEvent>().unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace).init(urid, ()).unwrap();
-            writer.write_raw(&[1, 2, 3, 4]);
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
+            let mut writer = space.write_atom(urid).unwrap();
+            writer.write_raw(&[1, 2, 3, 4]).unwrap();
         }
 
         // verifying
         {
-            let (header, raw_space) = raw_space.split_at(size_of::<sys::LV2_Atom>());
-            let header = unsafe { &*(header.as_ptr() as *const sys::LV2_Atom) };
-            assert_eq!(header.type_, urid);
-            assert_eq!(header.size as usize, 6);
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
 
-            let (message, _) = raw_space.split_at(6);
-            assert_eq!(message, &[0xf0, 1, 2, 3, 4, 0xf7]);
+            assert_eq!(atom.header().urid(), urid);
+            assert_eq!(atom.header().size_of_body(), 6);
+            assert_eq!(&atom.body().as_bytes()[..6], &[0xf0, 1, 2, 3, 4, 0xf7]);
         }
 
         // reading
         {
-            let space = Space::from_reference(raw_space.as_ref());
-
-            let message = WMidiEvent::read(space.split_atom_body(urid).unwrap().0, ()).unwrap();
+            let atom = unsafe { raw_space.read().next_atom() }.unwrap();
+            let message = atom.read(urid).unwrap();
             assert_eq!(
                 message,
                 MidiMessage::SysEx(unsafe { U7::from_bytes_unchecked(&[1, 2, 3, 4]) })

@@ -4,6 +4,7 @@ extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
 use atom::prelude::*;
+use atom::AtomHeader;
 use core::prelude::*;
 use lv2_urid::*;
 use units::prelude::*;
@@ -45,24 +46,28 @@ impl Plugin for AtomPlugin {
     fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
         let sequence_reader = ports
             .input
-            .read::<Sequence>(self.urids.atom.sequence, self.urids.units.beat)
+            .read(self.urids.atom.sequence)
+            .unwrap()
+            .with_unit(self.urids.units.frame)
             .unwrap();
+
         let mut sequence_writer = ports
             .output
-            .init::<Sequence>(
-                self.urids.atom.sequence,
-                TimeStampURID::Frames(self.urids.units.frame),
-            )
+            .write(self.urids.atom.sequence)
+            .unwrap()
+            .with_unit(self.urids.units.frame)
             .unwrap();
 
         for (time_stamp, atom) in sequence_reader {
-            match atom.read(self.urids.atom.int, ()) {
-                Some(number) => {
+            match atom.read(self.urids.atom.int) {
+                Ok(number) => {
                     sequence_writer
-                        .init::<Int>(time_stamp, self.urids.atom.int, number * 2)
+                        .new_event(time_stamp, self.urids.atom.int)
+                        .unwrap()
+                        .set(number * 2)
                         .unwrap();
                 }
-                None => {
+                Err(_) => {
                     sequence_writer.forward(time_stamp, atom).unwrap();
                 }
             }
@@ -98,34 +103,40 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space: Box<[u8]> = Box::new([0; 256]);
+    let mut input_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let input_atom_space = input_atom_space.as_space_mut();
     {
-        let mut space = RootMutSpace::new(input_atom_space.as_mut());
-        let mut writer = (&mut space as &mut dyn MutSpace)
-            .init(
-                urids.atom.sequence,
-                TimeStampURID::Frames(urids.units.frame),
-            )
+        let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
+        let mut writer = space
+            .write_atom(urids.atom.sequence)
+            .unwrap()
+            .with_unit(urids.units.frame)
             .unwrap();
+        {
+            let _ = writer
+                .new_event(0, urids.atom.int)
+                .unwrap()
+                .set(42)
+                .unwrap();
+        }
         writer
-            .init(TimeStamp::Frames(0), urids.atom.int, 42)
+            .new_event(1, urids.atom.long)
+            .unwrap()
+            .set(17)
             .unwrap();
-        writer
-            .init(TimeStamp::Frames(1), urids.atom.long, 17)
-            .unwrap();
-        writer
-            .init(TimeStamp::Frames(2), urids.atom.int, 3)
-            .unwrap();
+
+        writer.new_event(2, urids.atom.int).unwrap().set(3).unwrap();
     }
 
     // preparing the output atom.
-    let mut output_atom_space: Box<[u8]> = Box::new([0; 256]);
+    let mut output_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let output_atom_space = output_atom_space.as_space_mut();
     {
-        let mut space = RootMutSpace::new(output_atom_space.as_mut());
-        (&mut space as &mut dyn MutSpace)
-            .init(urids.atom.chunk, ())
+        let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());
+        space
+            .write_atom(urids.atom.chunk)
             .unwrap()
-            .allocate(256 - size_of::<sys::LV2_Atom>(), false)
+            .allocate(256 - size_of::<sys::LV2_Atom>())
             .unwrap();
     }
 
@@ -149,12 +160,12 @@ fn main() {
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             0,
-            input_atom_space.as_mut_ptr() as *mut c_void,
+            input_atom_space.as_bytes_mut().as_mut_ptr() as *mut c_void,
         );
         (plugin_descriptor.connect_port.unwrap())(
             plugin,
             1,
-            output_atom_space.as_mut_ptr() as *mut c_void,
+            output_atom_space.as_bytes_mut().as_mut_ptr() as *mut c_void,
         );
 
         // Activate, run, deactivate.
@@ -166,16 +177,24 @@ fn main() {
         (plugin_descriptor.cleanup.unwrap())(plugin);
     }
 
-    // Asserting the result
-    let (sequence, _) = Space::from_slice(output_atom_space.as_ref())
-        .split_atom_body(urids.atom.sequence)
+    let chunk = unsafe { output_atom_space.read().next_atom() }
+        .unwrap()
+        .read(urids.atom.chunk)
         .unwrap();
-    for (stamp, atom) in Sequence::read(sequence, urids.units.beat).unwrap() {
-        let stamp = stamp.as_frames().unwrap();
+
+    // Asserting the result
+    let sequence = unsafe { chunk.read().next_atom() }
+        .unwrap()
+        .read(urids.atom.sequence)
+        .unwrap()
+        .with_unit(urids.units.frame)
+        .unwrap();
+
+    for (stamp, atom) in sequence {
         match stamp {
-            0 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 84),
-            1 => assert_eq!(atom.read(urids.atom.long, ()).unwrap(), 17),
-            2 => assert_eq!(atom.read(urids.atom.int, ()).unwrap(), 6),
+            0 => assert_eq!(*atom.read(urids.atom.int).unwrap(), 84),
+            1 => assert_eq!(*atom.read(urids.atom.long).unwrap(), 17),
+            2 => assert_eq!(*atom.read(urids.atom.int).unwrap(), 6),
             _ => panic!("Invalid time stamp in sequence!"),
         }
     }

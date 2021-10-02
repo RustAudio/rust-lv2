@@ -18,12 +18,15 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Read an integer from the port and print it.
-//!     println!("My input is: {}", ports.input.read(urids.int, ()).unwrap());
+//!     println!("My input is: {}", ports.input.read(urids.int).unwrap());
 //!     // Write the integer `42` to the port.
-//!     ports.output.init(urids.int, 42).unwrap();
+//!     ports.output.write(urids.int).unwrap();
 //! }
 //! ```
+use crate::header::AtomHeader;
+use crate::space::error::{AtomReadError, AtomWriteError};
 use crate::space::*;
+use crate::{AtomHandle, UnidentifiedAtom};
 use lv2_core::port::PortType;
 use std::ffi::c_void;
 use std::ptr::NonNull;
@@ -33,26 +36,29 @@ use urid::URID;
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to read atoms.
 pub struct PortReader<'a> {
-    space: Space<'a>,
+    atom: &'a UnidentifiedAtom,
 }
 
 impl<'a> PortReader<'a> {
     /// Create a new port reader.
-    fn new(space: Space<'a>) -> Self {
-        Self { space }
+    fn new(atom: &'a UnidentifiedAtom) -> Self {
+        Self { atom }
     }
 
     /// Read an atom.
     ///
     /// In order to identify the atom, the reader needs to know it's URID. Also, some atoms require a parameter. However, you can simply pass `()` in most cases.
     ///
-    /// This method returns `None` if the atom is malformed or simply isn't of the specified type.
-    pub fn read<'b, A: crate::Atom<'a, 'b>>(
-        &'b self,
+    /// # Errors
+    ///
+    /// This method can return any read error if the given URID doesn't match the contained atom,
+    /// or if any other read error occurred.
+    #[inline]
+    pub fn read<A: crate::Atom>(
+        &self,
         urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Option<A::ReadHandle> {
-        A::read(self.space.split_atom_body(urid)?.0, parameter)
+    ) -> Result<<A::ReadHandle as AtomHandle>::Handle, AtomReadError> {
+        self.atom.read(urid)
     }
 }
 
@@ -60,16 +66,14 @@ impl<'a> PortReader<'a> {
 ///
 /// If you add an [`AtomPort`](struct.AtomPort.html) to your ports struct, you will receive an instance of this struct to write atoms.
 pub struct PortWriter<'a> {
-    space: RootMutSpace<'a>,
-    has_been_written: bool,
+    space: SpaceCursor<'a>,
 }
 
 impl<'a> PortWriter<'a> {
     /// Create a new port writer.
-    fn new(space: RootMutSpace<'a>) -> Self {
+    fn new(space: &'a mut AtomSpace) -> Self {
         Self {
-            space,
-            has_been_written: false,
+            space: SpaceCursor::new(space.as_bytes_mut()),
         }
     }
 
@@ -79,18 +83,18 @@ impl<'a> PortWriter<'a> {
     ///
     /// Please note that you can call this method once only, because any atoms written behind the first one will not be identified.
     ///
-    /// This method returns `None` if the space of the port isn't big enough or if the method was called multiple times.
-    pub fn init<'b, A: crate::Atom<'a, 'b>>(
-        &'b mut self,
+    /// # Errors
+    ///
+    /// This method can return an error if the buffer isn't big enough to initialize the given atom's header.
+    pub fn write<'b, 'write, A: crate::Atom>(
+        &'b mut self, // SAFETY: 'write should be :'a , but for now we have to return 'static arbitrary lifetimes.
         urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Option<A::WriteHandle> {
-        if !self.has_been_written {
-            self.has_been_written = true;
-            (&mut self.space as &mut dyn MutSpace).init(urid, parameter)
-        } else {
-            None
-        }
+    ) -> Result<<A::WriteHandle as AtomHandle<'write>>::Handle, AtomWriteError> {
+        // SAFETY: Nope. That's super unsound, but we need it because ports are 'static right now.
+        let space: &'write mut SpaceCursor<'write> = unsafe {
+            ::core::mem::transmute::<_, &'write mut SpaceCursor<'write>>(&mut self.space)
+        };
+        space.write_atom(urid)
     }
 }
 
@@ -107,14 +111,14 @@ impl PortType for AtomPort {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {
-        let space = Space::from_atom(pointer.cast().as_ref());
-        PortReader::new(space)
+        let header = AtomHeader::from_raw(pointer.cast().as_ref());
+        PortReader::new(UnidentifiedAtom::from_header(header))
     }
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortWriter<'static> {
-        let space = RootMutSpace::from_atom(pointer.cast().as_mut());
-        PortWriter::new(space)
+        let header = AtomHeader::from_raw_mut(pointer.cast().as_mut());
+        PortWriter::new(UnidentifiedAtom::from_header_mut(header).body_mut())
     }
 }
 
@@ -122,6 +126,7 @@ impl PortType for AtomPort {
 mod tests {
     use crate::prelude::*;
     use crate::space::*;
+    use crate::AtomHeader;
     use lv2_core::prelude::*;
     use std::mem::size_of;
     use std::ptr::NonNull;
@@ -132,31 +137,32 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids = AtomURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing a chunk to indicate the size of the space.
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            let mut writer = (&mut space as &mut dyn MutSpace)
-                .init(urids.chunk, ())
-                .unwrap();
-            writer
-                .allocate(256 - size_of::<sys::LV2_Atom>(), false)
-                .unwrap();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
+            let mut writer = space.write_atom(urids.chunk).unwrap();
+            writer.allocate(256 - size_of::<sys::LV2_Atom>()).unwrap();
         }
 
         // Getting a writer with the port.
         {
-            let mut writer =
-                unsafe { AtomPort::output_from_raw(NonNull::from(raw_space.as_mut()).cast(), 0) };
-            writer.init::<Int>(urids.int, 42).unwrap();
+            let mut writer = unsafe {
+                AtomPort::output_from_raw(NonNull::from(raw_space.as_bytes_mut()).cast(), 0)
+            };
+            writer.write::<Int>(urids.int).unwrap().set(42).unwrap();
         }
 
         // Reading
         {
-            let reader =
-                unsafe { AtomPort::input_from_raw(NonNull::from(raw_space.as_mut()).cast(), 0) };
-            assert_eq!(reader.read::<Int>(urids.int, ()).unwrap(), 42);
+            let chunk = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urids.chunk)
+                .unwrap();
+            let reader = unsafe { AtomPort::input_from_raw(NonNull::from(chunk).cast(), 0) };
+            assert_eq!(*reader.read::<Int>(urids.int).unwrap(), 42);
         }
     }
 }

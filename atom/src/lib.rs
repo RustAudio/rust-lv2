@@ -15,6 +15,7 @@
 //! use lv2_core::prelude::*;
 //! use lv2_units::prelude::*;
 //! use urid::*;
+//! use lv2_atom::space::error::AtomError;
 //!
 //! #[derive(PortCollection)]
 //! struct MyPorts {
@@ -29,96 +30,90 @@
 //! }
 //!
 //! /// Something like a plugin's run method.
-//! fn run(ports: &mut MyPorts, urids: &MyURIDs) {
+//! fn run(ports: &mut MyPorts, urids: &MyURIDs) -> Result<(), AtomError> {
 //!     // Get the read handle to the sequence.
-//!     let input_sequence = ports.input.read(
-//!         urids.atom.sequence,
-//!         urids.units.beat
-//!     ).unwrap();
+//!     let input_sequence = ports.input
+//!         .read(urids.atom.sequence)?
+//!         .with_unit(urids.units.frame)?;
 //!
 //!     // Get the write handle to the sequence.
-//!     let mut output_sequence = ports.output.init(
-//!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
+//!     let mut output_sequence = ports.output
+//!         .write(urids.atom.sequence)?
+//!         .with_unit(urids.units.frame)?;
 //!
 //!     // Iterate through all events in the input sequence.
-//!     for event in input_sequence {
-//!         // An event contains a timestamp and an atom.
-//!         let (timestamp, atom) = event;
+//!     // An event contains a timestamp and an atom.
+//!     for (timestamp, atom) in input_sequence {
 //!         // If the read atom is a 32-bit integer...
-//!         if let Some(integer) = atom.read(urids.atom.int, ()) {
+//!         if let Ok(integer) = atom.read(urids.atom.int) {
 //!             // Multiply it by two and write it to the sequence.
-//!             output_sequence.init(timestamp, urids.atom.int, integer * 2).unwrap();
+//!             output_sequence.new_event(timestamp, urids.atom.int)?.set(*integer * 2)?;
 //!         } else {
 //!             // Forward the atom to the sequence without a change.
-//!             output_sequence.forward(timestamp, atom).unwrap();
+//!             output_sequence.forward(timestamp, atom)?;
 //!         }
 //!     }
+//!
+//!     Ok(())
 //! }
 //! ```
 //!
 //! # Internals
 //!
 //! Internally, all atoms are powered by the structs in the [`space`](space/index.html) module. They safely abstract the reading and writing process and assure that no memory is improperly accessed or leaked and that alignments are upheld. If you simply want to use the atoms in this crate, you don't need to deal with. They are only interesting if you want to create your own atom types.
+
+#![warn(clippy::missing_errors_doc)]
+#![warn(clippy::missing_panics_doc)]
+
 extern crate lv2_sys as sys;
 extern crate lv2_units as units;
 
-pub mod chunk;
-pub mod object;
-pub mod scalar;
-pub mod sequence;
-pub mod space;
-pub mod string;
-pub mod tuple;
-pub mod vector;
-
-#[cfg(feature = "lv2-core")]
-pub mod port;
-
-/// Prelude of `lv2_atom` for wildcard usage.
-pub mod prelude {
-    use crate::*;
-
-    pub use crate::{Atom, AtomURIDCollection, UnidentifiedAtom};
-    pub use chunk::Chunk;
-    pub use object::{Object, ObjectHeader, PropertyHeader};
-    pub use port::AtomPort;
-    pub use scalar::{AtomURID, Bool, Double, Float, Int, Long};
-    pub use sequence::{Sequence, TimeStamp, TimeStampURID};
-    pub use space::{FramedMutSpace, MutSpace, Space};
-    pub use string::{Literal, LiteralInfo, String};
-    pub use tuple::Tuple;
-    pub use vector::Vector;
-}
-
+use crate::space::error::{AtomReadError, AtomWriteError};
+pub use header::AtomHeader;
 use space::*;
 use urid::*;
 
-#[derive(Clone, URIDCollection)]
-/// Collection with the URIDs of all `UriBound`s in this crate.
-pub struct AtomURIDCollection {
-    pub blank: URID<object::Blank>,
-    pub double: URID<scalar::Double>,
-    pub float: URID<scalar::Float>,
-    pub int: URID<scalar::Int>,
-    pub long: URID<scalar::Long>,
-    pub urid: URID<scalar::AtomURID>,
-    pub bool: URID<scalar::Bool>,
-    vector: URID<vector::Vector<scalar::Int>>,
-    pub chunk: URID<chunk::Chunk>,
-    pub literal: URID<string::Literal>,
-    pub object: URID<object::Object>,
-    pub property: URID<object::Property>,
-    pub string: URID<string::String>,
-    pub tuple: URID<tuple::Tuple>,
-    pub sequence: URID<sequence::Sequence>,
+pub mod atoms;
+mod header;
+#[cfg(feature = "lv2-core")]
+pub mod port;
+pub mod space;
+
+mod unidentified;
+pub(crate) mod util;
+pub use unidentified::UnidentifiedAtom;
+
+/// Prelude of `lv2_atom` for wildcard usage.
+pub mod prelude {
+    pub use atoms::{
+        chunk::Chunk,
+        object::{Object, ObjectHeader, PropertyHeader},
+        scalar::{AtomURID, Bool, Double, Float, Int, Long},
+        sequence::Sequence,
+        string::{Literal, LiteralInfo, String},
+        tuple::Tuple,
+        vector::Vector,
+    };
+    pub use port::AtomPort;
+
+    use crate::*;
+    pub use crate::{atoms::AtomURIDCollection, Atom, UnidentifiedAtom};
 }
 
-impl AtomURIDCollection {
-    pub fn vector<S: scalar::ScalarAtom>(&self) -> URID<vector::Vector<S>> {
-        unsafe { URID::new_unchecked(self.vector.get()) }
-    }
+/// A special prelude re-exporting all utilities to implement custom atom types.
+pub mod atom_prelude {
+    pub use crate::prelude::*;
+
+    pub use crate::space::{
+        error::{AlignmentError, AtomError, AtomReadError, AtomWriteError},
+        AlignedSpace, AtomSpace, AtomWriter, SpaceAllocator, SpaceCursor, SpaceWriter, Terminated,
+        VecSpace,
+    };
+    pub use crate::{Atom, AtomHandle, AtomHeader, UnidentifiedAtom};
+}
+
+pub trait AtomHandle<'a> {
+    type Handle: 'a;
 }
 
 /// Atom type.
@@ -126,87 +121,72 @@ impl AtomURIDCollection {
 /// This is the foundation of this crate: Types that implement `Atom` define the reading and writing functions for an atom type. However, these types will never be constructed; They are only names to be used for generic type arguments.
 ///
 /// This trait has two lifetime parameters: The first one is the lifetime of the atom in memory. In practice, this will often be `'static`, but it's good to keep it generic for testing purposes. The second parameter is the lifetime of the `MutSpace` borrowed by the `FramedMutSpace` parameter in the `write` method. Since the `WriteParameter` may contain this `FramedMutSpace`, it has to be assured that it lives long enough. Since the referenced `MutSpace` also has to borrow the atom, it may not live longer than the atom.
-pub trait Atom<'a, 'b>: UriBound
-where
-    'a: 'b,
-{
-    /// The atom-specific parameter of the `read` function.
-    ///
-    /// If your atom does not need a reading parameter, you may set it to `()`.
-    type ReadParameter;
-
+pub trait Atom: UriBound {
     /// The return value of the `read` function.
     ///
     /// It may contain a reference to the atom and therefore may not outlive it.
-    type ReadHandle: 'a;
-
-    /// The atom-specific parameter of the `write` function.
-    ///
-    /// If your atom does not need a writing parameter, you may set it to `()`.
-    type WriteParameter;
+    type ReadHandle: for<'a> AtomHandle<'a>;
 
     /// The return value of the `write` function.
     ///
     /// It may contain a reference to a `MutSpace` and therefore may not outlive it.
-    type WriteHandle: 'b;
+    type WriteHandle: for<'a> AtomHandle<'a>;
 
-    /// Read the body of the atom.
+    /// Reads the body of the atom.
     ///
-    /// The passed space exactly covers the body of the atom, excluding the header. You may assume that the body is actually of your atom type, since the URID of the atom was checked beforehand.
+    /// The passed space exactly covers the body of the atom, excluding the header.
     ///
-    /// If the atom is malformed, you may not panic and return `None` instead.
-    fn read(body: Space<'a>, parameter: Self::ReadParameter) -> Option<Self::ReadHandle>;
+    /// # Errors
+    /// This method may return any error if the atom in the given space is somehow malformed, or if
+    /// there wasn't enough space to read it properly.
+    ///
+    /// # Safety
+    ///
+    /// The caller needs to ensure that the given [`AtomSpace`] contains a valid instance of this atom,
+    /// or the resulting `ReadHandle` will be completely invalid, triggering Undefined Behavior.
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError>;
 
     /// Initialize the body of the atom.
     ///
     /// In this method, the atom is prepared for the writing handle. Usually, the atom will not be
-    /// valid when initializied; Users have to use the write handle to make it valid.
+    /// valid when initialized; Users have to use the write handle to make it valid.
     ///
     /// The frame of the atom was already initialized, containing the URID.
     ///
-    /// If space is insufficient, you may not panic and return `None` instead. The written results are assumed to be malformed.
-    fn init(
-        frame: FramedMutSpace<'a, 'b>,
-        parameter: Self::WriteParameter,
-    ) -> Option<Self::WriteHandle>;
+    /// # Errors
+    ///
+    /// This method may return an error if the buffer is out of space, or if any invalid state is
+    /// observed. In those cases, the written data may be incomplete and should be discarded.
+    ///
+    fn write(
+        writer: AtomWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError>;
 }
 
-/// An atom of yet unknown type.
+/// An Atom super-trait that allows to get a byte slice from an atom's read handle.
 ///
-/// This is used by reading handles that have to return a reference to an atom, but can not check it's type. This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
-#[derive(Clone, Copy)]
-pub struct UnidentifiedAtom<'a> {
-    space: Space<'a>,
-}
-
-impl<'a> UnidentifiedAtom<'a> {
-    /// Construct a new unidentified atom.
-    ///
-    /// The space actually has to contain an atom. If it doesn't, crazy (but not undefined) things can happen.
-    pub fn new(space: Space<'a>) -> Self {
-        Self { space }
-    }
-
-    /// Try to read the atom.
-    ///
-    /// To identify the atom, it's URID and an atom-specific parameter is needed. If the atom was identified, a reading handle is returned.
-    pub fn read<'b, A: Atom<'a, 'b>>(
-        self,
-        urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Option<A::ReadHandle> {
-        self.space
-            .split_atom_body(urid)
-            .map(|(body, _)| body)
-            .and_then(|body| A::read(body, parameter))
-    }
-
-    /// Retrieve the type URID of the atom.
-    ///
-    /// This can be used to identify atoms without actually reading them.
-    pub fn type_urid(self) -> Option<URID> {
-        self.space
-            .split_type::<sys::LV2_Atom>()
-            .and_then(|(header, _)| URID::new(header.type_))
-    }
+/// Some LV2 APIs (such as `Option`) request a data pointer to the value of a given atom type, but
+/// in many cases that pointer can be simply retrieved from a reference to a raw value. Most notably,
+/// pointers to any scalar value (e.g. `&i32`) can be safely turned into a byte slice (`&[u8]).
+///
+/// However, not all atoms have this capability, hence the need for a separate trait that is not
+/// implemented for all types.
+///
+/// # Example
+///
+/// ```
+/// use lv2_atom::atoms::scalar::Int;
+/// use lv2_atom::AtomAsBytes;
+///
+/// let value: i32 = 42;
+/// let bytes: &[u8] = Int::read_as_bytes(&value);
+///
+/// assert_eq!(bytes.len(), ::core::mem::size_of::<i32>())
+/// ```
+pub trait AtomAsBytes: Atom {
+    /// Returns the type returned by an Atom's read handle as a byte slice.
+    #[allow(clippy::needless_lifetimes)] // Clippy false positive
+    fn read_as_bytes<'a>(handle: <Self::ReadHandle as AtomHandle<'a>>::Handle) -> &'a [u8];
 }

@@ -93,7 +93,7 @@
 //!         {
 //!             let mut path_writer = store.draft(self.urids.sample);
 //!             let mut path_writer = path_writer
-//!                 .init(self.urids.atom.string, ())
+//!                 .init(self.urids.atom.string)
 //!                 .map_err(|_| StateErr::Unknown)?;
 //!             path_writer.append(&*abstract_path);
 //!         }
@@ -113,7 +113,7 @@
 //!         // Retrieve the abstract path from the property store.
 //!         let abstract_path = store
 //!             .retrieve(self.urids.sample)?
-//!             .read(self.urids.atom.string, ())
+//!             .read(self.urids.atom.string)
 //!             .map_err(|_| StateErr::Unknown)?;
 //!
 //!         // Get the absolute path to the referenced file.

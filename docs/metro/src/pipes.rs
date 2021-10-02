@@ -43,7 +43,7 @@ where
 fn test_sampler() {
     let sample: Vec<u8> = vec![1, 2, 3, 4];
     let mut sampler = Sampler::new(sample);
-    for i in (0..32).chain(32..0) {
+    for i in (0..32).chain((0..32).rev()) {
         assert_eq!((i % 4 + 1) as u8, sampler.next(i));
     }
 }
@@ -312,10 +312,10 @@ impl<'a> EventReader<'a> {
 }
 
 impl<'a> Pipe for EventReader<'a> {
-    type InputItem = Option<UnidentifiedAtom<'a>>;
+    type InputItem = Option<&'a UnidentifiedAtom>;
     type OutputItem = PulseInput;
 
-    fn next(&mut self, atom: Option<UnidentifiedAtom>) -> PulseInput {
+    fn next(&mut self, atom: Option<&'a UnidentifiedAtom>) -> PulseInput {
         let mut updates = PulseInput {
             beat_update: None,
             bpm_update: None,
@@ -323,22 +323,24 @@ impl<'a> Pipe for EventReader<'a> {
         };
 
         if let Some(atom) = atom {
-            if let Some((object_header, object_reader)) = atom
-                .read(self.atom_urids.object, ())
-                .or_else(|| atom.read(self.atom_urids.blank, ()))
+            if let Ok((object_header, object_reader)) = atom
+                .read(self.atom_urids.object)
+                .or_else(|_| atom.read(self.atom_urids.blank))
             {
                 if object_header.otype == self.time_urids.position_class {
                     for (property_header, property) in object_reader {
                         if property_header.key == self.time_urids.bar_beat {
                             updates.beat_update = property
-                                .read(self.atom_urids.float, ())
-                                .map(|float| float as f64);
+                                .read(self.atom_urids.float)
+                                .map(|float| *float as f64)
+                                .ok();
                         }
                         if property_header.key == self.time_urids.beats_per_minute {
-                            updates.bpm_update = property.read(self.atom_urids.float, ());
+                            updates.bpm_update = property.read(self.atom_urids.float).ok().copied();
                         }
                         if property_header.key == self.time_urids.speed {
-                            updates.speed_update = property.read(self.atom_urids.float, ());
+                            updates.speed_update =
+                                property.read(self.atom_urids.float).ok().copied();
                         }
                     }
                 }
