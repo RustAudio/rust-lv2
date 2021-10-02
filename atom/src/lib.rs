@@ -187,5 +187,6 @@ pub trait Atom: UriBound {
 /// ```
 pub trait AtomAsBytes: Atom {
     /// Returns the type returned by an Atom's read handle as a byte slice.
+    #[allow(clippy::needless_lifetimes)] // Clippy false positive
     fn read_as_bytes<'a>(handle: <Self::ReadHandle as AtomHandle<'a>>::Handle) -> &'a [u8];
 }

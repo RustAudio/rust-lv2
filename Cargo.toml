@@ -101,6 +101,7 @@ members = [
     "core/derive",
     "midi",
     "options",
+    "options/derive",
     "state",
     "sys",
     "sys/tool",

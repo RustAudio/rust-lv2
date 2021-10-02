@@ -1,18 +1,13 @@
 use lv2_atom::atoms::scalar::Int;
 use lv2_core::prelude::*;
-use lv2_options::collection::{OptionsCollection, OptionsSerializer};
+use lv2_options::collection::Options;
 use lv2_options::prelude::*;
-use lv2_options::request::OptionRequestList;
 use lv2_urid::{HostMap, LV2Map};
 use std::any::Any;
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use std::pin::Pin;
-use urid::Map;
-use urid::{uri, HashURIDMapper, Uri, UriBound};
-
-#[uri("urn:lv2_options:test:SomeIntOption")]
-pub struct MyIntOption(i32);
+use urid::{uri, HashURIDMapper, Map, Uri, UriBound};
 
 impl lv2_options::OptionType for MyIntOption {
     type AtomType = lv2_atom::atoms::scalar::Int;
@@ -26,37 +21,51 @@ impl lv2_options::OptionType for MyIntOption {
     }
 }
 
-pub struct MyPluginOptions {
-    some_int_option: MyIntOption,
-}
-
 #[derive(FeatureCollection)]
 pub struct PluginFeatures<'a> {
     map: LV2Map<'a>,
     options: OptionsList<'a>,
 }
 
+#[uri("urn:lv2_options:test:SomeIntOption")]
+pub struct MyIntOption(pub i32);
+
 #[uri("urn:lv2_options:test:OptionablePlugin")]
 pub struct OptionablePlugin {
-    options: Option<MyIntOption>,
-    options_serializer: OptionsSerializer<Option<MyIntOption>>,
+    options: Options<MyPluginOptions>,
+}
+
+#[derive(OptionsCollection)]
+pub struct MyPluginOptions {
+    some_int_option: MyIntOption,
+}
+
+impl OptionsInterface for OptionablePlugin {
+    fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
+        self.options.respond_to_requests(&mut requests)
+    }
+
+    fn set(&mut self, options: OptionsList) -> Result<(), OptionsError> {
+        assert_eq!(self.options.values.some_int_option.0, 42);
+        let result = self.options.deserialize(&options);
+        assert_eq!(self.options.values.some_int_option.0, 69);
+
+        result
+    }
 }
 
 impl Plugin for OptionablePlugin {
+    fn new(_plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self> {
+        let options: Options<MyPluginOptions> =
+            Options::deserialize_new(&features.map, &features.options).unwrap();
+
+        assert_eq!(options.values.some_int_option.0, 42);
+        Some(OptionablePlugin { options })
+    }
+
     type Ports = ();
     type InitFeatures = PluginFeatures<'static>;
     type AudioFeatures = ();
-
-    fn new(_plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self> {
-        let options_serializer = <Option<MyIntOption>>::new_serializer(&features.map)?;
-
-        Some(OptionablePlugin {
-            options: options_serializer
-                .deserialize_new(&features.options)
-                .unwrap(),
-            options_serializer,
-        })
-    }
 
     fn run(
         &mut self,
@@ -69,18 +78,6 @@ impl Plugin for OptionablePlugin {
 
     fn extension_data(uri: &Uri) -> Option<&'static dyn Any> {
         match_extensions![uri, OptionsDescriptor<Self>]
-    }
-}
-
-impl OptionsInterface for OptionablePlugin {
-    fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
-        self.options_serializer
-            .respond_to_requests(&self.options, &mut requests)
-    }
-
-    fn set(&mut self, options: OptionsList) -> Result<(), OptionsError> {
-        self.options_serializer
-            .deserialize_to(&mut self.options, &options)
     }
 }
 

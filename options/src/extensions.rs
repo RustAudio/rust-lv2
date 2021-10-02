@@ -25,7 +25,7 @@ use urid::UriBound;
 /// # use urid::{URID, Uri, URIDCollection, uri, Map, UriBound};
 /// # use std::any::Any;
 /// # use lv2_atom::atoms::scalar::Int;
-/// use lv2_options::collection::OptionsSerializer;
+/// use lv2_options::collection::Options;
 /// #
 /// # impl OptionType for SomeIntOption {
 /// #    type AtomType = Int;
@@ -47,7 +47,7 @@ use urid::UriBound;
 /// # #[uri("urn:lv2_options:test:OptionablePlugin")]
 /// pub struct OptionablePlugin {
 ///     some_int: SomeIntOption,
-///     some_int_serializer: OptionsSerializer<SomeIntOption>,
+///     some_int_serializer: Options<SomeIntOption>,
 /// }
 /// #
 /// # impl Plugin for OptionablePlugin {

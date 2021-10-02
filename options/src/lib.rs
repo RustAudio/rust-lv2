@@ -22,6 +22,8 @@ pub use option::subject::Subject;
 pub use option::value::OptionValue;
 pub use option::OptionType;
 
+pub use lv2_options_derive::*;
+
 pub mod collection;
 pub mod extensions;
 pub mod list;
@@ -35,6 +37,7 @@ pub mod features {
 /// Prelude of `lv2_options` for wildcard usage.
 pub mod prelude {
     pub use crate::{
+        collection::OptionsCollection,
         extensions::{OptionsDescriptor, OptionsInterface},
         list::OptionsList,
         request::{OptionRequest, OptionRequestList},
