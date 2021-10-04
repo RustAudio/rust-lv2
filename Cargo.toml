@@ -106,6 +106,7 @@ members = [
     "sys",
     "sys/tool",
     "time",
+    "ui",
     "units",
     "urid",
     "urid/derive",
