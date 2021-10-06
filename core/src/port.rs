@@ -5,6 +5,8 @@ mod audio;
 mod control;
 mod cv;
 
+pub mod index;
+
 pub use audio::*;
 pub use control::*;
 pub use cv::*;
