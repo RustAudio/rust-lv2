@@ -18,6 +18,11 @@ impl PortEvent {
 pub trait PortProtocol<'handle, T: PortHandle>: UriBound {
     type ReadHandle: Sized + 'handle;
     type WriteParameter: Sized + 'handle;
+
+    #[inline]
+    fn size_of_write_parameter(parameter: &Self::WriteParameter) -> usize {
+        ::core::mem::size_of_val(parameter)
+    }
 }
 
 pub struct FloatProtocol;

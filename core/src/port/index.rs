@@ -18,6 +18,18 @@ impl<T, C> PortIndex<T, C> {
     pub unsafe fn new_unchecked(index: u32) -> Self {
         Self(index, PhantomData)
     }
+
+    #[inline]
+    pub fn get(&self) -> u32 {
+        self.0
+    }
+}
+
+impl PortIndex<()> {
+    #[inline]
+    pub fn new(index: u32) -> Self {
+        Self(index, PhantomData)
+    }
 }
 
 pub unsafe trait PortIndexable {
