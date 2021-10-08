@@ -116,6 +116,7 @@ members = [
     "docs/fifths",
     "docs/metro",
     "docs/midigate",
+    "docs/sampler"
 ]
 
 [profile.release]
