@@ -51,13 +51,12 @@ struct Features {
     is_live: Option<IsLive>,
 }
 
-impl Plugin for Amp {
+impl Plugin<'static> for Amp {
     type Ports = AmpPorts;
-    type InitFeatures = Features;
-    type AudioFeatures = ();
+    type Features = Features;
 
     #[inline]
-    fn new(plugin_info: &PluginInfo, features: &mut Features) -> Option<Self> {
+    fn new(plugin_info: &PluginInfo, features: Features) -> Option<Self> {
         // Verifying the plugin info.
         assert_eq!(
             plugin_info.plugin_uri().to_str().unwrap(),
@@ -75,13 +74,13 @@ impl Plugin for Amp {
         Some(Amp { activated: false })
     }
 
-    fn activate(&mut self, _: &mut Features) {
+    fn activate(&mut self) {
         assert!(!self.activated);
         self.activated = true;
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut AmpPorts, _sample_count: u32) {
         assert!(self.activated);
 
         let coef = *(ports.gain);
@@ -94,7 +93,7 @@ impl Plugin for Amp {
         }
     }
 
-    fn deactivate(&mut self, _: &mut Features) {
+    fn deactivate(&mut self) {
         assert!(self.activated);
         self.activated = false;
     }
@@ -106,9 +105,11 @@ impl Drop for Amp {
     }
 }
 
+const _: &lv2_sys::LV2_Descriptor = &lv2_core::plugin::PluginInstance::<'static, Amp>::DESCRIPTOR;
+/*
 lv2_descriptors! {
     Amp
-}
+}*/
 
 #[test]
 fn test_discovery() {

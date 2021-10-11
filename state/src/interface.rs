@@ -10,9 +10,9 @@ use urid::*;
 /// This extension contains two new methods: [`save`](#tymethod.save) and [`restore`](#tymethod.restore). These are called by the host to save and restore the state of the plugin, which is done with a handle.
 ///
 /// You can also add a feature collection to retrieve host features; It works just like the plugin's feature collection: You create a struct with multiple `Feature`s, derive `FeatureCollection` for it, and set the [`StateFeatures`](#associatedtype.StateFeatures) type to it. Then, the framework will try to populate it with the features supplied by the host and pass it to the method.
-pub trait State: Plugin {
+pub trait State<'a>: Plugin<'a> {
     /// The feature collection to populate for the [`save`](#tymethod.save) and [`restore`](#tymethod.restore) methods.
-    type StateFeatures: FeatureCollection<'static>;
+    type StateFeatures: FeatureCollection<'a>;
 
     /// Save the state of the plugin.
     ///
@@ -32,15 +32,15 @@ pub trait State: Plugin {
 /// Raw wrapper of the [`State`](trait.State.html) extension.
 ///
 /// This is a marker type that has the required external methods for the extension.
-pub struct StateDescriptor<P: State> {
-    plugin: PhantomData<P>,
+pub struct StateDescriptor<'a, P: State<'a>> {
+    plugin: PhantomData<&'a P>,
 }
 
-unsafe impl<P: State> UriBound for StateDescriptor<P> {
+unsafe impl<'a, P: State<'a>> UriBound for StateDescriptor<'a, P> {
     const URI: &'static [u8] = sys::LV2_STATE__interface;
 }
 
-impl<P: State> StateDescriptor<P> {
+impl<'a, P: State<'a>> StateDescriptor<'a, P> {
     /// Handle a save request by the host.
     ///
     /// This involves creating the plugin reference, constructing the store handle and discovering the required host features.
@@ -122,7 +122,7 @@ impl<P: State> StateDescriptor<P> {
     }
 }
 
-impl<P: State> ExtensionDescriptor for StateDescriptor<P> {
+impl<'a, P: State<'a>> ExtensionDescriptor for StateDescriptor<'a, P> {
     type ExtensionInterface = sys::LV2_State_Interface;
 
     const INTERFACE: &'static sys::LV2_State_Interface = &sys::LV2_State_Interface {
@@ -141,18 +141,17 @@ mod tests {
     #[uri("urn:stateful")]
     struct Stateful;
 
-    impl Plugin for Stateful {
-        type InitFeatures = ();
-        type AudioFeatures = ();
+    impl Plugin<'static> for Stateful {
+        type Features = ();
         type Ports = ();
 
         #[cfg_attr(tarpaulin, skip)]
-        fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {
+        fn new(_: &PluginInfo, _: ()) -> Option<Self> {
             Some(Self)
         }
 
         #[cfg_attr(tarpaulin, skip)]
-        fn run(&mut self, _: &mut (), _: &mut (), _: u32) {}
+        fn run(&mut self, _: &mut (), _: u32) {}
     }
 
     #[derive(FeatureCollection)]
@@ -160,7 +159,7 @@ mod tests {
         _map: LV2Map<'a>,
     }
 
-    impl State for Stateful {
+    impl State<'static> for Stateful {
         type StateFeatures = Features<'static>;
 
         #[cfg_attr(tarpaulin, skip)]
@@ -176,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_illegal_paths() {
-        type Descriptor = StateDescriptor<Stateful>;
+        type Descriptor = StateDescriptor<'static, Stateful>;
         let mut plugin = Stateful;
 
         assert_eq!(sys::LV2_State_Status_LV2_STATE_ERR_BAD_FLAGS, unsafe {

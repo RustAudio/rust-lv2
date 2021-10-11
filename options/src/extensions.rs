@@ -50,9 +50,9 @@ use urid::UriBound;
 ///     some_int_serializer: Options<SomeIntOption>,
 /// }
 /// #
-/// # impl Plugin for OptionablePlugin {
+/// # impl Plugin<'static> for OptionablePlugin {
 ///     # type Ports = ();
-///     # type InitFeatures = PluginFeatures<'static>;
+///     # type Features = PluginFeatures<'static>;
 ///     # type AudioFeatures = ();
 ///    #
 ///     # fn new(_plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
@@ -77,7 +77,7 @@ use urid::UriBound;
 /// #[uri("urn:lv2_options:test:SomeIntOption")]
 /// pub struct SomeIntOption(i32);
 ///
-/// impl OptionsInterface for OptionablePlugin {
+/// impl OptionsInterface<'static> for OptionablePlugin {
 ///    fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
 ///         self.some_int_serializer.respond_to_requests(&self.some_int, &mut requests)
 ///     }
@@ -87,7 +87,7 @@ use urid::UriBound;
 ///     }
 /// }
 /// ```
-pub trait OptionsInterface: Plugin {
+pub trait OptionsInterface<'a>: Plugin<'a> {
     /// Allows the host to retrieve the value of the given options, as currently stored by the plugin.
     ///
     /// If the given options are unknown or somehow invalid, the appropriate [`OptionsError`] is returned.
@@ -104,15 +104,15 @@ pub trait OptionsInterface: Plugin {
 }
 
 /// The Extension Descriptor associated to [`OptionsInterface`].
-pub struct OptionsDescriptor<P: OptionsInterface> {
-    plugin: PhantomData<P>,
+pub struct OptionsDescriptor<'a, P: OptionsInterface<'a>> {
+    plugin: PhantomData<&'a P>,
 }
 
-unsafe impl<P: OptionsInterface> UriBound for OptionsDescriptor<P> {
+unsafe impl<'a, P: OptionsInterface<'a>> UriBound for OptionsDescriptor<'a, P> {
     const URI: &'static [u8] = lv2_sys::LV2_OPTIONS__interface;
 }
 
-impl<P: OptionsInterface> OptionsDescriptor<P> {
+impl<'a, P: OptionsInterface<'a>> OptionsDescriptor<'a, P> {
     unsafe extern "C" fn get(
         instance: *mut c_void,
         options_list: *mut lv2_sys::LV2_Options_Option,
@@ -160,7 +160,7 @@ impl<P: OptionsInterface> OptionsDescriptor<P> {
     }
 }
 
-impl<P: OptionsInterface> ExtensionDescriptor for OptionsDescriptor<P> {
+impl<'a, P: OptionsInterface<'a>> ExtensionDescriptor for OptionsDescriptor<'a, P> {
     type ExtensionInterface = lv2_sys::LV2_Options_Interface;
     const INTERFACE: &'static Self::ExtensionInterface = &lv2_sys::LV2_Options_Interface {
         get: Some(Self::get),

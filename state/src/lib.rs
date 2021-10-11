@@ -49,7 +49,7 @@
 //!
 //! impl Plugin for Stateful {
 //!     type Ports = ();
-//!     type InitFeatures = Features<'static>;
+//!     type Features = Features<'static>;
 //!     type AudioFeatures = ();
 //!
 //!     fn new(_: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {

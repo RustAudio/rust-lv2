@@ -1,5 +1,5 @@
 use hound::WavSpec;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct Sample {
     data: Vec<f32>,
@@ -8,7 +8,7 @@ pub struct Sample {
 }
 
 impl Sample {
-    fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Sample> {
+    pub fn load<P: Into<PathBuf>>(path: P) -> std::io::Result<Sample> {
         todo!()
     }
 }

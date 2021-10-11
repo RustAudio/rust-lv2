@@ -58,7 +58,7 @@
 //!     type Ports = Ports;
 //!
 //!     // We don't need any special host features; We can leave them out.
-//!     type InitFeatures = ();
+//!     type Features = ();
 //!     type AudioFeatures = ();
 //!
 //!     // Create a new instance of the plugin; Trivial in this case.
@@ -136,6 +136,8 @@ pub mod prelude {
     pub use ::lv2_worker::prelude::*;
     #[cfg(feature = "urid")]
     pub use ::urid::*;
+
+    pub use crate::lv2_core;
 }
 
 #[cfg(feature = "lv2-atom")]

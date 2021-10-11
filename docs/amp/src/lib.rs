@@ -16,7 +16,7 @@ struct Amp;
 impl Plugin for Amp {
     type Ports = Ports;
 
-    type InitFeatures = ();
+    type Features = ();
     type AudioFeatures = ();
     // The `new` method is called by the plugin backend when it creates a new plugin instance. The host passes the plugin URI, sample rate, and bundle path for plugins that need to load additional resources (e.g. waveforms). The features parameter contains host-provided features defined in LV2 extensions, but this simple plugin does not use any. This method is in the “instantiation” threading class, so no other methods on this instance will be called concurrently with it.
     fn new(_plugin_info: &PluginInfo, _features: &mut ()) -> Option<Self> {
@@ -35,5 +35,6 @@ impl Plugin for Amp {
         }
     }
 }
+
 // The `lv2_descriptors` macro creates the entry point to the plugin library. It takes structs that implement `Plugin` and exposes them. The host will load the library and call a generated function to find all the plugins defined in the library.
 lv2_descriptors!(Amp);

@@ -32,18 +32,17 @@ struct AtomPlugin {
     urids: URIDs,
 }
 
-impl Plugin for AtomPlugin {
+impl Plugin<'static> for AtomPlugin {
     type Ports = Ports;
-    type InitFeatures = Features<'static>;
-    type AudioFeatures = ();
+    type Features = Features<'static>;
 
-    fn new(_plugin_info: &PluginInfo, features: &mut Features) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: Features) -> Option<Self> {
         Some(Self {
             urids: features.map.populate_collection()?,
         })
     }
 
-    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut Ports, _: u32) {
         let sequence_reader = ports
             .input
             .read(self.urids.atom.sequence)

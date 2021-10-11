@@ -29,7 +29,7 @@ use urid::UriBound;
 ///
 /// impl Plugin for SimpleAmp {
 ///     type Ports = SimpleAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()
@@ -105,7 +105,7 @@ impl PortType for Audio {
 ///
 /// impl Plugin for SimpleAmp {
 ///     type Ports = SimpleAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()

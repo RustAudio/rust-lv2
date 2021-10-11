@@ -40,7 +40,7 @@ pub struct MyPluginOptions {
     some_int_option: MyIntOption,
 }
 
-impl OptionsInterface for OptionablePlugin {
+impl OptionsInterface<'static> for OptionablePlugin {
     fn get<'a>(&'a self, mut requests: OptionRequestList<'a>) -> Result<(), OptionsError> {
         self.options.respond_to_requests(&mut requests)
     }
@@ -54,8 +54,8 @@ impl OptionsInterface for OptionablePlugin {
     }
 }
 
-impl Plugin for OptionablePlugin {
-    fn new(_plugin_info: &PluginInfo, features: &mut Self::InitFeatures) -> Option<Self> {
+impl Plugin<'static> for OptionablePlugin {
+    fn new(_plugin_info: &PluginInfo, features: Self::Features) -> Option<Self> {
         let options: Options<MyPluginOptions> =
             Options::deserialize_new(&features.map, &features.options).unwrap();
 
@@ -64,15 +64,9 @@ impl Plugin for OptionablePlugin {
     }
 
     type Ports = ();
-    type InitFeatures = PluginFeatures<'static>;
-    type AudioFeatures = ();
+    type Features = PluginFeatures<'static>;
 
-    fn run(
-        &mut self,
-        _ports: &mut Self::Ports,
-        _features: &mut Self::AudioFeatures,
-        _sample_count: u32,
-    ) {
+    fn run(&mut self, _ports: &mut Self::Ports, _sample_count: u32) {
         unimplemented!()
     }
 

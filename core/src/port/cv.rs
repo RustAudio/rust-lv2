@@ -40,7 +40,7 @@ use urid::UriBound;
 ///
 /// impl Plugin for CVAmp {
 ///     type Ports = CVAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()
@@ -129,7 +129,7 @@ impl PortType for CV {
 ///
 /// impl Plugin for CVAmp {
 ///     type Ports = CVAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()

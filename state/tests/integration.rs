@@ -23,12 +23,11 @@ unsafe impl UriBound for Stateful {
     const URI: &'static [u8] = b"urn:lv2_atom:stateful\0";
 }
 
-impl Plugin for Stateful {
+impl Plugin<'static> for Stateful {
     type Ports = ();
-    type InitFeatures = Features<'static>;
-    type AudioFeatures = ();
+    type Features = Features<'static>;
 
-    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: Features<'static>) -> Option<Self> {
         Some(Stateful {
             internal: 42.0,
             audio: Vec::new(),
@@ -36,7 +35,7 @@ impl Plugin for Stateful {
         })
     }
 
-    fn run(&mut self, _: &mut (), _: &mut (), _: u32) {
+    fn run(&mut self, _: &mut (), _: u32) {
         self.internal = 17.0;
         self.audio.extend((0..32).map(|f| f as f32));
     }
@@ -46,7 +45,7 @@ impl Plugin for Stateful {
     }
 }
 
-impl State for Stateful {
+impl State<'static> for Stateful {
     type StateFeatures = ();
 
     fn save(&self, mut store: StoreHandle, _: ()) -> Result<(), StateErr> {
@@ -96,7 +95,7 @@ fn create_plugin(mapper: Pin<&mut HostMap<HashURIDMapper>>) -> Stateful {
         // Constructing the plugin.
         Stateful::new(
             &PluginInfo::new(Stateful::uri(), Path::new("./"), 44100.0),
-            &mut Features { map },
+            Features { map },
         )
         .unwrap()
     };
@@ -123,7 +122,7 @@ fn test_save_n_restore() {
 
     let mut first_plugin = create_plugin(mapper.as_mut());
 
-    first_plugin.run(&mut (), &mut (), 32);
+    first_plugin.run(&mut (), 32);
 
     assert_eq!(17.0f32.to_ne_bytes(), first_plugin.internal.to_ne_bytes());
     assert_eq!(32, first_plugin.audio.len());

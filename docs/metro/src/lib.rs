@@ -39,7 +39,7 @@ pub struct Metro {
 impl Plugin for Metro {
     type Ports = Ports;
 
-    type InitFeatures = Features<'static>;
+    type Features = Features<'static>;
     type AudioFeatures = ();
 
     fn new(plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
@@ -101,4 +101,4 @@ impl Plugin for Metro {
     }
 }
 
-lv2_descriptors!(Metro);
+// lv2_descriptors!(Metro);

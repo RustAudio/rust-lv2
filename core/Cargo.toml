@@ -17,3 +17,6 @@ maintenance = { status = "passively-maintained" }
 urid = "0.1.0"
 lv2-sys = "2.0.0"
 lv2-core-derive = "2.1.0"
+
+[features]
+__lv2_root = ["lv2-core-derive/__lv2_root"]

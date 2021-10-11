@@ -19,7 +19,7 @@
 //!
 //!/// Requested features
 //!#[derive(FeatureCollection)]
-//!struct AudioFeatures<'a> {
+//!struct Features<'a> {
 //!    ///host feature allowing to schedule some work
 //!    schedule: Schedule<'a, EgWorker>,
 //!}
@@ -42,10 +42,9 @@
 //!    const URI: &'static [u8] = b"urn:rust-lv2-more-examples:eg-worker-rs\0";
 //!}
 //!
-//!impl Plugin for EgWorker {
+//!impl<'a> Plugin<'a> for EgWorker {
 //!    type Ports = Ports;
-//!    type InitFeatures = ();
-//!    type AudioFeatures = AudioFeatures<'static>;
+//!    type Features = Features<'a>;
 //!
 //!    fn new(_plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
 //!        Some(Self {
@@ -75,7 +74,7 @@
 //!/// Implementing the extension.
 //!impl Worker for EgWorker {
 //!    // data type sent by the schedule handler and received by the `work` method.
-//!    type WorkData = WorkMessage;
+//!    type RequestData = WorkMessage;
 //!    // data type sent by the response handler and received by the `work_response` method.
 //!    type ResponseData = String;
 //!    fn work(
@@ -98,13 +97,12 @@
 //!    fn work_response(
 //!        &mut self,
 //!        data: Self::ResponseData,
-//!        _features: &mut Self::AudioFeatures,
 //!    ) -> Result<(), WorkerError> {
 //!        println!("work_response received: {}", data);
 //!        Ok(())
 //!    }
 //!
-//!    fn end_run(&mut self, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
+//!    fn end_run(&mut self) -> Result<(), WorkerError> {
 //!        println!("cycle {} ended", self.end_cycle);
 //!        self.end_cycle += 1;
 //!        Ok(())
@@ -204,9 +202,12 @@ impl<'a, P: Worker> Schedule<'a, P> {
     /// **Notes about the passed data:** The buffer used to pass data is managed by the host. That
     /// mean the size is unknown and may be limited. So if you need to pass huge amount of data,
     /// it's preferable to use another way, for example a sync::mpsc channel.
-    pub fn schedule_work(&self, worker_data: P::WorkData) -> Result<(), ScheduleError<P::WorkData>>
+    pub fn schedule_work(
+        &self,
+        worker_data: P::RequestData,
+    ) -> Result<(), ScheduleError<P::RequestData>>
     where
-        P::WorkData: 'static + Send,
+        P::RequestData: 'static + Send,
     {
         let worker_data = ManuallyDrop::new(worker_data);
         let size = mem::size_of_val(&worker_data) as u32;
@@ -241,10 +242,6 @@ pub enum RespondError<T> {
     Unknown(T),
     /// Failure due to a lack of space
     NoSpace(T),
-    /// No response callback was provided by the host
-    ///
-    /// This can only happen with faulty host
-    NoCallback(T),
 }
 
 impl<T> fmt::Debug for RespondError<T> {
@@ -252,7 +249,6 @@ impl<T> fmt::Debug for RespondError<T> {
         match *self {
             RespondError::Unknown(..) => "Unknown(..)".fmt(f),
             RespondError::NoSpace(..) => "NoSpace(..)".fmt(f),
-            RespondError::NoCallback(..) => "NoCallback(..)".fmt(f),
         }
     }
 }
@@ -262,7 +258,6 @@ impl<T> fmt::Display for RespondError<T> {
         match *self {
             RespondError::Unknown(..) => "unknown error".fmt(f),
             RespondError::NoSpace(..) => "not enough space".fmt(f),
-            RespondError::NoCallback(..) => "no callback".fmt(f),
         }
     }
 }
@@ -292,18 +287,13 @@ impl<P: Worker> ResponseHandler<P> {
         response_data: P::ResponseData,
     ) -> Result<(), RespondError<P::ResponseData>>
     where
-        P::WorkData: 'static + Send,
+        P::RequestData: 'static + Send,
     {
         let response_data = ManuallyDrop::new(response_data);
         let size = mem::size_of_val(&response_data) as u32;
         let ptr = &response_data as *const _ as *const c_void;
-        let response_function = if let Some(response_function) = self.response_function {
-            response_function
-        } else {
-            return Err(RespondError::NoCallback(ManuallyDrop::into_inner(
-                response_data,
-            )));
-        };
+        let response_function = self.response_function.unwrap();
+
         match unsafe { (response_function)(self.respond_handle, size, ptr) } {
             lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS => Ok(()),
             lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN => Err(RespondError::Unknown(
@@ -336,11 +326,12 @@ pub enum WorkerError {
 ///
 /// In order to be used by the host, you need to to export the [`WorkerDescriptor`](struct.WorkerDescriptor.html)
 /// in the `extension_data` method. You can do that with the `match_extensions` macro from the `lv2-core` crate.
-pub trait Worker: Plugin {
+pub trait Worker: for<'a> Plugin<'a> {
     /// Type of data sent to `work` by the schedule handler.
-    type WorkData: 'static + Send;
+    type RequestData: 'static + Send;
     /// Type of data sent to `work_response` by the response handler.
     type ResponseData: 'static + Send;
+
     /// The work to do in a non-real-time context,
     ///
     /// This is called by the host in a non-realtime context as requested, probably in a separate
@@ -353,17 +344,13 @@ pub trait Worker: Plugin {
     /// threads.
     fn work(
         response_handler: &ResponseHandler<Self>,
-        data: Self::WorkData,
+        data: Self::RequestData,
     ) -> Result<(), WorkerError>;
 
     /// Handle a response from the worker.
     ///
     /// This is called by the host in the `run()` context when a response from the worker is ready.
-    fn work_response(
-        &mut self,
-        _data: Self::ResponseData,
-        _features: &mut Self::AudioFeatures,
-    ) -> Result<(), WorkerError> {
+    fn work_response(&mut self, _data: Self::ResponseData) -> Result<(), WorkerError> {
         Ok(())
     }
 
@@ -371,7 +358,7 @@ pub trait Worker: Plugin {
     ///
     ///Since work_response() may be called after `run()` finished, this method provides a hook for code that
     ///must run after the cycle is completed.
-    fn end_run(&mut self, _features: &mut Self::AudioFeatures) -> Result<(), WorkerError> {
+    fn end_run(&mut self) -> Result<(), WorkerError> {
         Ok(())
     }
 }
@@ -404,7 +391,7 @@ impl<P: Worker> WorkerDescriptor<P> {
         };
         //build ref to worker data from raw pointer
         let worker_data =
-            ptr::read_unaligned(data as *const mem::ManuallyDrop<<P as Worker>::WorkData>);
+            ptr::read_unaligned(data as *const mem::ManuallyDrop<<P as Worker>::RequestData>);
         let worker_data = mem::ManuallyDrop::into_inner(worker_data);
         if size as usize != mem::size_of_val(&worker_data) {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
@@ -423,12 +410,12 @@ impl<P: Worker> WorkerDescriptor<P> {
         body: *const c_void,
     ) -> lv2_sys::LV2_Worker_Status {
         //deref plugin_instance and get the plugin
-        let plugin_instance =
-            if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-                plugin_instance
-            } else {
-                return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
-            };
+        let instance = if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
+            plugin_instance
+        } else {
+            return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
+        };
+
         //build ref to response data from raw pointer
         let response_data =
             ptr::read_unaligned(body as *const mem::ManuallyDrop<<P as Worker>::ResponseData>);
@@ -437,8 +424,7 @@ impl<P: Worker> WorkerDescriptor<P> {
             return lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN;
         }
 
-        let (instance, features) = plugin_instance.audio_class_handle();
-        match instance.work_response(response_data, features) {
+        match instance.plugin_handle().work_response(response_data) {
             Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
             Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
             Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -448,8 +434,7 @@ impl<P: Worker> WorkerDescriptor<P> {
     /// Extern unsafe version of `end_run` method actually called by the host
     unsafe extern "C" fn extern_end_run(handle: lv2_sys::LV2_Handle) -> lv2_sys::LV2_Worker_Status {
         if let Some(plugin_instance) = (handle as *mut PluginInstance<P>).as_mut() {
-            let (instance, features) = plugin_instance.audio_class_handle();
-            match instance.end_run(features) {
+            match plugin_instance.plugin_handle().end_run() {
                 Ok(()) => lv2_sys::LV2_Worker_Status_LV2_WORKER_SUCCESS,
                 Err(WorkerError::Unknown) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_UNKNOWN,
                 Err(WorkerError::NoSpace) => lv2_sys::LV2_Worker_Status_LV2_WORKER_ERR_NO_SPACE,
@@ -522,20 +507,19 @@ mod tests {
         const URI: &'static [u8] = b"not relevant\0";
     }
 
-    impl Plugin for TestDropWorker {
+    impl<'a> Plugin<'a> for TestDropWorker {
         type Ports = Ports;
-        type InitFeatures = ();
-        type AudioFeatures = ();
+        type Features = ();
 
-        fn new(_plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
+        fn new(_plugin_info: &PluginInfo, _features: Self::Features) -> Option<Self> {
             Some(Self {})
         }
 
-        fn run(&mut self, _ports: &mut Ports, _features: &mut Self::InitFeatures, _: u32) {}
+        fn run(&mut self, _ports: &mut Ports, _: u32) {}
     }
 
     impl Worker for TestDropWorker {
-        type WorkData = HasDrop;
+        type RequestData = HasDrop;
         type ResponseData = HasDrop;
 
         fn work(
@@ -545,11 +529,7 @@ mod tests {
             Ok(())
         }
 
-        fn work_response(
-            &mut self,
-            _data: HasDrop,
-            _features: &mut Self::AudioFeatures,
-        ) -> Result<(), WorkerError> {
+        fn work_response(&mut self, _data: HasDrop) -> Result<(), WorkerError> {
             Ok(())
         }
     }

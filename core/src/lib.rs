@@ -33,7 +33,7 @@
 //!     type Ports = Ports;
 //!
 //!     // We don't need any special host features; We can leave them out.
-//!     type InitFeatures = ();
+//!     type Features = ();
 //!     type AudioFeatures = ();
 //!
 //!     // Create a new instance of the plugin; Trivial in this case.

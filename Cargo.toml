@@ -26,6 +26,7 @@ optional = true
 [dependencies.lv2-core]
 version = "3.0.0"
 optional = true
+features = ["__lv2_root"]
 
 [dependencies.lv2-midi]
 version = "1.2.0"

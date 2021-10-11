@@ -26,7 +26,7 @@ use urid::UriBound;
 ///
 /// impl Plugin for ControlAmp {
 ///     type Ports = ControlAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()
@@ -101,7 +101,7 @@ impl PortType for Control {
 ///
 /// impl Plugin for ControlAmp {
 ///     type Ports = ControlAmpPorts;
-/// # type InitFeatures = ();
+/// # type Features = ();
 /// # type AudioFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()

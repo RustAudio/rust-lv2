@@ -72,7 +72,7 @@
 //!
 //! impl Plugin for MyPlugin {
 //!     type Ports = ();
-//!     type InitFeatures = ();
+//!     type Features = ();
 //!     type AudioFeatures = ();
 //!
 //!     fn new(_: &PluginInfo, _: &mut ()) -> Option<Self> {

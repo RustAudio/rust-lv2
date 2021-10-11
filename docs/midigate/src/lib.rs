@@ -63,7 +63,7 @@ impl Midigate {
 impl Plugin for Midigate {
     type Ports = Ports;
 
-    type InitFeatures = Features<'static>;
+    type Features = Features<'static>;
     type AudioFeatures = ();
 
     fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
