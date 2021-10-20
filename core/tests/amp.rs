@@ -106,10 +106,10 @@ impl Drop for Amp {
 }
 
 const _: &lv2_sys::LV2_Descriptor = &lv2_core::plugin::PluginInstance::<'static, Amp>::DESCRIPTOR;
-/*
+
 lv2_descriptors! {
     Amp
-}*/
+}
 
 #[test]
 fn test_discovery() {

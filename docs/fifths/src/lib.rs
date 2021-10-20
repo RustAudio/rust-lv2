@@ -25,20 +25,19 @@ pub struct Fifths {
     urids: URIDs,
 }
 
-impl Plugin for Fifths {
+impl<'a> Plugin<'a> for Fifths {
     type Ports = Ports;
 
-    type Features = Features<'static>;
-    type AudioFeatures = ();
+    type Features = Features<'a>;
 
-    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: Features<'a>) -> Option<Self> {
         Some(Self {
             urids: features.map.populate_collection()?,
         })
     }
 
     // This plugin works similar to the previous one: It iterates over the events in the input port. However, it only needs to write one or two messages instead of blocks of audio.
-    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut Ports, _: u32) {
         // Get the reading handle of the input sequence.
         let input_sequence = ports
             .input

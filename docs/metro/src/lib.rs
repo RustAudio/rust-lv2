@@ -36,13 +36,12 @@ pub struct Metro {
     sampler: Connector<Counter<usize>, Sampler<f32>>,
 }
 
-impl Plugin for Metro {
+impl<'a> Plugin<'a> for Metro {
     type Ports = Ports;
 
-    type Features = Features<'static>;
-    type AudioFeatures = ();
+    type Features = Features<'a>;
 
-    fn new(plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+    fn new(plugin_info: &PluginInfo, features: Features<'a>) -> Option<Self> {
         let attack_len = (ATTACK_DURATION * plugin_info.sample_rate()) as usize;
         let decay_len = (DECAY_DURATION * plugin_info.sample_rate()) as usize;
 
@@ -69,12 +68,12 @@ impl Plugin for Metro {
         })
     }
 
-    fn activate(&mut self, _: &mut Features<'static>) {
+    fn activate(&mut self) {
         self.envelope.reset();
         self.sampler.reset();
     }
 
-    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut Ports, _: u32) {
         if let Ok(control) = ports
             .control
             .read(self.urids.atom.sequence)

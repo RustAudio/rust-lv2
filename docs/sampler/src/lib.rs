@@ -17,11 +17,12 @@ struct SamplerPorts {
     output: OutputPort<Audio>,
 }
 
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/sampler")]
 pub struct Sampler {
     current_sample: Option<Sample>,
 }
 
-impl Plugin<'static> for Sampler {
+impl<'a> Plugin<'a> for Sampler {
     type Ports = ();
     type Features = ();
 
@@ -34,12 +35,12 @@ impl Plugin<'static> for Sampler {
     }
 }
 
-enum WorkerRequest {
+pub enum WorkerRequest {
     LoadSample(PathBuf),
     FreeSample(Sample),
 }
 
-impl Worker for Sampler {
+impl<'a> Worker<'a> for Sampler {
     type RequestData = WorkerRequest;
     type ResponseData = Option<Sample>;
 
@@ -54,7 +55,7 @@ impl Worker for Sampler {
                     WorkerError::Unknown
                 })?;
 
-                response_handler.respond(Some(sample))?
+                response_handler.respond(Some(sample)).unwrap(); // FIXME
             }
             WorkerRequest::FreeSample(_) => {} // just drop it
         }

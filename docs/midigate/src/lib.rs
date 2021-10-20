@@ -60,13 +60,12 @@ impl Midigate {
     }
 }
 
-impl Plugin for Midigate {
+impl<'a> Plugin<'a> for Midigate {
     type Ports = Ports;
 
-    type Features = Features<'static>;
-    type AudioFeatures = ();
+    type Features = Features<'a>;
 
-    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+    fn new(_plugin_info: &PluginInfo, features: Features<'a>) -> Option<Self> {
         Some(Self {
             n_active_notes: 0,
             program: 0,
@@ -83,7 +82,7 @@ impl Plugin for Midigate {
     // This pattern of iterating over input events and writing output along the way is a common idiom for writing sample accurate output based on event input.
     //
     // Note that this simple example simply writes input or zero for each sample based on the gate. A serious implementation would need to envelope the transition to avoid aliasing.
-    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut Ports, _: u32) {
         let mut offset: usize = 0;
 
         let control_sequence = ports
@@ -127,7 +126,7 @@ impl Plugin for Midigate {
     }
 
     // During it's runtime, the host might decide to deactivate the plugin. When the plugin is reactivated, the host calls this method which gives the plugin an opportunity to reset it's internal state.
-    fn activate(&mut self, _features: &mut Features<'static>) {
+    fn activate(&mut self) {
         self.n_active_notes = 0;
         self.program = 0;
     }

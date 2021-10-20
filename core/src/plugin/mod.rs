@@ -244,3 +244,5 @@ impl<'a, T: Plugin<'a>> PluginInstance<'a, T> {
 pub unsafe trait PluginInstanceDescriptor<'a>: Plugin<'a> {
     const DESCRIPTOR: sys::LV2_Descriptor;
 }
+
+pub use sys::LV2_Descriptor as RawDescriptor;

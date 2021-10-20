@@ -72,7 +72,7 @@
 //!}
 //!
 //!/// Implementing the extension.
-//!impl Worker for EgWorker {
+//!impl<'a> Worker<'a> for EgWorker {
 //!    // data type sent by the schedule handler and received by the `work` method.
 //!    type RequestData = WorkMessage;
 //!    // data type sent by the response handler and received by the `work_response` method.
@@ -181,7 +181,7 @@ unsafe impl<'a, P> Feature for Schedule<'a, P> {
     }
 }
 
-impl<'a, P: Worker> Schedule<'a, P> {
+impl<'a, P: Worker<'a>> Schedule<'a, P> {
     /// Request the host to call the worker thread.
     ///
     /// If this method fails, the data is considered as untransmitted and is returned to the caller.
@@ -266,7 +266,7 @@ impl<T> fmt::Display for RespondError<T> {
 ///
 /// The `ResponseHandler` needs to know the `Worker` trait implementor as a generic parameter since the
 /// data, which is send to `work_response`, must be of the `ResponseData` associated type.
-pub struct ResponseHandler<P: Worker> {
+pub struct ResponseHandler<P> {
     /// function provided by the host to send response to `run()`
     response_function: lv2_sys::LV2_Worker_Respond_Function,
     /// Response handler provided by the host, must be passed to the host provided
@@ -275,7 +275,7 @@ pub struct ResponseHandler<P: Worker> {
     phantom: PhantomData<P>,
 }
 
-impl<P: Worker> ResponseHandler<P> {
+impl<'a, P: Worker<'a>> ResponseHandler<P> {
     /// Send a response to the `run` context.
     ///
     /// This method allows the worker to give a response to the `run` context. After calling this
@@ -326,7 +326,7 @@ pub enum WorkerError {
 ///
 /// In order to be used by the host, you need to to export the [`WorkerDescriptor`](struct.WorkerDescriptor.html)
 /// in the `extension_data` method. You can do that with the `match_extensions` macro from the `lv2-core` crate.
-pub trait Worker: for<'a> Plugin<'a> {
+pub trait Worker<'a>: Plugin<'a> {
     /// Type of data sent to `work` by the schedule handler.
     type RequestData: 'static + Send;
     /// Type of data sent to `work_response` by the response handler.
@@ -366,15 +366,15 @@ pub trait Worker: for<'a> Plugin<'a> {
 ///Raw wrapper of the [`Worker`](trait.Worker.html) extension.
 ///
 /// This is a marker type that has the required external methods for the extension.
-pub struct WorkerDescriptor<P: Worker> {
+pub struct WorkerDescriptor<P> {
     plugin: PhantomData<P>,
 }
 
-unsafe impl<P: Worker> UriBound for WorkerDescriptor<P> {
+unsafe impl<'a, P: Worker<'a>> UriBound for WorkerDescriptor<P> {
     const URI: &'static [u8] = lv2_sys::LV2_WORKER__interface;
 }
 
-impl<P: Worker> WorkerDescriptor<P> {
+impl<'a, P: Worker<'a>> WorkerDescriptor<P> {
     /// Extern unsafe version of `work` method actually called by the host
     unsafe extern "C" fn extern_work(
         _handle: lv2_sys::LV2_Handle,
@@ -446,7 +446,7 @@ impl<P: Worker> WorkerDescriptor<P> {
 }
 
 // Implementing the trait that contains the interface.
-impl<P: Worker> ExtensionDescriptor for WorkerDescriptor<P> {
+impl<'a, P: Worker<'a>> ExtensionDescriptor for WorkerDescriptor<P> {
     type ExtensionInterface = lv2_sys::LV2_Worker_Interface;
 
     const INTERFACE: &'static lv2_sys::LV2_Worker_Interface = &lv2_sys::LV2_Worker_Interface {
@@ -518,7 +518,7 @@ mod tests {
         fn run(&mut self, _ports: &mut Ports, _: u32) {}
     }
 
-    impl Worker for TestDropWorker {
+    impl<'a> Worker<'a> for TestDropWorker {
         type RequestData = HasDrop;
         type ResponseData = HasDrop;
 

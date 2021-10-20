@@ -26,7 +26,7 @@ impl Lv2InstanceDescriptor {
     fn make_index_match_arm(&self, index: u32) -> impl ::quote::ToTokens {
         let plugin_type = &self.plugin_type;
         quote! {
-            #index => &__lv2_core::plugin::PluginInstance::<'static, #plugin_type>::DESCRIPTOR,
+            #index => &lv2_core::plugin::PluginInstance::<'static, #plugin_type>::DESCRIPTOR,
         }
     }
 }
@@ -59,12 +59,9 @@ impl Lv2InstanceDescriptorList {
             .enumerate()
             .map(|(i, desc)| desc.make_index_match_arm(i as u32));
 
-        let ext_crate = crate::imports();
-
         quote! {
             #[no_mangle]
-            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const LV2_Descriptor {
-                #ext_crate
+            pub unsafe extern "C" fn lv2_descriptor(index: u32) -> *const lv2_core::plugin::RawDescriptor {
                 extern crate core as __core;
 
                 match index {

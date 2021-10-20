@@ -29,18 +29,3 @@ pub fn port_collection_derive(input: TokenStream) -> TokenStream {
 pub fn feature_collection_derive(input: TokenStream) -> TokenStream {
     feature_collection_derive::feature_collection_derive_impl(input)
 }
-
-#[cfg(not(feature = "__lv2_root"))]
-pub(crate) fn imports() -> impl ::quote::ToTokens {
-    quote! {
-        extern crate lv2_core as __lv2_core;
-    }
-}
-
-#[cfg(feature = "__lv2_root")]
-pub(crate) fn imports() -> impl ::quote::ToTokens {
-    quote! {
-        extern crate lv2 as __lv2;
-        use lv2::lv2_core as __lv2_core;
-    }
-}

@@ -137,6 +137,7 @@ pub mod prelude {
     #[cfg(feature = "urid")]
     pub use ::urid::*;
 
+    #[cfg(feature = "lv2-core")]
     pub use crate::lv2_core;
 }
 
