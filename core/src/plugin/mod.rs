@@ -12,6 +12,14 @@ use std::os::raw::c_char;
 use sys::LV2_Handle;
 use urid::{Uri, UriBound};
 
+pub trait SharedPlugin<'a>: UriBound + Sized + 'a {
+    type Ports: PortCollection;
+    type Features: FeatureCollection<'a> + 'a;
+    type Shared: Sized + Send + Sync + 'a;
+
+    fn new(plugin_info: &PluginInfo, features: Self::Features) -> Option<(Self, Self::Shared)>;
+}
+
 /// The central trait to describe LV2 plugins.
 ///
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
@@ -238,9 +246,4 @@ impl<'a, T: Plugin<'a>> PluginInstance<'a, T> {
         cleanup: Some(Self::cleanup),
         extension_data: Some(Self::extension_data),
     };
-}
-
-#[doc(hidden)]
-pub unsafe trait PluginInstanceDescriptor<'a>: Plugin<'a> {
-    const DESCRIPTOR: sys::LV2_Descriptor;
 }

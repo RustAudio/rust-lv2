@@ -10,20 +10,21 @@ use urid::*;
 /// This extension contains two new methods: [`save`](#tymethod.save) and [`restore`](#tymethod.restore). These are called by the host to save and restore the state of the plugin, which is done with a handle.
 ///
 /// You can also add a feature collection to retrieve host features; It works just like the plugin's feature collection: You create a struct with multiple `Feature`s, derive `FeatureCollection` for it, and set the [`StateFeatures`](#associatedtype.StateFeatures) type to it. Then, the framework will try to populate it with the features supplied by the host and pass it to the method.
-pub trait State<'a>: Plugin<'a> {
+pub trait State<'a, TS = Self>: Plugin<'a> {
     /// The feature collection to populate for the [`save`](#tymethod.save) and [`restore`](#tymethod.restore) methods.
     type StateFeatures: FeatureCollection<'a>;
 
     /// Save the state of the plugin.
     ///
     /// The storage is done with the store handle. You draft a property, write it using the property handle, and then commit it to the store.
-    fn save(&self, store: StoreHandle, features: Self::StateFeatures) -> Result<(), StateErr>;
+    fn save(plugin: &TS, store: StoreHandle, features: Self::StateFeatures)
+        -> Result<(), StateErr>;
 
     /// Restore the state of the plugin.
     ///
     /// The properties you have previously written can be retrieved with the store handle.
     fn restore(
-        &mut self,
+        plugin: &mut TS,
         store: RetrieveHandle,
         features: Self::StateFeatures,
     ) -> Result<(), StateErr>;
@@ -40,7 +41,7 @@ unsafe impl<'a, P: State<'a>> UriBound for StateDescriptor<'a, P> {
     const URI: &'static [u8] = sys::LV2_STATE__interface;
 }
 
-impl<'a, P: State<'a>> StateDescriptor<'a, P> {
+impl<'a, P: State<'a, P>> StateDescriptor<'a, P> {
     /// Handle a save request by the host.
     ///
     /// This involves creating the plugin reference, constructing the store handle and discovering the required host features.
@@ -118,7 +119,7 @@ impl<'a, P: State<'a>> StateDescriptor<'a, P> {
             return sys::LV2_State_Status_LV2_STATE_ERR_NO_FEATURE;
         };
 
-        StateErr::into(plugin.restore(store, features))
+        StateErr::into(State::<_, P>::restore(&mut plugin, store, features))
     }
 }
 
