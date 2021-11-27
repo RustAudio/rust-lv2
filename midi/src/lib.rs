@@ -79,13 +79,24 @@ pub mod raw;
 pub mod wmidi_binding;
 
 /// Collection with the URIDs of all `UriBound`s in this crate.
-#[derive(URIDCollection)]
 pub struct MidiURIDCollection {
     pub raw: URID<raw::MidiEvent>,
     #[cfg(feature = "wmidi")]
     pub wmidi: URID<wmidi_binding::WMidiEvent>,
     #[cfg(feature = "wmidi")]
     pub sysex_wmidi: URID<wmidi_binding::SystemExclusiveWMidiEvent>,
+}
+
+impl URIDCollection for MidiURIDCollection {
+    fn from_map<M: Map + ?Sized>(map: &M) -> Option<Self> {
+        Some(Self {
+            raw: map.map_type()?,
+            #[cfg(feature = "wmidi")]
+            wmidi: map.map_type()?,
+            #[cfg(feature = "wmidi")]
+            sysex_wmidi: map.map_type()?,
+        })
+    }
 }
 
 /// Prelude for wildcard use, containing many important types.

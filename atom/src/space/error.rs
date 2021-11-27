@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
 
 /// A Helper struct to store data about a type for alignment error messages
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct TypeData {
     name: &'static str,
     size: usize,
@@ -31,7 +31,7 @@ impl Display for TypeData {
 }
 
 /// The actual, currently private, alignment error
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub(crate) enum AlignmentErrorInner {
     CannotComputeAlignment {
@@ -50,10 +50,10 @@ pub(crate) enum AlignmentErrorInner {
     },
 }
 
-/// An alignment error, returned by [`AlignedSpace`].
+/// An alignment error, returned by [`AlignedSpace`](crate::space::AlignedSpace).
 ///
 /// This error occurs when a byte buffer is unaligned, or could not be aligned.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct AlignmentError(pub(crate) AlignmentErrorInner);
 
 impl From<AlignmentError> for AtomWriteError {
@@ -99,7 +99,7 @@ impl Display for AlignmentError {
 impl Error for AlignmentError {}
 
 /// Errors that can occur while writing atoms to a byte buffer.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum AtomWriteError {
     /// A write operation could not proceed because there is not enough space in the allocatable buffer.
@@ -182,7 +182,7 @@ impl Display for AtomWriteError {
 
 impl Error for AtomWriteError {}
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum AtomReadError {
     AtomUridMismatch {
@@ -255,7 +255,7 @@ impl Display for AtomReadError {
 
 impl Error for AtomReadError {}
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AtomError {
     ReadError(AtomReadError),
     WriteError(AtomWriteError),

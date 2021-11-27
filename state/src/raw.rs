@@ -14,7 +14,7 @@ use urid::*;
 ///
 /// The written properties a buffered and flushed when requested. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle<'a> {
-    properties: HashMap<URID, VecSpace<AtomHeader>>,
+    properties: HashMap<URID, AlignedVec<AtomHeader>>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
@@ -41,9 +41,9 @@ impl<'a> StoreHandle<'a> {
         let space = self
             .properties
             .entry(property_key.into_general())
-            .or_insert_with(VecSpace::new);
+            .or_insert_with(AlignedVec::new);
 
-        StatePropertyWriter::new(space.cursor())
+        StatePropertyWriter::new(space.write())
     }
 
     /// Internal helper function to store a property.
@@ -51,7 +51,7 @@ impl<'a> StoreHandle<'a> {
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID<K>,
-        space: VecSpace<AtomHeader>,
+        space: AlignedVec<AtomHeader>,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
         let space = space.as_space();

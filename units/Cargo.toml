@@ -15,4 +15,4 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 lv2-sys = "2.0.0"
-urid = "0.1.0"
+urid = { version = "0.1.0", default-features = false }

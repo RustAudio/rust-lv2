@@ -56,6 +56,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroU32;
 use std::sync::Mutex;
 
+#[cfg(feature = "urid-derive")]
 pub use urid_derive::*;
 
 /// Representation of a borrowed Uri.

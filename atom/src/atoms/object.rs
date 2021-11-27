@@ -359,7 +359,7 @@ mod tests {
             .unwrap();
         let second_value: f32 = 42.0;
 
-        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let mut raw_space = AlignedVec::<AtomHeader>::new_with_capacity(64);
         let raw_space = raw_space.as_space_mut();
 
         // writing

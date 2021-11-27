@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_padding_inside_frame() {
-        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let mut space = AlignedVec::<AtomHeader>::new_with_capacity(64);
         let raw_space = space.as_bytes_mut();
 
         // writing

@@ -1,7 +1,7 @@
 use crate::space::error::AtomWriteError;
 use crate::space::{SpaceAllocator, SpaceWriterSplitAllocation};
 
-/// A lightweight [`SpaceWriter`] that writes into a mutable byte buffer using a cursor.
+/// A lightweight [`SpaceWriter`](crate::space::SpaceWriter) that writes into a mutable byte buffer using a cursor.
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
     allocated_length: usize,

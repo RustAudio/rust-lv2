@@ -103,7 +103,7 @@ fn main() {
     let urids: URIDs = map.populate_collection().unwrap();
 
     // Preparing the input atom.
-    let mut input_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let mut input_atom_space = AlignedVec::<AtomHeader>::new_with_capacity(64);
     let input_atom_space = input_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(input_atom_space.as_bytes_mut());
@@ -129,7 +129,7 @@ fn main() {
     }
 
     // preparing the output atom.
-    let mut output_atom_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+    let mut output_atom_space = AlignedVec::<AtomHeader>::new_with_capacity(64);
     let output_atom_space = output_atom_space.as_space_mut();
     {
         let mut space = SpaceCursor::new(output_atom_space.as_bytes_mut());

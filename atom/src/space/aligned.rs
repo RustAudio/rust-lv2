@@ -52,6 +52,12 @@ pub struct AlignedSpace<T> {
 pub type AtomSpace = AlignedSpace<AtomHeader>;
 
 impl<T: 'static> AlignedSpace<T> {
+    #[inline]
+    pub fn from_boxed_uninit_slice(slice: Box<[MaybeUninit<T>]>) -> Box<Self> {
+        // Safety: casting MaybeUninit<T> to [u8] is always safe
+        unsafe { core::mem::transmute(slice) }
+    }
+
     /// Creates a new space from a slice of bytes.
     ///
     /// # Errors
@@ -196,7 +202,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Calling this method with an unaligned slice will result in Undefined Behavior.
     ///
-    /// For a safe, checked version, see [`Space::from_bytes`](Space::from_bytes).
+    /// For a safe, checked version, see [`AlignedSpace::from_bytes`].
     ///
     /// # Example
     ///
@@ -224,7 +230,7 @@ impl<T: 'static> AlignedSpace<T> {
     /// The caller of this method is responsible for ensuring that the slice's contents are correctly aligned.
     /// Otherwise, reads will be performed unaligned, which are either slow, a CPU crash, or UB depending on platforms.
     ///
-    /// For a safe, checked version, see [`Space::from_bytes_mut`](Space::from_bytes_mut).
+    /// For a safe, checked version, see [`AlignedSpace::from_bytes_mut`].
     ///
     /// # Example
     ///
@@ -307,7 +313,7 @@ impl<T: 'static> AlignedSpace<T> {
         unsafe { Self::from_bytes_mut_unchecked(bytes) }
     }
 
-    /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
+    /// A checked version of [`[T]::split_at()`](slice::split_at), which returns the first part as an already-aligned slice.
     #[inline]
     pub fn split_at(&self, mid: usize) -> Option<(&Self, &[u8])> {
         if mid > self.data.len() {
@@ -321,7 +327,7 @@ impl<T: 'static> AlignedSpace<T> {
         Some((start, end))
     }
 
-    /// A checked version of slice::split_at, which returns the first part as an already-aligned slice.
+    /// A checked version of [`[T]::split_at_mut()`](slice::split_at_mut), which returns the first part as an already-aligned mutable slice.
     #[inline]
     pub fn split_at_mut(&mut self, mid: usize) -> Option<(&mut Self, &mut [u8])> {
         if mid > self.data.len() {
@@ -341,7 +347,7 @@ impl<T: 'static> AlignedSpace<T> {
         &self.data
     }
 
-    /// Returns the internal slice of the space.
+    /// Returns the internal mutable slice of the space.
     #[inline]
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.data
@@ -379,7 +385,7 @@ impl<T: 'static> AlignedSpace<T> {
         }
     }
 
-    /// Gets the contents as a slice of potentially uninitialized `T`s.
+    /// Gets the contents as a mutable slice of potentially uninitialized `T`s.
     ///
     /// The resulting slice contains as many values as can fit in the original space.
     /// This means there might be less bytes in this slice than in this space, or zero if the space is too small for a single value.
@@ -411,6 +417,8 @@ impl<T: 'static> AlignedSpace<T> {
     ///
     /// Calling this when the space's content is not yet fully initialized causes undefined behavior.
     /// It is up to the caller to guarantee that the underlying buffer really is in an initialized state.
+    ///
+    /// All of the safety concerns of [MaybeUninit::assume_init] are also applicable to this method.
     #[inline]
     pub unsafe fn assume_init_slice_mut(&mut self) -> &mut [T] {
         crate::util::assume_init_slice_mut(self.as_uninit_slice_mut())
@@ -422,7 +430,7 @@ impl<T: 'static> AlignedSpace<T> {
         SpaceReader::new(self.as_bytes())
     }
 
-    /// An helper method that creates a new [`Cursor`] from the mutable space's contents.
+    /// An helper method that creates a new [`SpaceCursor`] from the mutable space's contents.
     #[inline]
     pub fn write(&mut self) -> SpaceCursor {
         SpaceCursor::new(self.as_bytes_mut())

@@ -15,4 +15,4 @@ pub use atom_writer::AtomWriter;
 pub use cursor::SpaceCursor;
 pub use reader::SpaceReader;
 pub use terminated::Terminated;
-pub use vec::{VecSpace, VecSpaceCursor};
+pub use vec::{AlignedVec, VecSpaceCursor};

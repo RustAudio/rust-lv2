@@ -5,18 +5,39 @@ use crate::space::{AlignedSpace, SpaceAllocator, SpaceWriterSplitAllocation};
 use std::mem::MaybeUninit;
 use std::ops::Range;
 
-pub struct VecSpace<T> {
+/// A heap-allocated growable byte buffer with the alignment of a type `T`.
+///
+/// This type is useful to create heap-allocated [`AlignedSpace`s](crate::space::AlignedSpace), i.e. heap-allocated
+/// aligned byte buffers, to be used for e.g. safely writing properly-aligned atoms.
+///
+/// # Example
+///
+/// ```
+/// # use lv2_atom::space::{AlignedVec, SpaceWriter};
+/// use lv2_atom::AtomHeader;
+///
+/// let mut buffer = AlignedVec::<AtomHeader>::new_with_capacity(64);
+///
+/// // This buffer is always aligned!
+/// assert_eq!(buffer.as_bytes().as_ptr() as usize % core::mem::align_of::<AtomHeader>(), 0);
+///
+/// // We can now safely write atoms into it.
+/// let mut cursor = buffer.write();
+/// // ...
+/// # core::mem::drop(cursor)
+/// ```
+pub struct AlignedVec<T> {
     inner: Vec<MaybeUninit<T>>,
 }
 
-impl<T: Copy + 'static> Default for VecSpace<T> {
+impl<T: Copy + 'static> Default for AlignedVec<T> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Copy + 'static> Clone for VecSpace<T> {
+impl<T: Copy + 'static> Clone for AlignedVec<T> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -25,12 +46,16 @@ impl<T: Copy + 'static> Clone for VecSpace<T> {
     }
 }
 
-impl<T: Copy + 'static> VecSpace<T> {
+impl<T: Copy + 'static> AlignedVec<T> {
+    /// Creates a new, empty buffer.
     #[inline]
     pub fn new() -> Self {
         Self { inner: Vec::new() }
     }
 
+    /// Creates a new buffer, with an internal capacity a given amount of `T` items.
+    ///
+    /// Note that `capacity` is a number of `T` items, *not* a size in bytes.
     #[inline]
     pub fn new_with_capacity(capacity: usize) -> Self {
         Self {
@@ -38,21 +63,33 @@ impl<T: Copy + 'static> VecSpace<T> {
         }
     }
 
+    /// Resizes the buffer to a new internal capacity a given amount of `T` items.
+    ///
+    /// Note that `capacity` is a number of `T` items, *not* a size in bytes.
+    #[inline]
+    pub fn resize(&mut self, new_len: usize) {
+        self.inner.resize(new_len, MaybeUninit::zeroed())
+    }
+
+    /// Returns the contents of the buffer as an aligned byte slice.
     #[inline]
     pub fn as_space(&self) -> &AlignedSpace<T> {
         AlignedSpace::from_uninit_slice(&self.inner)
     }
 
+    /// Returns the contents of the buffer as a mutable aligned byte slice.
     #[inline]
     pub fn as_space_mut(&mut self) -> &mut AlignedSpace<T> {
         AlignedSpace::from_uninit_slice_mut(&mut self.inner)
     }
 
+    /// Returns the contents of the buffer as a byte slice.
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         self.as_space().as_bytes()
     }
 
+    /// Returns the contents of the buffer as a mutable byte slice.
     #[inline]
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
         self.as_space_mut().as_bytes_mut()
@@ -82,17 +119,32 @@ impl<T: Copy + 'static> VecSpace<T> {
         })
     }
 
+    /// Returns a new writer to write into the contents of the buffer.
+    ///
+    /// Unlike other [`SpaceWriter`](crate::space::SpaceWriter) implementations, this cursor grows the underlying
+    /// [`AlignedVec`] buffer if it runs out of space, instead of failing.
     #[inline]
-    pub fn cursor(&mut self) -> VecSpaceCursor<T> {
+    pub fn write(&mut self) -> VecSpaceCursor<T> {
         VecSpaceCursor {
             vec: self,
             allocated_length: 0,
         }
     }
+
+    #[inline]
+    pub fn into_boxed_space(self) -> Box<AlignedSpace<T>> {
+        AlignedSpace::from_boxed_uninit_slice(self.inner.into_boxed_slice())
+    }
 }
 
+/// A lightweight [`SpaceWriter`](crate::space::SpaceWriter) that writes into a growable byte buffer (backed by [`AlignedVec`]) using a cursor.
+///
+/// Unlike other [`SpaceWriter`](crate::space::SpaceWriter) implementations, this cursor grows the underlying
+/// [`AlignedVec`] buffer if it runs out of space, instead of failing.
+///
+/// This cursor is obtained through the [`AlignedVec::write`] method.
 pub struct VecSpaceCursor<'vec, T> {
-    vec: &'vec mut VecSpace<T>,
+    vec: &'vec mut AlignedVec<T>,
     allocated_length: usize,
 }
 
@@ -106,7 +158,7 @@ impl<'vec, T: Copy + 'static> SpaceAllocator for VecSpaceCursor<'vec, T> {
             .checked_add(size)
             .expect("Allocation overflow");
 
-        let result = VecSpace::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
+        let result = AlignedVec::<T>::reallocate_bytes_mut(self.vec, self.allocated_length..end);
 
         if result.is_ok() {
             self.allocated_length = end;
@@ -152,27 +204,27 @@ impl<'vec, T: Copy + 'static> SpaceAllocator for VecSpaceCursor<'vec, T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::space::{SpaceWriter, VecSpace};
+    use crate::space::{AlignedVec, SpaceWriter};
     use crate::AtomHeader;
 
     #[test]
     pub fn test_lifetimes() {
-        let mut buffer = VecSpace::<u8>::new_with_capacity(16);
+        let mut buffer = AlignedVec::<u8>::new_with_capacity(16);
 
         {
-            let mut cursor = buffer.cursor();
+            let mut cursor = buffer.write();
             let buf1 = cursor.allocate(2).unwrap();
             buf1[0] = 5
         }
 
-        let _other_cursor = buffer.cursor();
-        let _other_cursor2 = buffer.cursor();
+        let _other_cursor = buffer.write();
+        let _other_cursor2 = buffer.write();
     }
 
     #[test]
     pub fn test_alignment() {
         fn aligned_vec<T: Copy + 'static>() {
-            let space = VecSpace::<T>::new_with_capacity(4);
+            let space = AlignedVec::<T>::new_with_capacity(4);
             assert_eq!(
                 space.as_bytes().as_ptr() as usize % ::core::mem::align_of::<T>(),
                 0

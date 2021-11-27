@@ -133,7 +133,6 @@ pub mod units {
 use units::*;
 
 /// A URID cache containing all units.
-#[derive(URIDCollection)]
 pub struct UnitURIDCollection {
     pub bar: URID<Bar>,
     pub beat: URID<Beat>,
@@ -159,6 +158,37 @@ pub struct UnitURIDCollection {
     pub percent: URID<Percent>,
     pub s: URID<Second>,
     pub semitone: URID<Semitone>,
+}
+
+impl URIDCollection for UnitURIDCollection {
+    fn from_map<M: Map + ?Sized>(map: &M) -> Option<Self> {
+        Some(Self {
+            bar: map.map_type()?,
+            beat: map.map_type()?,
+            bpm: map.map_type()?,
+            cent: map.map_type()?,
+            cm: map.map_type()?,
+            coef: map.map_type()?,
+            db: map.map_type()?,
+            degree: map.map_type()?,
+            frame: map.map_type()?,
+            hz: map.map_type()?,
+            inch: map.map_type()?,
+            khz: map.map_type()?,
+            km: map.map_type()?,
+            m: map.map_type()?,
+            mhz: map.map_type()?,
+            note: map.map_type()?,
+            mile: map.map_type()?,
+            min: map.map_type()?,
+            mm: map.map_type()?,
+            ms: map.map_type()?,
+            octave: map.map_type()?,
+            percent: map.map_type()?,
+            s: map.map_type()?,
+            semitone: map.map_type()?,
+        })
+    }
 }
 
 /// Prelude of `lv2_units` for wildcard usage.

@@ -13,6 +13,7 @@ use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
+#[cfg(feature = "lv2-core-derive")]
 pub use lv2_core_derive::*;
 
 /// Generalization of port types.

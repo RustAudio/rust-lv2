@@ -2,6 +2,8 @@
 pub(crate) mod info;
 
 pub use info::PluginInfo;
+
+#[cfg(feature = "lv2-core-derive")]
 pub use lv2_core_derive::*;
 
 use crate::feature::*;

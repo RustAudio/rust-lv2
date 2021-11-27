@@ -28,7 +28,7 @@ pub struct SpaceWriterSplitAllocation<'a> {
 /// buffer (e.g. [`SpaceCursor`](crate::space::SpaceCursor)) can "allocate" bytes using this trait.
 ///
 /// This trait is useful to abstract over many types of buffers, including ones than can track the
-/// amount of allocated bytes into an atom header (i.e. [`AtomSpaceWriter`]).
+/// amount of allocated bytes into an atom header (i.e. [`AtomWriter`]).
 pub trait SpaceAllocator {
     /// Allocates a new byte buffer of the requested size. A mutable reference to both the newly
     /// allocated slice and all previously allocated bytes is returned (through [`SpaceWriterSplitAllocation`]),
@@ -141,7 +141,7 @@ pub trait SpaceWriter: SpaceAllocator + Sized {
     /// Allocates room in the byte buffer for a single value of type `T`.
     ///
     /// A mutable reference to the allocated buffer is returned as a
-    /// [`MaybeUninit`](core::mem::maybe_uninit::MaybeUninit),
+    /// [`MaybeUninit`](core::mem::MaybeUninit),
     /// as the resulting memory buffer is most likely going to be uninitialized.
     ///
     /// # Example
@@ -173,7 +173,7 @@ pub trait SpaceWriter: SpaceAllocator + Sized {
     /// Allocates room in the byte buffer for multiple values of type `T`.
     ///
     /// A mutable reference to the allocated buffer is returned as a slice of
-    /// [`MaybeUninit`](core::mem::maybe_uninit::MaybeUninit)s,
+    /// [`MaybeUninit`](core::mem::MaybeUninit)s,
     /// as the resulting memory buffer is most likely going to be uninitialized.
     ///
     /// # Errors

@@ -94,6 +94,8 @@ pub mod prelude {
         tuple::Tuple,
         vector::Vector,
     };
+
+    #[cfg(feature = "lv2-core")]
     pub use port::AtomPort;
 
     use crate::*;
@@ -106,8 +108,8 @@ pub mod atom_prelude {
 
     pub use crate::space::{
         error::{AlignmentError, AtomError, AtomReadError, AtomWriteError},
-        AlignedSpace, AtomSpace, AtomWriter, SpaceAllocator, SpaceCursor, SpaceWriter, Terminated,
-        VecSpace,
+        AlignedSpace, AlignedVec, AtomSpace, AtomWriter, SpaceAllocator, SpaceCursor, SpaceWriter,
+        Terminated,
     };
     pub use crate::{Atom, AtomHandle, AtomHeader, UnidentifiedAtom};
 }

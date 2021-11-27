@@ -72,6 +72,7 @@ use crate::*;
 use std::marker::PhantomData;
 use sys::LV2_Atom_Event__bindgen_ty_1 as RawTimeStamp;
 pub use unit::*;
+use units::units::Frame;
 
 #[repr(C, align(8))]
 #[derive(Copy, Clone)]
@@ -145,12 +146,25 @@ impl<'a> SequenceHeaderWriter<'a> {
     ///
     /// This method will return an error if there is not enough space in the underlying buffer,
     /// or if any other write error occurs.
+    #[inline]
     pub fn with_unit<U: SequenceUnit>(
-        mut self,
+        self,
         timestamp_unit_urid: URID<U>,
     ) -> Result<SequenceWriter<'a, U>, AtomWriteError> {
+        self.with_unit_raw(timestamp_unit_urid.get())
+    }
+
+    #[inline]
+    pub fn with_frame_unit(self) -> Result<SequenceWriter<'a, Frame>, AtomWriteError> {
+        self.with_unit_raw(0)
+    }
+
+    fn with_unit_raw<U: SequenceUnit>(
+        mut self,
+        timestamp_unit_urid: u32,
+    ) -> Result<SequenceWriter<'a, U>, AtomWriteError> {
         let header = SequenceBody(sys::LV2_Atom_Sequence_Body {
-            unit: timestamp_unit_urid.get(),
+            unit: timestamp_unit_urid,
             pad: 0,
         });
 
@@ -301,7 +315,7 @@ mod tests {
         let map = HashURIDMapper::new();
         let urids: TestURIDCollection = TestURIDCollection::from_map(&map).unwrap();
 
-        let mut raw_space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let mut raw_space = AlignedVec::<AtomHeader>::new_with_capacity(64);
         let raw_space = raw_space.as_space_mut();
 
         // writing

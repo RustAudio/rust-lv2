@@ -192,13 +192,13 @@ impl<'a> SpaceReader<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::space::VecSpace;
+    use crate::space::AlignedVec;
     use std::mem::{size_of, size_of_val};
     use urid::URID;
 
     #[test]
     fn test_read_atom() {
-        let mut space = VecSpace::<AtomHeader>::new_with_capacity(64);
+        let mut space = AlignedVec::<AtomHeader>::new_with_capacity(64);
         let space = space.as_space_mut();
         let urid: URID = unsafe { URID::new_unchecked(17) };
 
