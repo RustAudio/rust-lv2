@@ -154,6 +154,12 @@ impl<'a> SequenceHeaderWriter<'a> {
         self.with_unit_raw(timestamp_unit_urid.get())
     }
 
+    /// Initializes the sequence with the [`Frame`](lv2_units::units::Frame) timestamp type.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if there is not enough space in the underlying buffer,
+    /// or if any other write error occurs.
     #[inline]
     pub fn with_frame_unit(self) -> Result<SequenceWriter<'a, Frame>, AtomWriteError> {
         self.with_unit_raw(0)
