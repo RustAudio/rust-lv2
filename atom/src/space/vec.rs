@@ -135,6 +135,16 @@ impl<T: Copy + 'static> AlignedVec<T> {
     pub fn into_boxed_space(self) -> Box<AlignedSpace<T>> {
         AlignedSpace::from_boxed_uninit_slice(self.inner.into_boxed_slice())
     }
+
+    #[inline]
+    pub fn into_vec(self) -> Vec<MaybeUninit<T>> {
+        self.inner
+    }
+
+    #[inline]
+    pub fn from_vec(vec: Vec<MaybeUninit<T>>) -> Self {
+        Self { inner: vec }
+    }
 }
 
 /// A lightweight [`SpaceWriter`](crate::space::SpaceWriter) that writes into a growable byte buffer (backed by [`AlignedVec`]) using a cursor.
