@@ -124,8 +124,8 @@ impl<T: Copy + 'static> AlignedVec<T> {
     /// Unlike other [`SpaceWriter`](crate::space::SpaceWriter) implementations, this cursor grows the underlying
     /// [`AlignedVec`] buffer if it runs out of space, instead of failing.
     #[inline]
-    pub fn write(&mut self) -> VecSpaceCursor<T> {
-        VecSpaceCursor {
+    pub fn write(&mut self) -> AlignedVecCursor<T> {
+        AlignedVecCursor {
             vec: self,
             allocated_length: 0,
         }
@@ -153,12 +153,12 @@ impl<T: Copy + 'static> AlignedVec<T> {
 /// [`AlignedVec`] buffer if it runs out of space, instead of failing.
 ///
 /// This cursor is obtained through the [`AlignedVec::write`] method.
-pub struct VecSpaceCursor<'vec, T> {
+pub struct AlignedVecCursor<'vec, T> {
     vec: &'vec mut AlignedVec<T>,
     allocated_length: usize,
 }
 
-impl<'vec, T: Copy + 'static> SpaceAllocator for VecSpaceCursor<'vec, T> {
+impl<'vec, T: Copy + 'static> SpaceAllocator for AlignedVecCursor<'vec, T> {
     fn allocate_and_split(
         &mut self,
         size: usize,

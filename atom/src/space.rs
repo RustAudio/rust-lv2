@@ -1,4 +1,5 @@
 //! A collection of tools to assist reading and writing custom Atom types in Atom byte buffers (referred as **Spaces**).
+#![deny(missing_docs)]
 
 mod aligned;
 mod allocator;
@@ -15,4 +16,4 @@ pub use atom_writer::AtomWriter;
 pub use cursor::SpaceCursor;
 pub use reader::SpaceReader;
 pub use terminated::Terminated;
-pub use vec::{AlignedVec, VecSpaceCursor};
+pub use vec::{AlignedVec, AlignedVecCursor};

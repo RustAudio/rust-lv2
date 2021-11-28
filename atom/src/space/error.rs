@@ -1,3 +1,5 @@
+//! Errors related to the alignment, reading or writing of Atoms.
+
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use urid::{Uri, URID};
@@ -136,6 +138,7 @@ pub enum AtomWriteError {
         /// An user-friendly error message
         error_message: &'static str,
     },
+    /// An alignment error occurred when attempting to write to the underlying buffer.
     AlignmentError(AlignmentError),
 }
 
@@ -182,27 +185,43 @@ impl Display for AtomWriteError {
 
 impl Error for AtomWriteError {}
 
+/// Errors that can occur while writing atoms to a byte buffer.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum AtomReadError {
+    /// The URID of the atom being currently read does not match the requested type's URID.
     AtomUridMismatch {
+        /// The full URI of the requested type
         expected_uri: &'static Uri,
+        /// The URID of the requested type
         expected_urid: URID,
+        /// The atom's actual URID
         found_urid: URID,
     },
+    /// The URID of the atom being currently read is not actually a valid URID (e.g. zero).
     InvalidUrid {
+        /// The full URI of the requested type
         expected_uri: &'static Uri,
+        /// The URID of the requested type
         expected_urid: URID,
+        /// The value found in the Atom's URID header.
         found_urid: u32,
     },
+    /// A read operation tried to occur outside of the buffer's bounds
     ReadingOutOfBounds {
+        /// The amount of available bytes in the buffer
         available: usize,
+        /// The requested amount of bytes
         requested: usize,
     },
+    /// The read Atom value was invalid for the given Atom type.
     InvalidAtomValue {
+        /// The Atom type being read
         reading_type_uri: &'static Uri,
+        /// The Atom-specific error message
         error_message: &'static str,
     },
+    /// An alignment error curred when trying to read from the underlying buffer.
     AlignmentError(AlignmentError),
 }
 
@@ -255,9 +274,12 @@ impl Display for AtomReadError {
 
 impl Error for AtomReadError {}
 
+/// The global atom error type, that encompasses both read and write errors, for convenience.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AtomError {
+    /// An error occurred when trying to read an atom from a buffer.
     ReadError(AtomReadError),
+    /// An error occurred when trying to write an atom into a buffer.
     WriteError(AtomWriteError),
 }
 

@@ -2,6 +2,12 @@ use crate::space::error::AtomWriteError;
 use crate::space::{SpaceAllocator, SpaceWriterSplitAllocation};
 
 /// A lightweight [`SpaceWriter`](crate::space::SpaceWriter) that writes into a mutable byte buffer using a cursor.
+///
+/// This cursor is backed by a simple mutable byte slice, and is therefore guaranteed to never
+/// allocate.
+///
+/// If the capacity of the underlying buffer is exceeded, an [`AtomWriteError::OutOfSpace`] error is
+/// returned.
 pub struct SpaceCursor<'a> {
     data: &'a mut [u8],
     allocated_length: usize,

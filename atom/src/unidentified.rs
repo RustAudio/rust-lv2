@@ -5,7 +5,8 @@ use urid::URID;
 
 /// An atom of yet unknown type.
 ///
-/// This is used by reading handles that have to return a reference to an atom, but can not check it's type. This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
+/// This is used by reading handles that have to return a reference to an atom, but cannot check its type.
+/// This struct contains a `Space` containing the header and the body of the atom and can identify/read the atom from it.
 #[repr(C)]
 pub struct UnidentifiedAtom {
     header: AtomHeader,

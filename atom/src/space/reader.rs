@@ -21,6 +21,7 @@ fn split_space<T: 'static>(
 }
 
 impl<'a> SpaceReader<'a> {
+    /// Creates a new reader from a byte slice.
     #[inline]
     pub fn new(space: &'a [u8]) -> Self {
         SpaceReader { space }
@@ -166,6 +167,7 @@ impl<'a> SpaceReader<'a> {
         Ok(atom)
     }
 
+    /// Returns the currently remaining underlying bytes.
     #[inline]
     pub fn remaining_bytes(&self) -> &'a [u8] {
         self.space

@@ -49,12 +49,20 @@ pub struct AlignedSpace<T> {
     data: [u8],
 }
 
+/// A slice of bytes that is properly aligned to contain Atoms (i.e. is 64-bit aligned).
+///
+/// See [`AlignedSpace`] for more information.
 pub type AtomSpace = AlignedSpace<AtomHeader>;
 
 impl<T: 'static> AlignedSpace<T> {
+    /// Creates a new boxed space from an already aligned, potentially uninitialized boxed slice of T.
+    ///
+    /// This method provides a lightweight conversion: it does not copy the contents nor perform any
+    /// (re)allocations.
     #[inline]
     pub fn from_boxed_uninit_slice(slice: Box<[MaybeUninit<T>]>) -> Box<Self> {
-        // Safety: casting MaybeUninit<T> to [u8] is always safe
+        // SAFETY: casting MaybeUninit<T> to [u8] is always safe.
+        // SAFETY: because this is MaybeUninit<T>, the slice is always aligned.
         unsafe { core::mem::transmute(slice) }
     }
 

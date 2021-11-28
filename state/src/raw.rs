@@ -101,13 +101,13 @@ impl<'a> StoreHandle<'a> {
 
 /// Writing handle for properties.
 pub struct StatePropertyWriter<'a> {
-    cursor: VecSpaceCursor<'a, AtomHeader>,
+    cursor: AlignedVecCursor<'a, AtomHeader>,
     initialized: bool,
 }
 
 impl<'a> StatePropertyWriter<'a> {
     /// Create a new property writer that uses the given space head.
-    pub fn new(cursor: VecSpaceCursor<'a, AtomHeader>) -> Self {
+    pub fn new(cursor: AlignedVecCursor<'a, AtomHeader>) -> Self {
         Self {
             cursor,
             initialized: false,

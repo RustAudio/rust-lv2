@@ -11,7 +11,9 @@ use core::mem::{size_of, size_of_val, MaybeUninit};
 /// This structure allows simultaneous access to both the newly allocated slice, and all previously
 /// allocated bytes.
 pub struct SpaceWriterSplitAllocation<'a> {
+    /// All previously allocated bytes. This is guaranteed to be contiguous with `allocated`.
     pub previous: &'a mut [u8],
+    /// The requested newly-allocated bytes
     pub allocated: &'a mut [u8],
 }
 
@@ -21,11 +23,18 @@ pub struct SpaceWriterSplitAllocation<'a> {
 /// previous one.
 ///
 /// This trait is very bare-bones, in order to be trait-object-safe. As an user, you probably want
-/// to use the [`SpaceWriter`] trait, a child trait with many more utilities available, and with a
+/// to use the [`SpaceWriter`] trait, an extension trait with many more utilities available, and with a
 /// blanket implementation for all types that implement [`SpaceAllocator`].
 ///
 /// The term "allocate" is used very loosely here, as even a simple cursor over a mutable byte
 /// buffer (e.g. [`SpaceCursor`](crate::space::SpaceCursor)) can "allocate" bytes using this trait.
+///
+/// "Allocations" made using this trait dot not imply actual system allocations. However, some
+/// implementations (such as [`AlignedVecCursor`](crate::space::AlignedVecCursor)) might perform a
+/// system reallocation if the requested space exceeds its internal capacity.
+///
+/// Other implementations, such as [`SpaceCursor`](crate::space::SpaceCursor), are guaranteed to
+/// never allocate, and will instead return an error when exceeding its capacity.
 ///
 /// This trait is useful to abstract over many types of buffers, including ones than can track the
 /// amount of allocated bytes into an atom header (i.e. [`AtomWriter`]).
@@ -79,6 +88,7 @@ pub trait SpaceAllocator {
     fn remaining_bytes(&self) -> &[u8];
 }
 
+///
 pub trait SpaceWriter: SpaceAllocator + Sized {
     /// Allocates and returns a new mutable byte buffer of the requested size, in bytes.
     ///
