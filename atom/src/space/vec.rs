@@ -131,16 +131,22 @@ impl<T: Copy + 'static> AlignedVec<T> {
         }
     }
 
+    ///! Converts the aligned buffer into an [`AlignedSpace`](crate::space::AlignedSpace).
+    ///
+    /// This is similar in spirit to [`Vec::into_boxed_slice`], but keeps the alignment invariants
+    /// enforced.
     #[inline]
     pub fn into_boxed_space(self) -> Box<AlignedSpace<T>> {
         AlignedSpace::from_boxed_uninit_slice(self.inner.into_boxed_slice())
     }
 
+    /// Converts the aligned buffer into the inner `Vec<MaybeUninit<T>>`.
     #[inline]
     pub fn into_vec(self) -> Vec<MaybeUninit<T>> {
         self.inner
     }
 
+    /// Creates a new aligned buffer by wrapping an existing `Vec<MaybeUninit<T>>`.
     #[inline]
     pub fn from_vec(vec: Vec<MaybeUninit<T>>) -> Self {
         Self { inner: vec }
