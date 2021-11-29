@@ -32,21 +32,27 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: MyURIDs) {
 //!     // Retrieving the input and output sequence.
-//!     let input_sequence = ports.input.read(urids.atom.sequence, urids.units.beat).unwrap();
-//!     let mut output_sequence = ports.output.init(
-//!         urids.atom.sequence,
-//!         TimeStampURID::Frames(urids.units.frame)
-//!     ).unwrap();
+//!     let input_sequence = ports.input
+//!         .read(urids.atom.sequence)
+//!         .unwrap()
+//!         .with_unit(urids.units.frame)
+//!         .unwrap();
+//!
+//!     let mut output_sequence = ports.output
+//!         .write(urids.atom.sequence)
+//!         .unwrap()
+//!         .with_unit(urids.units.frame)
+//!         .unwrap();
 //!
 //!     for (timestamp, atom) in input_sequence {
 //!         // If the atom encodes a message...
-//!         if let Some(message) = atom.read(urids.midi.wmidi, ()) {
+//!         if let Ok(message) = atom.read(urids.midi.wmidi) {
 //!             // Calculate the message to send.
 //!             let message_to_send = match message {
 //!                 MidiMessage::NoteOn(channel, note, velocity) => {
 //!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
 //!                     MidiMessage::NoteOn(channel, note, velocity)
-//!                 },
+//!                 }
 //!                 MidiMessage::NoteOff(channel, note, velocity) => {
 //!                     let note = note.step(5).unwrap(); // modulate up five half-steps.
 //!                     MidiMessage::NoteOff(channel, note, velocity)
@@ -54,7 +60,7 @@
 //!                 _ => message,
 //!             };
 //!             // Write the modulated message or forward it.
-//!             output_sequence.init(timestamp, urids.midi.wmidi, message_to_send);
+//!             output_sequence.new_event(timestamp, urids.midi.wmidi).unwrap().set(message_to_send).unwrap();
 //!         } else {
 //!             // Forward the other, uninterpreted message.
 //!             output_sequence.forward(timestamp, atom);
@@ -73,13 +79,24 @@ pub mod raw;
 pub mod wmidi_binding;
 
 /// Collection with the URIDs of all `UriBound`s in this crate.
-#[derive(URIDCollection)]
 pub struct MidiURIDCollection {
     pub raw: URID<raw::MidiEvent>,
     #[cfg(feature = "wmidi")]
     pub wmidi: URID<wmidi_binding::WMidiEvent>,
     #[cfg(feature = "wmidi")]
     pub sysex_wmidi: URID<wmidi_binding::SystemExclusiveWMidiEvent>,
+}
+
+impl URIDCollection for MidiURIDCollection {
+    fn from_map<M: Map + ?Sized>(map: &M) -> Option<Self> {
+        Some(Self {
+            raw: map.map_type()?,
+            #[cfg(feature = "wmidi")]
+            wmidi: map.map_type()?,
+            #[cfg(feature = "wmidi")]
+            sysex_wmidi: map.map_type()?,
+        })
+    }
 }
 
 /// Prelude for wildcard use, containing many important types.

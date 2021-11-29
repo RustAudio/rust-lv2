@@ -1,6 +1,8 @@
 use crate::StateErr;
 use atom::prelude::*;
 use atom::space::*;
+use atom::AtomHandle;
+use atom::AtomHeader;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::marker::PhantomData;
@@ -12,7 +14,7 @@ use urid::*;
 ///
 /// The written properties a buffered and flushed when requested. Create new properties by calling [`draft`](#method.draft) and write them like any other atom. Once you are done, you can commit your properties by calling [`commit_all`](#method.commit_all) or [`commit`](#method.commit). You have to commit manually: Uncommitted properties will be discarded when the handle is dropped.
 pub struct StoreHandle<'a> {
-    properties: HashMap<URID, SpaceElement>,
+    properties: HashMap<URID, AlignedVec<AtomHeader>>,
     store_fn: sys::LV2_State_Store_Function,
     handle: sys::LV2_State_Handle,
     lifetime: PhantomData<&'a mut c_void>,
@@ -36,37 +38,29 @@ impl<'a> StoreHandle<'a> {
     /// If you began to write a property and don't want the written things to be stored, you can discard it with [`discard`](#method.discard) or [`discard_all`](#method.discard_all).
     pub fn draft<K: ?Sized>(&mut self, property_key: URID<K>) -> StatePropertyWriter {
         let property_key = property_key.into_general();
-        self.properties
-            .insert(property_key.into_general(), SpaceElement::default());
-        StatePropertyWriter::new(SpaceHead::new(
-            self.properties
-                .get_mut(&property_key.into_general())
-                .unwrap(),
-        ))
+        let space = self
+            .properties
+            .entry(property_key.into_general())
+            .or_insert_with(AlignedVec::new);
+
+        StatePropertyWriter::new(space.write())
     }
 
     /// Internal helper function to store a property.
-    pub fn commit_pair<K: ?Sized>(
+    fn commit_pair<K: ?Sized>(
         store_fn: sys::LV2_State_Store_Function,
         handle: sys::LV2_State_Handle,
         key: URID<K>,
-        space: SpaceElement,
+        space: AlignedVec<AtomHeader>,
     ) -> Result<(), StateErr> {
         let store_fn = store_fn.ok_or(StateErr::BadCallback)?;
-        let space: Vec<u8> = space.to_vec();
-        let space = Space::from_slice(space.as_ref());
-        let (header, data) = space
-            .split_type::<sys::LV2_Atom>()
-            .ok_or(StateErr::BadData)?;
-        let data = data
-            .split_raw(header.size as usize)
-            .map(|(data, _)| data)
-            .ok_or(StateErr::BadData)?;
+        let space = space.as_space();
+        let atom = unsafe { space.read().next_atom() }.map_err(|_| StateErr::BadData)?;
 
         let key = key.get();
-        let data_ptr = data as *const _ as *const c_void;
-        let data_size = header.size as usize;
-        let data_type = header.type_;
+        let data_ptr = atom.body().as_bytes().as_ptr() as *const c_void;
+        let data_size = atom.header().size_of_body();
+        let data_type = atom.header().urid().get();
         let flags: u32 = (sys::LV2_State_Flags::LV2_STATE_IS_POD
             | sys::LV2_State_Flags::LV2_STATE_IS_PORTABLE)
             .into();
@@ -85,7 +79,7 @@ impl<'a> StoreHandle<'a> {
 
     /// Commit one specific property.
     ///
-    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occured while storing the property.
+    /// This method returns `None` if the requested property was not marked for commit, `Some(Ok(()))` if the property was stored and `Some(Err(_))` if an error occurred while storing the property.
     pub fn commit<K: ?Sized>(&mut self, key: URID<K>) -> Option<Result<(), StateErr>> {
         let key = key.into_general();
         let space = self.properties.remove(&key)?;
@@ -107,15 +101,15 @@ impl<'a> StoreHandle<'a> {
 
 /// Writing handle for properties.
 pub struct StatePropertyWriter<'a> {
-    head: SpaceHead<'a>,
+    cursor: AlignedVecCursor<'a, AtomHeader>,
     initialized: bool,
 }
 
 impl<'a> StatePropertyWriter<'a> {
     /// Create a new property writer that uses the given space head.
-    pub fn new(head: SpaceHead<'a>) -> Self {
+    pub fn new(cursor: AlignedVecCursor<'a, AtomHeader>) -> Self {
         Self {
-            head,
+            cursor,
             initialized: false,
         }
     }
@@ -123,16 +117,13 @@ impl<'a> StatePropertyWriter<'a> {
     /// Initialize the property.
     ///
     /// This works like any other atom writer: You have to provide the URID of the atom type you want to write, as well as the type-specific parameter. If the property hasn't been initialized before, it will be initialized and the writing handle is returned. Otherwise, `Err(StateErr::Unknown)` is returned.
-    pub fn init<'b, A: Atom<'a, 'b>>(
-        &'b mut self,
+    pub fn init<A: Atom>(
+        &'a mut self,
         urid: URID<A>,
-        parameter: A::WriteParameter,
-    ) -> Result<A::WriteHandle, StateErr> {
+    ) -> Result<<A::WriteHandle as AtomHandle<'a>>::Handle, StateErr> {
         if !self.initialized {
             self.initialized = true;
-            (&mut self.head as &mut dyn MutSpace)
-                .init(urid, parameter)
-                .ok_or(StateErr::Unknown)
+            self.cursor.write_atom(urid).map_err(|_| StateErr::Unknown)
         } else {
             Err(StateErr::Unknown)
         }
@@ -182,7 +173,10 @@ impl<'a> RetrieveHandle<'a> {
             return Err(StateErr::NoProperty);
         };
 
-        Ok(StatePropertyReader::new(type_, Space::from_slice(space)))
+        Ok(StatePropertyReader::new(
+            type_,
+            AlignedSpace::from_bytes(space).map_err(|_| StateErr::BadData)?,
+        ))
     }
 }
 
@@ -191,12 +185,12 @@ impl<'a> RetrieveHandle<'a> {
 /// This handle contains the type and the data of a property retrieved from the [`RetrieveHandle`](struct.RetrieveHandle.html).
 pub struct StatePropertyReader<'a> {
     type_: URID,
-    body: Space<'a>,
+    body: &'a AtomSpace,
 }
 
 impl<'a> StatePropertyReader<'a> {
     /// Create a new reading handle with the given type and data.
-    pub fn new<T: ?Sized>(type_: URID<T>, body: Space<'a>) -> Self {
+    pub fn new<T: ?Sized>(type_: URID<T>, body: &'a AtomSpace) -> Self {
         Self {
             type_: type_.into_general(),
             body,
@@ -209,7 +203,7 @@ impl<'a> StatePropertyReader<'a> {
     }
 
     /// Return the data of the property.
-    pub fn body(&self) -> Space {
+    pub fn body(&self) -> &AtomSpace {
         self.body
     }
 
@@ -218,13 +212,12 @@ impl<'a> StatePropertyReader<'a> {
     /// This works like any atom reader: You pass the URID of the atom type as well as the type-specific argument, and if the desired type is the actual type of the data, a read handle is returned.
     ///
     /// If the desired and actual data types don't match, `Err(StateErr::BadType)` is returned.
-    pub fn read<A: Atom<'a, 'a>>(
+    pub fn read<A: Atom>(
         &self,
         urid: URID<A>,
-        parameter: A::ReadParameter,
-    ) -> Result<A::ReadHandle, StateErr> {
+    ) -> Result<<A::ReadHandle as AtomHandle<'a>>::Handle, StateErr> {
         if urid == self.type_ {
-            A::read(self.body, parameter).ok_or(StateErr::Unknown)
+            unsafe { A::read(self.body) }.map_err(|_| StateErr::Unknown)
         } else {
             Err(StateErr::BadType)
         }
@@ -235,31 +228,41 @@ impl<'a> StatePropertyReader<'a> {
 mod tests {
     use crate::raw::*;
     use crate::storage::Storage;
-    use atom::space::Space;
+    use atom::space::AlignedSpace;
 
     fn store(storage: &mut Storage, urids: &AtomURIDCollection) {
         let mut store_handle = storage.store_handle();
 
         store_handle
             .draft(URID::new(1).unwrap())
-            .init(urids.int, 17)
+            .init(urids.int)
+            .unwrap()
+            .set(17)
             .unwrap();
         store_handle
             .draft(URID::new(2).unwrap())
-            .init(urids.float, 1.0)
+            .init(urids.float)
+            .unwrap()
+            .set(1.0)
             .unwrap();
 
         store_handle.commit(URID::new(1).unwrap()).unwrap().unwrap();
 
         let mut vector_writer = store_handle.draft(URID::new(3).unwrap());
-        let mut vector_writer = vector_writer.init(urids.vector(), urids.int).unwrap();
+        let mut vector_writer = vector_writer
+            .init(urids.vector)
+            .unwrap()
+            .of_type(urids.int)
+            .unwrap();
         vector_writer.append(&[1, 2, 3, 4]).unwrap();
 
         store_handle.commit_all().unwrap();
 
         store_handle
             .draft(URID::new(4).unwrap())
-            .init(urids.int, 0)
+            .init(urids.int)
+            .unwrap()
+            .set(0)
             .unwrap();
     }
 
@@ -268,26 +271,29 @@ mod tests {
 
         assert_eq!(
             17,
-            retrieve_handle
+            *retrieve_handle
                 .retrieve(URID::new(1).unwrap())
                 .unwrap()
-                .read(urids.int, ())
+                .read(urids.int)
                 .unwrap()
         );
         assert_eq!(
-            1.0,
+            1.0f32.to_ne_bytes(),
             retrieve_handle
                 .retrieve(URID::new(2).unwrap())
                 .unwrap()
-                .read(urids.float, ())
+                .read(urids.float)
                 .unwrap()
+                .to_ne_bytes()
         );
         assert_eq!(
             [1, 2, 3, 4],
             retrieve_handle
                 .retrieve(URID::new(3).unwrap())
                 .unwrap()
-                .read(urids.vector(), urids.int)
+                .read(urids.vector)
+                .unwrap()
+                .of_type(urids.int)
                 .unwrap()
         );
         assert!(retrieve_handle.retrieve(URID::new(4).unwrap()).is_err());
@@ -310,14 +316,18 @@ mod tests {
                 }
                 2 => {
                     assert_eq!(urids.float, *type_);
-                    assert_eq!(1.0, unsafe {
-                        *(value.as_slice() as *const _ as *const f32)
-                    });
+                    assert_eq!(
+                        1.0f32.to_ne_bytes(),
+                        unsafe { *(value.as_slice() as *const _ as *const f32) }.to_ne_bytes()
+                    );
                 }
                 3 => {
-                    assert_eq!(urids.vector::<Int>(), *type_);
-                    let space = Space::from_slice(value.as_slice());
-                    let data = Vector::read(space, urids.int).unwrap();
+                    assert_eq!(urids.vector, *type_);
+                    let space = AlignedSpace::from_bytes(value.as_slice()).unwrap();
+                    let data = unsafe { Vector::read(space) }
+                        .unwrap()
+                        .of_type(urids.int)
+                        .unwrap();
                     assert_eq!([1, 2, 3, 4], data);
                 }
                 _ => panic!("Invalid key!"),

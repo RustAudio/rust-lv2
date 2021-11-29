@@ -19,69 +19,76 @@
 //! /// Something like a plugin's run method.
 //! fn run(ports: &mut MyPorts, urids: &AtomURIDCollection) {
 //!     // Scalar atoms don't need a reading parameter.
-//!     let read_value: f32 = ports.input.read(urids.float, ()).unwrap();
+//!     let read_value: &f32 = ports.input.read(urids.float).unwrap();
 //!
 //!     // Writing is done with the value of the atom.
-//!     // You can modify it afterwards.
-//!     let written_value: &mut f32 = ports.output.init(urids.float, 17.0).unwrap();
+//!     ports.output.write(urids.float).unwrap().set(17.0);
 //! }
 //! ```
 //!
 //! # Specification
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Number](http://lv2plug.in/ns/ext/atom/atom.html#Number)
-use crate::space::*;
 use crate::*;
-use std::marker::Unpin;
+use core::marker::{PhantomData, Unpin};
 use urid::UriBound;
 use urid::URID;
 
 /// An atom that only contains a single, scalar value.
-///
-/// Since scalar values are so simple, the reading and writing methods are exactly the same.
 pub trait ScalarAtom: UriBound {
     /// The internal representation of the atom.
     ///
-    /// For example, the `Int` atom has the internal type of `i32`, which is `i32` on most platforms.
+    /// For example, the `Int` atom has the internal type of `i32`.
     type InternalType: Unpin + Copy + Send + Sync + Sized + 'static;
+}
 
-    /// Try to read the atom from a space.
-    ///
-    /// If the space does not contain the atom or is not big enough, return `None`. The second return value is the space behind the atom.
-    fn read_scalar(body: Space) -> Option<Self::InternalType> {
-        body.split_type::<Self::InternalType>()
-            .map(|(value, _)| *value)
-    }
+pub struct ScalarWriter<'a, T: Copy + 'static>(AtomWriter<'a>, PhantomData<T>);
 
-    /// Try to write the atom into a space.
+impl<'a, T: Copy + 'static> ScalarWriter<'a, T> {
+    /// Sets the value of the scalar
     ///
-    /// Write an atom with the value of `value` into the space and return a mutable reference to the written value. If the space is not big enough, return `None`.
-    fn write_scalar<'a, 'b>(
-        mut frame: FramedMutSpace<'a, 'b>,
-        value: Self::InternalType,
-    ) -> Option<&'a mut Self::InternalType> {
-        (&mut frame as &mut dyn MutSpace).write(&value, true)
+    /// # Errors
+    ///
+    /// Returns an error is the underlying buffer is out of space for the new scalar value.
+    #[inline]
+    pub fn set(&mut self, value: T) -> Result<&mut T, AtomWriteError> {
+        #[repr(align(8))]
+        #[derive(Copy, Clone)]
+        struct Padder;
+
+        #[derive(Copy, Clone)]
+        #[repr(C)]
+        struct ScalarValue<T: Copy + 'static>(T, Padder);
+
+        // Scalars have extra padding due to previous header in LV2_ATOM_Int and such
+        Ok(&mut self.0.write_value(ScalarValue(value, Padder))?.0)
     }
 }
 
-impl<'a, 'b, A: ScalarAtom> Atom<'a, 'b> for A
-where
-    'a: 'b,
-{
-    type ReadParameter = ();
-    type ReadHandle = A::InternalType;
-    type WriteParameter = A::InternalType;
-    type WriteHandle = &'a mut A::InternalType;
+pub struct ScalarReaderHandle<T: Copy + 'static>(PhantomData<T>);
+impl<'a, T: Copy + 'static> AtomHandle<'a> for ScalarReaderHandle<T> {
+    type Handle = &'a T;
+}
 
-    fn read(body: Space<'a>, _: ()) -> Option<A::InternalType> {
-        <A as ScalarAtom>::read_scalar(body)
+pub struct ScalarWriterHandle<T: Copy + 'static>(PhantomData<T>);
+impl<'a, T: Copy + 'static> AtomHandle<'a> for ScalarWriterHandle<T> {
+    type Handle = ScalarWriter<'a, T>;
+}
+
+impl<A: ScalarAtom> Atom for A {
+    type ReadHandle = ScalarReaderHandle<A::InternalType>;
+    type WriteHandle = ScalarWriterHandle<A::InternalType>;
+
+    unsafe fn read(
+        body: &AtomSpace,
+    ) -> Result<<Self::ReadHandle as AtomHandle>::Handle, AtomReadError> {
+        body.read().next_value()
     }
 
-    fn init(
-        frame: FramedMutSpace<'a, 'b>,
-        value: A::InternalType,
-    ) -> Option<&'a mut A::InternalType> {
-        <A as ScalarAtom>::write_scalar(frame, value)
+    fn write(
+        frame: AtomWriter,
+    ) -> Result<<Self::WriteHandle as AtomHandle>::Handle, AtomWriteError> {
+        Ok(ScalarWriter(frame, PhantomData))
     }
 }
 
@@ -162,11 +169,11 @@ make_scalar_atom!(
 
 #[cfg(test)]
 mod tests {
+    use crate::atoms::scalar::ScalarAtom;
     use crate::prelude::*;
-    use crate::scalar::ScalarAtom;
     use crate::space::*;
+    use crate::AtomHeader;
     use std::convert::TryFrom;
-    use std::mem::size_of;
     use urid::*;
 
     fn test_scalar<A: ScalarAtom>(value: A::InternalType)
@@ -177,36 +184,40 @@ mod tests {
         let map = HashURIDMapper::new();
         let urid: URID<A> = map.map_type().unwrap();
 
-        let mut raw_space: Box<[u8]> = Box::new([0; 256]);
+        let mut raw_space = AlignedVec::<AtomHeader>::new_with_capacity(64);
+        let raw_space = raw_space.as_space_mut();
 
         // writing
         {
-            let mut space = RootMutSpace::new(raw_space.as_mut());
-            (&mut space as &mut dyn MutSpace).init(urid, value).unwrap();
+            let mut space = SpaceCursor::new(raw_space.as_bytes_mut());
+            space.write_atom(urid).unwrap().set(value).unwrap();
         }
 
         // verifying
         {
             /// Generic version of the scalar atom structs.
-            #[repr(C)]
+            #[repr(C, align(8))]
             struct Scalar<B: Sized> {
                 atom: sys::LV2_Atom,
                 body: B,
             }
 
-            let (scalar, _) = raw_space.split_at(size_of::<sys::LV2_Atom>());
+            let scalar: &Scalar<A::InternalType> =
+                unsafe { raw_space.read().next_value().unwrap() };
 
-            let scalar = unsafe { &*(scalar.as_ptr() as *const Scalar<A::InternalType>) };
             assert_eq!(scalar.atom.type_, urid);
-            assert_eq!(scalar.atom.size as usize, size_of::<A::InternalType>());
+            assert_eq!(scalar.atom.size as usize, 8); // All are always aligned and padded
             assert_eq!(scalar.body, value);
         }
 
         // reading
         {
-            let space = Space::from_slice(raw_space.as_ref());
-            let (body, _) = space.split_atom_body(urid).unwrap();
-            assert_eq!(A::read(body, ()).unwrap(), value);
+            let read_value = unsafe { raw_space.read().next_atom() }
+                .unwrap()
+                .read(urid)
+                .unwrap();
+
+            assert_eq!(*read_value, value);
         }
     }
 

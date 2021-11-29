@@ -12,4 +12,4 @@ repository = "https://github.com/RustAudio/rust-lv2"
 [dependencies]
 lv2-sys = "2.0.0"
 lv2-core = "3.0.0"
-urid = "0.1.0"
+urid = { version = "0.1.0", default-features = false }

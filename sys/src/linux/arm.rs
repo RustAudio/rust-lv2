@@ -685,7 +685,7 @@ pub type __int32_t = ::std::os::raw::c_int;
 pub type __uint32_t = ::std::os::raw::c_uint;
 pub type __int64_t = ::std::os::raw::c_longlong;
 #[doc = " The header of an atom:Atom."]
-#[repr(C)]
+#[repr(C, align(8))]
 #[derive(Debug, Copy, Clone)]
 pub struct LV2_Atom {
     #[doc = "< Size in bytes, not including type and size."]

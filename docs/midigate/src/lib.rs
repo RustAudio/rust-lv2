@@ -30,9 +30,15 @@ pub struct Midigate {
 
 impl Midigate {
     // A function to write a chunk of output, to be called from `run()`. If the gate is high, then the input will be passed through for this chunk, otherwise silence is written.
-    fn write_output(&mut self, ports: &mut Ports, offset: usize, mut len: usize) {
-        if ports.input.len() < offset + len {
-            len = ports.input.len() - offset;
+    fn write_output(
+        &mut self,
+        input: &InputPort<Audio>,
+        output: &mut OutputPort<Audio>,
+        offset: usize,
+        mut len: usize,
+    ) {
+        if input.len() < offset + len {
+            len = input.len() - offset;
         }
 
         let active = if self.program == 0 {
@@ -41,8 +47,8 @@ impl Midigate {
             self.n_active_notes == 0
         };
 
-        let input = &ports.input[offset..offset + len];
-        let output = &mut ports.output[offset..offset + len];
+        let input = &input[offset..offset + len];
+        let output = &mut output[offset..offset + len];
 
         if active {
             output.copy_from_slice(input);
@@ -82,17 +88,15 @@ impl Plugin for Midigate {
 
         let control_sequence = ports
             .control
-            .read(self.urids.atom.sequence, self.urids.unit.beat)
+            .read(self.urids.atom.sequence)
+            .unwrap()
+            .with_unit(self.urids.unit.frame)
             .unwrap();
 
         for (timestamp, message) in control_sequence {
-            let timestamp: usize = if let Some(timestamp) = timestamp.as_frames() {
-                timestamp as usize
-            } else {
-                continue;
-            };
+            let timestamp = timestamp as usize;
 
-            let message = if let Some(message) = message.read(self.urids.midi.wmidi, ()) {
+            let message = if let Ok(message) = message.read(self.urids.midi.wmidi) {
                 message
             } else {
                 continue;
@@ -110,11 +114,16 @@ impl Plugin for Midigate {
                 _ => (),
             }
 
-            self.write_output(ports, offset, timestamp + offset);
+            self.write_output(&ports.input, &mut ports.output, offset, timestamp + offset);
             offset += timestamp;
         }
 
-        self.write_output(ports, offset, ports.input.len() - offset);
+        self.write_output(
+            &ports.input,
+            &mut ports.output,
+            offset,
+            ports.input.len() - offset,
+        );
     }
 
     // During it's runtime, the host might decide to deactivate the plugin. When the plugin is reactivated, the host calls this method which gives the plugin an opportunity to reset it's internal state.

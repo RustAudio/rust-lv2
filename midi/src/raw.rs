@@ -3,7 +3,7 @@
 //! This implementation is very low-level; Basically an alias for a chunk. It should only be used by those who don't want additional dependencies or want to modify messages directly.
 //!
 //! If you just want to use MIDI messages in your plugin, you should use the optional `wmidi` feature.
-use atom::prelude::*;
+use atom::atom_prelude::*;
 use urid::*;
 
 /// Midi Event.
@@ -15,20 +15,27 @@ unsafe impl UriBound for MidiEvent {
     const URI: &'static [u8] = sys::LV2_MIDI__MidiEvent;
 }
 
-impl<'a, 'b> Atom<'a, 'b> for MidiEvent
-where
-    'a: 'b,
-{
-    type ReadParameter = ();
-    type ReadHandle = &'a [u8];
-    type WriteParameter = ();
-    type WriteHandle = FramedMutSpace<'a, 'b>;
+pub struct MidiEventReadHandle;
 
-    fn read(body: Space<'a>, _: ()) -> Option<&'a [u8]> {
-        body.data()
+impl<'a> AtomHandle<'a> for MidiEventReadHandle {
+    type Handle = &'a [u8];
+}
+
+pub struct MidiEventWriteHandle;
+
+impl<'a> AtomHandle<'a> for MidiEventWriteHandle {
+    type Handle = AtomWriter<'a>;
+}
+
+impl Atom for MidiEvent {
+    type ReadHandle = MidiEventReadHandle;
+    type WriteHandle = MidiEventWriteHandle;
+
+    unsafe fn read(body: &AtomSpace) -> Result<&[u8], AtomReadError> {
+        Ok(body.as_bytes())
     }
 
-    fn init(frame: FramedMutSpace<'a, 'b>, _: ()) -> Option<FramedMutSpace<'a, 'b>> {
-        Some(frame)
+    fn write(frame: AtomWriter) -> Result<AtomWriter, AtomWriteError> {
+        Ok(frame)
     }
 }

@@ -152,10 +152,10 @@ mod tests {
 
     struct FeatureTestSetting<'a> {
         pub data_a: Pin<Box<i32>>,
-        pub feature_a_sys: Pin<Box<::sys::LV2_Feature>>,
+        pub _feature_a_sys: Pin<Box<::sys::LV2_Feature>>,
         pub data_b: Pin<Box<f32>>,
-        pub feature_b_sys: Pin<Box<::sys::LV2_Feature>>,
-        pub feature_c_sys: Pin<Box<::sys::LV2_Feature>>,
+        pub _feature_b_sys: Pin<Box<::sys::LV2_Feature>>,
+        pub _feature_c_sys: Pin<Box<::sys::LV2_Feature>>,
         pub features_cache: FeatureCache<'a>,
     }
 
@@ -190,10 +190,10 @@ mod tests {
 
             Self {
                 data_a,
-                feature_a_sys,
+                _feature_a_sys: feature_a_sys,
                 data_b,
-                feature_b_sys,
-                feature_c_sys,
+                _feature_b_sys: feature_b_sys,
+                _feature_c_sys: feature_c_sys,
                 features_cache,
             }
         }
