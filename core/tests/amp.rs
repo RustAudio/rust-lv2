@@ -1,6 +1,6 @@
-use lv2_core::feature::{FeatureCache, FeatureCollection, MissingFeatureError};
 use lv2_core::feature::{HardRTCapable, IsLive};
 use lv2_core::prelude::*;
+use std::ffi::c_void;
 use std::ops::Drop;
 use std::os::raw::c_char;
 use urid::*;
@@ -10,12 +10,59 @@ struct Amp {
     activated: bool,
 }
 
-#[derive(PortCollection)]
 struct AmpPorts {
-    gain: InputPort<InPlaceControl>,
-    input: InputPort<InPlaceAudio>,
-    output: OutputPort<InPlaceAudio>,
+    gain: InputPort<Control>,
+    audio: InputOutputPort<Audio>,
 }
+
+const _: () = {
+    impl PortCollection for AmpPorts {
+        type Cache = AmpPorts__Cache;
+
+        #[inline]
+        unsafe fn from_connections(
+            connections: &<Self as PortCollection>::Cache,
+            sample_count: u32,
+        ) -> Option<Self> {
+            Some(Self {
+                gain: <InputPort<Control> as PortCollection>::from_connections(
+                    &connections.gain,
+                    sample_count,
+                )?,
+                audio: <InputOutputPort<Audio> as PortCollection>::from_connections(
+                    &connections.audio,
+                    sample_count,
+                )?,
+            })
+        }
+    }
+
+    #[allow(non_snake_case, non_camel_case_types)]
+    struct AmpPorts__Cache {
+        pub gain: <InputPort<Control> as PortCollection>::Cache,
+        pub audio: <InputOutputPort<Audio> as PortCollection>::Cache,
+    }
+
+    impl PortPointerCache for AmpPorts__Cache {
+        const SIZE: usize = <InputPort<Control> as PortCollection>::Cache::SIZE
+            + <InputOutputPort<Audio> as PortCollection>::Cache::SIZE;
+
+        fn new() -> Self {
+            Self {
+                gain: <InputPort<Control> as PortCollection>::Cache::new(),
+                audio: <InputOutputPort<Audio> as PortCollection>::Cache::new(),
+            }
+        }
+
+        fn set_connection(&mut self, index: u32) -> Option<&mut *mut c_void> {
+            match index {
+                0 => self.gain.set_connection(0),
+                1..=2 => self.audio.set_connection(index - 1), // TODO
+                _ => None,
+            }
+        }
+    }
+};
 
 #[derive(FeatureCollection)]
 struct Features {
@@ -58,11 +105,8 @@ impl Plugin for Amp {
 
         let coef = *(ports.gain);
 
-        let input = ports.input.iter();
-        let output = ports.output.iter();
-
-        for (input_sample, output_sample) in input.zip(output) {
-            output_sample.set(input_sample.get() * coef.get());
+        for (input_sample, output_sample) in ports.audio.zip() {
+            output_sample.set(input_sample.get() * coef);
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::port::PortType;
+use crate::port::{AtomicPortType, PortType};
 use std::cell::Cell;
 use std::ffi::c_void;
 use std::ptr::NonNull;
@@ -71,12 +71,33 @@ impl PortType for Audio {
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType {
-        std::slice::from_raw_parts(pointer.as_ptr() as *const f32, sample_count as usize)
+        core::slice::from_raw_parts(pointer.as_ptr() as *const f32, sample_count as usize)
     }
 
     #[inline]
     unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType {
-        std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
+        core::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
+    }
+}
+
+impl AtomicPortType for Audio {
+    type InputOutputPortType = (&'static [Cell<f32>], &'static [Cell<f32>]);
+
+    #[inline]
+    unsafe fn input_output_from_raw(
+        input: NonNull<c_void>,
+        output: NonNull<c_void>,
+        sample_count: u32,
+    ) -> Self::InputOutputPortType {
+        let input =
+            core::slice::from_raw_parts_mut(input.as_ptr() as *mut f32, sample_count as usize);
+        let output =
+            core::slice::from_raw_parts_mut(output.as_ptr() as *mut f32, sample_count as usize);
+
+        (
+            Cell::from_mut(input).as_slice_of_cells(),
+            Cell::from_mut(output).as_slice_of_cells(),
+        )
     }
 }
 

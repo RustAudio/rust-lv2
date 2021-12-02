@@ -167,7 +167,7 @@ impl<T: Plugin> PluginInstance<T> {
             Some(instance) => {
                 let instance = Box::new(Self {
                     instance,
-                    connections: <<T::Ports as PortCollection>::Cache as Default>::default(),
+                    connections: <<T::Ports as PortCollection>::Cache as PortPointerCache>::new(),
                     init_features,
                     audio_features,
                 });
@@ -222,7 +222,11 @@ impl<T: Plugin> PluginInstance<T> {
     /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn connect_port(instance: *mut c_void, port: u32, data: *mut c_void) {
         let instance = instance as *mut Self;
-        (*instance).connections.connect(port, data)
+        if let Some(port_cache) = (*instance).connections.set_connection(port) {
+            *port_cache = data
+        } else {
+            eprintln!("Tried to connect non-existent port index {}", port)
+        }
     }
 
     /// Construct a port collection and call the `run` method.
