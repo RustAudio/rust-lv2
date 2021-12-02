@@ -16,14 +16,18 @@ mod audio;
 mod control;
 mod cv;
 
+pub trait PortTypeHandle<'a> {
+    type Handle: 'a + Sized;
+}
+
 /// Generalization of port types.
 ///
 /// A port can read input or create a pointer to the output, but the exact type of input/output (pointer) depends on the type of port. This trait generalizes these types and behaviour.
 pub trait PortType {
     /// The type of input read by the port.
-    type InputPortType: Sized;
+    type InputPortType: for<'a> PortTypeHandle<'a>;
     /// The type of output reference created by the port.
-    type OutputPortType: Sized;
+    type OutputPortType: for<'a> PortTypeHandle<'a>;
 
     /// Read data from the pointer or create a reference to the input.
     ///
@@ -32,7 +36,10 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType;
+    unsafe fn input_from_raw<'a>(
+        pointer: NonNull<c_void>,
+        sample_count: u32,
+    ) -> <Self::InputPortType as PortTypeHandle<'a>>::Handle;
 
     /// Create a reference to the data where output should be written to.
     ///
@@ -41,15 +48,18 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
+    unsafe fn output_from_raw<'a>(
+        pointer: NonNull<c_void>,
+        sample_count: u32,
+    ) -> <Self::OutputPortType as PortTypeHandle<'a>>::Handle;
 }
 
 pub trait AtomicPortType: PortType {
-    type InputOutputPortType: Sized;
+    type InputOutputPortType: for<'a> PortTypeHandle<'a>;
 
-    unsafe fn input_output_from_raw(
+    unsafe fn input_output_from_raw<'a>(
         input: NonNull<c_void>,
         output: NonNull<c_void>,
         sample_count: u32,
-    ) -> Self::InputOutputPortType;
+    ) -> <Self::InputOutputPortType as PortTypeHandle<'a>>::Handle;
 }

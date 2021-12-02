@@ -1,5 +1,4 @@
 use crate::port::PortType;
-use std::cell::Cell;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use urid::UriBound;
@@ -20,14 +19,14 @@ use urid::UriBound;
 /// #[derive(PortCollection)]
 /// struct ControlAmpPorts {
 ///     factor: InputPort<Control>,
-///     input: InputPort<Audio>,
-///     output: OutputPort<Audio>,
+///     input: InputPort<Control>,
+///     output: OutputPort<Control>,
 /// }
 ///
 /// impl Plugin for ControlAmp {
 ///     type Ports = ControlAmpPorts;
 /// # type InitFeatures = ();
-/// # type AudioFeatures = ();
+/// # type ControlFeatures = ();
 /// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
 /// #         unimplemented!()
 /// # }
@@ -65,84 +64,32 @@ unsafe impl UriBound for Control {
 }
 
 impl PortType for Control {
-    type InputPortType = f32;
-    type OutputPortType = &'static mut f32;
+    type InputPortType = handles::ControlInputType;
+    type OutputPortType = handles::ControlOutputType;
 
     #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> f32 {
-        *(pointer.cast().as_ref())
+    unsafe fn input_from_raw<'a>(pointer: NonNull<c_void>, _sample_count: u32) -> &'a f32 {
+        pointer.cast().as_ref()
     }
 
     #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> &'static mut f32 {
-        (pointer.as_ptr() as *mut f32).as_mut().unwrap()
+    unsafe fn output_from_raw<'a>(pointer: NonNull<c_void>, _sample_count: u32) -> &'a mut f32 {
+        pointer.cast().as_mut()
     }
 }
 
-/// A port connected to a single float ([`f32`]). This port type can safely operate on shared input and output buffers.
-///
-/// See the [LV2 reference](https://lv2plug.in/ns/lv2core#ControlPort) for more information.
-///
-/// # Example
-///
-/// This very simple amplifier plugin multiplies the input sample by the input control value and outputs the result.
-///
-/// ```
-/// # use lv2_core::prelude::*;
-/// # use urid::*;
-/// # #[uri("http://lv2plug.in/plugins.rs/simple_amp")]
-/// # struct ControlAmp;
-/// #[derive(PortCollection)]
-/// struct ControlAmpPorts {
-///     factor: InputPort<InPlaceControl>,
-///     input: InputPort<InPlaceAudio>,
-///     output: OutputPort<InPlaceAudio>,
-/// }
-///
-/// impl Plugin for ControlAmp {
-///     type Ports = ControlAmpPorts;
-/// # type InitFeatures = ();
-/// # type AudioFeatures = ();
-/// # fn new(plugin_info: &PluginInfo,features: &mut Self::InitFeatures) -> Option<Self> {
-/// #         unimplemented!()
-/// # }
-///     // some implementation details elided…
-///
-///     fn run(&mut self, ports: &mut ControlAmpPorts, _: &mut (), _: u32) {
-///         // Input and Output dereference to `&Cell<f32>`.
-///         let factor = ports.factor.get();
-///
-///         let input = ports.input.iter();
-///         let output = ports.output.iter();
-///
-///         for (input_sample, output_sample) in input.zip(output) {
-///             output_sample.set(input_sample.get() * factor);
-///         }
-///     }
-/// }
-///
-///
-/// ```
-pub struct InPlaceControl;
+pub mod handles {
+    use crate::port::PortTypeHandle;
 
-unsafe impl UriBound for InPlaceControl {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
-}
+    pub struct ControlInputType;
 
-impl PortType for InPlaceControl {
-    type InputPortType = &'static Cell<f32>;
-    type OutputPortType = &'static Cell<f32>;
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
+    impl<'a> PortTypeHandle<'a> for ControlInputType {
+        type Handle = &'a f32;
     }
 
-    #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        _sample_count: u32,
-    ) -> Self::OutputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
+    pub struct ControlOutputType;
+
+    impl<'a> PortTypeHandle<'a> for ControlOutputType {
+        type Handle = &'a mut f32;
     }
 }

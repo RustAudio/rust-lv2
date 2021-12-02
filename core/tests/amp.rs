@@ -1,4 +1,5 @@
 use lv2_core::feature::{HardRTCapable, IsLive};
+use lv2_core::port::PortCollectionHandle;
 use lv2_core::prelude::*;
 use std::ffi::c_void;
 use std::ops::Drop;
@@ -10,18 +11,24 @@ struct Amp {
     activated: bool,
 }
 
-struct AmpPorts {
-    gain: InputPort<Control>,
-    audio: InputOutputPort<Audio>,
+struct AmpPorts<'a> {
+    gain: InputPort<'a, Control>,
+    audio: InputOutputPort<'a, Audio>,
 }
 
 const _: () = {
-    impl PortCollection for AmpPorts {
-        type Cache = AmpPorts__Cache;
+    pub struct AmpPortsCollectionHandle;
+    impl<'a> PortCollectionHandle<'a> for AmpPorts<'a> {
+        type PortCollection = AmpPorts<'a>;
+    }
+
+    impl<'a> PortCollection<'a> for AmpPorts<'a> {
+        type LifetimeHandle = AmpPortsCollectionHandle;
+        type Cache = AmpPorts__Cache<'a>;
 
         #[inline]
         unsafe fn from_connections(
-            connections: &<Self as PortCollection>::Cache,
+            connections: &<Self as PortCollection<'a>>::Cache,
             sample_count: u32,
         ) -> Option<Self> {
             Some(Self {
@@ -38,12 +45,12 @@ const _: () = {
     }
 
     #[allow(non_snake_case, non_camel_case_types)]
-    struct AmpPorts__Cache {
-        pub gain: <InputPort<Control> as PortCollection>::Cache,
-        pub audio: <InputOutputPort<Audio> as PortCollection>::Cache,
+    struct AmpPorts__Cache<'a> {
+        pub gain: <InputPort<'a, Control> as PortCollection<'a>>::Cache,
+        pub audio: <InputOutputPort<'a, Audio> as PortCollection<'a>>::Cache,
     }
 
-    impl PortPointerCache for AmpPorts__Cache {
+    impl<'a> PortPointerCache for AmpPorts__Cache<'a> {
         const SIZE: usize = <InputPort<Control> as PortCollection>::Cache::SIZE
             + <InputOutputPort<Audio> as PortCollection>::Cache::SIZE;
 
@@ -70,8 +77,8 @@ struct Features {
     is_live: Option<IsLive>,
 }
 
-impl Plugin for Amp {
-    type Ports = AmpPorts;
+impl<'a> Plugin<'a> for Amp {
+    type Ports = AmpPorts<'a>;
     type InitFeatures = Features;
     type AudioFeatures = ();
 
@@ -100,10 +107,10 @@ impl Plugin for Amp {
     }
 
     #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut AmpPorts<'a>, _: &mut (), _: u32) {
         assert!(self.activated);
 
-        let coef = *(ports.gain);
+        let coef = *ports.gain;
 
         for (input_sample, output_sample) in ports.audio.zip() {
             output_sample.set(input_sample.get() * coef);

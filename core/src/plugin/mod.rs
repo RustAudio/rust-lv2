@@ -7,6 +7,7 @@ pub use info::PluginInfo;
 pub use lv2_core_derive::*;
 
 use crate::feature::*;
+use crate::port::PortCollectionHandle;
 use crate::port::*;
 use std::any::Any;
 use std::ffi::c_void;
@@ -19,9 +20,9 @@ use urid::{Uri, UriBound};
 /// This trait and the structs that implement it are the centre of every plugin project, since it hosts the `run` method. This method is called by the host for every processing cycle.
 ///
 /// However, the host will not directly talk to the plugin. Instead, it will create and talk to the [`PluginInstance`](struct.PluginInstance.html), which dereferences raw pointers, does safety checks and then calls the corresponding plugin methods. However, it guarantees that a valid `sys::LV2_Handle` is always a valid `*mut MyPlugin`, where `MyPlugin` is your plugin's name.
-pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
+pub trait Plugin<'a>: UriBound + Sized + Send + Sync + 'static {
     /// The type of the port collection.
-    type Ports: PortCollection;
+    type Ports: PortCollection<'a>;
 
     /// The host features used by this plugin in the "Initialization" thread class.
     ///
@@ -49,9 +50,11 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     /// The host will always call this method after `active` has been called and before `deactivate` has been called.
     ///
     /// The sample count is the number of frames covered by this `run` call. Audio and CV ports will contain exactly `sample_count` frames. Please note that `sample_count` may be differ between calls.
-    fn run(
-        &mut self,
-        ports: &mut Self::Ports,
+    fn run<'run: 'a>(
+        &'run mut self,
+        ports: &mut <<Self::Ports as PortCollection<'a>>::LifetimeHandle as PortCollectionHandle<
+            'run,
+        >>::PortCollection,
         features: &mut Self::AudioFeatures,
         sample_count: u32,
     );
@@ -84,25 +87,36 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 ///
 /// This struct is `repr(C)` and has the plugin as it's first field. Therefore, a valid `*mut PluginInstance<T>` is also a valid `*mut T`.
 #[repr(C)]
-pub struct PluginInstance<T: Plugin> {
+pub struct PluginInstance<'a, T: Plugin<'a>> {
     /// The plugin instance.
     instance: T,
     /// A temporary storage for all ports of the plugin.
-    connections: <T::Ports as PortCollection>::Cache,
+    connections: <T::Ports as PortCollection<'a>>::Cache,
     /// All features that may be used in the initialization threading class.
     init_features: T::InitFeatures,
     /// All features that may be used in the audio threading class.
     audio_features: T::AudioFeatures,
 }
 
-impl<T: Plugin> PluginInstance<T> {
+impl<'a, T: Plugin<'a>> PluginInstance<'a, T> {
+    pub const DESCRIPTOR: sys::LV2_Descriptor = sys::LV2_Descriptor {
+        URI: T::URI.as_ptr() as *const u8 as *const ::std::os::raw::c_char,
+        instantiate: Some(Self::instantiate),
+        connect_port: Some(Self::connect_port),
+        activate: Some(Self::activate),
+        run: Some(Self::run),
+        deactivate: Some(Self::deactivate),
+        cleanup: Some(Self::cleanup),
+        extension_data: Some(Self::extension_data),
+    };
+
     /// Try to create a port collection from the currently collected connections.
     ///
     /// # Safety
     ///
     /// This method is unsafe since it needs to dereference raw pointers, which are only valid if the method is called in the "Audio" threading class.
-    pub unsafe fn ports(&self, sample_count: u32) -> Option<T::Ports> {
-        <T::Ports as PortCollection>::from_connections(&self.connections, sample_count)
+    pub unsafe fn ports<'run>(&self, sample_count: u32) -> Option<<<T::Ports as PortCollection<'a>>::LifetimeHandle as PortCollectionHandle<'run>>::PortCollection> where 'a: 'run{
+        <<T::Ports as PortCollection<'a>>::LifetimeHandle as PortCollectionHandle<'run>>::PortCollection::from_connections(&self.connections, sample_count)
     }
 
     /// Instantiate the plugin.
@@ -282,6 +296,6 @@ impl<T: Plugin> PluginInstance<T> {
 }
 
 #[doc(hidden)]
-pub unsafe trait PluginInstanceDescriptor: Plugin {
+pub unsafe trait PluginInstanceDescriptor<'a>: Plugin<'a> {
     const DESCRIPTOR: sys::LV2_Descriptor;
 }
