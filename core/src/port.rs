@@ -21,9 +21,9 @@ mod cv;
 /// A port can read input or create a pointer to the output, but the exact type of input/output (pointer) depends on the type of port. This trait generalizes these types and behaviour.
 pub trait PortType {
     /// The type of input read by the port.
-    type InputPortType: Sized;
+    type Input: Sized;
     /// The type of output reference created by the port.
-    type OutputPortType: Sized;
+    type Output: Sized;
 
     /// Read data from the pointer or create a reference to the input.
     ///
@@ -32,7 +32,7 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType;
+    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::Input;
 
     /// Create a reference to the data where output should be written to.
     ///
@@ -41,15 +41,17 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
+    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::Output;
 }
 
-pub trait AtomicPortType: PortType {
-    type InputOutputPortType: Sized;
+/// A base trait for port types that can operate in-place, i.e. where the input and output port
+/// buffers are aliased.
+pub trait InPlacePortType: PortType {
+    type InputOutput: Sized;
 
     unsafe fn input_output_from_raw(
         input: NonNull<c_void>,
         output: NonNull<c_void>,
         sample_count: u32,
-    ) -> Self::InputOutputPortType;
+    ) -> Self::InputOutput;
 }

@@ -106,8 +106,8 @@ impl<'a> PortWriter<'a> {
 pub struct AtomPort;
 
 impl PortType for AtomPort {
-    type InputPortType = PortReader<'static>;
-    type OutputPortType = PortWriter<'static>;
+    type Input = PortReader<'static>;
+    type Output = PortWriter<'static>;
 
     #[inline]
     unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> PortReader<'static> {

@@ -158,6 +158,5 @@ impl<'a> PortCollectionStruct<'a> {
 #[inline]
 pub fn port_collection_derive_impl(input: TokenStream) -> TokenStream {
     let input: DeriveInput = parse_macro_input!(input);
-    let list = PortCollectionStruct::from_derive_input(&input);
-    list.make_derived_contents()
+    PortCollectionStruct::from_derive_input(&input).make_derived_contents()
 }

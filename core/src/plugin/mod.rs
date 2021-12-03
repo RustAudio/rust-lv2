@@ -88,7 +88,7 @@ pub struct PluginInstance<T: Plugin> {
     /// The plugin instance.
     instance: T,
     /// A temporary storage for all ports of the plugin.
-    connections: <T::Ports as PortCollection>::Cache,
+    connections: <T::Ports as PortCollection>::Connections,
     /// All features that may be used in the initialization threading class.
     init_features: T::InitFeatures,
     /// All features that may be used in the audio threading class.
@@ -167,7 +167,8 @@ impl<T: Plugin> PluginInstance<T> {
             Some(instance) => {
                 let instance = Box::new(Self {
                     instance,
-                    connections: <<T::Ports as PortCollection>::Cache as PortPointerCache>::new(),
+                    connections:
+                        <<T::Ports as PortCollection>::Connections as PortConnections>::new(),
                     init_features,
                     audio_features,
                 });

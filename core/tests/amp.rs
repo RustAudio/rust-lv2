@@ -10,6 +10,12 @@ struct Amp {
     activated: bool,
 }
 
+struct Ports<Ins, Outs> {
+    inputs: Ins,
+    outputs: Outs,
+}
+
+//#[derive(PortCollection)]
 struct AmpPorts {
     gain: InputPort<Control>,
     audio: InputOutputPort<Audio>,
@@ -17,11 +23,11 @@ struct AmpPorts {
 
 const _: () = {
     impl PortCollection for AmpPorts {
-        type Cache = AmpPorts__Cache;
+        type Connections = AmpPorts__Connections;
 
         #[inline]
         unsafe fn from_connections(
-            connections: &<Self as PortCollection>::Cache,
+            connections: &<Self as PortCollection>::Connections,
             sample_count: u32,
         ) -> Option<Self> {
             Some(Self {
@@ -38,26 +44,40 @@ const _: () = {
     }
 
     #[allow(non_snake_case, non_camel_case_types)]
-    struct AmpPorts__Cache {
-        pub gain: <InputPort<Control> as PortCollection>::Cache,
-        pub audio: <InputOutputPort<Audio> as PortCollection>::Cache,
+    struct AmpPorts__Connections {
+        pub gain: <InputPort<Control> as PortCollection>::Connections,
+        pub audio: <InputOutputPort<Audio> as PortCollection>::Connections,
     }
 
-    impl PortPointerCache for AmpPorts__Cache {
-        const SIZE: usize = <InputPort<Control> as PortCollection>::Cache::SIZE
-            + <InputOutputPort<Audio> as PortCollection>::Cache::SIZE;
-
+    impl PortConnections for AmpPorts__Connections {
+        const SIZE: usize = <InputPort<Control> as PortCollection>::Connections::SIZE
+            + <InputOutputPort<Audio> as PortCollection>::Connections::SIZE;
         fn new() -> Self {
             Self {
-                gain: <InputPort<Control> as PortCollection>::Cache::new(),
-                audio: <InputOutputPort<Audio> as PortCollection>::Cache::new(),
+                gain: <InputPort<Control> as PortCollection>::Connections::new(),
+                audio: <InputOutputPort<Audio> as PortCollection>::Connections::new(),
             }
         }
 
+        #[allow(non_upper_case_globals)]
         fn set_connection(&mut self, index: u32) -> Option<&mut *mut c_void> {
+            const __INDEX_START_gain: u32 = 0;
+            const __INDEX_END_gain: u32 = __INDEX_START_gain
+                + <InputPort<Control> as PortCollection>::Connections::SIZE as u32
+                - 1;
+
+            const __INDEX_START_audio: u32 = __INDEX_END_gain + 1;
+            const __INDEX_END_audio: u32 = __INDEX_START_audio
+                + <InputOutputPort<Audio> as PortCollection>::Connections::SIZE as u32
+                - 1;
+
             match index {
-                0 => self.gain.set_connection(0),
-                1..=2 => self.audio.set_connection(index - 1), // TODO
+                __INDEX_START_gain..=__INDEX_END_gain => {
+                    self.gain.set_connection(index - __INDEX_START_gain)
+                }
+                __INDEX_START_audio..=__INDEX_END_audio => {
+                    self.audio.set_connection(index - __INDEX_START_audio)
+                }
                 _ => None,
             }
         }

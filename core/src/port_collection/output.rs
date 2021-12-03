@@ -8,11 +8,11 @@ use core::ptr::NonNull;
 ///
 /// Fields of this type can be dereferenced to the output type of the port type.
 pub struct OutputPort<T: PortType> {
-    port: T::OutputPortType,
+    port: T::Output,
 }
 
 impl<T: PortType> Deref for OutputPort<T> {
-    type Target = T::OutputPortType;
+    type Target = T::Output;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -28,9 +28,9 @@ impl<T: PortType> DerefMut for OutputPort<T> {
 }
 
 impl<T: PortType> PortCollection for OutputPort<T> {
-    type Cache = *mut c_void;
+    type Connections = *mut c_void;
 
-    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self> {
+    unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self> {
         Some(Self {
             port: T::output_from_raw(NonNull::new(*cache)?, sample_count),
         })

@@ -4,13 +4,13 @@ use core::ptr::null_mut;
 /// Cache for port connection pointers.
 ///
 /// The host will pass the port connection pointers one by one and in an undefined order. Therefore, the `PortCollection` struct can not be created instantly. Instead, the pointers will be stored in a cache, which is then used to create a proper port collection for the plugin.
-pub trait PortPointerCache: Sized {
+pub trait PortConnections: Sized {
     const SIZE: usize;
     fn new() -> Self;
     fn set_connection(&mut self, index: u32) -> Option<&mut *mut c_void>;
 }
 
-impl PortPointerCache for () {
+impl PortConnections for () {
     const SIZE: usize = 0;
 
     #[inline]
@@ -22,7 +22,7 @@ impl PortPointerCache for () {
     }
 }
 
-impl PortPointerCache for *mut c_void {
+impl PortConnections for *mut c_void {
     const SIZE: usize = 1;
 
     #[inline]
@@ -31,12 +31,16 @@ impl PortPointerCache for *mut c_void {
     }
 
     #[inline]
-    fn set_connection(&mut self, _index: u32) -> Option<&mut *mut c_void> {
-        Some(self)
+    fn set_connection(&mut self, index: u32) -> Option<&mut *mut c_void> {
+        if index == 0 {
+            Some(self)
+        } else {
+            None
+        }
     }
 }
 
-impl<T: PortPointerCache + Copy, const N: usize> PortPointerCache for [T; N] {
+impl<T: PortConnections + Copy, const N: usize> PortConnections for [T; N] {
     const SIZE: usize = N;
 
     #[inline]

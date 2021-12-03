@@ -6,7 +6,7 @@ mod pointer_cache;
 pub use input::InputPort;
 pub use io::InputOutputPort;
 pub use output::OutputPort;
-pub use pointer_cache::PortPointerCache;
+pub use pointer_cache::PortConnections;
 
 /// Collection of IO ports.
 ///
@@ -32,7 +32,7 @@ pub trait PortCollection: Sized {
     /// The type of the port pointer cache.
     ///
     /// The host passes port pointers to the plugin one by one and in an undefined order. Therefore, the plugin instance can not collect these pointers in the port collection directly. Instead, the pointers are stored in a cache which is then used to create the proper port collection.
-    type Cache: PortPointerCache;
+    type Connections: PortConnections;
 
     /// Try to construct a port collection instance from a port pointer cache.
     ///
@@ -41,11 +41,11 @@ pub trait PortCollection: Sized {
     /// # Safety
     ///
     /// Since the pointer cache is only storing the pointers, implementing this method requires the de-referencation of raw pointers and therefore, this method is unsafe.
-    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self>;
+    unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self>;
 }
 
 impl PortCollection for () {
-    type Cache = ();
+    type Connections = ();
 
     unsafe fn from_connections(_cache: &(), _sample_count: u32) -> Option<Self> {
         Some(())
@@ -53,10 +53,10 @@ impl PortCollection for () {
 }
 
 impl<T: PortCollection> PortCollection for Option<T> {
-    type Cache = T::Cache;
+    type Connections = T::Connections;
 
     #[inline]
-    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self> {
+    unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self> {
         Some(T::from_connections(cache, sample_count))
     }
 }

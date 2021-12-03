@@ -1,10 +1,9 @@
-use crate::port::{AtomicPortType, PortType};
+use crate::port::{InPlacePortType, PortType};
 use crate::port_collection::PortCollection;
 use std::ffi::c_void;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
-// No generics here, for simplicity of this example, assume it is always just basic audio (`f32`).
 pub struct InputOutputPort<T: PortType> {
     input: NonNull<c_void>,
     output: NonNull<c_void>,
@@ -13,12 +12,12 @@ pub struct InputOutputPort<T: PortType> {
 }
 
 impl<T: PortType> InputOutputPort<T> {
-    pub fn input(&self) -> T::InputPortType {
+    pub fn input(&self) -> T::Input {
         // SAFETY: Pointer validity is upheld by from_connections, and is the only way to construct this type.
         unsafe { T::input_from_raw(self.input, self.sample_count) }
     }
 
-    pub fn output(&mut self) -> T::OutputPortType {
+    pub fn output(&mut self) -> T::Output {
         // SAFETY: Pointer validity is upheld by from_connections, and is the only way to construct this type.
         unsafe { T::output_from_raw(self.input, self.sample_count) }
     }
@@ -32,15 +31,15 @@ impl<T: PortType> InputOutputPort<T> {
     }*/
 }
 
-impl<T: AtomicPortType> InputOutputPort<T> {
+impl<T: InPlacePortType> InputOutputPort<T> {
     #[inline]
-    pub fn input_output(&mut self) -> T::InputOutputPortType {
+    pub fn input_output(&mut self) -> T::InputOutput {
         // SAFETY: Pointer validity is upheld by from_connections, and is the only way to construct this type.
         unsafe { T::input_output_from_raw(self.input, self.output, self.sample_count) }
     }
 }
 
-impl<I: Sized + 'static, T: AtomicPortType<InputOutputPortType = (&'static [I], &'static [I])>>
+impl<I: Sized + 'static, T: InPlacePortType<InputOutput = (&'static [I], &'static [I])>>
     InputOutputPort<T>
 {
     #[inline]
@@ -51,9 +50,9 @@ impl<I: Sized + 'static, T: AtomicPortType<InputOutputPortType = (&'static [I], 
 }
 
 impl<T: PortType> PortCollection for InputOutputPort<T> {
-    type Cache = [*mut c_void; 2];
+    type Connections = [*mut c_void; 2];
 
-    unsafe fn from_connections(cache: &Self::Cache, sample_count: u32) -> Option<Self> {
+    unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self> {
         Some(Self {
             input: NonNull::new(cache[0])?,
             output: NonNull::new(cache[1])?,
