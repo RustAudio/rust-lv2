@@ -54,4 +54,10 @@ pub trait InPlacePortType: PortType {
         output: NonNull<c_void>,
         sample_count: u32,
     ) -> Self::InputOutput;
+
+    fn from_ports(input: &mut InputPort<Self>, output: &mut OutputPort<Self>) -> Self::InputOutput {
+        assert_eq!(input.sample_count, output.sample_count);
+
+        unsafe { Self::input_output_from_raw(input.ptr, output.ptr, input.sample_count) }
+    }
 }

@@ -7,8 +7,11 @@ use core::ptr::NonNull;
 /// Handle for input ports.
 ///
 /// Fields of this type can be dereferenced to the input type of the port type.
-pub struct InputPort<T: PortType> {
+pub struct InputPort<T: PortType + ?Sized> {
     port: T::Input,
+    // TODO: remove these sometime
+    pub(crate) ptr: NonNull<c_void>,
+    pub(crate) sample_count: u32,
 }
 
 impl<T: PortType> Deref for InputPort<T> {
@@ -24,8 +27,11 @@ impl<T: PortType> PortCollection for InputPort<T> {
     type Connections = *mut c_void;
 
     unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self> {
+        let ptr = NonNull::new(*cache)?;
         Some(Self {
-            port: T::input_from_raw(NonNull::new(*cache)?, sample_count),
+            port: T::input_from_raw(ptr, sample_count),
+            ptr,
+            sample_count,
         })
     }
 }

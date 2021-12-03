@@ -7,8 +7,11 @@ use core::ptr::NonNull;
 /// Handle for output ports.
 ///
 /// Fields of this type can be dereferenced to the output type of the port type.
-pub struct OutputPort<T: PortType> {
+pub struct OutputPort<T: PortType + ?Sized> {
     port: T::Output,
+    // TODO: remove these sometime
+    pub(crate) ptr: NonNull<c_void>,
+    pub(crate) sample_count: u32,
 }
 
 impl<T: PortType> Deref for OutputPort<T> {
@@ -31,8 +34,11 @@ impl<T: PortType> PortCollection for OutputPort<T> {
     type Connections = *mut c_void;
 
     unsafe fn from_connections(cache: &Self::Connections, sample_count: u32) -> Option<Self> {
+        let ptr = NonNull::new(*cache)?;
         Some(Self {
-            port: T::output_from_raw(NonNull::new(*cache)?, sample_count),
+            port: T::output_from_raw(ptr, sample_count),
+            ptr,
+            sample_count,
         })
     }
 }

@@ -2,11 +2,13 @@ mod input;
 mod io;
 mod output;
 mod pointer_cache;
+mod ports;
 
 pub use input::InputPort;
 pub use io::InputOutputPort;
 pub use output::OutputPort;
 pub use pointer_cache::PortConnections;
+pub use ports::Ports;
 
 /// Collection of IO ports.
 ///

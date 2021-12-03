@@ -9,15 +9,15 @@ struct Amp {
     activated: bool,
 }
 
-struct Ports<Ins, Outs> {
-    inputs: Ins,
-    outputs: Outs,
+#[derive(PortCollection)]
+struct AmpInputs {
+    gain: InputPort<Control>,
+    audio: InputPort<Audio>,
 }
 
 #[derive(PortCollection)]
-struct AmpPorts {
-    gain: InputPort<Control>,
-    audio: InputOutputPort<Audio>,
+struct AmpOutputs {
+    audio: OutputPort<Audio>,
 }
 
 #[derive(FeatureCollection)]
@@ -27,7 +27,7 @@ struct Features {
 }
 
 impl Plugin for Amp {
-    type Ports = AmpPorts;
+    type Ports = Ports<AmpInputs, AmpOutputs>;
     type InitFeatures = Features;
     type AudioFeatures = ();
 
@@ -55,13 +55,15 @@ impl Plugin for Amp {
         self.activated = true;
     }
 
-    #[inline]
-    fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut Ports<AmpInputs, AmpOutputs>, _: &mut (), _: u32) {
         assert!(self.activated);
 
-        let coef = *(ports.gain);
+        let coef = *ports.inputs().gain;
+        let _in_audio: &[f32] = &ports.inputs().audio;
+        let _out_audio: &mut [f32] = &mut ports.outputs().audio;
 
-        for (input_sample, output_sample) in ports.audio.zip() {
+        // (&Cell<f32>, &Cell<32>)
+        for (input_sample, output_sample) in ports.zip(|i, o| (&mut i.audio, &mut o.audio)) {
             output_sample.set(input_sample.get() * coef);
         }
     }
