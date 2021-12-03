@@ -18,39 +18,6 @@ impl<'a> PortCollectionField<'a> {
             port_type: &input.ty,
         }
     }
-
-    /// Create the field initialization line for the implementing struct.
-    fn make_connection_from_raw(&self) -> impl ::quote::ToTokens {
-        let identifier = self.identifier;
-        let port_type = self.port_type;
-        quote! {
-            #identifier: <#port_type as PortHandle>::from_raw(connections.#identifier, sample_count)?,
-        }
-    }
-
-    /// Create the corresponding field declaration line for the raw pointer struct.
-    fn make_raw_field_declaration(&self) -> impl ::quote::ToTokens {
-        let identifier = self.identifier;
-        quote! {
-            pub #identifier: *mut ::std::ffi::c_void,
-        }
-    }
-
-    /// Create the corresponding field initialization line for the raw pointer struct.
-    fn make_raw_field_initialization(&self) -> impl ::quote::ToTokens {
-        let identifier = self.identifier;
-        quote! {
-            #identifier: ::std::ptr::null_mut(),
-        }
-    }
-
-    /// Create the connection matching arm for the raw pointer struct.
-    fn make_connect_matcher(&self, index: u32) -> impl ::quote::ToTokens {
-        let identifier = self.identifier;
-        quote! {
-            #index => self.#identifier = pointer,
-        }
-    }
 }
 
 /// Representation of a struct we implement `PortCollection` for.
@@ -95,62 +62,85 @@ impl<'a> PortCollectionStruct<'a> {
         let struct_name = self.struct_name;
         let internal_cache_name = self.internal_cache_name();
 
-        let connections_from_raw = self
+        let field_name: Vec<_> = self.fields.iter().map(|f| f.identifier).collect();
+        let field_type: Vec<_> = self.fields.iter().map(|f| f.port_type).collect();
+
+        let index_start_name: Vec<_> = self
             .fields
             .iter()
-            .map(PortCollectionField::make_connection_from_raw);
-        let raw_field_declarations = self
+            .map(|f| format_ident!("__INDEX_START_{}", f.identifier))
+            .collect();
+        let index_end_name: Vec<_> = self
             .fields
             .iter()
-            .map(PortCollectionField::make_raw_field_declaration);
-        let raw_field_inits = self
-            .fields
-            .iter()
-            .map(PortCollectionField::make_raw_field_initialization);
-        let connect_matchers = self
-            .fields
+            .map(|f| format_ident!("__INDEX_END_{}", f.identifier))
+            .collect();
+
+        let index_start_value: Vec<_> = index_start_name
             .iter()
             .enumerate()
-            .map(|(i, f)| f.make_connect_matcher(i as u32));
+            .map(|(i, _)| {
+                i.checked_sub(1)
+                    .and_then(|prev_i| index_end_name.get(prev_i))
+                    .map(|previous_name| quote! { #previous_name + 1 })
+                    .unwrap_or_else(|| quote! { 0 })
+            })
+            .collect();
 
         (quote! {
+        const _: () = {
             impl PortCollection for #struct_name {
-                type Cache = #internal_cache_name;
+                type Connections = #internal_cache_name;
 
                 #[inline]
-                unsafe fn from_connections(connections: &<Self as PortCollection>::Cache, sample_count: u32) -> Option<Self> {
-                    Some(
-                        Self {
-                            #(#connections_from_raw)*
-                        }
-                    )
+                unsafe fn from_connections(
+                    connections: &<Self as PortCollection>::Connections,
+                    sample_count: u32,
+                ) -> Option<Self> {
+                    Some(Self {
+                        #(
+                            #field_name: <#field_type as PortCollection>::from_connections(
+                                &connections.#field_name,
+                                sample_count,
+                            )?
+                        ),*
+                    })
                 }
             }
 
-            #[doc(hidden)]
             #[allow(non_snake_case, non_camel_case_types)]
-            pub struct #internal_cache_name {
-                #(#raw_field_declarations)*
+            struct #internal_cache_name {
+                #(#field_name: <#field_type as PortCollection>::Connections),*
             }
 
-            impl Default for #internal_cache_name {
-                #[inline]
-                fn default() -> Self {
+            impl PortConnections for #internal_cache_name {
+                const SIZE: usize = #(<#field_type as PortCollection>::Connections::SIZE)+*;
+                fn new() -> Self {
                     Self {
-                        #(#raw_field_inits)*
+                        #(#field_name: <#field_type as PortCollection>::Connections::new()),*
                     }
                 }
-            }
 
-            impl PortPointerCache for #internal_cache_name {
-                fn connect(&mut self, index: u32, pointer: *mut ::std::ffi::c_void) {
+                #[allow(non_upper_case_globals)]
+                fn set_connection(&mut self, index: u32) -> Option<&mut *mut core::ffi::c_void> {
+                    #(
+                        const #index_start_name: u32 = #index_start_value;
+                        const #index_end_name: u32 = #index_start_name
+                            + <#field_type as PortCollection>::Connections::SIZE as u32
+                            - 1;
+                    )*
+
                     match index {
-                        #(#connect_matchers)*
-                        _ => ()
+                        #(#index_start_name..=#index_end_name => {
+                            self.#field_name.set_connection(index - #index_start_name)
+                        })*
+                        _ => None,
                     }
                 }
             }
-        }).into()
+        };
+                })
+        .into()
     }
 }
 
