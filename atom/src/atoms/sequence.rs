@@ -66,7 +66,9 @@
 //!
 //! [http://lv2plug.in/ns/ext/atom/atom.html#Sequence](http://lv2plug.in/ns/ext/atom/atom.html#Sequence)
 mod unit;
+mod zip;
 
+use crate::atoms::sequence::zip::ZipSequence;
 use crate::space::SpaceReader;
 use crate::*;
 use std::marker::PhantomData;
@@ -209,9 +211,17 @@ pub struct SequenceIterator<'a, U: SequenceUnit> {
     unit_type: PhantomData<U>,
 }
 
+impl<'a, U: SequenceUnit> SequenceIterator<'a, U> {
+    #[inline]
+    pub fn zip_sequence(self, other: Self) -> ZipSequence<'a, U> {
+        ZipSequence::new(self, other)
+    }
+}
+
 impl<'a, U: SequenceUnit> Iterator for SequenceIterator<'a, U> {
     type Item = (U::Value, &'a UnidentifiedAtom);
 
+    #[inline]
     fn next(&mut self) -> Option<(U::Value, &'a UnidentifiedAtom)> {
         self.reader
             .try_read(|reader| {

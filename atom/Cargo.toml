@@ -25,6 +25,7 @@ default-features = false
 
 [dev-dependencies]
 lv2-urid = "2.1.0"
+urid = { version = "0.1.0", default-features = true }
 
 [features]
 default = ["lv2-core"]
