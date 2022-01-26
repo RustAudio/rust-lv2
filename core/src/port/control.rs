@@ -66,16 +66,16 @@ unsafe impl UriBound for Control {
 
 impl PortType for Control {
     type InputPortType = f32;
-    type OutputPortType = &'static mut f32;
+    type OutputPortType = f32;
 
     #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> f32 {
-        *(pointer.cast().as_ref())
+    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> *const f32 {
+        pointer.as_ptr() as *const f32
     }
 
     #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> &'static mut f32 {
-        (pointer.as_ptr() as *mut f32).as_mut().unwrap()
+    unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> *mut f32 {
+        pointer.as_ptr() as *mut f32
     }
 }
 
@@ -130,19 +130,22 @@ unsafe impl UriBound for InPlaceControl {
 }
 
 impl PortType for InPlaceControl {
-    type InputPortType = &'static Cell<f32>;
-    type OutputPortType = &'static Cell<f32>;
+    type InputPortType = Cell<f32>;
+    type OutputPortType = Cell<f32>;
 
     #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> Self::InputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
+    unsafe fn input_from_raw(
+        pointer: NonNull<c_void>,
+        _sample_count: u32,
+    ) -> *const Self::InputPortType {
+        pointer.as_ptr() as _
     }
 
     #[inline]
     unsafe fn output_from_raw(
         pointer: NonNull<c_void>,
         _sample_count: u32,
-    ) -> Self::OutputPortType {
-        Cell::from_mut(&mut *(pointer.as_ptr() as *mut f32))
+    ) -> *mut Self::OutputPortType {
+        pointer.as_ptr() as _
     }
 }

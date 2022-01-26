@@ -21,9 +21,9 @@ pub use lv2_core_derive::*;
 /// A port can read input or create a pointer to the output, but the exact type of input/output (pointer) depends on the type of port. This trait generalizes these types and behaviour.
 pub trait PortType {
     /// The type of input read by the port.
-    type InputPortType: Sized;
+    type InputPortType: ?Sized;
     /// The type of output reference created by the port.
-    type OutputPortType: Sized;
+    type OutputPortType: ?Sized;
 
     /// Read data from the pointer or create a reference to the input.
     ///
@@ -32,7 +32,10 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::InputPortType;
+    unsafe fn input_from_raw(
+        pointer: NonNull<c_void>,
+        sample_count: u32,
+    ) -> *const Self::InputPortType;
 
     /// Create a reference to the data where output should be written to.
     ///
@@ -41,7 +44,10 @@ pub trait PortType {
     /// # Safety
     ///
     /// This method is unsafe because one needs to de-reference a raw pointer to implement this method.
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, sample_count: u32) -> Self::OutputPortType;
+    unsafe fn output_from_raw(
+        pointer: NonNull<c_void>,
+        sample_count: u32,
+    ) -> *mut Self::OutputPortType;
 }
 
 /// Abstraction of safe port handles.
@@ -60,7 +66,7 @@ pub trait PortHandle: Sized {
 ///
 /// Fields of this type can be dereferenced to the input type of the port type.
 pub struct InputPort<T: PortType> {
-    port: T::InputPortType,
+    port: *const T::InputPortType,
 }
 
 impl<T: PortType> Deref for InputPort<T> {
@@ -68,11 +74,14 @@ impl<T: PortType> Deref for InputPort<T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.port
+        unsafe { &*self.port }
     }
 }
 
-impl<T: PortType> PortHandle for InputPort<T> {
+impl<T> PortHandle for InputPort<T>
+where
+    T: PortType,
+{
     #[inline]
     unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
         Some(Self {
@@ -85,7 +94,7 @@ impl<T: PortType> PortHandle for InputPort<T> {
 ///
 /// Fields of this type can be dereferenced to the output type of the port type.
 pub struct OutputPort<T: PortType> {
-    port: T::OutputPortType,
+    port: *mut T::OutputPortType,
 }
 
 impl<T: PortType> Deref for OutputPort<T> {
@@ -93,14 +102,14 @@ impl<T: PortType> Deref for OutputPort<T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.port
+        unsafe { &*self.port }
     }
 }
 
 impl<T: PortType> DerefMut for OutputPort<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.port
+        unsafe { &mut *self.port }
     }
 }
 
