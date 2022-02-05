@@ -13,9 +13,6 @@ use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
-#[cfg(feature = "lv2-core-derive")]
-pub use lv2_core_derive::*;
-
 /// Generalization of port types.
 ///
 /// A port can read input or create a pointer to the output, but the exact type of input/output (pointer) depends on the type of port. This trait generalizes these types and behaviour.
@@ -135,7 +132,8 @@ impl<T: PortHandle> PortHandle for Option<T> {
 /// # Implementing
 ///
 /// The most convenient way to create a port collections is to define a struct with port types from the [`port`](index.html) module and then simply derive `PortCollection` for it. An example:
-///
+/// ```
+///     # pub use lv2_core_derive::*;
 ///     use lv2_core::port::*;
 ///
 ///     #[derive(PortCollection)]
@@ -146,6 +144,7 @@ impl<T: PortHandle> PortHandle for Option<T> {
 ///         control_output: OutputPort<Control>,
 ///         optional_control_input: Option<InputPort<Control>>,
 ///     }
+/// ```
 ///
 /// Please note that port indices are mapped in the order of occurrence; In our example, the implementation will treat `audio_input` as port `0`, `audio_output` as port `1` and so on. Therefore, your plugin definition and your port collection have to match. Otherwise, undefined behaviour will occur.
 pub trait PortCollection: Sized {
