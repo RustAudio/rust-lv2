@@ -1,0 +1,260 @@
+## MIDI Gate
+
+This plugin demonstrates:
+* Receiving MIDI input
+* Processing audio based on MIDI events with sample accuracy
+* Supporting MIDI programs which the host can control/automate, or present a user interface for with human readable labels
+
+A key concept of LV2 that is introduced with this plugin is URID. As you've learned before, many things in the LV2 ecosystem are identified by URIs. However, comparing URIs isn't nescessarily fast and the time it takes to compare URIs rises with their length. Therefore, every known URI is mapped to number, a so-called URID, which is used instead of the full URI when time and space is valuable. This mapping is done by the host, which also assures that the mappings are consistent across plugins. Therefore, URIDs are also used for host-plugin or plugin-plugin communication.
+### midigate/eg-midigate-rs.lv2/manifest.ttl
+
+The manifest.ttl file follows the same template as the previous example.
+
+```ttl
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate>
+	a lv2:Plugin ;
+	lv2:binary <libmidigate.so> ;
+	rdfs:seeAlso <midigate.ttl> .
+```
+
+### midigate/eg-midigate-rs.lv2/midigate.ttl
+
+The same set of namespace prefixes with two additions for LV2 extensions this
+plugin uses: atom and urid.
+
+```ttl
+@prefix atom: <http://lv2plug.in/ns/ext/atom#> .
+@prefix doap: <http://usefulinc.com/ns/doap#> .
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix midi: <http://lv2plug.in/ns/ext/midi#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix urid: <http://lv2plug.in/ns/ext/urid#> .
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate>
+	a lv2:Plugin ;
+	doap:name "Example MIDI Gate (Rust Version)" ;
+	doap:license <http://opensource.org/licenses/isc> ;
+    lv2:project <https://github.com/RustAudio/rust-lv2> ;
+	lv2:requiredFeature urid:map , lv2:inPlaceBroken ;
+	lv2:optionalFeature lv2:hardRTCapable ;
+```
+
+This plugin has three ports.  There is an audio input and output as before,
+as well as a new `AtomPort`.  An `AtomPort` buffer contains an `Atom`, which is a
+generic container for any type of data.  In this case, we want to receive
+MIDI events, so the (mandatory) `atom:bufferType` is `atom:Sequence`, which is
+a series of events with time stamps.
+
+Events themselves are also generic and can contain any type of data, but in
+this case we are only interested in MIDI events.  The (optional)
+`atom:supports` property describes which event types are supported.  Though
+not required, this information should always be given so the host knows what
+types of event it can expect the plugin to understand.
+
+The (optional) `lv2:designation` of this port is `lv2:control`, which
+indicates that this is the "main" control port where the host should send
+events it expects to configure the plugin, in this case changing the MIDI
+program.  This is necessary since it is possible to have several MIDI input
+ports, though typically it is best to have one.
+
+```ttl
+	lv2:port [
+		a lv2:InputPort ,
+			atom:AtomPort ;
+		atom:bufferType atom:Sequence ;
+		atom:supports midi:MidiEvent ;
+		lv2:designation lv2:control ;
+		lv2:index 0 ;
+		lv2:symbol "control" ;
+		lv2:name "Control"
+	] , [
+		a lv2:AudioPort ,
+			lv2:InputPort ;
+		lv2:index 1 ;
+		lv2:symbol "in" ;
+		lv2:name "In"
+	] , [
+		a lv2:AudioPort ,
+			lv2:OutputPort ;
+		lv2:index 2 ;
+		lv2:symbol "out" ;
+		lv2:name "Out"
+	] .
+```
+
+### midigate/Cargo.toml
+
+The `Cargo.toml` file is pretty similiar too. This plugin needs no extra features, but it needs
+the `wmidi` crate, which provides the enums to handle MIDI messages. 
+
+```toml
+[package]
+name = "midigate"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wmidi = "3.1.0"
+lv2 = "0.6.0"
+```
+
+### midigate/src/lib.rs
+
+Use the prelude and the `wmidi` crate.
+
+```rs
+use lv2::prelude::*;
+use wmidi::*;
+
+#[derive(PortCollection)]
+pub struct Ports {
+    control: InputPort<AtomPort>,
+    input: InputPort<Audio>,
+    output: OutputPort<Audio>,
+}
+```
+
+Now, an additional host feature is needed. A feature is something that implements the `Feature` trait and usually wraps a certain functionality of the host; In this case mapping URIs to URIDs. The discovery and validation of features is done by the framework.
+
+```rs
+#[derive(FeatureCollection)]
+pub struct Features<'a> {
+    map: LV2Map<'a>,
+}
+```
+
+Retrieving URIDs from the host isn't guaranteed to be real-time safe or even fast. Therefore, all URIDs that may be needed should be retrieved when the plugin is instantiated. The `URIDCollection` trait makes this easy: It provides a single method that creates an instance of itself from the mapping feature, which can also be generated using this `derive` macro.
+
+```rs
+#[derive(URIDCollection)]
+pub struct URIDs {
+    atom: AtomURIDCollection,
+    midi: MidiURIDCollection,
+    unit: UnitURIDCollection,
+}
+
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate")]
+pub struct Midigate {
+    n_active_notes: u64,
+    program: u8,
+    urids: URIDs,
+}
+
+impl Midigate {
+```
+
+A function to write a chunk of output, to be called from `run()`. If the gate is high, then the input will be passed through for this chunk, otherwise silence is written.
+
+```rs
+    fn write_output(&mut self, ports: &mut Ports, offset: usize, mut len: usize) {
+        if ports.input.len() < offset + len {
+            len = ports.input.len() - offset;
+        }
+
+        let active = if self.program == 0 {
+            self.n_active_notes > 0
+        } else {
+            self.n_active_notes == 0
+        };
+
+        let input = &ports.input[offset..offset + len];
+        let output = &mut ports.output[offset..offset + len];
+
+        if active {
+            output.copy_from_slice(input);
+        } else {
+            for frame in output.iter_mut() {
+                *frame = 0.0;
+            }
+        }
+    }
+}
+
+impl Plugin for Midigate {
+    type Ports = Ports;
+
+    type InitFeatures = Features<'static>;
+    type AudioFeatures = ();
+
+    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+        Some(Self {
+            n_active_notes: 0,
+            program: 0,
+            urids: features.map.populate_collection()?,
+        })
+    }
+
+```
+
+This plugin works through the cycle in chunks starting at offset zero. The `offset` represents the current time within this this cycle, so the output from 0 to `offset` has already been written.
+
+MIDI events are read in a loop. In each iteration, the number of active notes (on note on and note off) or the program (on program change) is updated, then the output is written up until the current event time. Then `offset` is updated and the next event is processed. After the loop the final chunk from the last event to the end of the cycle is emitted.
+
+There is currently no standard way to describe MIDI programs in LV2, so the host has no way of knowing that these programs exist and should be presented to the user. A future version of LV2 will address this shortcoming.
+
+This pattern of iterating over input events and writing output along the way is a common idiom for writing sample accurate output based on event input.
+
+Note that this simple example simply writes input or zero for each sample based on the gate. A serious implementation would need to envelope the transition to avoid aliasing.
+
+```rs
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+        let mut offset: usize = 0;
+
+        let control_sequence = ports
+            .control
+            .read(self.urids.atom.sequence, self.urids.unit.beat)
+            .unwrap();
+
+        for (timestamp, message) in control_sequence {
+            let timestamp: usize = if let Some(timestamp) = timestamp.as_frames() {
+                timestamp as usize
+            } else {
+                continue;
+            };
+
+            let message = if let Some(message) = message.read(self.urids.midi.wmidi, ()) {
+                message
+            } else {
+                continue;
+            };
+
+            match message {
+                MidiMessage::NoteOn(_, _, _) => self.n_active_notes += 1,
+                MidiMessage::NoteOff(_, _, _) => self.n_active_notes -= 1,
+                MidiMessage::ProgramChange(_, program) => {
+                    let program: u8 = program.into();
+                    if program == 0 || program == 1 {
+                        self.program = program;
+                    }
+                }
+                _ => (),
+            }
+
+            self.write_output(ports, offset, timestamp + offset);
+            offset = timestamp;
+        }
+
+        self.write_output(ports, offset, ports.input.len() - offset);
+    }
+
+```
+
+During it's runtime, the host might decide to deactivate the plugin. When the plugin is reactivated, the host calls this method which gives the plugin an opportunity to reset it's internal state.
+
+```rs
+    fn activate(&mut self, _features: &mut Features<'static>) {
+        self.n_active_notes = 0;
+        self.program = 0;
+    }
+}
+
+lv2_descriptors!(Midigate);
+```

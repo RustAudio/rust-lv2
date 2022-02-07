@@ -1,0 +1,296 @@
+## Simple Amplifier
+
+This plugin is a simple example of a basic LV2 plugin with no additional features. It has audio ports which contain an array of float, and a control port which contains a single float.
+
+LV2 plugins are defined in two parts: code and data. The code provides an interface to the host written in C, but it can be written in any C-compatible language. Static data is described separately in the human and machine friendly Turtle syntax.
+
+Generally, the goal is to keep code minimal, and describe as much as possible in the static data. There are several advantages to this approach:
+
+* Hosts can discover and inspect plugins without loading or executing any plugin code.
+* Plugin data can be used from a wide range of generic tools like scripting languages and command line utilities.
+* The standard data model allows the use of existing vocabularies to describe plugins and related information.
+* The language is extensible, so authors may describe any data without requiring changes to the LV2 specification.
+* Labels and documentation are translatable, and available to hosts for display in user interfaces.
+
+### amp/eg-amp-rs.lv2/manifest.ttl
+
+LV2 plugins are installed in a "bundle", a directory with a standard structure. Each bundle has a
+Turtle file named `manifest.ttl` which lists the contents of the bundle.
+
+Hosts typically read the manifest of every installed bundle to discover plugins on start-up, so it
+should be as small as possible for performance reasons. Details that are only useful if the host
+chooses to load the plugin are stored in other files and linked to from `manifest.ttl`.
+
+In a crate, this should be a special folder that contains the Turtle files. After the crate was
+build, the resulting shared object should also be copied into this folder.
+
+#### URIs
+
+LV2 makes use of URIs as globally-unique identifiers for resources. For example, the ID of the
+plugin described here is `<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp>`. Note that URIs are only used as identifiers
+and don't necessarily imply that something can be accessed at that address on the web (though that
+may be the case).
+
+#### Namespace Prefixes
+
+Turtle files contain many URIs, but prefixes can be defined to improve readability. For example,
+with the `lv2:` prefix below, `lv2:Plugin` can be written instead of 
+`<http://lv2plug.in/ns/lv2core#Plugin>`.
+
+```ttl
+
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+```
+
+#### Describing a Plugin
+
+Turtle files contain a set of subject-predicate-object statements which describe resources. 
+
+Firstly, `<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp>` is an LV2 plugin:
+
+```ttl
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp> a lv2:Plugin .
+
+```
+
+The predicate `a` is a Turtle shorthand for `rdf:type`.
+
+The binary of that plugin can be found at `<amp.ext>`:
+
+```ttl
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp> lv2:binary <libamp.so> .
+
+```
+
+This line is platform-dependent since it assumes that shared objects have the `.so` ending. On
+Windows, it should be ending with `.dll`. Relative URIs in manifests are relative to the bundle 
+directory, so this refers to a binary with the given name in the same directory as this manifest.
+
+Finally, more information about this plugin can be found in `<amp.ttl>`:
+
+```ttl
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp> rdfs:seeAlso <amp.ttl> .
+```
+
+### amp/eg-amp-rs.lv2/amp.ttl
+
+The full description of the plugin is in this file, which is linked to from
+`manifest.ttl`.  This is done so the host only needs to scan the relatively
+small `manifest.ttl` files to quickly discover all plugins.
+
+```ttl
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+```
+
+First the type of the plugin is described.  All plugins must explicitly list
+`lv2:Plugin` as a type.  A more specific type should also be given, where
+applicable, so hosts can present a nicer UI for loading plugins.  Note that
+this URI is the identifier of the plugin, so if it does not match the one in
+`manifest.ttl`, the host will not discover the plugin data at all.
+
+```ttl
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp>
+        a lv2:Plugin ,
+                lv2:AmplifierPlugin ;
+```
+
+Plugins are associated with a project, where common information like
+developers, home page, and so on are described.  This plugin is part of the
+Rust-LV2 project, which has URI <https://github.com/RustAudio/rust-lv2>, and is described
+elsewhere.  Typical plugin collections will describe the project in
+manifest.ttl
+
+```ttl
+        lv2:project <https://github.com/RustAudio/rust-lv2> ;
+```
+
+Every plugin must have a name, described with the doap:name property.
+
+```ttl
+        doap:name "Simple Amplifier (Rust Version)" ;
+        doap:license <http://opensource.org/licenses/isc> ;
+```
+
+This tells the host that this plugin can not work "in-place"; The input and output buffers may not be the same. This plugin could technically work "in-place", but it would mean that the plugin would receive a mutable and an immutable reference to the same place in memory, which obviously isn't allowed in Rust.
+
+```ttl
+        lv2:requiredFeature lv2:inPlaceBroken ;
+        lv2:optionalFeature lv2:hardRTCapable ;
+        lv2:port [
+```
+
+Every port must have at least two types, one that specifies direction
+(lv2:InputPort or lv2:OutputPort), and another to describe the data type.
+This port is a lv2:ControlPort, which means it contains a single float.
+
+```ttl
+                a lv2:InputPort ,
+                        lv2:ControlPort ;
+                lv2:index 0 ;
+                lv2:symbol "gain" ;
+                lv2:name "Gain" ,
+                        "收益"@ch ,
+                        "Gewinn"@de ,
+                        "Gain"@en-gb ,
+                        "Aumento"@es ,
+                        "Gain"@fr ,
+                        "Guadagno"@it ,
+                        "ゲイン"@jp ,
+                        "Увеличение"@ru ;
+```
+
+An lv2:ControlPort should always describe its default value, and usually a
+minimum and maximum value.  Defining a range is not strictly required, but
+should be done wherever possible to aid host support, particularly for UIs.
+
+```ttl
+                lv2:default 0.0 ;
+                lv2:minimum -90.0 ;
+                lv2:maximum 24.0 ;
+```
+
+Ports can describe units and control detents to allow better UI generation
+and host automation.
+
+```ttl
+                units:unit units:db ;
+                lv2:scalePoint [
+                        rdfs:label "+5" ;
+                        rdf:value 5.0
+                ] , [
+                        rdfs:label "0" ;
+                        rdf:value 0.0
+                ] , [
+                        rdfs:label "-5" ;
+                        rdf:value -5.0
+                ] , [
+                        rdfs:label "-10" ;
+                        rdf:value -10.0
+                ]
+        ] , [
+                a lv2:AudioPort ,
+                        lv2:InputPort ;
+                lv2:index 1 ;
+                lv2:symbol "in" ;
+                lv2:name "In"
+        ] , [
+                a lv2:AudioPort ,
+                        lv2:OutputPort ;
+                lv2:index 2 ;
+                lv2:symbol "out" ;
+                lv2:name "Out"
+        ] .
+```
+
+### amp/Cargo.toml
+
+The host does not really care in which language the code of the plugin is written, as long as the
+built library complies to the headers of the specifications. Therefore, every plugin is a standard
+Cargo crate.
+
+```toml
+[package]
+name = "amp"
+version = "0.2.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+license = "ISC"
+edition = "2018"
+
+```
+
+Plugins are dynamic libraries. This setting tells cargo to export it this way.
+
+```toml
+[lib]
+crate-type = ["cdylib"]
+
+```
+
+Rust-LV2 is a network of individual sub-crates with different version numbers and histories.
+However, most plugins don't need to deal with them directly. Instead, they use the re-export crate
+simply called `lv2`. It has an optional dependency to every sub-crate, which can be enabled via crate features.
+
+The default feature set includes everything to create a simple plugin for audio and MIDI processing.
+Therefore, we don't need to enable extra features here.
+
+```toml
+[dependencies]
+lv2 = "0.6.0"
+```
+
+### amp/src/lib.rs
+
+Include the prelude of `lv2`. This includes the preludes of every sub-crate and you are strongly encouraged to use it, since many macros depend on it.
+
+```rs
+use lv2::prelude::*;
+```
+
+Most useful plugins will have ports for input and output data. In code, these ports are represented by a struct implementing the `PortCollection` trait. Internally, ports are referred to by index. These indices are assigned in ascending order, starting with 0 for the first port. The indices in `amp.ttl` have to match them.
+
+```rs
+#[derive(PortCollection)]
+struct Ports {
+    gain: InputPort<Control>,
+    input: InputPort<Audio>,
+    output: OutputPort<Audio>,
+}
+```
+
+Every plugin defines a struct for the plugin instance. All persistent data associated with a plugin instance is stored here, and is available to every instance method. In this simple plugin, there is no additional instance data and therefore, this struct is empty.
+
+The URI is the identifier for a plugin, and how the host associates this implementation in code with its description in data. If this URI does not match that used in the data files, the host will fail to load the plugin. This attribute internally implements the `UriBound` trait for `Amp`, which is also used to identify many other things in the Rust-LV2 ecosystem.
+
+```rs
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/amp")]
+struct Amp;
+```
+
+Every plugin struct implements the `Plugin` trait. This trait contains both the methods that are called by the hosting application and the collection types for the ports and the used host features. This plugin does not use additional host features and therefore, we set both feature collection types to `()`. Other plugins may define separate structs with their required and optional features and set it here.
+
+```rs
+impl Plugin for Amp {
+    type Ports = Ports;
+
+    type InitFeatures = ();
+    type AudioFeatures = ();
+```
+
+The `new` method is called by the plugin backend when it creates a new plugin instance. The host passes the plugin URI, sample rate, and bundle path for plugins that need to load additional resources (e.g. waveforms). The features parameter contains host-provided features defined in LV2 extensions, but this simple plugin does not use any. This method is in the “instantiation” threading class, so no other methods on this instance will be called concurrently with it.
+
+```rs
+    fn new(_plugin_info: &PluginInfo, _features: &mut ()) -> Option<Self> {
+        Some(Self)
+    }
+```
+
+The `run()` method is the main process function of the plugin. It processes a block of audio in the audio context. Since this plugin is `lv2:hardRTCapable`, `run()` must be real-time safe, so blocking (e.g. with a mutex) or memory allocation are not allowed.
+
+```rs
+    fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
+        let coef = if *(ports.gain) > -90.0 {
+            10.0_f32.powf(*(ports.gain) * 0.05)
+        } else {
+            0.0
+        };
+
+        for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter_mut()) {
+            *out_frame = in_frame * coef;
+        }
+    }
+}
+```
+
+The `lv2_descriptors` macro creates the entry point to the plugin library. It takes structs that implement `Plugin` and exposes them. The host will load the library and call a generated function to find all the plugins defined in the library.
+
+```rs
+lv2_descriptors!(Amp);
+```

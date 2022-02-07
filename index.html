@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programming LV2 Plugins - Rust Edition &mdash; Rust-LV2 0.5.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Simple Amplifier" href="chapter/amp.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> Rust-LV2
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Chapters:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="chapter/amp.html">Simple Amplifier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/midigate.html">MIDI Gate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/fifths.html">Fifths</a></li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/metro.html">Metro</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Rust-LV2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Programming LV2 Plugins - Rust Edition</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="programming-lv2-plugins-rust-edition">
+<h1>Programming LV2 Plugins - Rust Edition<a class="headerlink" href="#programming-lv2-plugins-rust-edition" title="Permalink to this headline"></a></h1>
+<p>This is a series of well-documented example plugins that demonstrate the various features of <a class="reference external" href="https://lv2plug.in/">LV2</a> and how they translate to <a class="reference external" href="https://github.com/RustAudio/rust-lv2">rust-lv2</a>. Starting with the most basic plugin possible, each adds new functionality and explains the features used from a high level perspective.</p>
+<p>API and vocabulary reference documentation explains details, but not the “big picture”. This book is intended to complement the reference documentation by providing good reference implementations of plugins, while also conveying a higher-level understanding of LV2.</p>
+<p>The chapters/plugins are arranged so that each builds incrementally on its predecessor. Reading this book front to back is a good way to become familiar with modern LV2 programming. The reader is expected to be familiar with Rust, but otherwise no special knowledge is required; the first plugin describes the basics in detail.</p>
+<p>Each chapter corresponds to executable plugin code which can be found in the  <a class="reference external" href="https://github.com/RustAudio/rust-lv2/tree/master/docs">project’s doc folder</a>. If you prefer to read actual source code, all the content here is also available in the source code as comments.</p>
+<p>This book is a “translation” of <a class="reference external" href="http://lv2plug.in/book/">the original LV2 Book by David Robillard</a>. Most of the examples as well as the README’s and comments are copied from the original and have been altered to adapt for the differences between C and Rust.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Chapters:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="chapter/amp.html">Simple Amplifier</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapter/amp.html#amp-eg-amp-rs-lv2-manifest-ttl">amp/eg-amp-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/amp.html#amp-eg-amp-rs-lv2-amp-ttl">amp/eg-amp-rs.lv2/amp.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/amp.html#amp-cargo-toml">amp/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/amp.html#amp-src-lib-rs">amp/src/lib.rs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/midigate.html">MIDI Gate</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapter/midigate.html#midigate-eg-midigate-rs-lv2-manifest-ttl">midigate/eg-midigate-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/midigate.html#midigate-eg-midigate-rs-lv2-midigate-ttl">midigate/eg-midigate-rs.lv2/midigate.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/midigate.html#midigate-cargo-toml">midigate/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/midigate.html#midigate-src-lib-rs">midigate/src/lib.rs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/fifths.html">Fifths</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapter/fifths.html#fifths-eg-fifths-rs-lv2-manifest-ttl">fifths/eg-fifths-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/fifths.html#fifths-eg-fifths-rs-lv2-fifths-ttl">fifths/eg-fifths-rs.lv2/fifths.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/fifths.html#fifths-cargo-toml">fifths/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/fifths.html#fifths-src-lib-rs">fifths/src/lib.rs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="chapter/metro.html">Metro</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="chapter/metro.html#metro-eg-metro-rs-lv2-manifest-ttl">metro/eg-metro-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/metro.html#metro-eg-metro-rs-lv2-metro-ttl">metro/eg-metro-rs.lv2/metro.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/metro.html#metro-cargo-toml">metro/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/metro.html#metro-src-pipes-rs">metro/src/pipes.rs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="chapter/metro.html#metro-src-lib-rs">metro/src/lib.rs</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="chapter/amp.html" class="btn btn-neutral float-right" title="Simple Amplifier" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Jan-Oliver &#39;Janonard&#39; Opdenhövel, Adrien Prokopowicz, Amaury &#39;Yruama_Lairba&#39; Abrial.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

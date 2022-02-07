@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metro &mdash; Rust-LV2 0.5.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Fifths" href="fifths.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Rust-LV2
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Chapters:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="amp.html">Simple Amplifier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="midigate.html">MIDI Gate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fifths.html">Fifths</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Metro</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#metro-eg-metro-rs-lv2-manifest-ttl">metro/eg-metro-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metro-eg-metro-rs-lv2-metro-ttl">metro/eg-metro-rs.lv2/metro.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metro-cargo-toml">metro/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metro-src-pipes-rs">metro/src/pipes.rs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#metro-src-lib-rs">metro/src/lib.rs</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Rust-LV2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Metro</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapter/metro.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="metro">
+<h1>Metro<a class="headerlink" href="#metro" title="Permalink to this headline"></a></h1>
+<p>This plugin showcases several interesting topics: First of all, it shows how to synthesize notes using a sampled sine wave and an envelope. These notes are also synchronized to the host’s transport via the “time” extension and lastly, it uses the <a class="reference external" href="https://github.com/Janonard/pipes">pipes library</a> to express the internal processing pipeline.</p>
+<p>A pipe is similar to an iterator as it has a <code class="docutils literal notranslate"><span class="pre">next</span></code> method that produces the next item of the pipeline. However, it also takes an input item to create this output item. Therefore, individual pipes can be chained into larger pipes and even complete pipelines.</p>
+<p>Using pipes has multiple advantages over writing the processing algorithm “manually”: First of all, it slices the pipeline into well-defined pieces that can easily be understood on their own. Then, they also provide a testable interface to the individual parts of the algorithm, which is very useful since you can’t properly test your code online, and lastly, they also improve the reusability of your code.</p>
+<p>However, they also have some downsides: First of all, they require more code than a “manual” implementation, since every pipe is a type on its own. Also, since the algorithm is split into many small methods, there is an overhead from the function calls and it might be hard for the compiler to use <a class="reference external" href="https://en.wikipedia.org/wiki/SIMD">SIMD instructions</a>.</p>
+<p>We don’t tell you which approach to use, but we would like to show you both so you can decide!</p>
+<section id="metro-eg-metro-rs-lv2-manifest-ttl">
+<h2>metro/eg-metro-rs.lv2/manifest.ttl<a class="headerlink" href="#metro-eg-metro-rs-lv2-manifest-ttl" title="Permalink to this headline"></a></h2>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">lv2</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdfs</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">2000</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">schema</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">ui</span>:   <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">extensions</span><span class="o">/</span><span class="nv">ui</span>#<span class="o">&gt;</span> .
+
+<span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">metro</span><span class="o">&gt;</span>
+	<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> <span class="c1">;</span>
+	<span class="nv">lv2</span>:<span class="nv">binary</span> <span class="o">&lt;</span><span class="nv">libmetro</span>.<span class="nv">so</span><span class="o">&gt;</span> <span class="c1">;</span>
+	<span class="nv">rdfs</span>:<span class="nv">seeAlso</span> <span class="o">&lt;</span><span class="nv">metro</span>.<span class="nv">ttl</span><span class="o">&gt;</span> .
+</pre></div>
+</div>
+</section>
+<section id="metro-eg-metro-rs-lv2-metro-ttl">
+<h2>metro/eg-metro-rs.lv2/metro.ttl<a class="headerlink" href="#metro-eg-metro-rs-lv2-metro-ttl" title="Permalink to this headline"></a></h2>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">atom</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">atom</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">doap</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">usefulinc</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">doap</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">lv2</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">time</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">time</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">urid</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">urid</span>#<span class="o">&gt;</span> .
+
+<span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">metro</span><span class="o">&gt;</span>
+<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> <span class="c1">;</span>
+    <span class="nv">doap</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Example Metronome</span><span class="s2">&quot;</span> <span class="c1">;</span>
+    <span class="nv">doap</span>:<span class="nv">license</span> <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">opensource</span>.<span class="nv">org</span><span class="o">/</span><span class="nv">licenses</span><span class="o">/</span><span class="nv">isc</span><span class="o">&gt;</span> <span class="c1">;</span>
+    <span class="nv">lv2</span>:<span class="nv">project</span> <span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">&gt;</span> <span class="c1">;</span>
+    <span class="nv">lv2</span>:<span class="nv">requiredFeature</span> <span class="nv">urid</span>:<span class="nv">map</span> , <span class="nv">lv2</span>:<span class="nv">inPlaceBroken</span> <span class="c1">;</span>
+    <span class="nv">lv2</span>:<span class="nv">optionalFeature</span> <span class="nv">lv2</span>:<span class="nv">hardRTCapable</span> <span class="c1">;</span>
+    <span class="nv">lv2</span>:<span class="nv">port</span> [
+</pre></div>
+</div>
+<p>There are atom objects, which are semantically similar to Turtle files, but only use URIDs and atom types as properties. <code class="docutils literal notranslate"><span class="pre">time:Position</span></code> is a class of such objects and this input port accepts it as an event. Therefore, the host knows to deliver time and tempo information here.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>        <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">InputPort</span> ,
+                <span class="nv">atom</span>:<span class="nv">AtomPort</span> <span class="c1">;</span>
+            <span class="nv">atom</span>:<span class="nv">bufferType</span> <span class="nv">atom</span>:<span class="nv">Sequence</span> <span class="c1">;</span>
+            <span class="nv">atom</span>:<span class="nv">supports</span> <span class="nv">time</span>:<span class="nv">Position</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">0</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">control</span><span class="s2">&quot;</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Control</span><span class="s2">&quot;</span> <span class="c1">;</span>
+    ] , [
+        <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">AudioPort</span> ,
+            <span class="nv">lv2</span>:<span class="nv">OutputPort</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">1</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">out</span><span class="s2">&quot;</span> <span class="c1">;</span>
+            <span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Out</span><span class="s2">&quot;</span> <span class="c1">;</span>
+    ] .
+</pre></div>
+</div>
+</section>
+<section id="metro-cargo-toml">
+<h2>metro/Cargo.toml<a class="headerlink" href="#metro-cargo-toml" title="Permalink to this headline"></a></h2>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[package]</span><span class="w"></span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;metro&quot;</span><span class="w"></span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span><span class="w"></span>
+<span class="n">authors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Jan-Oliver &#39;Janonard&#39; Opdenhövel &lt;jan.opdenhoevel@protonmail.com&gt;&quot;</span><span class="p">]</span><span class="w"></span>
+<span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ISC&quot;</span><span class="w"></span>
+<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2018&quot;</span><span class="w"></span>
+
+<span class="k">[lib]</span><span class="w"></span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;cdylib&quot;</span><span class="p">]</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This is the first time we need a non-default LV2 feature. In this case, this is the <code class="docutils literal notranslate"><span class="pre">lv2-time</span></code> crate.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[dependencies]</span><span class="w"></span>
+<span class="n">lv2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.6.0&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">features</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;lv2-time&quot;</span><span class="p">]</span><span class="w"> </span><span class="p">}</span><span class="w"></span>
+<span class="n">iterpipes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.2.0&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="metro-src-pipes-rs">
+<h2>metro/src/pipes.rs<a class="headerlink" href="#metro-src-pipes-rs" title="Permalink to this headline"></a></h2>
+<p>We cover the individual pipes of the plugin before putting it all together:</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">iterpipes</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+<span class="k">use</span><span class="w"> </span><span class="n">lv2</span>::<span class="n">prelude</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Sampler</span></code> is a simple sampler that plays back the contents of a pre-recorded sample. It simply returns a frame for every index it receives as an input, which means that it can also be played backward or at a different speed. The actual type of frames isn’t important and therefore, this sampler is generic.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Sampler</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">sample</span>: <span class="nb">Box</span><span class="o">&lt;</span><span class="p">[</span><span class="n">T</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Sampler</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">new</span><span class="o">&lt;</span><span class="n">S</span><span class="o">&gt;</span><span class="p">(</span><span class="n">sample</span>: <span class="nc">S</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">Self</span><span class="w"></span>
+<span class="w">    </span><span class="k">where</span><span class="w"></span>
+<span class="w">        </span><span class="n">S</span>: <span class="nb">Into</span><span class="o">&lt;</span><span class="nb">Box</span><span class="o">&lt;</span><span class="p">[</span><span class="n">T</span><span class="p">]</span><span class="o">&gt;&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">sample</span>: <span class="nc">sample</span><span class="p">.</span><span class="n">into</span><span class="p">(),</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Pipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Sampler</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"></span>
+<span class="k">where</span><span class="w"></span>
+<span class="w">    </span><span class="n">T</span>: <span class="nb">Copy</span><span class="p">,</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">InputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">OutputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">T</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">next</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">index</span>: <span class="kt">usize</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">T</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">sample</span><span class="p">[</span><span class="n">index</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">sample</span><span class="p">.</span><span class="n">len</span><span class="p">()]</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ResetablePipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Sampler</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"></span>
+<span class="k">where</span><span class="w"></span>
+<span class="w">    </span><span class="n">T</span>: <span class="nb">Copy</span><span class="p">,</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">fn</span> <span class="nf">reset</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>We try to test as much of the individual parts as possible to reduce the error cases.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[test]</span><span class="w"></span>
+<span class="k">fn</span> <span class="nf">test_sampler</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">sample</span>: <span class="nb">Vec</span><span class="o">&lt;</span><span class="kt">u8</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="fm">vec!</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">];</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">sampler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sampler</span>::<span class="n">new</span><span class="p">(</span><span class="n">sample</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">32</span><span class="p">).</span><span class="n">chain</span><span class="p">(</span><span class="mi">32</span><span class="o">..</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">((</span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">,</span><span class="w"> </span><span class="n">sampler</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">i</span><span class="p">));</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Envelope</span></code> receives a pulse and an index and creates an envelope after every pulse. This envelope is multiplied with the sample output to generate the sound signal.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Envelope</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">attack_len</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">decay_len</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">impulse_index</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Envelope</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">attack_len</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">decay_len</span>: <span class="kt">usize</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">attack_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">decay_len</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">impulse_index</span>: <span class="nc">std</span>::<span class="kt">usize</span>::<span class="n">MAX</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Pipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Envelope</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">InputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">OutputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">f32</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">next</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">impulse</span><span class="p">)</span>: <span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="p">))</span><span class="w"> </span>-&gt; <span class="kt">f32</span> <span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">impulse</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">index</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mf">0.0</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">attack_len</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="p">(</span><span class="n">index</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">attack_len</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">attack_len</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">decay_len</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mf">1.0</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">((</span><span class="n">index</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">attack_len</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">decay_len</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mf">0.0</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">ResetablePipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Envelope</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">fn</span> <span class="nf">reset</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">impulse_index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span>::<span class="kt">usize</span>::<span class="n">MAX</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[test]</span><span class="w"></span>
+<span class="k">fn</span> <span class="nf">test_envelope</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">pipe</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">        </span><span class="n">Envelope</span>::<span class="n">new</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">).</span><span class="n">compose</span><span class="p">()</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Lazy</span>::<span class="n">new</span><span class="p">(</span><span class="o">|</span><span class="n">frame</span>: <span class="kt">f32</span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">frame</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">4.0</span><span class="p">).</span><span class="n">round</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">u8</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="mi">32</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">32</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">33</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">34</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">35</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">36</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">37</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">38</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">39</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="mi">40</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">41</span><span class="o">..</span><span class="mi">64</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">((</span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)));</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">PulseGenerator</span></code> interprets the settings of the host and creates a pulse every time a new note should be played. This pulse is a <code class="docutils literal notranslate"><span class="pre">bool</span></code> that flips from <code class="docutils literal notranslate"><span class="pre">false</span></code> to <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p>
+<p>The host settings are updated via <code class="docutils literal notranslate"><span class="pre">PulseInput</span></code> objects, which contain new BPM and speed measures as well as the number of the current beat in the current bar for synchronization.</p>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">elapsed_frames</span></code> counter is only used internally to generate pulses. The index counters for the envelope and the samples are separate, which means that the audio won’t stutter after a hard update.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">PulseGenerator</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">sample_rate</span>: <span class="kt">f32</span><span class="p">,</span><span class="w"></span>
+
+<span class="w">    </span><span class="n">beats_per_minute</span>: <span class="kt">f32</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">speed_coefficient</span>: <span class="kt">f32</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">frames_per_beat</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+
+<span class="w">    </span><span class="n">elapsed_frames</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">PulseGenerator</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">sample_rate</span>: <span class="kt">f32</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">sample_rate</span><span class="p">,</span><span class="w"></span>
+
+<span class="w">            </span><span class="n">beats_per_minute</span>: <span class="mf">120.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">speed_coefficient</span>: <span class="mf">0.0</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">frames_per_beat</span>: <span class="mi">0</span><span class="p">,</span><span class="w"></span>
+
+<span class="w">            </span><span class="n">elapsed_frames</span>: <span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Pipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">PulseGenerator</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">InputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseInput</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">OutputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">bool</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">next</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">input</span>: <span class="nc">PulseInput</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="kt">bool</span> <span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">elapsed_frames</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">parameters_changed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">new_bpm</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="p">.</span><span class="n">bpm_update</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">beats_per_minute</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new_bpm</span><span class="p">;</span><span class="w"></span>
+<span class="w">            </span><span class="n">parameters_changed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">new_speed</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="p">.</span><span class="n">speed_update</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">speed_coefficient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new_speed</span><span class="p">;</span><span class="w"></span>
+<span class="w">            </span><span class="n">parameters_changed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">parameters_changed</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">frames_per_beat</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">                </span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">speed_coefficient</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="mf">60.0</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">beats_per_minute</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">).</span><span class="n">abs</span><span class="p">()</span><span class="w"></span>
+<span class="w">                    </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">new_beat</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="p">.</span><span class="n">beat_update</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">elapsed_frames</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">new_beat</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">frames_per_beat</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f64</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">frames_per_beat</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">elapsed_frames</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">frames_per_beat</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">ResetablePipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">PulseGenerator</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">fn</span> <span class="nf">reset</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">beats_per_minute</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">120.0</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">speed_coefficient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">frames_per_beat</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">elapsed_frames</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[test]</span><span class="w"></span>
+<span class="k">fn</span> <span class="nf">test_pulse_generator</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">pipe</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseGenerator</span>::<span class="n">new</span><span class="p">(</span><span class="mf">44100.0</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="fm">assert!</span><span class="p">(</span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">PulseInput</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">beat_update</span>: <span class="nb">Some</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span><span class="w"></span>
+<span class="w">        </span><span class="n">bpm_update</span>: <span class="nb">Some</span><span class="p">(</span><span class="mf">120.0</span><span class="p">),</span><span class="w"></span>
+<span class="w">        </span><span class="n">speed_update</span>: <span class="nb">Some</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="p">}));</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">1</span><span class="o">..</span><span class="mi">88100</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseInput</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">beat_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">bpm_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">speed_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">};</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="mi">22050</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="fm">assert!</span><span class="p">(</span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">input</span><span class="p">));</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="fm">assert!</span><span class="p">(</span><span class="o">!</span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">(</span><span class="n">input</span><span class="p">));</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This is the input type for the pulse generator. The <code class="docutils literal notranslate"><span class="pre">bpm_update</span></code> and <code class="docutils literal notranslate"><span class="pre">speed_update</span></code> fields tell the pulse generator of the new number of beats per second and playback speed. The <code class="docutils literal notranslate"><span class="pre">beat_update</span></code> contains the number of the current beat in the current bar and is used to synchronize the plugin with the host.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[derive(Clone, Copy, Debug)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">PulseInput</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">beat_update</span>: <span class="nb">Option</span><span class="o">&lt;</span><span class="kt">f64</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">bpm_update</span>: <span class="nb">Option</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">speed_update</span>: <span class="nb">Option</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">EventAtomizer</span></code> wraps an iterator over events and transforms them into frames, which either contain an event or don’t. This iterator will be the atom event iterator later, but for now, it’s good to be generic.</p>
+<p>Internally, it stores the next event of the event sequence. Every time <code class="docutils literal notranslate"><span class="pre">next</span></code> is called, this counter is increased and once it hits this next event, it is yielded and the next “next event” is retrieved. This is continued as long as the sequence contains events. Once it is depleted, this pipe only emits <code class="docutils literal notranslate"><span class="pre">None</span></code>s.</p>
+<p>Since every frame can only contain one event and frames must be emitted chronologically, it drops every event that has the same or an earlier timestamp than a previous event.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">EventAtomizer</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="o">&gt;</span><span class="w"></span>
+<span class="k">where</span><span class="w"></span>
+<span class="w">    </span><span class="n">I</span>: <span class="nb">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">T</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">sequence</span>: <span class="nc">I</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">next_event</span>: <span class="nb">Option</span><span class="o">&lt;</span><span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">T</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">index</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">EventAtomizer</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="o">&gt;</span><span class="w"></span>
+<span class="k">where</span><span class="w"></span>
+<span class="w">    </span><span class="n">I</span>: <span class="nb">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">T</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">sequence</span>: <span class="nc">I</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">instance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">sequence</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">next_event</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">index</span>: <span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">};</span><span class="w"></span>
+<span class="w">        </span><span class="n">instance</span><span class="p">.</span><span class="n">retrieve_next_event</span><span class="p">();</span><span class="w"></span>
+<span class="w">        </span><span class="n">instance</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">retrieve_next_event</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">next_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">None</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">((</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">sequence</span><span class="p">.</span><span class="n">next</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="n">index</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">index</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="bp">self</span><span class="p">.</span><span class="n">next_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Some</span><span class="p">((</span><span class="n">index</span><span class="p">,</span><span class="w"> </span><span class="n">item</span><span class="p">));</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Pipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">EventAtomizer</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="n">I</span><span class="o">&gt;</span><span class="w"></span>
+<span class="k">where</span><span class="w"></span>
+<span class="w">    </span><span class="n">I</span>: <span class="nb">Iterator</span><span class="o">&lt;</span><span class="n">Item</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">T</span><span class="p">)</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">InputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">OutputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Option</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">next</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">_</span>: <span class="p">())</span><span class="w"> </span>-&gt; <span class="nb">Option</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">next_event</span><span class="p">.</span><span class="n">take</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="nb">Some</span><span class="p">((</span><span class="n">event_index</span><span class="p">,</span><span class="w"> </span><span class="n">event_atom</span><span class="p">))</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="kd">let</span><span class="w"> </span><span class="n">event_is_due</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">event_index</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">index</span><span class="p">;</span><span class="w"></span>
+<span class="w">                </span><span class="bp">self</span><span class="p">.</span><span class="n">index</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">event_is_due</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                    </span><span class="bp">self</span><span class="p">.</span><span class="n">retrieve_next_event</span><span class="p">();</span><span class="w"></span>
+<span class="w">                    </span><span class="nb">Some</span><span class="p">(</span><span class="n">event_atom</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                    </span><span class="bp">self</span><span class="p">.</span><span class="n">next_event</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Some</span><span class="p">((</span><span class="n">event_index</span><span class="p">,</span><span class="w"> </span><span class="n">event_atom</span><span class="p">));</span><span class="w"></span>
+<span class="w">                    </span><span class="nb">None</span><span class="w"></span>
+<span class="w">                </span><span class="p">}</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">            </span><span class="nb">None</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[test]</span><span class="w"></span>
+<span class="k">fn</span> <span class="nf">test_atomizer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">events</span>: <span class="nb">Box</span><span class="o">&lt;</span><span class="p">[(</span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="kt">u32</span><span class="p">)]</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Box</span>::<span class="n">new</span><span class="p">([(</span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">)]);</span><span class="w"></span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">pipe</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EventAtomizer</span>::<span class="n">new</span><span class="p">(</span><span class="n">events</span><span class="p">.</span><span class="n">iter</span><span class="p">().</span><span class="n">cloned</span><span class="p">());</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="mi">15</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pipe</span><span class="p">.</span><span class="n">next</span><span class="p">(());</span><span class="w"></span>
+<span class="w">        </span><span class="k">match</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mi">4</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="n">output</span><span class="p">),</span><span class="w"></span>
+<span class="w">            </span><span class="mi">10</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="nb">Some</span><span class="p">(</span><span class="mi">5</span><span class="p">),</span><span class="w"> </span><span class="n">output</span><span class="p">),</span><span class="w"></span>
+<span class="w">            </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="fm">assert_eq!</span><span class="p">(</span><span class="nb">None</span><span class="p">,</span><span class="w"> </span><span class="n">output</span><span class="p">),</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>In the final plugin, the <code class="docutils literal notranslate"><span class="pre">EventAtomizer</span></code> emits <code class="docutils literal notranslate"><span class="pre">Option&lt;UnidentifiedAtom&gt;</span></code>s, which might be any atom at all, and the <code class="docutils literal notranslate"><span class="pre">PulseGenerator</span></code> consumes <code class="docutils literal notranslate"><span class="pre">PulseInput</span></code>s. The <code class="docutils literal notranslate"><span class="pre">EventReader</span></code> bridges the gap between these two pipes by identifying the atom, reading it and emitting an appropriate <code class="docutils literal notranslate"><span class="pre">PulseInput</span></code>.</p>
+<p>This is the only pipe that isn’t tested since creating a testbed for it would require too much code for this book.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">EventReader</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">atom_urids</span>: <span class="kp">&amp;</span><span class="o">&#39;</span><span class="na">a</span> <span class="nc">AtomURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">time_urids</span>: <span class="kp">&amp;</span><span class="o">&#39;</span><span class="na">a</span> <span class="nc">TimeURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="n">EventReader</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">atom_urids</span>: <span class="kp">&amp;</span><span class="o">&#39;</span><span class="na">a</span> <span class="nc">AtomURIDCollection</span><span class="p">,</span><span class="w"> </span><span class="n">time_urids</span>: <span class="kp">&amp;</span><span class="o">&#39;</span><span class="na">a</span> <span class="nc">TimeURIDCollection</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">atom_urids</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">time_urids</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Pipe</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">EventReader</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">InputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Option</span><span class="o">&lt;</span><span class="n">UnidentifiedAtom</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;&gt;</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">OutputItem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseInput</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">next</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">atom</span>: <span class="nb">Option</span><span class="o">&lt;</span><span class="n">UnidentifiedAtom</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nc">PulseInput</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">updates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseInput</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">beat_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">bpm_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">speed_update</span>: <span class="nb">None</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">};</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">atom</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">atom</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">((</span><span class="n">object_header</span><span class="p">,</span><span class="w"> </span><span class="n">object_reader</span><span class="p">))</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">atom</span><span class="w"></span>
+<span class="w">                </span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">atom_urids</span><span class="p">.</span><span class="n">object</span><span class="p">,</span><span class="w"> </span><span class="p">())</span><span class="w"></span>
+<span class="w">                </span><span class="p">.</span><span class="n">or_else</span><span class="p">(</span><span class="o">||</span><span class="w"> </span><span class="n">atom</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">atom_urids</span><span class="p">.</span><span class="n">blank</span><span class="p">,</span><span class="w"> </span><span class="p">()))</span><span class="w"></span>
+<span class="w">            </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">object_header</span><span class="p">.</span><span class="n">otype</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">time_urids</span><span class="p">.</span><span class="n">position_class</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">property_header</span><span class="p">,</span><span class="w"> </span><span class="n">property</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">object_reader</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="n">property_header</span><span class="p">.</span><span class="n">key</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">time_urids</span><span class="p">.</span><span class="n">bar_beat</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                            </span><span class="n">updates</span><span class="p">.</span><span class="n">beat_update</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">property</span><span class="w"></span>
+<span class="w">                                </span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">atom_urids</span><span class="p">.</span><span class="n">float</span><span class="p">,</span><span class="w"> </span><span class="p">())</span><span class="w"></span>
+<span class="w">                                </span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="o">|</span><span class="n">float</span><span class="o">|</span><span class="w"> </span><span class="n">float</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f64</span><span class="p">);</span><span class="w"></span>
+<span class="w">                        </span><span class="p">}</span><span class="w"></span>
+<span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="n">property_header</span><span class="p">.</span><span class="n">key</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">time_urids</span><span class="p">.</span><span class="n">beats_per_minute</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                            </span><span class="n">updates</span><span class="p">.</span><span class="n">bpm_update</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">property</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">atom_urids</span><span class="p">.</span><span class="n">float</span><span class="p">,</span><span class="w"> </span><span class="p">());</span><span class="w"></span>
+<span class="w">                        </span><span class="p">}</span><span class="w"></span>
+<span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="n">property_header</span><span class="p">.</span><span class="n">key</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">time_urids</span><span class="p">.</span><span class="n">speed</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                            </span><span class="n">updates</span><span class="p">.</span><span class="n">speed_update</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">property</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">atom_urids</span><span class="p">.</span><span class="n">float</span><span class="p">,</span><span class="w"> </span><span class="p">());</span><span class="w"></span>
+<span class="w">                        </span><span class="p">}</span><span class="w"></span>
+<span class="w">                    </span><span class="p">}</span><span class="w"></span>
+<span class="w">                </span><span class="p">}</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="n">updates</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="metro-src-lib-rs">
+<h2>metro/src/lib.rs<a class="headerlink" href="#metro-src-lib-rs" title="Permalink to this headline"></a></h2>
+<p>Now, we put it all together:</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">iterpipes</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+<span class="k">use</span><span class="w"> </span><span class="n">lv2</span>::<span class="n">prelude</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+
+<span class="k">mod</span> <span class="nn">pipes</span><span class="p">;</span><span class="w"></span>
+<span class="k">use</span><span class="w"> </span><span class="n">pipes</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>In future iterations of the plugin, these values could be parameters, but for now, the’re constants:</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">ATTACK_DURATION</span>: <span class="kt">f64</span> <span class="o">=</span><span class="w"> </span><span class="mf">0.005</span><span class="p">;</span><span class="w"></span>
+<span class="k">const</span><span class="w"> </span><span class="n">DECAY_DURATION</span>: <span class="kt">f64</span> <span class="o">=</span><span class="w"> </span><span class="mf">0.075</span><span class="p">;</span><span class="w"></span>
+<span class="k">const</span><span class="w"> </span><span class="n">NOTE_FREQUENCY</span>: <span class="kt">f64</span> <span class="o">=</span><span class="w"> </span><span class="mf">440.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span><span class="w"></span>
+
+<span class="cp">#[derive(URIDCollection)]</span><span class="w"></span>
+<span class="k">struct</span> <span class="nc">URIDs</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">atom</span>: <span class="nc">AtomURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">unit</span>: <span class="nc">UnitURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">time</span>: <span class="nc">TimeURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[derive(PortCollection)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Ports</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">control</span>: <span class="nc">InputPort</span><span class="o">&lt;</span><span class="n">AtomPort</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">output</span>: <span class="nc">OutputPort</span><span class="o">&lt;</span><span class="n">Audio</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[derive(FeatureCollection)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Features</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">map</span>: <span class="nc">LV2Map</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This plugin struct contains the URID collection and two pre-constructed pipes. These are later used to construct the complete pipeline.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[uri(</span><span class="s">&quot;https://github.com/RustAudio/rust-lv2/tree/master/docs/metro&quot;</span><span class="cp">)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Metro</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">urids</span>: <span class="nc">URIDs</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">envelope</span>: <span class="nc">Connector</span><span class="o">&lt;</span><span class="n">Enumerate</span><span class="o">&lt;</span><span class="n">PulseGenerator</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">Envelope</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">sampler</span>: <span class="nc">Connector</span><span class="o">&lt;</span><span class="n">Counter</span><span class="o">&lt;</span><span class="kt">usize</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">Sampler</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Metro</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">Ports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Ports</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">type</span> <span class="nc">InitFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">AudioFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">plugin_info</span>: <span class="kp">&amp;</span><span class="nc">PluginInfo</span><span class="p">,</span><span class="w"> </span><span class="n">features</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nb">Option</span><span class="o">&lt;</span><span class="bp">Self</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">attack_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">ATTACK_DURATION</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">plugin_info</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">())</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">decay_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">DECAY_DURATION</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">plugin_info</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">())</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Pre-construct the envelope pipe. Pipes can be enumerated, just like iterators, and connected.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">envelope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PulseGenerator</span>::<span class="n">new</span><span class="p">(</span><span class="n">plugin_info</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">enumerate</span><span class="p">()</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">connect</span><span class="p">(</span><span class="n">Envelope</span>::<span class="n">new</span><span class="p">(</span><span class="n">attack_len</span><span class="p">,</span><span class="w"> </span><span class="n">decay_len</span><span class="p">));</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Calculate the sample and pre-construct the sampler pipe.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">sample_len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">plugin_info</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">NOTE_FREQUENCY</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">sample</span>: <span class="nb">Vec</span><span class="o">&lt;</span><span class="kt">f32</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Vec</span>::<span class="n">with_capacity</span><span class="p">(</span><span class="n">sample_len</span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="mi">0</span><span class="o">..</span><span class="n">sample_len</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">sample</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="w"></span>
+<span class="w">                </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f64</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">std</span>::<span class="kt">f64</span>::<span class="n">consts</span>::<span class="n">PI</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">NOTE_FREQUENCY</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">plugin_info</span><span class="p">.</span><span class="n">sample_rate</span><span class="p">())</span><span class="w"></span>
+<span class="w">                    </span><span class="p">.</span><span class="n">sin</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">f32</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">sampler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Counter</span>::<span class="o">&lt;</span><span class="kt">usize</span><span class="o">&gt;</span>::<span class="n">new</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">).</span><span class="n">connect</span><span class="p">(</span><span class="n">Sampler</span>::<span class="n">new</span><span class="p">(</span><span class="n">sample</span><span class="p">));</span><span class="w"></span>
+
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">urids</span>: <span class="nc">features</span><span class="p">.</span><span class="n">map</span><span class="p">.</span><span class="n">populate_collection</span><span class="p">()</span><span class="o">?</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">envelope</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">sampler</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">})</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">activate</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">_</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">envelope</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">sampler</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">run</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">ports</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Ports</span><span class="p">,</span><span class="w"> </span><span class="n">_</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="p">(),</span><span class="w"> </span><span class="n">_</span>: <span class="kt">u32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ports</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">control</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">atom</span><span class="p">.</span><span class="n">sequence</span><span class="p">,</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">unit</span><span class="p">.</span><span class="n">beat</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Here, the final assembly of the pipeline is done. First, the event iterator is pre-processed to only emit an index and an <code class="docutils literal notranslate"><span class="pre">UnidentifiedAtom</span></code>. Then, the event iterator is wrapped into an <code class="docutils literal notranslate"><span class="pre">EventAtomizer</span></code>, which is then connected to an <code class="docutils literal notranslate"><span class="pre">EventReader</span></code> and the envelope. The resulting pipe consumes a <code class="docutils literal notranslate"><span class="pre">()</span></code> and emits the next frame of the envelope; It’s already a compact pipeline.</p>
+<p>Then, the final pipeline is constructed using some lazy pipes: The first one splits a <code class="docutils literal notranslate"><span class="pre">()</span></code> to a tuple of <code class="docutils literal notranslate"><span class="pre">()</span></code>, which is then connected to a tuple of the envelope and the pre-constructed sampler. A tuple of two pipes is also a pipe; The two pipes are processed in parallel. Then, the emitted envelope and sample frame are multiplied to one frame.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">            </span><span class="kd">let</span><span class="w"> </span><span class="n">control</span><span class="w"> </span><span class="o">=</span><span class="w"></span>
+<span class="w">                </span><span class="n">control</span><span class="p">.</span><span class="n">map</span><span class="p">(</span><span class="o">|</span><span class="p">(</span><span class="n">timestamp</span><span class="p">,</span><span class="w"> </span><span class="n">event</span><span class="p">)</span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">timestamp</span><span class="p">.</span><span class="n">as_frames</span><span class="p">().</span><span class="n">unwrap</span><span class="p">()</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="n">event</span><span class="p">));</span><span class="w"></span>
+
+<span class="w">            </span><span class="kd">let</span><span class="w"> </span><span class="n">complete_envelope</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EventAtomizer</span>::<span class="n">new</span><span class="p">(</span><span class="n">control</span><span class="p">).</span><span class="n">compose</span><span class="p">()</span><span class="w"></span>
+<span class="w">                </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">EventReader</span>::<span class="n">new</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">atom</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">time</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">envelope</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">            </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">pipeline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Lazy</span>::<span class="n">new</span><span class="p">(</span><span class="o">|</span><span class="n">_</span>: <span class="p">()</span><span class="o">|</span><span class="w"> </span><span class="p">((),</span><span class="w"> </span><span class="p">())).</span><span class="n">compose</span><span class="p">()</span><span class="w"></span>
+<span class="w">                </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">complete_envelope</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">sampler</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">Lazy</span>::<span class="n">new</span><span class="p">(</span><span class="o">|</span><span class="p">(</span><span class="n">env</span><span class="p">,</span><span class="w"> </span><span class="n">sample</span><span class="p">)</span><span class="o">|</span><span class="w"> </span><span class="n">env</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">sample</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Generate a frame for every frame in the output buffer. All of the processing is done by the single call to <code class="docutils literal notranslate"><span class="pre">next</span></code>!</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">frame</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">output</span><span class="p">.</span><span class="n">iter_mut</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="o">*</span><span class="n">frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pipeline</span><span class="p">.</span><span class="n">next</span><span class="p">(());</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="n">lv2_descriptors</span><span class="o">!</span><span class="p">(</span><span class="n">Metro</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="fifths.html" class="btn btn-neutral float-left" title="Fifths" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Jan-Oliver &#39;Janonard&#39; Opdenhövel, Adrien Prokopowicz, Amaury &#39;Yruama_Lairba&#39; Abrial.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

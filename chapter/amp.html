@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Amplifier &mdash; Rust-LV2 0.5.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="MIDI Gate" href="midigate.html" />
+    <link rel="prev" title="Programming LV2 Plugins - Rust Edition" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Rust-LV2
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Chapters:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Simple Amplifier</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#amp-eg-amp-rs-lv2-manifest-ttl">amp/eg-amp-rs.lv2/manifest.ttl</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#uris">URIs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#namespace-prefixes">Namespace Prefixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#describing-a-plugin">Describing a Plugin</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#amp-eg-amp-rs-lv2-amp-ttl">amp/eg-amp-rs.lv2/amp.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#amp-cargo-toml">amp/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#amp-src-lib-rs">amp/src/lib.rs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="midigate.html">MIDI Gate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fifths.html">Fifths</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metro.html">Metro</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Rust-LV2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Simple Amplifier</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapter/amp.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="simple-amplifier">
+<h1>Simple Amplifier<a class="headerlink" href="#simple-amplifier" title="Permalink to this headline"></a></h1>
+<p>This plugin is a simple example of a basic LV2 plugin with no additional features. It has audio ports which contain an array of float, and a control port which contains a single float.</p>
+<p>LV2 plugins are defined in two parts: code and data. The code provides an interface to the host written in C, but it can be written in any C-compatible language. Static data is described separately in the human and machine friendly Turtle syntax.</p>
+<p>Generally, the goal is to keep code minimal, and describe as much as possible in the static data. There are several advantages to this approach:</p>
+<ul class="simple">
+<li><p>Hosts can discover and inspect plugins without loading or executing any plugin code.</p></li>
+<li><p>Plugin data can be used from a wide range of generic tools like scripting languages and command line utilities.</p></li>
+<li><p>The standard data model allows the use of existing vocabularies to describe plugins and related information.</p></li>
+<li><p>The language is extensible, so authors may describe any data without requiring changes to the LV2 specification.</p></li>
+<li><p>Labels and documentation are translatable, and available to hosts for display in user interfaces.</p></li>
+</ul>
+<section id="amp-eg-amp-rs-lv2-manifest-ttl">
+<h2>amp/eg-amp-rs.lv2/manifest.ttl<a class="headerlink" href="#amp-eg-amp-rs-lv2-manifest-ttl" title="Permalink to this headline"></a></h2>
+<p>LV2 plugins are installed in a “bundle”, a directory with a standard structure. Each bundle has a
+Turtle file named <code class="docutils literal notranslate"><span class="pre">manifest.ttl</span></code> which lists the contents of the bundle.</p>
+<p>Hosts typically read the manifest of every installed bundle to discover plugins on start-up, so it
+should be as small as possible for performance reasons. Details that are only useful if the host
+chooses to load the plugin are stored in other files and linked to from <code class="docutils literal notranslate"><span class="pre">manifest.ttl</span></code>.</p>
+<p>In a crate, this should be a special folder that contains the Turtle files. After the crate was
+build, the resulting shared object should also be copied into this folder.</p>
+<section id="uris">
+<h3>URIs<a class="headerlink" href="#uris" title="Permalink to this headline"></a></h3>
+<p>LV2 makes use of URIs as globally-unique identifiers for resources. For example, the ID of the
+plugin described here is <code class="docutils literal notranslate"><span class="pre">&lt;https://github.com/RustAudio/rust-lv2/tree/master/docs/amp&gt;</span></code>. Note that URIs are only used as identifiers
+and don’t necessarily imply that something can be accessed at that address on the web (though that
+may be the case).</p>
+</section>
+<section id="namespace-prefixes">
+<h3>Namespace Prefixes<a class="headerlink" href="#namespace-prefixes" title="Permalink to this headline"></a></h3>
+<p>Turtle files contain many URIs, but prefixes can be defined to improve readability. For example,
+with the <code class="docutils literal notranslate"><span class="pre">lv2:</span></code> prefix below, <code class="docutils literal notranslate"><span class="pre">lv2:Plugin</span></code> can be written instead of
+<code class="docutils literal notranslate"><span class="pre">&lt;http://lv2plug.in/ns/lv2core#Plugin&gt;</span></code>.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">lv2</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdfs</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">2000</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">schema</span>#<span class="o">&gt;</span> .
+</pre></div>
+</div>
+</section>
+<section id="describing-a-plugin">
+<h3>Describing a Plugin<a class="headerlink" href="#describing-a-plugin" title="Permalink to this headline"></a></h3>
+<p>Turtle files contain a set of subject-predicate-object statements which describe resources.</p>
+<p>Firstly, <code class="docutils literal notranslate"><span class="pre">&lt;https://github.com/RustAudio/rust-lv2/tree/master/docs/amp&gt;</span></code> is an LV2 plugin:</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">amp</span><span class="o">&gt;</span> <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> .
+</pre></div>
+</div>
+<p>The predicate <code class="docutils literal notranslate"><span class="pre">a</span></code> is a Turtle shorthand for <code class="docutils literal notranslate"><span class="pre">rdf:type</span></code>.</p>
+<p>The binary of that plugin can be found at <code class="docutils literal notranslate"><span class="pre">&lt;amp.ext&gt;</span></code>:</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">amp</span><span class="o">&gt;</span> <span class="nv">lv2</span>:<span class="nv">binary</span> <span class="o">&lt;</span><span class="nv">libamp</span>.<span class="nv">so</span><span class="o">&gt;</span> .
+</pre></div>
+</div>
+<p>This line is platform-dependent since it assumes that shared objects have the <code class="docutils literal notranslate"><span class="pre">.so</span></code> ending. On
+Windows, it should be ending with <code class="docutils literal notranslate"><span class="pre">.dll</span></code>. Relative URIs in manifests are relative to the bundle
+directory, so this refers to a binary with the given name in the same directory as this manifest.</p>
+<p>Finally, more information about this plugin can be found in <code class="docutils literal notranslate"><span class="pre">&lt;amp.ttl&gt;</span></code>:</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">amp</span><span class="o">&gt;</span> <span class="nv">rdfs</span>:<span class="nv">seeAlso</span> <span class="o">&lt;</span><span class="nv">amp</span>.<span class="nv">ttl</span><span class="o">&gt;</span> .
+</pre></div>
+</div>
+</section>
+</section>
+<section id="amp-eg-amp-rs-lv2-amp-ttl">
+<h2>amp/eg-amp-rs.lv2/amp.ttl<a class="headerlink" href="#amp-eg-amp-rs-lv2-amp-ttl" title="Permalink to this headline"></a></h2>
+<p>The full description of the plugin is in this file, which is linked to from
+<code class="docutils literal notranslate"><span class="pre">manifest.ttl</span></code>.  This is done so the host only needs to scan the relatively
+small <code class="docutils literal notranslate"><span class="pre">manifest.ttl</span></code> files to quickly discover all plugins.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">doap</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">usefulinc</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">doap</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">lv2</span>:   <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdf</span>:   <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">1999</span><span class="o">/</span><span class="mi">02</span><span class="o">/</span><span class="mi">22</span><span class="o">-</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">syntax</span><span class="o">-</span><span class="nv">ns</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdfs</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">2000</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">schema</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">units</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">extensions</span><span class="o">/</span><span class="nv">units</span>#<span class="o">&gt;</span> .
+</pre></div>
+</div>
+<p>First the type of the plugin is described.  All plugins must explicitly list
+<code class="docutils literal notranslate"><span class="pre">lv2:Plugin</span></code> as a type.  A more specific type should also be given, where
+applicable, so hosts can present a nicer UI for loading plugins.  Note that
+this URI is the identifier of the plugin, so if it does not match the one in
+<code class="docutils literal notranslate"><span class="pre">manifest.ttl</span></code>, the host will not discover the plugin data at all.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">amp</span><span class="o">&gt;</span>
+        <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> ,
+                <span class="nv">lv2</span>:<span class="nv">AmplifierPlugin</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>Plugins are associated with a project, where common information like
+developers, home page, and so on are described.  This plugin is part of the
+Rust-LV2 project, which has URI <a class="reference external" href="https://github.com/RustAudio/rust-lv2">https://github.com/RustAudio/rust-lv2</a>, and is described
+elsewhere.  Typical plugin collections will describe the project in
+manifest.ttl</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>        <span class="nv">lv2</span>:<span class="nv">project</span> <span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">&gt;</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>Every plugin must have a name, described with the doap:name property.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>        <span class="nv">doap</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Simple Amplifier (Rust Version)</span><span class="s2">&quot;</span> <span class="c1">;</span>
+        <span class="nv">doap</span>:<span class="nv">license</span> <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">opensource</span>.<span class="nv">org</span><span class="o">/</span><span class="nv">licenses</span><span class="o">/</span><span class="nv">isc</span><span class="o">&gt;</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>This tells the host that this plugin can not work “in-place”; The input and output buffers may not be the same. This plugin could technically work “in-place”, but it would mean that the plugin would receive a mutable and an immutable reference to the same place in memory, which obviously isn’t allowed in Rust.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>        <span class="nv">lv2</span>:<span class="nv">requiredFeature</span> <span class="nv">lv2</span>:<span class="nv">inPlaceBroken</span> <span class="c1">;</span>
+        <span class="nv">lv2</span>:<span class="nv">optionalFeature</span> <span class="nv">lv2</span>:<span class="nv">hardRTCapable</span> <span class="c1">;</span>
+        <span class="nv">lv2</span>:<span class="nv">port</span> [
+</pre></div>
+</div>
+<p>Every port must have at least two types, one that specifies direction
+(lv2:InputPort or lv2:OutputPort), and another to describe the data type.
+This port is a lv2:ControlPort, which means it contains a single float.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>                <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">InputPort</span> ,
+                        <span class="nv">lv2</span>:<span class="nv">ControlPort</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">0</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">gain</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Gain</span><span class="s2">&quot;</span> ,
+                        <span class="s2">&quot;</span><span class="s">收益</span><span class="s2">&quot;</span>@<span class="nv">ch</span> ,
+                        <span class="s2">&quot;</span><span class="s">Gewinn</span><span class="s2">&quot;</span>@<span class="nv">de</span> ,
+                        <span class="s2">&quot;</span><span class="s">Gain</span><span class="s2">&quot;</span>@<span class="nv">en</span><span class="o">-</span><span class="nv">gb</span> ,
+                        <span class="s2">&quot;</span><span class="s">Aumento</span><span class="s2">&quot;</span>@<span class="nv">es</span> ,
+                        <span class="s2">&quot;</span><span class="s">Gain</span><span class="s2">&quot;</span>@<span class="nv">fr</span> ,
+                        <span class="s2">&quot;</span><span class="s">Guadagno</span><span class="s2">&quot;</span>@<span class="nv">it</span> ,
+                        <span class="s2">&quot;</span><span class="s">ゲイン</span><span class="s2">&quot;</span>@<span class="nv">jp</span> ,
+                        <span class="s2">&quot;</span><span class="s">Увеличение</span><span class="s2">&quot;</span>@<span class="nv">ru</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>An lv2:ControlPort should always describe its default value, and usually a
+minimum and maximum value.  Defining a range is not strictly required, but
+should be done wherever possible to aid host support, particularly for UIs.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>                <span class="nv">lv2</span>:<span class="nv">default</span> <span class="mi">0</span>.<span class="mi">0</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">minimum</span> <span class="o">-</span><span class="mi">90</span>.<span class="mi">0</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">maximum</span> <span class="mi">24</span>.<span class="mi">0</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>Ports can describe units and control detents to allow better UI generation
+and host automation.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>                <span class="nv">units</span>:<span class="nv">unit</span> <span class="nv">units</span>:<span class="nv">db</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">scalePoint</span> [
+                        <span class="nv">rdfs</span>:<span class="nv">label</span> <span class="s2">&quot;</span><span class="s">+5</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                        <span class="nv">rdf</span>:<span class="nv">value</span> <span class="mi">5</span>.<span class="mi">0</span>
+                ] , [
+                        <span class="nv">rdfs</span>:<span class="nv">label</span> <span class="s2">&quot;</span><span class="s">0</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                        <span class="nv">rdf</span>:<span class="nv">value</span> <span class="mi">0</span>.<span class="mi">0</span>
+                ] , [
+                        <span class="nv">rdfs</span>:<span class="nv">label</span> <span class="s2">&quot;</span><span class="s">-5</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                        <span class="nv">rdf</span>:<span class="nv">value</span> <span class="o">-</span><span class="mi">5</span>.<span class="mi">0</span>
+                ] , [
+                        <span class="nv">rdfs</span>:<span class="nv">label</span> <span class="s2">&quot;</span><span class="s">-10</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                        <span class="nv">rdf</span>:<span class="nv">value</span> <span class="o">-</span><span class="mi">10</span>.<span class="mi">0</span>
+                ]
+        ] , [
+                <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">AudioPort</span> ,
+                        <span class="nv">lv2</span>:<span class="nv">InputPort</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">1</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">in</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">In</span><span class="s2">&quot;</span>
+        ] , [
+                <span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">AudioPort</span> ,
+                        <span class="nv">lv2</span>:<span class="nv">OutputPort</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">2</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">out</span><span class="s2">&quot;</span> <span class="c1">;</span>
+                <span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Out</span><span class="s2">&quot;</span>
+        ] .
+</pre></div>
+</div>
+</section>
+<section id="amp-cargo-toml">
+<h2>amp/Cargo.toml<a class="headerlink" href="#amp-cargo-toml" title="Permalink to this headline"></a></h2>
+<p>The host does not really care in which language the code of the plugin is written, as long as the
+built library complies to the headers of the specifications. Therefore, every plugin is a standard
+Cargo crate.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[package]</span><span class="w"></span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;amp&quot;</span><span class="w"></span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.2.0&quot;</span><span class="w"></span>
+<span class="n">authors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Jan-Oliver &#39;Janonard&#39; Opdenhövel &lt;jan.opdenhoevel@protonmail.com&gt;&quot;</span><span class="p">]</span><span class="w"></span>
+<span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ISC&quot;</span><span class="w"></span>
+<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2018&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Plugins are dynamic libraries. This setting tells cargo to export it this way.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[lib]</span><span class="w"></span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;cdylib&quot;</span><span class="p">]</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Rust-LV2 is a network of individual sub-crates with different version numbers and histories.
+However, most plugins don’t need to deal with them directly. Instead, they use the re-export crate
+simply called <code class="docutils literal notranslate"><span class="pre">lv2</span></code>. It has an optional dependency to every sub-crate, which can be enabled via crate features.</p>
+<p>The default feature set includes everything to create a simple plugin for audio and MIDI processing.
+Therefore, we don’t need to enable extra features here.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[dependencies]</span><span class="w"></span>
+<span class="n">lv2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.6.0&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="amp-src-lib-rs">
+<h2>amp/src/lib.rs<a class="headerlink" href="#amp-src-lib-rs" title="Permalink to this headline"></a></h2>
+<p>Include the prelude of <code class="docutils literal notranslate"><span class="pre">lv2</span></code>. This includes the preludes of every sub-crate and you are strongly encouraged to use it, since many macros depend on it.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">lv2</span>::<span class="n">prelude</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Most useful plugins will have ports for input and output data. In code, these ports are represented by a struct implementing the <code class="docutils literal notranslate"><span class="pre">PortCollection</span></code> trait. Internally, ports are referred to by index. These indices are assigned in ascending order, starting with 0 for the first port. The indices in <code class="docutils literal notranslate"><span class="pre">amp.ttl</span></code> have to match them.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[derive(PortCollection)]</span><span class="w"></span>
+<span class="k">struct</span> <span class="nc">Ports</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">gain</span>: <span class="nc">InputPort</span><span class="o">&lt;</span><span class="n">Control</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">input</span>: <span class="nc">InputPort</span><span class="o">&lt;</span><span class="n">Audio</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">output</span>: <span class="nc">OutputPort</span><span class="o">&lt;</span><span class="n">Audio</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Every plugin defines a struct for the plugin instance. All persistent data associated with a plugin instance is stored here, and is available to every instance method. In this simple plugin, there is no additional instance data and therefore, this struct is empty.</p>
+<p>The URI is the identifier for a plugin, and how the host associates this implementation in code with its description in data. If this URI does not match that used in the data files, the host will fail to load the plugin. This attribute internally implements the <code class="docutils literal notranslate"><span class="pre">UriBound</span></code> trait for <code class="docutils literal notranslate"><span class="pre">Amp</span></code>, which is also used to identify many other things in the Rust-LV2 ecosystem.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[uri(</span><span class="s">&quot;https://github.com/RustAudio/rust-lv2/tree/master/docs/amp&quot;</span><span class="cp">)]</span><span class="w"></span>
+<span class="k">struct</span> <span class="nc">Amp</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Every plugin struct implements the <code class="docutils literal notranslate"><span class="pre">Plugin</span></code> trait. This trait contains both the methods that are called by the hosting application and the collection types for the ports and the used host features. This plugin does not use additional host features and therefore, we set both feature collection types to <code class="docutils literal notranslate"><span class="pre">()</span></code>. Other plugins may define separate structs with their required and optional features and set it here.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">impl</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Amp</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">Ports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Ports</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">type</span> <span class="nc">InitFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">AudioFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">new</span></code> method is called by the plugin backend when it creates a new plugin instance. The host passes the plugin URI, sample rate, and bundle path for plugins that need to load additional resources (e.g. waveforms). The features parameter contains host-provided features defined in LV2 extensions, but this simple plugin does not use any. This method is in the “instantiation” threading class, so no other methods on this instance will be called concurrently with it.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">_plugin_info</span>: <span class="kp">&amp;</span><span class="nc">PluginInfo</span><span class="p">,</span><span class="w"> </span><span class="n">_features</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="p">())</span><span class="w"> </span>-&gt; <span class="nb">Option</span><span class="o">&lt;</span><span class="bp">Self</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="bp">Self</span><span class="p">)</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">run()</span></code> method is the main process function of the plugin. It processes a block of audio in the audio context. Since this plugin is <code class="docutils literal notranslate"><span class="pre">lv2:hardRTCapable</span></code>, <code class="docutils literal notranslate"><span class="pre">run()</span></code> must be real-time safe, so blocking (e.g. with a mutex) or memory allocation are not allowed.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="k">fn</span> <span class="nf">run</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">ports</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Ports</span><span class="p">,</span><span class="w"> </span><span class="n">_features</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="p">(),</span><span class="w"> </span><span class="n">_</span>: <span class="kt">u32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">coef</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="o">*</span><span class="p">(</span><span class="n">ports</span><span class="p">.</span><span class="n">gain</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="o">-</span><span class="mf">90.0</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mf">10.0_</span><span class="k">f32</span><span class="p">.</span><span class="n">powf</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">ports</span><span class="p">.</span><span class="n">gain</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.05</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="mf">0.0</span><span class="w"></span>
+<span class="w">        </span><span class="p">};</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">in_frame</span><span class="p">,</span><span class="w"> </span><span class="n">out_frame</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nb">Iterator</span>::<span class="n">zip</span><span class="p">(</span><span class="n">ports</span><span class="p">.</span><span class="n">input</span><span class="p">.</span><span class="n">iter</span><span class="p">(),</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">output</span><span class="p">.</span><span class="n">iter_mut</span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="o">*</span><span class="n">out_frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">in_frame</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">coef</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">lv2_descriptors</span></code> macro creates the entry point to the plugin library. It takes structs that implement <code class="docutils literal notranslate"><span class="pre">Plugin</span></code> and exposes them. The host will load the library and call a generated function to find all the plugins defined in the library.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="n">lv2_descriptors</span><span class="o">!</span><span class="p">(</span><span class="n">Amp</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="Programming LV2 Plugins - Rust Edition" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="midigate.html" class="btn btn-neutral float-right" title="MIDI Gate" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Jan-Oliver &#39;Janonard&#39; Opdenhövel, Adrien Prokopowicz, Amaury &#39;Yruama_Lairba&#39; Abrial.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

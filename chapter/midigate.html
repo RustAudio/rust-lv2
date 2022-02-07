@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIDI Gate &mdash; Rust-LV2 0.5.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fifths" href="fifths.html" />
+    <link rel="prev" title="Simple Amplifier" href="amp.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Rust-LV2
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Chapters:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="amp.html">Simple Amplifier</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">MIDI Gate</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#midigate-eg-midigate-rs-lv2-manifest-ttl">midigate/eg-midigate-rs.lv2/manifest.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#midigate-eg-midigate-rs-lv2-midigate-ttl">midigate/eg-midigate-rs.lv2/midigate.ttl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#midigate-cargo-toml">midigate/Cargo.toml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#midigate-src-lib-rs">midigate/src/lib.rs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fifths.html">Fifths</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metro.html">Metro</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Rust-LV2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>MIDI Gate</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/chapter/midigate.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="midi-gate">
+<h1>MIDI Gate<a class="headerlink" href="#midi-gate" title="Permalink to this headline"></a></h1>
+<p>This plugin demonstrates:</p>
+<ul class="simple">
+<li><p>Receiving MIDI input</p></li>
+<li><p>Processing audio based on MIDI events with sample accuracy</p></li>
+<li><p>Supporting MIDI programs which the host can control/automate, or present a user interface for with human readable labels</p></li>
+</ul>
+<p>A key concept of LV2 that is introduced with this plugin is URID. As you’ve learned before, many things in the LV2 ecosystem are identified by URIs. However, comparing URIs isn’t nescessarily fast and the time it takes to compare URIs rises with their length. Therefore, every known URI is mapped to number, a so-called URID, which is used instead of the full URI when time and space is valuable. This mapping is done by the host, which also assures that the mappings are consistent across plugins. Therefore, URIDs are also used for host-plugin or plugin-plugin communication.</p>
+<section id="midigate-eg-midigate-rs-lv2-manifest-ttl">
+<h2>midigate/eg-midigate-rs.lv2/manifest.ttl<a class="headerlink" href="#midigate-eg-midigate-rs-lv2-manifest-ttl" title="Permalink to this headline"></a></h2>
+<p>The manifest.ttl file follows the same template as the previous example.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">lv2</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdfs</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">2000</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">schema</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">ui</span>:   <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">extensions</span><span class="o">/</span><span class="nv">ui</span>#<span class="o">&gt;</span> .
+
+<span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">midigate</span><span class="o">&gt;</span>
+	<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> <span class="c1">;</span>
+	<span class="nv">lv2</span>:<span class="nv">binary</span> <span class="o">&lt;</span><span class="nv">libmidigate</span>.<span class="nv">so</span><span class="o">&gt;</span> <span class="c1">;</span>
+	<span class="nv">rdfs</span>:<span class="nv">seeAlso</span> <span class="o">&lt;</span><span class="nv">midigate</span>.<span class="nv">ttl</span><span class="o">&gt;</span> .
+</pre></div>
+</div>
+</section>
+<section id="midigate-eg-midigate-rs-lv2-midigate-ttl">
+<h2>midigate/eg-midigate-rs.lv2/midigate.ttl<a class="headerlink" href="#midigate-eg-midigate-rs-lv2-midigate-ttl" title="Permalink to this headline"></a></h2>
+<p>The same set of namespace prefixes with two additions for LV2 extensions this
+plugin uses: atom and urid.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>@<span class="nv">prefix</span> <span class="nv">atom</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">atom</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">doap</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">usefulinc</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">doap</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">lv2</span>:  <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">lv2core</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">midi</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">midi</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">rdfs</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">www</span>.<span class="nv">w3</span>.<span class="nv">org</span><span class="o">/</span><span class="mi">2000</span><span class="o">/</span><span class="mi">01</span><span class="o">/</span><span class="nv">rdf</span><span class="o">-</span><span class="nv">schema</span>#<span class="o">&gt;</span> .
+@<span class="nv">prefix</span> <span class="nv">urid</span>: <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">lv2plug</span>.<span class="nv">in</span><span class="o">/</span><span class="nv">ns</span><span class="o">/</span><span class="nv">ext</span><span class="o">/</span><span class="nv">urid</span>#<span class="o">&gt;</span> .
+
+<span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">/</span><span class="nv">tree</span><span class="o">/</span><span class="nv">master</span><span class="o">/</span><span class="nv">docs</span><span class="o">/</span><span class="nv">midigate</span><span class="o">&gt;</span>
+	<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">Plugin</span> <span class="c1">;</span>
+	<span class="nv">doap</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Example MIDI Gate (Rust Version)</span><span class="s2">&quot;</span> <span class="c1">;</span>
+	<span class="nv">doap</span>:<span class="nv">license</span> <span class="o">&lt;</span><span class="nv">http</span>:<span class="o">//</span><span class="nv">opensource</span>.<span class="nv">org</span><span class="o">/</span><span class="nv">licenses</span><span class="o">/</span><span class="nv">isc</span><span class="o">&gt;</span> <span class="c1">;</span>
+    <span class="nv">lv2</span>:<span class="nv">project</span> <span class="o">&lt;</span><span class="nv">https</span>:<span class="o">//</span><span class="nv">github</span>.<span class="nv">com</span><span class="o">/</span><span class="nv">RustAudio</span><span class="o">/</span><span class="nv">rust</span><span class="o">-</span><span class="nv">lv2</span><span class="o">&gt;</span> <span class="c1">;</span>
+	<span class="nv">lv2</span>:<span class="nv">requiredFeature</span> <span class="nv">urid</span>:<span class="nv">map</span> , <span class="nv">lv2</span>:<span class="nv">inPlaceBroken</span> <span class="c1">;</span>
+	<span class="nv">lv2</span>:<span class="nv">optionalFeature</span> <span class="nv">lv2</span>:<span class="nv">hardRTCapable</span> <span class="c1">;</span>
+</pre></div>
+</div>
+<p>This plugin has three ports.  There is an audio input and output as before,
+as well as a new <code class="docutils literal notranslate"><span class="pre">AtomPort</span></code>.  An <code class="docutils literal notranslate"><span class="pre">AtomPort</span></code> buffer contains an <code class="docutils literal notranslate"><span class="pre">Atom</span></code>, which is a
+generic container for any type of data.  In this case, we want to receive
+MIDI events, so the (mandatory) <code class="docutils literal notranslate"><span class="pre">atom:bufferType</span></code> is <code class="docutils literal notranslate"><span class="pre">atom:Sequence</span></code>, which is
+a series of events with time stamps.</p>
+<p>Events themselves are also generic and can contain any type of data, but in
+this case we are only interested in MIDI events.  The (optional)
+<code class="docutils literal notranslate"><span class="pre">atom:supports</span></code> property describes which event types are supported.  Though
+not required, this information should always be given so the host knows what
+types of event it can expect the plugin to understand.</p>
+<p>The (optional) <code class="docutils literal notranslate"><span class="pre">lv2:designation</span></code> of this port is <code class="docutils literal notranslate"><span class="pre">lv2:control</span></code>, which
+indicates that this is the “main” control port where the host should send
+events it expects to configure the plugin, in this case changing the MIDI
+program.  This is necessary since it is possible to have several MIDI input
+ports, though typically it is best to have one.</p>
+<div class="highlight-ttl notranslate"><div class="highlight"><pre><span></span>	<span class="nv">lv2</span>:<span class="nv">port</span> [
+		<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">InputPort</span> ,
+			<span class="nv">atom</span>:<span class="nv">AtomPort</span> <span class="c1">;</span>
+		<span class="nv">atom</span>:<span class="nv">bufferType</span> <span class="nv">atom</span>:<span class="nv">Sequence</span> <span class="c1">;</span>
+		<span class="nv">atom</span>:<span class="nv">supports</span> <span class="nv">midi</span>:<span class="nv">MidiEvent</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">designation</span> <span class="nv">lv2</span>:<span class="nv">control</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">0</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">control</span><span class="s2">&quot;</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Control</span><span class="s2">&quot;</span>
+	] , [
+		<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">AudioPort</span> ,
+			<span class="nv">lv2</span>:<span class="nv">InputPort</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">1</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">in</span><span class="s2">&quot;</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">In</span><span class="s2">&quot;</span>
+	] , [
+		<span class="nv">a</span> <span class="nv">lv2</span>:<span class="nv">AudioPort</span> ,
+			<span class="nv">lv2</span>:<span class="nv">OutputPort</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">index</span> <span class="mi">2</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">symbol</span> <span class="s2">&quot;</span><span class="s">out</span><span class="s2">&quot;</span> <span class="c1">;</span>
+		<span class="nv">lv2</span>:<span class="nv">name</span> <span class="s2">&quot;</span><span class="s">Out</span><span class="s2">&quot;</span>
+	] .
+</pre></div>
+</div>
+</section>
+<section id="midigate-cargo-toml">
+<h2>midigate/Cargo.toml<a class="headerlink" href="#midigate-cargo-toml" title="Permalink to this headline"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">Cargo.toml</span></code> file is pretty similiar too. This plugin needs no extra features, but it needs
+the <code class="docutils literal notranslate"><span class="pre">wmidi</span></code> crate, which provides the enums to handle MIDI messages.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[package]</span><span class="w"></span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;midigate&quot;</span><span class="w"></span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.1.0&quot;</span><span class="w"></span>
+<span class="n">authors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;Jan-Oliver &#39;Janonard&#39; Opdenhövel &lt;jan.opdenhoevel@protonmail.com&gt;&quot;</span><span class="p">]</span><span class="w"></span>
+<span class="n">edition</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;2018&quot;</span><span class="w"></span>
+
+<span class="k">[lib]</span><span class="w"></span>
+<span class="n">crate-type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;cdylib&quot;</span><span class="p">]</span><span class="w"></span>
+
+<span class="k">[dependencies]</span><span class="w"></span>
+<span class="n">wmidi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;3.1.0&quot;</span><span class="w"></span>
+<span class="n">lv2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;0.6.0&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+<section id="midigate-src-lib-rs">
+<h2>midigate/src/lib.rs<a class="headerlink" href="#midigate-src-lib-rs" title="Permalink to this headline"></a></h2>
+<p>Use the prelude and the <code class="docutils literal notranslate"><span class="pre">wmidi</span></code> crate.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">lv2</span>::<span class="n">prelude</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+<span class="k">use</span><span class="w"> </span><span class="n">wmidi</span>::<span class="o">*</span><span class="p">;</span><span class="w"></span>
+
+<span class="cp">#[derive(PortCollection)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Ports</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">control</span>: <span class="nc">InputPort</span><span class="o">&lt;</span><span class="n">AtomPort</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">input</span>: <span class="nc">InputPort</span><span class="o">&lt;</span><span class="n">Audio</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">output</span>: <span class="nc">OutputPort</span><span class="o">&lt;</span><span class="n">Audio</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Now, an additional host feature is needed. A feature is something that implements the <code class="docutils literal notranslate"><span class="pre">Feature</span></code> trait and usually wraps a certain functionality of the host; In this case mapping URIs to URIDs. The discovery and validation of features is done by the framework.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[derive(FeatureCollection)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Features</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">map</span>: <span class="nc">LV2Map</span><span class="o">&lt;&#39;</span><span class="na">a</span><span class="o">&gt;</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Retrieving URIDs from the host isn’t guaranteed to be real-time safe or even fast. Therefore, all URIDs that may be needed should be retrieved when the plugin is instantiated. The <code class="docutils literal notranslate"><span class="pre">URIDCollection</span></code> trait makes this easy: It provides a single method that creates an instance of itself from the mapping feature, which can also be generated using this <code class="docutils literal notranslate"><span class="pre">derive</span></code> macro.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="cp">#[derive(URIDCollection)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">URIDs</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">atom</span>: <span class="nc">AtomURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">midi</span>: <span class="nc">MidiURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">unit</span>: <span class="nc">UnitURIDCollection</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="cp">#[uri(</span><span class="s">&quot;https://github.com/RustAudio/rust-lv2/tree/master/docs/midigate&quot;</span><span class="cp">)]</span><span class="w"></span>
+<span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">Midigate</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">n_active_notes</span>: <span class="kt">u64</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">program</span>: <span class="kt">u8</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">urids</span>: <span class="nc">URIDs</span><span class="p">,</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Midigate</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+</pre></div>
+</div>
+<p>A function to write a chunk of output, to be called from <code class="docutils literal notranslate"><span class="pre">run()</span></code>. If the gate is high, then the input will be passed through for this chunk, otherwise silence is written.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="k">fn</span> <span class="nf">write_output</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">ports</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Ports</span><span class="p">,</span><span class="w"> </span><span class="n">offset</span>: <span class="kt">usize</span><span class="p">,</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">len</span>: <span class="kt">usize</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">input</span><span class="p">.</span><span class="n">len</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">offset</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">len</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">len</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">input</span><span class="p">.</span><span class="n">len</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">offset</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">program</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">n_active_notes</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">n_active_notes</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
+<span class="w">        </span><span class="p">};</span><span class="w"></span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">ports</span><span class="p">.</span><span class="n">input</span><span class="p">[</span><span class="n">offset</span><span class="o">..</span><span class="n">offset</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">len</span><span class="p">];</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">output</span><span class="p">[</span><span class="n">offset</span><span class="o">..</span><span class="n">offset</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">len</span><span class="p">];</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="n">active</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">output</span><span class="p">.</span><span class="n">copy_from_slice</span><span class="p">(</span><span class="n">input</span><span class="p">);</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">frame</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">output</span><span class="p">.</span><span class="n">iter_mut</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="o">*</span><span class="n">frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">Midigate</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">Ports</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Ports</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">type</span> <span class="nc">InitFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">type</span> <span class="nc">AudioFeatures</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">();</span><span class="w"></span>
+
+<span class="w">    </span><span class="k">fn</span> <span class="nf">new</span><span class="p">(</span><span class="n">_plugin_info</span>: <span class="kp">&amp;</span><span class="nc">PluginInfo</span><span class="p">,</span><span class="w"> </span><span class="n">features</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span>-&gt; <span class="nb">Option</span><span class="o">&lt;</span><span class="bp">Self</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nb">Some</span><span class="p">(</span><span class="bp">Self</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">n_active_notes</span>: <span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">program</span>: <span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="n">urids</span>: <span class="nc">features</span><span class="p">.</span><span class="n">map</span><span class="p">.</span><span class="n">populate_collection</span><span class="p">()</span><span class="o">?</span><span class="p">,</span><span class="w"></span>
+<span class="w">        </span><span class="p">})</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This plugin works through the cycle in chunks starting at offset zero. The <code class="docutils literal notranslate"><span class="pre">offset</span></code> represents the current time within this this cycle, so the output from 0 to <code class="docutils literal notranslate"><span class="pre">offset</span></code> has already been written.</p>
+<p>MIDI events are read in a loop. In each iteration, the number of active notes (on note on and note off) or the program (on program change) is updated, then the output is written up until the current event time. Then <code class="docutils literal notranslate"><span class="pre">offset</span></code> is updated and the next event is processed. After the loop the final chunk from the last event to the end of the cycle is emitted.</p>
+<p>There is currently no standard way to describe MIDI programs in LV2, so the host has no way of knowing that these programs exist and should be presented to the user. A future version of LV2 will address this shortcoming.</p>
+<p>This pattern of iterating over input events and writing output along the way is a common idiom for writing sample accurate output based on event input.</p>
+<p>Note that this simple example simply writes input or zero for each sample based on the gate. A serious implementation would need to envelope the transition to avoid aliasing.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="k">fn</span> <span class="nf">run</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">ports</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Ports</span><span class="p">,</span><span class="w"> </span><span class="n">_</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="p">(),</span><span class="w"> </span><span class="n">_</span>: <span class="kt">u32</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">offset</span>: <span class="kt">usize</span> <span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">        </span><span class="kd">let</span><span class="w"> </span><span class="n">control_sequence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ports</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">control</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">atom</span><span class="p">.</span><span class="n">sequence</span><span class="p">,</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">unit</span><span class="p">.</span><span class="n">beat</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span><span class="w"></span>
+
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">timestamp</span><span class="p">,</span><span class="w"> </span><span class="n">message</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">control_sequence</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="kd">let</span><span class="w"> </span><span class="n">timestamp</span>: <span class="kt">usize</span> <span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">timestamp</span><span class="p">.</span><span class="n">as_frames</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="n">timestamp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="kt">usize</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="k">continue</span><span class="p">;</span><span class="w"></span>
+<span class="w">            </span><span class="p">};</span><span class="w"></span>
+
+<span class="w">            </span><span class="kd">let</span><span class="w"> </span><span class="n">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="kd">let</span><span class="w"> </span><span class="nb">Some</span><span class="p">(</span><span class="n">message</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">message</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">urids</span><span class="p">.</span><span class="n">midi</span><span class="p">.</span><span class="n">wmidi</span><span class="p">,</span><span class="w"> </span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="n">message</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="k">continue</span><span class="p">;</span><span class="w"></span>
+<span class="w">            </span><span class="p">};</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">match</span><span class="w"> </span><span class="n">message</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="n">MidiMessage</span>::<span class="n">NoteOn</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">n_active_notes</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">                </span><span class="n">MidiMessage</span>::<span class="n">NoteOff</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">_</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="bp">self</span><span class="p">.</span><span class="n">n_active_notes</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">                </span><span class="n">MidiMessage</span>::<span class="n">ProgramChange</span><span class="p">(</span><span class="n">_</span><span class="p">,</span><span class="w"> </span><span class="n">program</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                    </span><span class="kd">let</span><span class="w"> </span><span class="n">program</span>: <span class="kt">u8</span> <span class="o">=</span><span class="w"> </span><span class="n">program</span><span class="p">.</span><span class="n">into</span><span class="p">();</span><span class="w"></span>
+<span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="n">program</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">program</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                        </span><span class="bp">self</span><span class="p">.</span><span class="n">program</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">program</span><span class="p">;</span><span class="w"></span>
+<span class="w">                    </span><span class="p">}</span><span class="w"></span>
+<span class="w">                </span><span class="p">}</span><span class="w"></span>
+<span class="w">                </span><span class="n">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">(),</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">            </span><span class="bp">self</span><span class="p">.</span><span class="n">write_output</span><span class="p">(</span><span class="n">ports</span><span class="p">,</span><span class="w"> </span><span class="n">offset</span><span class="p">,</span><span class="w"> </span><span class="n">timestamp</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">offset</span><span class="p">);</span><span class="w"></span>
+<span class="w">            </span><span class="n">offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">timestamp</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">write_output</span><span class="p">(</span><span class="n">ports</span><span class="p">,</span><span class="w"> </span><span class="n">offset</span><span class="p">,</span><span class="w"> </span><span class="n">ports</span><span class="p">.</span><span class="n">input</span><span class="p">.</span><span class="n">len</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">offset</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<p>During it’s runtime, the host might decide to deactivate the plugin. When the plugin is reactivated, the host calls this method which gives the plugin an opportunity to reset it’s internal state.</p>
+<div class="highlight-rs notranslate"><div class="highlight"><pre><span></span><span class="w">    </span><span class="k">fn</span> <span class="nf">activate</span><span class="p">(</span><span class="o">&amp;</span><span class="k">mut</span><span class="w"> </span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">_features</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Features</span><span class="o">&lt;&#39;</span><span class="nb">static</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">n_active_notes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="bp">self</span><span class="p">.</span><span class="n">program</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+
+<span class="n">lv2_descriptors</span><span class="o">!</span><span class="p">(</span><span class="n">Midigate</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="amp.html" class="btn btn-neutral float-left" title="Simple Amplifier" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fifths.html" class="btn btn-neutral float-right" title="Fifths" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Jan-Oliver &#39;Janonard&#39; Opdenhövel, Adrien Prokopowicz, Amaury &#39;Yruama_Lairba&#39; Abrial.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

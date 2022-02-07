@@ -1,0 +1,211 @@
+## Fifths
+
+This plugin demonstrates simple MIDI event reading and writing.
+
+For every note-on and note-off event it reads, it writes the original note and it's fifth. Therefore, you can play a power-chords by pressing only one key!
+### fifths/eg-fifths-rs.lv2/manifest.ttl
+
+You should be familiar with these Turtle files by know!
+
+```ttl
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/fifths>
+	a lv2:Plugin ;
+	lv2:binary <libfifths.so> ;
+	rdfs:seeAlso <fifths.ttl> .
+```
+
+### fifths/eg-fifths-rs.lv2/fifths.ttl
+
+
+```ttl
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
+
+<https://github.com/RustAudio/rust-lv2/tree/master/docs/fifths>
+	a lv2:Plugin ;
+	doap:name "Example Fifths (Rust Edition)" ;
+	doap:license <http://opensource.org/licenses/isc> ;
+    lv2:project <https://github.com/RustAudio/rust-lv2> ;
+	lv2:requiredFeature urid:map , lv2:inPlaceBroken ;
+	lv2:optionalFeature lv2:hardRTCapable ;
+	lv2:port [
+		a lv2:InputPort ,
+			atom:AtomPort ;
+		atom:bufferType atom:Sequence ;
+		atom:supports midi:MidiEvent ;
+		lv2:index 0 ;
+		lv2:symbol "in" ;
+		lv2:name "In"
+	] , [
+		a lv2:OutputPort ,
+			atom:AtomPort ;
+		atom:bufferType atom:Sequence ;
+		atom:supports midi:MidiEvent ;
+		lv2:index 1 ;
+		lv2:symbol "out" ;
+		lv2:name "Out"
+	] .
+```
+
+### fifths/Cargo.toml
+
+
+```toml
+[package]
+name = "fifths"
+version = "0.1.0"
+authors = ["Jan-Oliver 'Janonard' Opdenhövel <jan.opdenhoevel@protonmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wmidi = "3.1.0"
+lv2 = "0.6.0"
+```
+
+### fifths/src/lib.rs
+
+The same as before...
+
+```rs
+use lv2::prelude::*;
+use wmidi::*;
+
+#[derive(PortCollection)]
+pub struct Ports {
+    input: InputPort<AtomPort>,
+    output: OutputPort<AtomPort>,
+}
+
+#[derive(FeatureCollection)]
+pub struct Features<'a> {
+    map: LV2Map<'a>,
+}
+
+#[derive(URIDCollection)]
+pub struct URIDs {
+    atom: AtomURIDCollection,
+    midi: MidiURIDCollection,
+    unit: UnitURIDCollection,
+}
+
+#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/fifths")]
+pub struct Fifths {
+    urids: URIDs,
+}
+
+impl Plugin for Fifths {
+    type Ports = Ports;
+
+    type InitFeatures = Features<'static>;
+    type AudioFeatures = ();
+
+    fn new(_plugin_info: &PluginInfo, features: &mut Features<'static>) -> Option<Self> {
+        Some(Self {
+            urids: features.map.populate_collection()?,
+        })
+    }
+
+```
+
+This plugin works similar to the previous one: It iterates over the events in the input port. However, it only needs to write one or two messages instead of blocks of audio.
+
+```rs
+    fn run(&mut self, ports: &mut Ports, _: &mut (), _: u32) {
+```
+
+Get the reading handle of the input sequence.
+
+```rs
+        let input_sequence = ports
+            .input
+            .read(self.urids.atom.sequence, self.urids.unit.beat)
+            .unwrap();
+
+```
+
+Initialise the output sequence and get the writing handle.
+
+```rs
+        let mut output_sequence = ports
+            .output
+            .init(
+                self.urids.atom.sequence,
+                TimeStampURID::Frames(self.urids.unit.frame),
+            )
+            .unwrap();
+
+        for (timestamp, atom) in input_sequence {
+```
+
+Every message is forwarded, regardless of it's content.
+
+```rs
+            output_sequence.forward(timestamp, atom);
+
+```
+
+Retrieve the message.
+
+```rs
+            let message = if let Some(message) = atom.read(self.urids.midi.wmidi, ()) {
+                message
+            } else {
+                continue;
+            };
+
+            match message {
+                MidiMessage::NoteOn(channel, note, velocity) => {
+```
+
+Create a note 5th (7 semitones) higher than the input.
+
+```rs
+                    if let Ok(note) = note.step(7) {
+```
+
+Write the fifth. Writing is done after initialization.
+
+```rs
+                        output_sequence
+                            .init(
+                                timestamp,
+                                self.urids.midi.wmidi,
+                                MidiMessage::NoteOn(channel, note, velocity),
+                            )
+                            .unwrap();
+                    }
+                }
+                MidiMessage::NoteOff(channel, note, velocity) => {
+```
+
+Do the same thing for `NoteOff`.
+
+```rs
+                    if let Ok(note) = note.step(7) {
+                        output_sequence
+                            .init(
+                                timestamp,
+                                self.urids.midi.wmidi,
+                                MidiMessage::NoteOff(channel, note, velocity),
+                            )
+                            .unwrap();
+                    }
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+lv2_descriptors!(Fifths);
+```
