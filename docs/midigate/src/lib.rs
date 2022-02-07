@@ -111,7 +111,7 @@ impl Plugin for Midigate {
             }
 
             self.write_output(ports, offset, timestamp + offset);
-            offset += timestamp;
+            offset = timestamp;
         }
 
         self.write_output(ports, offset, ports.input.len() - offset);
