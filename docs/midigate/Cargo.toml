@@ -1,4 +1,4 @@
-# The `Cargo.toml` file is pretty similiar too. This plugin needs no extra features, but it needs
+# The `Cargo.toml` file is pretty similar too. This plugin needs no extra features, but it needs
 # the `wmidi` crate, which provides the enums to handle MIDI messages. 
 [package]
 name = "midigate"

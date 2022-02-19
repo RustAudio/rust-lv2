@@ -1,4 +1,4 @@
-//! An atom containg a series of other atoms.
+//! An atom containing a series of other atoms.
 //!
 //! This atom is just like a [sequence](../sequence/index.html), only without time stamps: It contains multiple arbitrary atoms which you can either iterate through or write in sequence.
 //!

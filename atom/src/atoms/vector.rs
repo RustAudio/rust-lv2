@@ -1,4 +1,4 @@
-//! An atom containg an array of scalar atom bodies.
+//! An atom containing an array of scalar atom bodies.
 //!
 //! This atom is able to handle arrays (aka slices) of the internal types of scalar atoms.
 //!

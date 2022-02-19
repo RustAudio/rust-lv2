@@ -1,6 +1,6 @@
 //! An atom containing a sequence of time-stamped events.
 //!
-//! These events are atoms again. Atoms passed in a sequence can be handled with frame-perfect timing and therefore is the prefered way to transmit events like MIDI messages. However, MIDI messages are implemented in separate crate.
+//! These events are atoms again. Atoms passed in a sequence can be handled with frame-perfect timing and therefore is the preferred way to transmit events like MIDI messages. However, MIDI messages are implemented in separate crate.
 //!
 //! # Example
 //!

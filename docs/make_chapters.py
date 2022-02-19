@@ -20,7 +20,7 @@ class Line(object):
 class CommentLine(Line):
     """
     A line that was a comment in the source document.
-    It will be outputed as normal text.
+    It will be outputted as normal text.
     """
 
     pass
@@ -29,7 +29,7 @@ class CommentLine(Line):
 class CodeLine(Line):
     """
     A line that was source code in the source document.
-    It will be outputed as quoted code.
+    It will be outputted as quoted code.
     """
 
     pass
@@ -76,7 +76,7 @@ class File(object):
         if language is None:
             language = re.match(r".([^\n]*)", path.suffix).group(1)
 
-        # Read the raw lines fromt the input file.
+        # Read the raw lines from the input file.
         with path.open("r") as input:
             raw_lines = input.readlines()
 

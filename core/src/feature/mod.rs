@@ -32,13 +32,13 @@ pub enum ThreadingClass {
 ///
 /// Some host features may only be used in certain threading classes. This is guarded by Rust-LV2 by passing the threading class in which the plugin will be used to the feature, which then may take different actions.
 pub unsafe trait Feature: UriBound + Sized {
-    /// Create an instance of the featurer.
+    /// Create an instance of the feature.
     ///
     /// The feature pointer is provided by the host and points to the feature-specific data. If the data is invalid, for one reason or another, the method returns `None`.
     ///
     /// # Implementing
     ///
-    /// If nescessary, you should dereference it and store the reference inside the feature struct in order to use it.
+    /// If necessary, you should dereference it and store the reference inside the feature struct in order to use it.
     ///
     /// You have to document in which threading classes your feature can be used and should panic if the threading class is not supported. When this happens when the plugin programmer has added your feature to the wrong feature collection, which is considered a programming error and therefore justifies the panic. If you don't panic in this case, the error is handled silently, which may make debugging harder.
     ///

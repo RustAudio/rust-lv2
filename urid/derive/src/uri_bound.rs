@@ -33,7 +33,7 @@ fn get_uri(attr: TokenStream) -> Literal {
     if parse::<Literal>(attr.clone()).is_err() {
         panic!("{}", PARSING_ERROR);
     }
-    //check if it's a litteral string
+    //check if it's a literal string
     let attr = attr.to_string();
     if !attr.starts_with('"') || !attr.ends_with('"') {
         panic!("{}", PARSING_ERROR);

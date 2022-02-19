@@ -102,7 +102,7 @@ Plugins created with `rust-lv2` are compatible to all LV2 hosts that comply to t
 
 #### Can I host plugins with `rust-lv2`?
 
-Currently, hosting plugins is not supported. This project was initialy started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
+Currently, hosting plugins is not supported. This project was initially started to create plugins using safe Rust and therefore, it is very plugin-centric. There are plans for integrated plugin hosting or a spin-off project, but those won't start in the near future.
 
 However, there is a lot of code that can be re-used for a hosting framework. If you want to create such a framework, you should take a look at `lv2-sys`, `urid`, and `lv2-atom`.
 

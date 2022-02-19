@@ -70,9 +70,9 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
     ///
     /// Sometimes, the methods from the `Plugin` trait aren't enough to support additional LV2 specifications. For these cases, extension exist. In most cases and for Rust users, an extension is simply a trait that can be implemented for a plugin.
     ///
-    /// However, these implemented methods must be passed to the host. This is where this method comes into play: The host will call it with a URI for an extension. Then, it is the plugin's responsibilty to return the extension data to the host.
+    /// However, these implemented methods must be passed to the host. This is where this method comes into play: The host will call it with a URI for an extension. Then, it is the plugin's responsibility to return the extension data to the host.
     ///
-    /// In most cases, you can simply use the [`match_extensions`](../macro.match_extensions.html) macro to generate an appropiate method body.
+    /// In most cases, you can simply use the [`match_extensions`](../macro.match_extensions.html) macro to generate an appropriate method body.
     fn extension_data(_uri: &Uri) -> Option<&'static dyn Any> {
         None
     }
@@ -80,7 +80,7 @@ pub trait Plugin: UriBound + Sized + Send + Sync + 'static {
 
 /// Plugin wrapper which translated between the host and the plugin.
 ///
-/// The host interacts with the plugin via a C API, but the plugin is implemented with ideomatic, safe Rust. To bridge this gap, this wrapper is used to translate and abstract the communcation between the host and the plugin.
+/// The host interacts with the plugin via a C API, but the plugin is implemented with idiomatic, safe Rust. To bridge this gap, this wrapper is used to translate and abstract the communication between the host and the plugin.
 ///
 /// This struct is `repr(C)` and has the plugin as it's first field. Therefore, a valid `*mut PluginInstance<T>` is also a valid `*mut T`.
 #[repr(C)]
@@ -111,7 +111,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn instantiate(
         descriptor: *const sys::LV2_Descriptor,
         sample_rate: f64,
@@ -183,7 +183,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn cleanup(instance: *mut c_void) {
         let instance = instance as *mut Self;
         Box::from_raw(instance);
@@ -195,7 +195,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn activate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
         instance.instance.activate(&mut instance.init_features)
@@ -207,7 +207,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn deactivate(instance: *mut c_void) {
         let instance = &mut *(instance as *mut Self);
         instance.instance.deactivate(&mut instance.init_features)
@@ -219,7 +219,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn connect_port(instance: *mut c_void, port: u32, data: *mut c_void) {
         let instance = instance as *mut Self;
         (*instance).connections.connect(port, data)
@@ -231,7 +231,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn run(instance: *mut c_void, sample_count: u32) {
         let instance = &mut *(instance as *mut Self);
         if let Some(mut ports) = instance.ports(sample_count) {
@@ -247,7 +247,7 @@ impl<T: Plugin> PluginInstance<T> {
     ///
     /// # Safety
     ///
-    /// This method is unsafe since it derefences multiple raw pointers and is part of the C interface.
+    /// This method is unsafe since it dereferences multiple raw pointers and is part of the C interface.
     pub unsafe extern "C" fn extension_data(uri: *const c_char) -> *const c_void {
         let uri = Uri::from_ptr(uri);
         if let Some(data) = T::extension_data(uri) {
