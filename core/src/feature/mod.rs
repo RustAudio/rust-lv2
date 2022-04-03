@@ -9,6 +9,9 @@ pub use cache::FeatureCache;
 pub use core_features::*;
 pub use descriptor::FeatureDescriptor;
 
+#[cfg(feature = "lv2-core-derive")]
+pub use lv2_core_derive::FeatureCollection;
+
 use std::ffi::c_void;
 
 /// All threading contexts of LV2 interface methods.
