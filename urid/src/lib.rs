@@ -384,12 +384,12 @@ impl Unmap for HashURIDMapper {
                 // This is safe because the only way this reference might become invalid is if an
                 // entry gets overwritten, which is not something that we allow through this
                 // interface.
-                return Some(unsafe {
+                return Some({
                     let bytes = uri.as_bytes_with_nul();
-                    Uri::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(
+                    unsafe { Uri::from_bytes_with_nul_unchecked(std::slice::from_raw_parts(
                         bytes.as_ptr(),
                         bytes.len(),
-                    ))
+                    )) }
                 });
             }
         }
