@@ -127,12 +127,12 @@ impl<'a, 'b, A: ScalarAtom> VectorWriter<'a, 'b, A> {
         };
         self.frame
             .allocate(raw_data.len(), false)
-            .map(|(_, space)| unsafe {
+            .map(|(_, space)| {
                 space.copy_from_slice(raw_data);
-                std::slice::from_raw_parts_mut(
+                unsafe { std::slice::from_raw_parts_mut(
                     space.as_mut_ptr() as *mut A::InternalType,
                     data.len(),
-                )
+                ) }
             })
     }
 }
