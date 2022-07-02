@@ -7,5 +7,6 @@ pub use crate::plugin::{Plugin, PluginInfo, PluginInstance, PluginInstanceDescri
 #[cfg(feature = "lv2-core-derive")]
 pub use crate::plugin::{lv2_descriptors, PortCollection};
 
-pub use crate::port::*;
+pub use crate::port;
+pub use crate::port::{PortCollection, PortHandle, PortPointerCache, RCell, RwCell};
 pub use crate::sys::LV2_Descriptor;
