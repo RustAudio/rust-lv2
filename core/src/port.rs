@@ -9,9 +9,73 @@ pub use audio::*;
 pub use control::*;
 pub use cv::*;
 
+use std::cell::Cell;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
+
+/// A readonly cell. Used to give read only access for input port with inplace processing support.
+///
+/// This cell is used to give read only access to data when a writable alias may exist for the
+/// underlying memory location. This is used by inplace input port because it's allow inplace
+/// processing while preventing to write data through the current input port.
+#[repr(transparent)]
+pub struct RCell<T: ?Sized> {
+    value: Cell<T>,
+}
+
+impl<T: Copy> RCell<T> {
+    /// Returns a copy of the contained value.
+    #[inline]
+    pub fn get(&self) -> T {
+        self.value.get()
+    }
+}
+
+impl<T> RCell<[T]> {
+    /// Returns a `&[RCell<T>]` from a `&RCell<[T]>`
+    pub fn as_slice_of_cells(&self) -> &[RCell<T>] {
+        // SAFETY: `RCell<T>` has the same memory layout as `T`.
+        unsafe { &*(self as *const RCell<[T]> as *const [RCell<T>]) }
+    }
+}
+
+/// A read/write cell. Used to give read/write access for output port with inplace processing
+/// support.
+///
+/// This cell is used to give read and write access to data when an alias may exist for the
+/// underlying memory location. It works by giving interior mutability, like [`std::cell::Cell`].
+/// This is used by inplace output because it's allow inplace processing.
+// Note: technically, a std::Cell could be used, but custom cell is better to express the specific
+// usage.
+#[repr(transparent)]
+pub struct RwCell<T: ?Sized> {
+    value: Cell<T>,
+}
+
+impl<T: Copy> RwCell<T> {
+    /// Returns a copy of the contained value.
+    #[inline]
+    pub fn get(&self) -> T {
+        self.value.get()
+    }
+}
+
+impl<T> RwCell<T> {
+    ///Sets the contained value.
+    #[inline]
+    pub fn set(&self, val: T) {
+        self.value.set(val);
+    }
+}
+
+impl<T> RwCell<[T]> {
+    /// Returns a `&[RwCell<T>]` from a `&RwCell<[T]>`
+    pub fn as_slice_of_cells(&self) -> &[RwCell<T>] {
+        // SAFETY: `RwCell<T>` has the same memory layout as `T`.
+        unsafe { &*(self as *const RwCell<[T]> as *const [RwCell<T>]) }
+    }
+}
 
 /// Generalization of port types.
 ///
