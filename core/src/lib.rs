@@ -7,6 +7,7 @@
 //! ```
 //! // Import everything we need.
 //! use lv2_core::prelude::*;
+//! use port::inplace::*; //imports ports supporting inplace processing
 //! use urid::*;
 //!
 //! // The input and output ports are defined by a struct which implements the `PortCollection` trait.
@@ -14,9 +15,9 @@
 //! // port and an output audio port.
 //! #[derive(PortCollection)]
 //! struct Ports {
-//!     gain: InputPort<Control>,
-//!     input: InputPort<Audio>,
-//!     output: OutputPort<Audio>,
+//!     gain: ControlInput,
+//!     input: AudioInput,
+//!     output: AudioOutput,
 //! }
 //!
 //! // The plugin struct. In this case, we don't need any data and therefore, this struct is empty.
@@ -44,14 +45,15 @@
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
 //!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
-//!         let coef = if *(ports.gain) > -90.0 {
-//!             10.0_f32.powf(*(ports.gain) * 0.05)
+//!         let gain = ports.gain.get();
+//!         let coef = if gain > -90.0 {
+//!             10.0_f32.powf(gain * 0.05)
 //!         } else {
 //!             0.0
 //!         };
 //!
-//!         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter_mut()) {
-//!             *out_frame = in_frame * coef;
+//!         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter()) {
+//!             out_frame.set(in_frame.get() *coef);
 //!         }
 //!     }
 //! }

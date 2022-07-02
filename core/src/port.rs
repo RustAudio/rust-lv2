@@ -105,16 +105,16 @@ impl<T: PortHandle> PortHandle for Option<T> {
 /// The most convenient way to create a port collections is to define a struct with port types from
 /// the [`port`](index.html) module and then simply derive `PortCollection` for it. An example:
 /// ```
-///     # pub use lv2_core_derive::*;
-///     use lv2_core::port::*;
+///     use lv2_core::prelude::*;
+///     use lv2_core::port::inplace::*;
 ///
 ///     #[derive(PortCollection)]
 ///     struct MyPortCollection {
-///         audio_input: InputPort<Audio>,
-///         audio_output: OutputPort<Audio>,
-///         control_input: InputPort<Control>,
-///         control_output: OutputPort<Control>,
-///         optional_control_input: Option<InputPort<Control>>,
+///         audio_input: AudioInput,
+///         audio_output: AudioOutput,
+///         control_input: ControlInput,
+///         control_output: ControlOutput,
+///         optional_control_input: Option<ControlInput>,
 ///     }
 /// ```
 ///
