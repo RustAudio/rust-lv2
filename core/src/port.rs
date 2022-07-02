@@ -1,13 +1,8 @@
 //! Types to declare derivable port collections.
 //!
 //! Every plugin has a type of [`PortCollection`](trait.PortCollection.html) which is used to handle input/output ports. In order to make the creation of these port collection types easier, `PortCollection` can simply be derived. However, the macro that implements `PortCollection` requires the fields of the struct to have specific types. These types are provided in this module.
-mod audio;
-mod control;
-mod cv;
-
-pub use audio::*;
-pub use control::*;
-pub use cv::*;
+pub mod inplace;
+pub mod not_inplace;
 
 use std::cell::Cell;
 use std::ffi::c_void;
