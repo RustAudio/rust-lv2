@@ -1,8 +1,100 @@
-use crate::port::PortType;
-use std::cell::Cell;
-use std::ffi::c_void;
-use std::ptr::NonNull;
-use urid::UriBound;
+pub mod inplace {
+    //! CV ports supporting inplace processing.
+    use crate::port::{PortHandle, RCell, RwCell};
+    use core::ffi::c_void;
+    use core::ops::Deref;
+    use core::ptr::*;
+
+    pub struct CVInput {
+        ptr: *const [RCell<f32>],
+    }
+
+    impl PortHandle for CVInput {
+        unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: slice_from_raw_parts(pointer as *const RCell<f32>, sample_count as usize),
+            })
+        }
+    }
+
+    impl Deref for CVInput {
+        type Target = [RCell<f32>];
+        fn deref(&self) -> &[RCell<f32>] {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    pub struct CVOutput {
+        ptr: *mut [RwCell<f32>],
+    }
+
+    impl PortHandle for CVOutput {
+        unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: slice_from_raw_parts_mut(pointer as *mut RwCell<f32>, sample_count as usize),
+            })
+        }
+    }
+
+    impl Deref for CVOutput {
+        type Target = [RwCell<f32>];
+        fn deref(&self) -> &[RwCell<f32>] {
+            unsafe { &*self.ptr }
+        }
+    }
+}
+
+pub mod not_inplace {
+    //! CV ports that doesn't support inplace processing
+    use crate::port::PortHandle;
+    use core::ffi::c_void;
+    use core::ops::{Deref, DerefMut};
+    use core::ptr::*;
+
+    pub struct CVInput {
+        ptr: *const [f32],
+    }
+
+    impl PortHandle for CVInput {
+        unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: slice_from_raw_parts(pointer as *const f32, sample_count as usize),
+            })
+        }
+    }
+
+    impl Deref for CVInput {
+        type Target = [f32];
+        fn deref(&self) -> &[f32] {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    pub struct CVOutput {
+        ptr: *mut [f32],
+    }
+
+    impl PortHandle for CVOutput {
+        unsafe fn from_raw(pointer: *mut c_void, sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: slice_from_raw_parts_mut(pointer as *mut f32, sample_count as usize),
+            })
+        }
+    }
+
+    impl Deref for CVOutput {
+        type Target = [f32];
+        fn deref(&self) -> &[f32] {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    impl DerefMut for CVOutput {
+        fn deref_mut(&mut self) -> &mut [f32] {
+            unsafe { &mut *self.ptr }
+        }
+    }
+}
 
 /// A port connected to an array of float control values. Using this port **requires** the `inPlaceBroken` feature.
 ///
@@ -74,31 +166,6 @@ use urid::UriBound;
 /// and do not need references pointing into the buffer's contents.
 pub struct CV;
 
-unsafe impl UriBound for CV {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__CVPort;
-}
-
-impl PortType for CV {
-    type InputPortType = [f32];
-    type OutputPortType = [f32];
-
-    #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> *const Self::InputPortType {
-        std::slice::from_raw_parts(pointer.as_ptr() as *const f32, sample_count as usize)
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> *mut Self::OutputPortType {
-        std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut f32, sample_count as usize)
-    }
-}
-
 /// A port connected to an array of float control values. This port type can safely operate on shared input and output buffers.
 ///
 /// Ports of this type are connected to a buffer of float control values, represented as a slice of [`Cell`s](std::cell::Cell).
@@ -158,28 +225,3 @@ impl PortType for CV {
 ///
 /// ```
 pub struct InPlaceCV;
-
-unsafe impl UriBound for InPlaceCV {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__CVPort;
-}
-
-impl PortType for InPlaceCV {
-    type InputPortType = [Cell<f32>];
-    type OutputPortType = [Cell<f32>];
-
-    #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> *const Self::InputPortType {
-        std::slice::from_raw_parts(pointer.as_ptr() as *const Cell<f32>, sample_count as usize)
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        sample_count: u32,
-    ) -> *mut Self::OutputPortType {
-        std::slice::from_raw_parts_mut(pointer.as_ptr() as *mut Cell<f32>, sample_count as usize)
-    }
-}
