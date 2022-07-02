@@ -1,8 +1,98 @@
-use crate::port::PortType;
-use std::cell::Cell;
-use std::ffi::c_void;
-use std::ptr::NonNull;
-use urid::UriBound;
+pub mod inplace {
+    //! Control ports supporting inplace processing
+    use crate::port::{PortHandle, RCell, RwCell};
+    use core::ffi::c_void;
+    use core::ops::Deref;
+
+    pub struct ControlInput {
+        ptr: *const RCell<f32>,
+    }
+
+    impl PortHandle for ControlInput {
+        unsafe fn from_raw(pointer: *mut c_void, _sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: pointer as *const RCell<f32>,
+            })
+        }
+    }
+
+    impl Deref for ControlInput {
+        type Target = RCell<f32>;
+        fn deref(&self) -> &RCell<f32> {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    pub struct ControlOutput {
+        ptr: *mut RwCell<f32>,
+    }
+
+    impl PortHandle for ControlOutput {
+        unsafe fn from_raw(pointer: *mut c_void, _sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: pointer as *mut RwCell<f32>,
+            })
+        }
+    }
+
+    impl Deref for ControlOutput {
+        type Target = RwCell<f32>;
+        fn deref(&self) -> &RwCell<f32> {
+            unsafe { &*self.ptr }
+        }
+    }
+}
+
+pub mod not_inplace {
+    //! Control ports that doesn't support inplace processing
+    use crate::port::PortHandle;
+    use core::ffi::c_void;
+    use core::ops::{Deref, DerefMut};
+
+    pub struct ControlInput {
+        ptr: *const f32,
+    }
+
+    impl PortHandle for ControlInput {
+        unsafe fn from_raw(pointer: *mut c_void, _sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: pointer as *const f32,
+            })
+        }
+    }
+
+    impl Deref for ControlInput {
+        type Target = f32;
+        fn deref(&self) -> &f32 {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    pub struct ControlOutput {
+        ptr: *mut f32,
+    }
+
+    impl PortHandle for ControlOutput {
+        unsafe fn from_raw(pointer: *mut c_void, _sample_count: u32) -> Option<Self> {
+            Some(Self {
+                ptr: pointer as *mut f32,
+            })
+        }
+    }
+
+    impl Deref for ControlOutput {
+        type Target = f32;
+        fn deref(&self) -> &f32 {
+            unsafe { &*self.ptr }
+        }
+    }
+
+    impl DerefMut for ControlOutput {
+        fn deref_mut(&mut self) -> &mut f32 {
+            unsafe { &mut *self.ptr }
+        }
+    }
+}
 
 /// A port connected to a single float ([`f32`]). Using this port **requires** the `inPlaceBroken` feature.
 ///
@@ -60,25 +150,6 @@ use urid::UriBound;
 /// and do not need references pointing into the buffer's contents.
 pub struct Control;
 
-unsafe impl UriBound for Control {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
-}
-
-impl PortType for Control {
-    type InputPortType = f32;
-    type OutputPortType = f32;
-
-    #[inline]
-    unsafe fn input_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> *const f32 {
-        pointer.as_ptr() as *const f32
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(pointer: NonNull<c_void>, _sample_count: u32) -> *mut f32 {
-        pointer.as_ptr() as *mut f32
-    }
-}
-
 /// A port connected to a single float ([`f32`]). This port type can safely operate on shared input and output buffers.
 ///
 /// See the [LV2 reference](https://lv2plug.in/ns/lv2core#ControlPort) for more information.
@@ -124,28 +195,3 @@ impl PortType for Control {
 ///
 /// ```
 pub struct InPlaceControl;
-
-unsafe impl UriBound for InPlaceControl {
-    const URI: &'static [u8] = ::lv2_sys::LV2_CORE__ControlPort;
-}
-
-impl PortType for InPlaceControl {
-    type InputPortType = Cell<f32>;
-    type OutputPortType = Cell<f32>;
-
-    #[inline]
-    unsafe fn input_from_raw(
-        pointer: NonNull<c_void>,
-        _sample_count: u32,
-    ) -> *const Self::InputPortType {
-        pointer.as_ptr() as _
-    }
-
-    #[inline]
-    unsafe fn output_from_raw(
-        pointer: NonNull<c_void>,
-        _sample_count: u32,
-    ) -> *mut Self::OutputPortType {
-        pointer.as_ptr() as _
-    }
-}
