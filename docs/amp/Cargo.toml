@@ -16,7 +16,10 @@ crate-type = ["cdylib"]
 # However, most plugins don't need to deal with them directly. Instead, they use the re-export crate
 # simply called `lv2`. It has an optional dependency to every sub-crate, which can be enabled via crate features.
 # 
-# The default feature set includes everything to create a simple plugin for audio and MIDI processing.
-# Therefore, we don't need to enable extra features here.
-[dependencies]
-lv2 = "0.6.0"
+# The 'minimal_plugin' feature enable minimum set of features required to
+# create a plugin. This minimum set allow audio processing so, we don't need to
+# enable additional features here.
+[dependencies.lv2]
+version = "0.6.0"
+default-features = false
+features = ["minimal_plugin"]

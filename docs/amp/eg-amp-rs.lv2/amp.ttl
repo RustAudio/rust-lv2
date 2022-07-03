@@ -23,8 +23,6 @@
 # Every plugin must have a name, described with the doap:name property.
         doap:name "Simple Amplifier (Rust Version)" ;
         doap:license <http://opensource.org/licenses/isc> ;
-# This tells the host that this plugin can not work "in-place"; The input and output buffers may not be the same. This plugin could technically work "in-place", but it would mean that the plugin would receive a mutable and an immutable reference to the same place in memory, which obviously isn't allowed in Rust.
-        lv2:requiredFeature lv2:inPlaceBroken ;
         lv2:optionalFeature lv2:hardRTCapable ;
         lv2:port [
 # Every port must have at least two types, one that specifies direction

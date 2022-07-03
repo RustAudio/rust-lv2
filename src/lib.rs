@@ -2,7 +2,8 @@
 //!
 //! **This library is a work in progress.**
 //!
-//! It provides the following features, through the [LV2 Core specification](http://lv2plug.in/ns/lv2core/lv2core.html):
+//! It provides the following features, through the [LV2 Core
+//! specification](http://lv2plug.in/ns/lv2core/lv2core.html):
 //!
 //! * Lightweight, realtime non-blocking and allocation-free audio processing.
 //! * Generates all the boilerplate to make a LV2 plugin binary, usable by any LV2 host.
@@ -11,20 +12,23 @@
 //! * Can be extended to support any additional features, extensions and port types.
 //!   They can be official, unofficial or completely custom.
 //!
-//! Through the [LV2 official additional specifications](http://lv2plug.in/ns/), this library also provide many
-//! additional features, including:
+//! Through the [LV2 official additional specifications](http://lv2plug.in/ns/), this library also
+//! provide many additional features, including:
 //!
 //! * MIDI processing
-//! * Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and property manipulation
+//! * Serialization of custom data structures, and plugin-plugin or plugin-GUI communication and
+//! property manipulation
 //! * State management
 //! * Asynchronous work processing
-//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way **(Not yet implemented)**
+//! * Custom Graphical User Interfaces, both in a toolkit-agnostic and in a platform-agnostic way
+//! **(Not yet implemented)**
 //! * Presets handling **(Not yet implemented)**
 //! * ... and more! (Not yet implemented either)
 //!
-//! Note that this library will only provide Rust bindings for the official LV2 specifications, however it is compatible
-//! with any other arbitrary or custom specification, and other, external crates are able and welcome to provide Rust bindings
-//! to any other specification that will integrate with this library.
+//! Note that this library will only provide Rust bindings for the official LV2 specifications,
+//! however it is compatible with any other arbitrary or custom specification, and other, external
+//! crates are able and welcome to provide Rust bindings to any other specification that will
+//! integrate with this library.
 //!
 //! # Example
 //!
@@ -33,15 +37,16 @@
 //! ```
 //! // Import everything we need.
 //! use lv2::prelude::*;
+//! use lv2_core::port::inplace::*;
 //!
 //! // The input and output ports are defined by a struct which implements the `PortCollection` trait.
 //! // In this case, there is an input control port for the gain of the amplification, an input audio
 //! // port and an output audio port.
 //! #[derive(PortCollection)]
 //! struct Ports {
-//!     gain: InputPort<Control>,
-//!     input: InputPort<Audio>,
-//!     output: OutputPort<Audio>,
+//!     gain: ControlInput,
+//!     input: AudioInput,
+//!     output: AudioOutput,
 //! }
 //!
 //! // The plugin struct. In this case, we don't need any data and therefore, this struct is empty.
@@ -69,14 +74,15 @@
 //!     // Process a chunk of audio. The audio ports are dereferenced to slices, which the plugin
 //!     // iterates over.
 //!     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
-//!         let coef = if *(ports.gain) > -90.0 {
-//!             10.0_f32.powf(*(ports.gain) * 0.05)
+//!         let gain = ports.gain.get();
+//!         let coef = if gain > -90.0 {
+//!             10.0_f32.powf(gain * 0.05)
 //!         } else {
 //!             0.0
 //!         };
 //!
-//!         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter_mut()) {
-//!             *out_frame = in_frame * coef;
+//!         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter()) {
+//!             out_frame.set(in_frame.get() * coef);
 //!         }
 //!     }
 //! }
@@ -87,34 +93,45 @@
 //! ## Documentation
 //!
 //! There are multiple valuable sources of documentation:
-//! * ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in general, broad terms. It's the ideal point to get started and is updated with every new version of Rust-LV2.
+//! * ["The Rust-LV2 book"](https://rustaudio.github.io/rust-lv2/) describes how to use Rust-LV2 in
+//! general, broad terms. It's the ideal point to get started and is updated with every new version
+//! of Rust-LV2.
 //! * [The API documentation](https://docs.rs/lv2).
 //! * [The LV2 specification reference](https://lv2plug.in/ns/).
 //!
 //! ## Features
 //!
-//! Internally, this framework is built of several sub-crates which are re-exported by the `lv2` crate. All dependencies are optional and can be enabled via features. These are:
+//! Internally, this framework is built of several sub-crates which are re-exported by the `lv2`
+//! crate. All dependencies are optional and can be enabled via features. These are:
 //!
 //! * `lv2-atom`: General data IO.
 //! * `lv2-core`: Implementation of the core LV2 specification.
-//! * `lv2-midi`: MIDI message extension for `lv2-midi`. Support for the [`wmidi` crate](https://crates.io/crates/wmidi) can be enabled with the `wmidi` feature.
+//! * `lv2-midi`: MIDI message extension for `lv2-midi`. Support for the [`wmidi`
+//! crate](https://crates.io/crates/wmidi) can be enabled with the `wmidi` feature.
 //! * `lv2-state`: Extension for LV2 plugins to store their state.
-//! * `lv2-time`: Specification to describe position in time and passage of time, in both real and musical terms.
+//! * `lv2-time`: Specification to describe position in time and passage of time, in both real and
+//! musical terms.
 //! * `lv2-units`: Measuring unit definitions.
 //! * `lv2-urid`: LV2 integration of the URID concept.
-//! * `lv2-worker`: Work scheduling library that allows real-time capable LV2 plugins to execute non-real-time actions.
+//! * `lv2-worker`: Work scheduling library that allows real-time capable LV2 plugins to execute
+//! non-real-time actions.
 //! * `urid`: Idiomatic URID support.
 //!
-//! Sub-crates with an `lv2-` prefix implement a certain LV2 specification, which can be looked up in [the reference](https://lv2plug.in/ns/). Enabling a crate only adds new content, it does not remove or break others.
+//! Sub-crates with an `lv2-` prefix implement a certain LV2 specification, which can be looked up
+//! in [the reference](https://lv2plug.in/ns/). Enabling a crate only adds new content, it does not
+//! remove or break others.
 //!
 //! There are also feature sets that account for common scenarios:
 //! * `minimal_plugin`: The bare minimum to create plugins. Includes `lv2-core` and `urid`.
-//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi` with the `wmidi` feature, `lv2-units`, `lv2-urid`, and `urid`. **This is the default.**
+//! * `plugin`: Usual crates for standard plugins. Includes `lv2-core`, `lv2-atom`, `lv2-midi` with
+//! the `wmidi` feature, `lv2-units`, `lv2-urid`, and `urid`. **This is the default.**
 //! * `full`: All sub-crates.
 //!
 //! # Extending
 //!
-//! Please note that this re-export crate is only meant to be used by plugin projects. If you want to extend the framework with your own crates, please use the sub-crates as your dependencies instead. This will dramatically boost building durations and backwards compability.
+//! Please note that this re-export crate is only meant to be used by plugin projects. If you want
+//! to extend the framework with your own crates, please use the sub-crates as your dependencies
+//! instead. This will dramatically boost building durations and backwards compability.
 
 /// The super-prelude that contains the preludes of all enabled crates.
 pub mod prelude {

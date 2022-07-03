@@ -1,5 +1,6 @@
 use lv2_core::feature::{FeatureCache, FeatureCollection, MissingFeatureError};
 use lv2_core::feature::{HardRTCapable, IsLive};
+use lv2_core::port::inplace::*;
 use lv2_core::prelude::*;
 use std::ops::Drop;
 use std::os::raw::c_char;
@@ -12,9 +13,9 @@ struct Amp {
 
 #[derive(PortCollection)]
 struct AmpPorts {
-    gain: InputPort<InPlaceControl>,
-    input: InputPort<InPlaceAudio>,
-    output: OutputPort<InPlaceAudio>,
+    gain: ControlInput,
+    input: AudioInput,
+    output: AudioOutput,
 }
 
 #[derive(FeatureCollection)]
@@ -56,13 +57,13 @@ impl Plugin for Amp {
     fn run(&mut self, ports: &mut AmpPorts, _: &mut (), _: u32) {
         assert!(self.activated);
 
-        let coef = *(ports.gain);
+        let coef = ports.gain.get();
 
         let input = ports.input.iter();
         let output = ports.output.iter();
 
         for (input_sample, output_sample) in input.zip(output) {
-            output_sample.set(input_sample.get() * coef.get());
+            output_sample.set(input_sample.get() * coef);
         }
     }
 
