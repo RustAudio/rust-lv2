@@ -4,7 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 /// Generate lv2-sys bindings and write them to out.
-pub fn generate_bindings<I>(source_dir: &Path, out: &Path, clang_args: I)
+pub fn generate_bindings<I>(source_dir: &Path, out: &Path, clang_args: Option<I>)
 where
     I: IntoIterator,
     I::Item: AsRef<str>,
@@ -16,7 +16,9 @@ where
         .whitelist_var("LV2.*")
         .layout_tests(false)
         .bitfield_enum("LV2_State_Flags");
-    bindings = bindings.clang_args(clang_args);
+    if let Some(clang_args) = clang_args {
+        bindings = bindings.clang_args(clang_args);
+    }
 
     // Adding the headers to the include path of clang.
     // Otherwise, included headers can not be found.
@@ -93,7 +95,7 @@ fn main() {
 
     let headers = PathBuf::from(".").join(matches.value_of("LV2").unwrap());
     let out = PathBuf::from(".").join(matches.value_of("out").unwrap());
-    let clang_args = matches.values_of("clang args").unwrap();
+    let clang_args = matches.values_of("clang args");
 
     generate_bindings(&headers, &out, clang_args);
 }
