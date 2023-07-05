@@ -3,9 +3,9 @@ use lv2::prelude::*;
 // Most useful plugins will have ports for input and output data. In code, these ports are represented by a struct implementing the `PortCollection` trait. Internally, ports are referred to by index. These indices are assigned in ascending order, starting with 0 for the first port. The indices in `amp.ttl` have to match them.
 #[derive(PortCollection)]
 struct Ports {
-    gain: InputPort<Control>,
-    input: InputPort<Audio>,
-    output: OutputPort<Audio>,
+    gain: InputPort<InPlaceControl>,
+    input: InputPort<InPlaceAudio>,
+    output: OutputPort<InPlaceAudio>,
 }
 // Every plugin defines a struct for the plugin instance. All persistent data associated with a plugin instance is stored here, and is available to every instance method. In this simple plugin, there is no additional instance data and therefore, this struct is empty.
 //
@@ -24,14 +24,15 @@ impl Plugin for Amp {
     }
     // The `run()` method is the main process function of the plugin. It processes a block of audio in the audio context. Since this plugin is `lv2:hardRTCapable`, `run()` must be real-time safe, so blocking (e.g. with a mutex) or memory allocation are not allowed.
     fn run(&mut self, ports: &mut Ports, _features: &mut (), _: u32) {
-        let coef = if *(ports.gain) > -90.0 {
-            10.0_f32.powf(*(ports.gain) * 0.05)
+        let gain = ports.gain.get();
+        let coef = if gain > -90.0 {
+            10.0_f32.powf(gain * 0.05)
         } else {
             0.0
         };
 
         for (in_frame, out_frame) in Iterator::zip(ports.input.iter(), ports.output.iter_mut()) {
-            *out_frame = in_frame * coef;
+            out_frame.set(in_frame.get() * coef);
         }
     }
 }
