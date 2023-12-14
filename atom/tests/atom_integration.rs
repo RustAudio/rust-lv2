@@ -81,7 +81,7 @@ lv2_descriptors![AtomPlugin];
 fn main() {
     use atom::space::*;
     use lv2_urid::*;
-    use std::ffi::{c_void, CStr};
+    use std::ffi::{c_char, c_void, CStr};
     use std::mem::size_of;
     use std::pin::Pin;
     use urid::*;
@@ -93,7 +93,7 @@ fn main() {
 
     let mut map_feature_interface = Box::pin(mapper.as_mut().make_map_interface());
     let map_feature = Box::pin(sys::LV2_Feature {
-        URI: LV2Map::URI.as_ptr() as *const i8,
+        URI: LV2Map::URI.as_ptr() as *const c_char,
         data: map_feature_interface.as_mut().get_mut() as *mut _ as *mut c_void,
     });
     let features_list: &[*const sys::LV2_Feature] =
@@ -152,7 +152,7 @@ fn main() {
         let plugin = (plugin_descriptor.instantiate.unwrap())(
             plugin_descriptor,
             44100.0,
-            b"\0".as_ptr() as *const i8,
+            b"\0".as_ptr() as *const c_char,
             features_list.as_ptr(),
         );
 
