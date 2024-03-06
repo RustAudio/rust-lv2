@@ -8,6 +8,7 @@
 #![allow(rustdoc::bare_urls)]
 
 #[cfg_attr(target_os = "linux", path = "linux/mod.rs")]
+#[cfg_attr(target_os = "macos", path = "linux/mod.rs")]
 #[cfg_attr(target_os = "windows", path = "windows.rs")]
 mod unsupported;
 pub use unsupported::*;
